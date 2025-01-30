@@ -8,33 +8,45 @@ interface WebSocketMessage {
 
 export function useWebSocket(userId: number | undefined) {
   const ws = useRef<WebSocket | null>(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
   const { toast } = useToast();
 
   const connect = useCallback(() => {
-    if (!userId) return;
+    if (!userId || reconnectAttempts.current >= maxReconnectAttempts) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
+
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      return; // Already connected
+    }
+
     ws.current = new WebSocket(wsUrl);
 
     ws.current.onopen = () => {
+      reconnectAttempts.current = 0; // Reset attempts on successful connection
       if (ws.current?.readyState === WebSocket.OPEN) {
         ws.current.send(JSON.stringify({ type: "auth", userId }));
       }
     };
 
     ws.current.onclose = () => {
-      setTimeout(connect, 1000); // Reconnect after 1 second
+      reconnectAttempts.current++;
+      if (reconnectAttempts.current < maxReconnectAttempts) {
+        setTimeout(connect, 1000 * Math.min(reconnectAttempts.current, 5)); // Exponential backoff
+      }
     };
 
-    ws.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      toast({
-        title: "Connection Error",
-        description: "Failed to connect to chat server",
-        variant: "destructive",
-      });
+    ws.current.onerror = () => {
+      // Only show error toast if we've exhausted our reconnection attempts
+      if (reconnectAttempts.current >= maxReconnectAttempts) {
+        toast({
+          title: "Connection Warning",
+          description: "Chat features may be limited. Try refreshing the page.",
+          variant: "destructive",
+        });
+      }
     };
   }, [userId, toast]);
 
@@ -74,8 +86,12 @@ export function useWebSocket(userId: number | undefined) {
     if (!ws.current) return;
 
     ws.current.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      callback(message);
+      try {
+        const message = JSON.parse(event.data);
+        callback(message);
+      } catch (error) {
+        console.error('Failed to parse WebSocket message:', error);
+      }
     };
   }, []);
 

@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -22,17 +22,16 @@ interface SidebarItemProps {
 function SidebarItem({ icon, label, href, active }: SidebarItemProps) {
   return (
     <Link href={href}>
-      <a
+      <Button
+        variant={active ? "default" : "ghost"}
         className={cn(
-          "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-          active
-            ? "bg-primary text-primary-foreground"
-            : "hover:bg-secondary text-muted-foreground"
+          "w-full justify-start gap-3",
+          active && "bg-primary text-primary-foreground"
         )}
       >
         {icon}
         <span>{label}</span>
-      </a>
+      </Button>
     </Link>
   );
 }
