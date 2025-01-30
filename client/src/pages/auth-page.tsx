@@ -13,7 +13,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("staff");
+  const [role, setRole] = useState<"client" | "project_manager" | "staff">("staff");
   const { login, register } = useUser();
   const { toast } = useToast();
 
@@ -22,9 +22,24 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        await login({ username, password });
+        const result = await login({ username, password, role, name, email });
+        if (!result.ok) {
+          throw new Error(result.message);
+        }
       } else {
-        await register({ username, password, name, email, role });
+        const result = await register({ 
+          username, 
+          password, 
+          role, 
+          name, 
+          email,
+          status: "offline",
+          lastActive: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        });
+        if (!result.ok) {
+          throw new Error(result.message);
+        }
       }
     } catch (error: any) {
       toast({
@@ -87,7 +102,7 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={setRole}>
+                  <Select value={role} onValueChange={(value: "client" | "project_manager" | "staff") => setRole(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
