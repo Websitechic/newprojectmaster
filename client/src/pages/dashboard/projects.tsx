@@ -12,6 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ProjectForm } from "@/components/project/project-form";
 import type { Project } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
 import { useState } from "react";
@@ -19,6 +27,7 @@ import { useState } from "react";
 export default function Projects() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { user } = useUser();
 
   const { data: projects } = useQuery<Project[]>({
@@ -51,10 +60,20 @@ export default function Projects() {
                 </SelectContent>
               </Select>
               {user?.role === "project_manager" && (
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Project
-                </Button>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Project
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                      <DialogTitle>Create New Project</DialogTitle>
+                    </DialogHeader>
+                    <ProjectForm onSuccess={() => setIsDialogOpen(false)} />
+                  </DialogContent>
+                </Dialog>
               )}
             </div>
           </div>
