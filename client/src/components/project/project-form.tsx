@@ -90,14 +90,28 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
 
   const createProject = useMutation({
     mutationFn: async (data: ProjectFormValues) => {
+      // Prepare the request body based on client type
+      const requestBody = {
+        name: data.name,
+        description: data.description,
+        type: data.type,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        ...(data.clientType === "existing"
+          ? { clientId: data.clientId }
+          : { pendingClientEmail: data.clientEmail }
+        ),
+      };
+
       const response = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        throw new Error(errorText);
       }
 
       return response.json();
@@ -207,26 +221,30 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
                     name="clientId"
                     render={({ field }) => (
                       <FormItem>
-                        <Select onValueChange={(value) => field.onChange(parseInt(value))}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a client" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {isLoadingClients ? (
-                              <SelectItem value="" disabled>Loading clients...</SelectItem>
-                            ) : clients && clients.length > 0 ? (
-                              clients.map((client) => (
+                        {isLoadingClients ? (
+                          <div className="flex items-center justify-center p-4">
+                            <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                          </div>
+                        ) : clients && clients.length > 0 ? (
+                          <Select onValueChange={(value) => field.onChange(parseInt(value))}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a client" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {clients.map((client) => (
                                 <SelectItem key={client.id} value={client.id.toString()}>
                                   {client.name} ({client.email})
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="" disabled>No clients available</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div className="text-sm text-muted-foreground p-4 text-center">
+                            No clients available. Use the "New Client" tab to invite a client by email.
+                          </div>
+                        )}
                         <FormDescription>
                           Select from existing client accounts
                         </FormDescription>

@@ -12,8 +12,10 @@ import {
   performance,
   users,
   UserRole,
+  clientInvitations // Added import for clientInvitations
 } from "@db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
+import { randomBytes } from "crypto";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
@@ -116,33 +118,76 @@ export function registerRoutes(app: Express): Server {
   // Create Project (Project Manager only)
   app.post("/api/projects", isProjectManager, async (req, res) => {
     try {
-      const { clientId, ...projectData } = req.body;
+      const { clientId, pendingClientEmail, ...projectData } = req.body;
 
-      // Verify client exists and is actually a client
-      const [client] = await db
-        .select()
-        .from(users)
-        .where(and(
-          eq(users.id, clientId),
-          eq(users.role, "client")
-        ))
-        .limit(1);
-
-      if (!client) {
-        return res.status(400).json({ error: "Invalid client ID" });
+      if (!clientId && !pendingClientEmail) {
+        return res.status(400).json({ error: "Either clientId or pendingClientEmail must be provided" });
       }
 
-      const [newProject] = await db
-        .insert(projects)
-        .values({
-          ...projectData,
-          clientId,
-          managerId: req.user!.id,
-          status: "pending",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
+      let newProject;
+
+      if (clientId) {
+        // Verify client exists and is actually a client
+        const [client] = await db
+          .select()
+          .from(users)
+          .where(and(
+            eq(users.id, clientId),
+            eq(users.role, UserRole.CLIENT)
+          ))
+          .limit(1);
+
+        if (!client) {
+          return res.status(400).json({ error: "Invalid client ID" });
+        }
+
+        // Create project with existing client
+        [newProject] = await db
+          .insert(projects)
+          .values({
+            ...projectData,
+            clientId,
+            managerId: req.user!.id,
+            status: "pending",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+      } else {
+        // Create project with pending client email
+        [newProject] = await db
+          .insert(projects)
+          .values({
+            ...projectData,
+            pendingClientEmail,
+            managerId: req.user!.id,
+            status: "pending",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+
+        // Generate invitation token
+        const token = randomBytes(32).toString("hex");
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+
+        // Create client invitation
+        await db
+          .insert(clientInvitations)
+          .values({
+            email: pendingClientEmail,
+            projectId: newProject.id,
+            invitedBy: req.user!.id,
+            token,
+            status: "pending",
+            expiresAt,
+            createdAt: new Date(),
+          });
+
+        // Send invitation email
+        // TODO: Implement email sending functionality
+      }
 
       res.json(newProject);
     } catch (error) {
@@ -304,7 +349,7 @@ export function registerRoutes(app: Express): Server {
 
       const [updatedTask] = await db
         .update(tasks)
-        .set({ 
+        .set({
           status,
           progress,
           updatedAt: new Date()
