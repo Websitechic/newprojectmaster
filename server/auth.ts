@@ -37,10 +37,31 @@ declare global {
   }
 }
 
-// Login schema only requires username and password
+// Add role validation
+const validRoles = ["client", "project_manager", "staff"] as const;
+const validSpecializations = [
+  "developer",
+  "designer",
+  "copywriter",
+  "media_buyer",
+  "automation_expert",
+  "marketing_specialist"
+] as const;
+
+// Update the login schema
 const loginSchema = z.object({
   username: z.string(),
   password: z.string()
+});
+
+// Update registration validation
+const registerSchema = z.object({
+  username: z.string().min(3),
+  password: z.string().min(6),
+  name: z.string(),
+  email: z.string().email(),
+  role: z.enum(validRoles),
+  specialization: z.enum(validSpecializations).optional(),
 });
 
 export function setupAuth(app: Express) {
@@ -108,14 +129,19 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const result = insertUserSchema.safeParse(req.body);
+      const result = registerSchema.safeParse(req.body);
       if (!result.success) {
         return res
           .status(400)
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password, email } = result.data;
+      const { username, password, role, specialization, name, email } = result.data;
+
+      // Additional role-specific validation
+      if (role === "staff" && !specialization) {
+        return res.status(400).send("Staff members must specify their specialization");
+      }
 
       // Check if user already exists
       const [existingUser] = await db
@@ -128,9 +154,6 @@ export function setupAuth(app: Express) {
         return res.status(400).send("Username already exists");
       }
 
-      // Generate verification token
-      const verificationToken = randomBytes(32).toString("hex");
-
       // Hash the password
       const hashedPassword = await crypto.hash(password);
 
@@ -138,15 +161,15 @@ export function setupAuth(app: Express) {
       const [newUser] = await db
         .insert(users)
         .values({
-          ...result.data,
+          name,
+          email,
+          username,
+          role,
+          specialization,
           password: hashedPassword,
-          verificationToken,
-          emailVerified: false,
+          status: "offline",
         })
         .returning();
-
-      // Send verification email
-      await sendVerificationEmail(newUser, verificationToken);
 
       // Log the user in after registration
       req.login(newUser, (err) => {
@@ -154,8 +177,8 @@ export function setupAuth(app: Express) {
           return next(err);
         }
         return res.json({
-          message: "Registration successful. Please check your email to verify your account.",
-          user: { id: newUser.id, username: newUser.username },
+          message: "Registration successful",
+          user: { id: newUser.id, username: newUser.username, role: newUser.role },
         });
       });
     } catch (error) {

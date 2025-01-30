@@ -6,20 +6,11 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
-  role: text("role", { enum: ["client", "project_manager", "staff"] }).notNull(),
+  role: text("role").notNull(),  // We'll enforce enum values in application logic
   name: text("name").notNull(),
   email: text("email").notNull(),
-  specialization: text("specialization", { 
-    enum: [
-      "developer",
-      "designer",
-      "copywriter",
-      "media_buyer",
-      "automation_expert",
-      "marketing_specialist"
-    ]
-  }),
-  status: text("status", { enum: ["online", "offline", "busy"] }).default("offline"),
+  specialization: text("specialization"),  // We'll enforce enum values in application logic
+  status: text("status").default("offline"),
   emailVerified: boolean("email_verified").default(false),
   verificationToken: text("verification_token"),
   resetPasswordToken: text("reset_password_token"),
