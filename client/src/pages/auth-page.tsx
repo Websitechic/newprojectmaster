@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { AlertTriangle } from "lucide-react";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,6 +15,7 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"client" | "project_manager" | "staff">("staff");
+  const [resetMode, setResetMode] = useState(false);
   const { login, register } = useUser();
   const { toast } = useToast();
 
@@ -22,12 +24,10 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
+        // For login, only send username and password
         const result = await login({ 
           username, 
-          password,
-          role,
-          name,
-          email
+          password
         });
         if (!result.ok) {
           throw new Error(result.message);
@@ -53,6 +53,55 @@ export default function AuthPage() {
       });
     }
   };
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // We'll implement password reset functionality in the next step
+    toast({
+      title: "Not implemented",
+      description: "Password reset functionality will be added soon.",
+      variant: "destructive",
+    });
+  };
+
+  if (resetMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md mx-4">
+          <CardHeader className="text-center">
+            <h1 className="text-2xl font-bold">Reset Password</h1>
+          </CardHeader>
+          <form onSubmit={handleReset}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-4">
+              <Button type="submit" className="w-full">
+                Send Reset Link
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setResetMode(false)}
+                className="w-full"
+              >
+                Back to Login
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -124,14 +173,24 @@ export default function AuthPage() {
             <Button type="submit" className="w-full">
               {isLogin ? "Login" : "Register"}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsLogin(!isLogin)}
-              className="w-full"
-            >
-              {isLogin ? "Need an account? Register" : "Already have an account? Login"}
-            </Button>
+            <div className="flex justify-between w-full">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsLogin(!isLogin)}
+              >
+                {isLogin ? "Need an account? Register" : "Already have an account? Login"}
+              </Button>
+              {isLogin && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setResetMode(true)}
+                >
+                  Forgot Password?
+                </Button>
+              )}
+            </div>
           </CardFooter>
         </form>
       </Card>
