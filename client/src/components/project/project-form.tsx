@@ -10,6 +10,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -29,6 +30,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -44,9 +51,19 @@ const projectSchema = z.object({
     "automation",
     "social_media"
   ]),
-  clientId: z.number(),
+  clientType: z.enum(["existing", "new"]),
+  clientId: z.number().optional(),
+  clientEmail: z.string().email().optional(),
   startDate: z.date(),
   endDate: z.date(),
+}).refine(data => {
+  if (data.clientType === "existing") {
+    return data.clientId !== undefined;
+  } else {
+    return data.clientEmail !== undefined;
+  }
+}, {
+  message: "Please either select an existing client or provide a client email"
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -54,7 +71,8 @@ type ProjectFormValues = z.infer<typeof projectSchema>;
 export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+  const [clientType, setClientType] = useState<"existing" | "new">("existing");
+
   // Fetch available clients
   const { data: clients } = useQuery({
     queryKey: ["/api/clients"],
@@ -65,6 +83,7 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
     defaultValues: {
       name: "",
       description: "",
+      clientType: "existing",
     },
   });
 
@@ -166,25 +185,68 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
 
         <FormField
           control={form.control}
-          name="clientId"
+          name="clientType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Client</FormLabel>
-              <Select onValueChange={(value) => field.onChange(parseInt(value))}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a client" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {clients?.map((client: any) => (
-                    <SelectItem key={client.id} value={client.id.toString()}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
+              <FormLabel>Client Selection</FormLabel>
+              <Tabs
+                defaultValue="existing"
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  setClientType(value as "existing" | "new");
+                }}
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="existing">Existing Client</TabsTrigger>
+                  <TabsTrigger value="new">New Client</TabsTrigger>
+                </TabsList>
+                <TabsContent value="existing">
+                  <FormField
+                    control={form.control}
+                    name="clientId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Select onValueChange={(value) => field.onChange(parseInt(value))}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a client" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {clients?.map((client: any) => (
+                              <SelectItem key={client.id} value={client.id.toString()}>
+                                {client.name} ({client.email})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+                <TabsContent value="new">
+                  <FormField
+                    control={form.control}
+                    name="clientEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="Enter client's email address"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          An invitation will be sent to this email address
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+              </Tabs>
             </FormItem>
           )}
         />

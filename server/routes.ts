@@ -11,8 +11,9 @@ import {
   projectMembers,
   performance,
   users,
+  UserRole,
 } from "@db/schema";
-import { eq, and, desc, inArray, isNull } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
@@ -20,7 +21,7 @@ const isProjectManager = (req: Express.Request, res: Response, next: NextFunctio
     return res.status(401).send("Not authenticated");
   }
 
-  if (req.user!.role !== "project_manager") {
+  if (req.user!.role !== UserRole.PROJECT_MANAGER) {
     return res.status(403).send("Only project managers can perform this action");
   }
 
@@ -39,7 +40,7 @@ export function registerRoutes(app: Express): Server {
     const clients = await db
       .select()
       .from(users)
-      .where(eq(users.role, "client"))
+      .where(eq(users.role, UserRole.CLIENT))
       .orderBy(desc(users.createdAt));
 
     res.json(clients);

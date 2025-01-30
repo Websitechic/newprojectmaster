@@ -2,7 +2,7 @@ import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizz
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
-// User role and specialization types
+// User role and specialization types remain unchanged
 export const UserRole = {
   CLIENT: "client",
   PROJECT_MANAGER: "project_manager",
@@ -37,6 +37,17 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const clientInvitations = pgTable("client_invitations", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  projectId: integer("project_id").references(() => projects.id),
+  invitedBy: integer("invited_by").references(() => users.id),
+  token: text("token").notNull(),
+  status: text("status", { enum: ["pending", "accepted", "declined"] }).default("pending"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -53,7 +64,8 @@ export const projects = pgTable("projects", {
     ]
   }).notNull(),
   status: text("status", { enum: ["active", "inactive", "pending"] }).default("pending"),
-  clientId: integer("client_id").references(() => users.id).notNull(),
+  clientId: integer("client_id").references(() => users.id),
+  pendingClientEmail: text("pending_client_email"),
   managerId: integer("manager_id").references(() => users.id).notNull(),
   progress: integer("progress").default(0),
   startDate: timestamp("start_date"),
@@ -115,6 +127,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     fields: [projects.managerId],
     references: [users.id],
   }),
+  clientInvitations: many(clientInvitations),
   tasks: many(tasks),
   members: many(projectMembers),
   messages: many(messages),
@@ -161,6 +174,18 @@ export const projectMembersRelations = relations(projectMembers, ({ one }) => ({
   }),
 }));
 
+export const clientInvitationsRelations = relations(clientInvitations, ({ one }) => ({
+  project: one(projects, {
+    fields: [clientInvitations.projectId],
+    references: [projects.id],
+  }),
+  invitedByUser: one(users, {
+    fields: [clientInvitations.invitedBy],
+    references: [users.id],
+  }),
+}));
+
+
 // Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -170,6 +195,8 @@ export const insertTaskSchema = createInsertSchema(tasks);
 export const selectTaskSchema = createSelectSchema(tasks);
 export const insertProjectMemberSchema = createInsertSchema(projectMembers);
 export const selectProjectMemberSchema = createSelectSchema(projectMembers);
+export const insertClientInvitationSchema = createInsertSchema(clientInvitations);
+export const selectClientInvitationSchema = createSelectSchema(clientInvitations);
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -178,3 +205,4 @@ export type Task = typeof tasks.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
 export type Performance = typeof performance.$inferSelect;
+export type ClientInvitation = typeof clientInvitations.$inferSelect;
