@@ -11,11 +11,11 @@ import {
   projectMembers,
   performance,
 } from "@db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
-  
+
   const server = createServer(app);
   const wss = new WebSocketServer({ server, path: "/ws" });
   setupWebSocket(wss);
@@ -46,15 +46,17 @@ export function registerRoutes(app: Express): Server {
         .select()
         .from(projectMembers)
         .where(eq(projectMembers.userId, user.id));
-      
-      projectsList = await db
-        .select()
-        .from(projects)
-        .where(
-          projectMembers.projectId.in(
-            memberProjects.map((pm) => pm.projectId)
-          )
-        );
+
+      const projectIds = memberProjects.map((pm) => pm.projectId);
+
+      if (projectIds.length === 0) {
+        projectsList = [];
+      } else {
+        projectsList = await db
+          .select()
+          .from(projects)
+          .where(inArray(projects.id, projectIds));
+      }
     }
 
     res.json(projectsList);
