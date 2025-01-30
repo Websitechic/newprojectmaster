@@ -7,8 +7,9 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users, insertUserSchema, type User as SelectUser } from "@db/schema";
 import { db } from "@db";
-import { eq } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm";
 import { z } from "zod";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./services/email";
 
 const scryptAsync = promisify(scrypt);
 const crypto = {
@@ -32,7 +33,7 @@ const crypto = {
 // extend express user object with our schema
 declare global {
   namespace Express {
-    interface User extends SelectUser { }
+    interface User extends SelectUser {}
   }
 }
 
@@ -114,7 +115,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password } = result.data;
+      const { username, password, email } = result.data;
 
       // Check if user already exists
       const [existingUser] = await db
@@ -127,6 +128,9 @@ export function setupAuth(app: Express) {
         return res.status(400).send("Username already exists");
       }
 
+      // Generate verification token
+      const verificationToken = randomBytes(32).toString("hex");
+
       // Hash the password
       const hashedPassword = await crypto.hash(password);
 
@@ -136,8 +140,13 @@ export function setupAuth(app: Express) {
         .values({
           ...result.data,
           password: hashedPassword,
+          verificationToken,
+          emailVerified: false,
         })
         .returning();
+
+      // Send verification email
+      await sendVerificationEmail(newUser, verificationToken);
 
       // Log the user in after registration
       req.login(newUser, (err) => {
@@ -145,12 +154,109 @@ export function setupAuth(app: Express) {
           return next(err);
         }
         return res.json({
-          message: "Registration successful",
+          message: "Registration successful. Please check your email to verify your account.",
           user: { id: newUser.id, username: newUser.username },
         });
       });
     } catch (error) {
       next(error);
+    }
+  });
+
+  // Email verification endpoint
+  app.get("/api/verify-email/:token", async (req, res) => {
+    try {
+      const token = req.params.token;
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.verificationToken, token))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).send("Invalid verification token");
+      }
+
+      await db
+        .update(users)
+        .set({
+          emailVerified: true,
+          verificationToken: null,
+        })
+        .where(eq(users.id, user.id));
+
+      return res.json({ message: "Email verified successfully" });
+    } catch (error) {
+      return res.status(500).send("Error verifying email");
+    }
+  });
+
+  // Request password reset endpoint
+  app.post("/api/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).send("No account found with this email");
+      }
+
+      const token = randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 3600000); // 1 hour from now
+
+      await db
+        .update(users)
+        .set({
+          resetPasswordToken: token,
+          resetPasswordExpires: expires,
+        })
+        .where(eq(users.id, user.id));
+
+      await sendPasswordResetEmail(user, token);
+
+      res.json({ message: "Password reset email sent" });
+    } catch (error) {
+      res.status(500).send("Error requesting password reset");
+    }
+  });
+
+  // Reset password endpoint
+  app.post("/api/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.resetPasswordToken, token),
+            gt(users.resetPasswordExpires!, new Date())
+          )
+        )
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).send("Invalid or expired reset token");
+      }
+
+      const hashedPassword = await crypto.hash(newPassword);
+
+      await db
+        .update(users)
+        .set({
+          password: hashedPassword,
+          resetPasswordToken: null,
+          resetPasswordExpires: null,
+        })
+        .where(eq(users.id, user.id));
+
+      res.json({ message: "Password reset successful" });
+    } catch (error) {
+      res.status(500).send("Error resetting password");
     }
   });
 

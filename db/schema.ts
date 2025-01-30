@@ -10,6 +10,10 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull(),
   status: text("status", { enum: ["online", "offline", "busy"] }).default("offline"),
+  emailVerified: boolean("email_verified").default(false),
+  verificationToken: text("verification_token"),
+  resetPasswordToken: text("reset_password_token"),
+  resetPasswordExpires: timestamp("reset_password_expires"),
   lastActive: timestamp("last_active").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
