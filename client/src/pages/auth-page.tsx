@@ -33,16 +33,13 @@ export default function AuthPage() {
           throw new Error(result.message);
         }
       } else {
-        const now = new Date().toISOString();
         const result = await register({
           username,
           password,
           role,
           name,
           email,
-          status: "offline",
-          lastActive: now,
-          createdAt: now
+          status: "offline"
         });
         if (!result.ok) {
           throw new Error(result.message);
