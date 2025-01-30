@@ -13,6 +13,19 @@ import {
 } from "@db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 
+// Middleware to check if user is a project manager
+const isProjectManager = (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).send("Not authenticated");
+  }
+
+  if (req.user!.role !== "project_manager") {
+    return res.status(403).send("Only project managers can perform this action");
+  }
+
+  next();
+};
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -65,6 +78,27 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Create Project (Project Manager only)
+  app.post("/api/projects", isProjectManager, async (req, res) => {
+    try {
+      const [newProject] = await db
+        .insert(projects)
+        .values({
+          ...req.body,
+          managerId: req.user!.id,
+          status: "pending",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(newProject);
+    } catch (error) {
+      console.error("Error creating project:", error);
+      res.status(500).json({ error: "Failed to create project" });
+    }
+  });
+
   // Tasks
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -78,6 +112,48 @@ export function registerRoutes(app: Express): Server {
       .orderBy(desc(tasks.updatedAt));
 
     res.json(userTasks);
+  });
+
+  // Create Task (Project Manager only)
+  app.post("/api/tasks", isProjectManager, async (req, res) => {
+    try {
+      const [newTask] = await db
+        .insert(tasks)
+        .values({
+          ...req.body,
+          status: "todo",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(newTask);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ error: "Failed to create task" });
+    }
+  });
+
+  // Assign Task (Project Manager only)
+  app.put("/api/tasks/:id/assign", isProjectManager, async (req, res) => {
+    const taskId = parseInt(req.params.id);
+    const { assigneeId } = req.body;
+
+    try {
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({ 
+          assigneeId,
+          updatedAt: new Date()
+        })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error assigning task:", error);
+      res.status(500).json({ error: "Failed to assign task" });
+    }
   });
 
   app.post("/api/tasks/:id/progress", async (req, res) => {

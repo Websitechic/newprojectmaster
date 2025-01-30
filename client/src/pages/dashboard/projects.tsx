@@ -13,11 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Project } from "@db/schema";
+import { useUser } from "@/hooks/use-user";
 import { useState } from "react";
 
 export default function Projects() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
+  const { user } = useUser();
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -48,10 +50,12 @@ export default function Projects() {
                   <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                New Project
-              </Button>
+              {user?.role === "project_manager" && (
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Project
+                </Button>
+              )}
             </div>
           </div>
 
