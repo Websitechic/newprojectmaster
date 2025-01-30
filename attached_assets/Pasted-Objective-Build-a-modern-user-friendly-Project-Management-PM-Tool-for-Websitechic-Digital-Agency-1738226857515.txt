@@ -1,0 +1,43 @@
+Objective: Build a modern, user-friendly Project Management (PM) Tool for Websitechic Digital Agency. The tool should cater to IT professionals, project managers, and clients, offering seamless task management, collaboration, and performance tracking. It must be intuitive, scalable, and secure, with a modern design and role-based access control.
+
+Key Features:
+
+Task Management: Assign tasks with deadlines, send notifications upon assignment, and track task completion percentages visible on dashboards for project managers, operations managers, and staff.
+
+Automated Systems: Enable automated email follow-ups, an automatic clock-in system for staff, and inactivity notifications to alert the operations manager if no activity occurs on a project for over two weeks.
+
+Collaboration and Communication: Include on-platform chat for project-specific communication, a collaboration feature to add team members to tasks, and team member calls with automatic summaries in the project chat.
+
+Performance Tracking and Reporting: Allow KPI input on the backend, generate weekly performance reports, analyze performance using charts, and provide daily performance visibility for staff.
+
+Booking and Scheduling: Let project managers book meetings by selecting dates and times on the marketing team’s calendar, and block out assigned tasks during meeting periods.
+
+Online Status Indicators: Use color-coded indicators (red for online but not clocked in, yellow for online and working) to show staff availability.
+
+Client Features: Provide client login to view performance reports in chart format and access project reports via chat.
+
+Project Segmentation: Categorize projects into active, inactive, and pending.
+
+Client Relationship Tracking: Integrate WhatsApp on the product owner’s dashboard for client communication and enable sentiment tracking using keywords like "angry," "dissatisfied," or "tired."
+
+Technical Requirements:
+
+Frontend: Modern, responsive UI (e.g., React.js or Vue.js).
+
+Backend: Scalable and secure (e.g., Node.js, Django, or Flask).
+
+Database: Relational database for structured data (e.g., PostgreSQL or MySQL).
+
+Real-Time Features: Use WebSockets or similar technology for chat, calls, and notifications.
+
+APIs: Integrate with email services (e.g., SendGrid), WhatsApp API, and calendar services (e.g., Google Calendar).
+
+Hosting: Deploy on a scalable cloud platform (e.g., AWS, Google Cloud, or Replit’s hosting).
+
+Deliverables:
+
+A fully functional PM tool with all the listed features.
+
+Documentation for setup, usage, and maintenance.
+
+Testing and debugging to ensure smooth functionality across all user roles.
