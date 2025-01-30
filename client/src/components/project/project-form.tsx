@@ -95,8 +95,8 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
         name: data.name,
         description: data.description,
         type: data.type,
-        startDate: data.startDate,
-        endDate: data.endDate,
+        startDate: data.startDate.toISOString(),
+        endDate: data.endDate.toISOString(),
         ...(data.clientType === "existing"
           ? { clientId: data.clientId }
           : { pendingClientEmail: data.clientEmail }
