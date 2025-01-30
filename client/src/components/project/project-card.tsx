@@ -21,6 +21,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
     pending: "bg-yellow-500",
   };
 
+  const formatDate = (date: Date | string | null) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString();
+  };
+
   return (
     <>
       <Card>
@@ -29,8 +34,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <div>
               <h3 className="font-semibold text-lg">{project.name}</h3>
               <p className="text-sm text-muted-foreground">
-                {new Date(project.startDate!).toLocaleDateString()} -{" "}
-                {new Date(project.endDate!).toLocaleDateString()}
+                {formatDate(project.startDate)} - {formatDate(project.endDate)}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -43,7 +47,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
               </Button>
               <Badge
                 variant="secondary"
-                className={`${statusColors[project.status as keyof typeof statusColors]}`}
+                className={statusColors[project.status as keyof typeof statusColors] || "bg-gray-500"}
               >
                 {project.status}
               </Badge>
@@ -52,14 +56,14 @@ export function ProjectCard({ project }: ProjectCardProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            {project.description}
+            {project.description || "No description available"}
           </p>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Progress</span>
-              <span>{project.progress}%</span>
+              <span>{project.progress || 0}%</span>
             </div>
-            <Progress value={project.progress} />
+            <Progress value={project.progress || 0} />
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
@@ -75,7 +79,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </Avatar>
           </div>
           <Badge variant="outline" className="ml-auto">
-            {new Date(project.updatedAt).toLocaleDateString()}
+            {formatDate(project.updatedAt)}
           </Badge>
         </CardFooter>
       </Card>

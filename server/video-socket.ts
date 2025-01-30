@@ -20,45 +20,56 @@ export function setupVideoSocket(httpServer: HTTPServer) {
     path: "/socket.io",
     cors: {
       origin: "*",
-      methods: ["GET", "POST"],
+      methods: ["GET", "POST"]
     },
+    transports: ["websocket", "polling"]
   });
 
   io.on("connection", (socket) => {
+    console.log("New socket connection:", socket.id);
+
     socket.on("join-room", async ({ roomId, userId }: JoinRoomData) => {
-      // Extract projectId from roomId (format: "project-{id}")
-      const projectId = parseInt(roomId.split("-")[1]);
-      
-      // Verify user is a member of the project
-      const member = await db.query.projectMembers.findFirst({
-        where: eq(projectMembers.userId, userId),
-      });
+      try {
+        // Extract projectId from roomId (format: "project-{id}")
+        const projectId = parseInt(roomId.split("-")[1]);
 
-      if (!member) {
-        socket.emit("error", "Not authorized to join this room");
-        return;
+        // Verify user is a member of the project
+        const member = await db.query.projectMembers.findFirst({
+          where: eq(projectMembers.userId, userId),
+        });
+
+        if (!member) {
+          socket.emit("error", "Not authorized to join this room");
+          return;
+        }
+
+        console.log(`User ${userId} joined room ${roomId}`);
+
+        socket.join(roomId);
+        socket.to(roomId).emit("user-connected", socket.id);
+
+        socket.on("disconnect", () => {
+          console.log(`User ${userId} left room ${roomId}`);
+          socket.to(roomId).emit("user-disconnected", socket.id);
+        });
+
+        socket.on("sending-signal", ({ userToSignal, signal }: SignalData) => {
+          io.to(userToSignal!).emit("receiving-signal", {
+            signal,
+            callerId: socket.id,
+          });
+        });
+
+        socket.on("returning-signal", ({ callerId, signal }: SignalData) => {
+          io.to(callerId!).emit("signal-returned", {
+            signal,
+            id: socket.id,
+          });
+        });
+      } catch (error) {
+        console.error("Error in join-room handler:", error);
+        socket.emit("error", "Failed to join room");
       }
-
-      socket.join(roomId);
-      socket.to(roomId).emit("user-connected", socket.id);
-
-      socket.on("disconnect", () => {
-        socket.to(roomId).emit("user-disconnected", socket.id);
-      });
-
-      socket.on("sending-signal", ({ userToSignal, signal }: SignalData) => {
-        io.to(userToSignal!).emit("receiving-signal", {
-          signal,
-          callerId: socket.id,
-        });
-      });
-
-      socket.on("returning-signal", ({ callerId, signal }: SignalData) => {
-        io.to(callerId!).emit("signal-returned", {
-          signal,
-          id: socket.id,
-        });
-      });
     });
   });
 

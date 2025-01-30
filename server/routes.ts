@@ -27,39 +27,42 @@ export function registerRoutes(app: Express): Server {
     }
 
     const user = req.user!;
-    let projectsList;
+    let projectsList = [];
 
-    if (user.role === "client") {
-      projectsList = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.clientId, user.id))
-        .orderBy(desc(projects.updatedAt));
-    } else if (user.role === "project_manager") {
-      projectsList = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.managerId, user.id))
-        .orderBy(desc(projects.updatedAt));
-    } else {
-      const memberProjects = await db
-        .select()
-        .from(projectMembers)
-        .where(eq(projectMembers.userId, user.id));
-
-      const projectIds = memberProjects.map((pm) => pm.projectId);
-
-      if (projectIds.length === 0) {
-        projectsList = [];
-      } else {
+    try {
+      if (user.role === "client") {
         projectsList = await db
           .select()
           .from(projects)
-          .where(inArray(projects.id, projectIds));
-      }
-    }
+          .where(eq(projects.clientId, user.id))
+          .orderBy(desc(projects.updatedAt));
+      } else if (user.role === "project_manager") {
+        projectsList = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.managerId, user.id))
+          .orderBy(desc(projects.updatedAt));
+      } else {
+        const memberProjects = await db
+          .select()
+          .from(projectMembers)
+          .where(eq(projectMembers.userId, user.id));
 
-    res.json(projectsList);
+        if (memberProjects.length > 0) {
+          const projectIds = memberProjects.map(pm => pm.projectId).filter(id => id !== null);
+          projectsList = await db
+            .select()
+            .from(projects)
+            .where(inArray(projects.id, projectIds))
+            .orderBy(desc(projects.updatedAt));
+        }
+      }
+
+      res.json(projectsList);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      res.status(500).json({ error: "Failed to fetch projects" });
+    }
   });
 
   // Tasks
