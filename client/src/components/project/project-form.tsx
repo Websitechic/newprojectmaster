@@ -90,13 +90,18 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
 
   const createProject = useMutation({
     mutationFn: async (data: ProjectFormValues) => {
+      if (!data.startDate || !data.endDate) {
+        throw new Error("Start and end dates are required");
+      }
+
       // Prepare the request body based on client type
       const requestBody = {
         name: data.name,
         description: data.description,
         type: data.type,
-        startDate: data.startDate.toISOString(),
-        endDate: data.endDate.toISOString(),
+        // Ensure dates are properly formatted as ISO strings
+        startDate: new Date(data.startDate).toISOString(),
+        endDate: new Date(data.endDate).toISOString(),
         ...(data.clientType === "existing"
           ? { clientId: data.clientId }
           : { pendingClientEmail: data.clientEmail }

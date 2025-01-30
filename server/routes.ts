@@ -12,7 +12,7 @@ import {
   performance,
   users,
   UserRole,
-  clientInvitations // Added import for clientInvitations
+  clientInvitations
 } from "@db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -39,13 +39,18 @@ export function registerRoutes(app: Express): Server {
 
   // Get available clients (for project managers)
   app.get("/api/clients", isProjectManager, async (req, res) => {
-    const clients = await db
-      .select()
-      .from(users)
-      .where(eq(users.role, UserRole.CLIENT))
-      .orderBy(desc(users.createdAt));
+    try {
+      const clients = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "client"))
+        .orderBy(desc(users.createdAt));
 
-    res.json(clients);
+      res.json(clients);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      res.status(500).json({ error: "Failed to fetch clients" });
+    }
   });
 
   // Get available staff by specialization (for project managers)
@@ -118,29 +123,38 @@ export function registerRoutes(app: Express): Server {
   // Create Project (Project Manager only)
   app.post("/api/projects", isProjectManager, async (req, res) => {
     try {
-      const { clientId, pendingClientEmail, ...projectData } = req.body;
+      const { clientId, pendingClientEmail, startDate, endDate, ...projectData } = req.body;
 
       if (!clientId && !pendingClientEmail) {
         return res.status(400).json({ error: "Either clientId or pendingClientEmail must be provided" });
       }
 
+      if (!projectData.type) {
+        return res.status(400).json({ error: "Project type is required" });
+      }
+
+      // Parse dates
+      let parsedStartDate: Date | null = null;
+      let parsedEndDate: Date | null = null;
+
+      try {
+        parsedStartDate = startDate ? new Date(startDate) : null;
+        parsedEndDate = endDate ? new Date(endDate) : null;
+      } catch (error) {
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+
+      if (!parsedStartDate || !parsedEndDate) {
+        return res.status(400).json({ error: "Valid start and end dates are required" });
+      }
+
+      if (parsedStartDate > parsedEndDate) {
+        return res.status(400).json({ error: "Start date cannot be after end date" });
+      }
+
       let newProject;
 
       if (clientId) {
-        // Verify client exists and is actually a client
-        const [client] = await db
-          .select()
-          .from(users)
-          .where(and(
-            eq(users.id, clientId),
-            eq(users.role, UserRole.CLIENT)
-          ))
-          .limit(1);
-
-        if (!client) {
-          return res.status(400).json({ error: "Invalid client ID" });
-        }
-
         // Create project with existing client
         [newProject] = await db
           .insert(projects)
@@ -149,6 +163,8 @@ export function registerRoutes(app: Express): Server {
             clientId,
             managerId: req.user!.id,
             status: "pending",
+            startDate: parsedStartDate,
+            endDate: parsedEndDate,
             createdAt: new Date(),
             updatedAt: new Date(),
           })
@@ -162,31 +178,12 @@ export function registerRoutes(app: Express): Server {
             pendingClientEmail,
             managerId: req.user!.id,
             status: "pending",
+            startDate: parsedStartDate,
+            endDate: parsedEndDate,
             createdAt: new Date(),
             updatedAt: new Date(),
           })
           .returning();
-
-        // Generate invitation token
-        const token = randomBytes(32).toString("hex");
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-        // Create client invitation
-        await db
-          .insert(clientInvitations)
-          .values({
-            email: pendingClientEmail,
-            projectId: newProject.id,
-            invitedBy: req.user!.id,
-            token,
-            status: "pending",
-            expiresAt,
-            createdAt: new Date(),
-          });
-
-        // Send invitation email
-        // TODO: Implement email sending functionality
       }
 
       res.json(newProject);
