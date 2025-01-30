@@ -2,14 +2,32 @@ import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizz
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
+// User role and specialization types
+export const UserRole = {
+  CLIENT: "client",
+  PROJECT_MANAGER: "project_manager",
+  STAFF: "staff",
+} as const;
+
+export const UserSpecialization = {
+  DEVELOPER: "developer",
+  DESIGNER: "designer",
+  COPYWRITER: "copywriter",
+  MEDIA_BUYER: "media_buyer",
+  AUTOMATION_EXPERT: "automation_expert",
+  MARKETING_SPECIALIST: "marketing_specialist",
+} as const;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
-  role: text("role").notNull(),  // We'll enforce enum values in application logic
+  role: text("role", { enum: Object.values(UserRole) }).notNull(),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  specialization: text("specialization"),  // We'll enforce enum values in application logic
+  specialization: text("specialization", { 
+    enum: Object.values(UserSpecialization) 
+  }),
   status: text("status").default("offline"),
   emailVerified: boolean("email_verified").default(false),
   verificationToken: text("verification_token"),
