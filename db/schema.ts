@@ -9,6 +9,16 @@ export const users = pgTable("users", {
   role: text("role", { enum: ["client", "project_manager", "staff"] }).notNull(),
   name: text("name").notNull(),
   email: text("email").notNull(),
+  specialization: text("specialization", { 
+    enum: [
+      "developer",
+      "designer",
+      "copywriter",
+      "media_buyer",
+      "automation_expert",
+      "marketing_specialist"
+    ]
+  }),
   status: text("status", { enum: ["online", "offline", "busy"] }).default("offline"),
   emailVerified: boolean("email_verified").default(false),
   verificationToken: text("verification_token"),
@@ -22,14 +32,38 @@ export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  type: text("type", { 
+    enum: [
+      "web_development",
+      "mobile_app",
+      "digital_marketing",
+      "ui_ux_design",
+      "content_creation",
+      "automation",
+      "social_media"
+    ]
+  }).notNull(),
   status: text("status", { enum: ["active", "inactive", "pending"] }).default("pending"),
-  clientId: integer("client_id").references(() => users.id),
-  managerId: integer("manager_id").references(() => users.id),
+  clientId: integer("client_id").references(() => users.id).notNull(),
+  managerId: integer("manager_id").references(() => users.id).notNull(),
   progress: integer("progress").default(0),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const projectMembers = pgTable("project_members", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").references(() => projects.id),
+  userId: integer("user_id").references(() => users.id),
+  role: text("role", { enum: ["viewer", "member", "admin"] }).default("member"),
+  invitationStatus: text("invitation_status", { 
+    enum: ["pending", "accepted", "declined"] 
+  }).default("pending"),
+  invitedBy: integer("invited_by").references(() => users.id),
+  invitedAt: timestamp("invited_at").defaultNow(),
+  joinedAt: timestamp("joined_at"),
 });
 
 export const tasks = pgTable("tasks", {
@@ -38,7 +72,8 @@ export const tasks = pgTable("tasks", {
   description: text("description"),
   projectId: integer("project_id").references(() => projects.id),
   assigneeId: integer("assignee_id").references(() => users.id),
-  status: text("status", { enum: ["todo", "in_progress", "completed"] }).default("todo"),
+  assignedBy: integer("assigned_by").references(() => users.id),
+  status: text("status", { enum: ["todo", "in_progress", "completed", "review"] }).default("todo"),
   priority: text("priority", { enum: ["low", "medium", "high"] }).default("medium"),
   progress: integer("progress").default(0),
   deadline: timestamp("deadline"),
@@ -52,13 +87,6 @@ export const messages = pgTable("messages", {
   projectId: integer("project_id").references(() => projects.id),
   userId: integer("user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const projectMembers = pgTable("project_members", {
-  id: serial("id").primaryKey(),
-  projectId: integer("project_id").references(() => projects.id),
-  userId: integer("user_id").references(() => users.id),
-  role: text("role", { enum: ["viewer", "member", "admin"] }).default("member"),
 });
 
 export const performance = pgTable("performance", {
@@ -92,6 +120,10 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     fields: [tasks.assigneeId],
     references: [users.id],
   }),
+  assigner: one(users, {
+    fields: [tasks.assignedBy],
+    references: [users.id],
+  }),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -105,6 +137,21 @@ export const messagesRelations = relations(messages, ({ one }) => ({
   }),
 }));
 
+export const projectMembersRelations = relations(projectMembers, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectMembers.projectId],
+    references: [projects.id],
+  }),
+  user: one(users, {
+    fields: [projectMembers.userId],
+    references: [users.id],
+  }),
+  inviter: one(users, {
+    fields: [projectMembers.invitedBy],
+    references: [users.id],
+  }),
+}));
+
 // Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -112,6 +159,8 @@ export const insertProjectSchema = createInsertSchema(projects);
 export const selectProjectSchema = createSelectSchema(projects);
 export const insertTaskSchema = createInsertSchema(tasks);
 export const selectTaskSchema = createSelectSchema(tasks);
+export const insertProjectMemberSchema = createInsertSchema(projectMembers);
+export const selectProjectMemberSchema = createSelectSchema(projectMembers);
 
 // Types
 export type User = typeof users.$inferSelect;
