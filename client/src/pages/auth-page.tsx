@@ -22,20 +22,27 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        const result = await login({ username, password, role, name, email });
+        const result = await login({ 
+          username, 
+          password,
+          role,
+          name,
+          email
+        });
         if (!result.ok) {
           throw new Error(result.message);
         }
       } else {
-        const result = await register({ 
-          username, 
-          password, 
-          role, 
-          name, 
+        const now = new Date().toISOString();
+        const result = await register({
+          username,
+          password,
+          role,
+          name,
           email,
           status: "offline",
-          lastActive: new Date().toISOString(),
-          createdAt: new Date().toISOString()
+          lastActive: now,
+          createdAt: now
         });
         if (!result.ok) {
           throw new Error(result.message);
