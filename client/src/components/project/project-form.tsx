@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import type { User } from "@db/schema";
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -73,8 +74,8 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
   const queryClient = useQueryClient();
   const [clientType, setClientType] = useState<"existing" | "new">("existing");
 
-  // Fetch available clients
-  const { data: clients } = useQuery({
+  // Fetch available clients with proper typing
+  const { data: clients, isLoading: isLoadingClients } = useQuery<User[]>({
     queryKey: ["/api/clients"],
   });
 
@@ -213,13 +214,22 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {clients?.map((client: any) => (
-                              <SelectItem key={client.id} value={client.id.toString()}>
-                                {client.name} ({client.email})
-                              </SelectItem>
-                            ))}
+                            {isLoadingClients ? (
+                              <SelectItem value="" disabled>Loading clients...</SelectItem>
+                            ) : clients && clients.length > 0 ? (
+                              clients.map((client) => (
+                                <SelectItem key={client.id} value={client.id.toString()}>
+                                  {client.name} ({client.email})
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="" disabled>No clients available</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
+                        <FormDescription>
+                          Select from existing client accounts
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
