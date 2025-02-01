@@ -390,11 +390,23 @@ export function registerRoutes(app: Express): Server {
         .values({
           ...req.body,
           assignedBy: req.user!.id,
-          status: "todo",
+          status: "new",
           createdAt: new Date(),
           updatedAt: new Date(),
         })
         .returning();
+
+      // Send notification through WebSocket
+      if (newTask.assigneeId) {
+        const ws = global.connectedClients.get(newTask.assigneeId);
+        if (ws) {
+          ws.send(JSON.stringify({
+            type: "notification",
+            message: `You have been assigned a new task: ${newTask.title}`,
+            task: newTask,
+          }));
+        }
+      }
 
       res.json(newTask);
     } catch (error) {
