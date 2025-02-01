@@ -14,19 +14,48 @@ import type { Project, Task, ProjectMember } from "@db/schema";
 export default function ProjectDetails() {
   const { id } = useParams();
 
-  const { data: project } = useQuery<Project>({
-    queryKey: ["/api/projects", id],
+  const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
+    queryKey: ["api/projects", id],
+    queryFn: () => fetch(`/api/projects/${id}`).then(res => res.json())
   });
 
-  const { data: tasks } = useQuery<Task[]>({
-    queryKey: ["/api/projects", id, "tasks"],
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
+    queryKey: ["api/projects", id, "tasks"],
+    queryFn: () => fetch(`/api/projects/${id}/tasks`).then(res => res.json())
   });
 
-  const { data: members } = useQuery<ProjectMember[]>({
-    queryKey: ["/api/projects", id, "members"],
+  const { data: members = [], isLoading: membersLoading } = useQuery<ProjectMember[]>({
+    queryKey: ["api/projects", id, "members"],
+    queryFn: () => fetch(`/api/projects/${id}/members`).then(res => res.json())
   });
 
-  if (!project) return null;
+  if (projectLoading || tasksLoading || membersLoading) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar currentPath={`/dashboard/projects/${id}`} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <div className="flex items-center justify-center flex-1">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (projectError || !project) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar currentPath={`/dashboard/projects/${id}`} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <div className="flex items-center justify-center flex-1">
+            <p className="text-red-500">Error loading project details</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen">
@@ -71,7 +100,7 @@ export default function ProjectDetails() {
               <TabsTrigger value="team">Team Members</TabsTrigger>
             </TabsList>
             <TabsContent value="tasks">
-              <TaskList tasks={tasks || []} />
+              <TaskList tasks={tasks} />
             </TabsContent>
             <TabsContent value="team">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
