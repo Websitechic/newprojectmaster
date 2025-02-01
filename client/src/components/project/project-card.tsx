@@ -28,7 +28,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <>
-      <Card>
+      <Card onClick={() => window.location.href = `/dashboard/projects/${project.id}`} className="cursor-pointer hover:shadow-lg transition-shadow">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between">
             <div>

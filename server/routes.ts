@@ -69,6 +69,75 @@ export function registerRoutes(app: Express): Server {
     res.json(staff);
   });
 
+  // Get project by ID
+  app.get("/api/projects/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const projectId = parseInt(req.params.id);
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      res.json(project);
+    } catch (error) {
+      console.error("Error fetching project:", error);
+      res.status(500).json({ error: "Failed to fetch project" });
+    }
+  });
+
+  // Get project tasks
+  app.get("/api/projects/:id/tasks", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const projectId = parseInt(req.params.id);
+      const projectTasks = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.projectId, projectId))
+        .orderBy(desc(tasks.updatedAt));
+
+      res.json(projectTasks);
+    } catch (error) {
+      console.error("Error fetching project tasks:", error);
+      res.status(500).json({ error: "Failed to fetch project tasks" });
+    }
+  });
+
+  // Get project members
+  app.get("/api/projects/:id/members", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const projectId = parseInt(req.params.id);
+      const members = await db
+        .select()
+        .from(projectMembers)
+        .where(and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.invitationStatus, "accepted")
+        ));
+
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching project members:", error);
+      res.status(500).json({ error: "Failed to fetch project members" });
+    }
+  });
+
   // Projects
   app.get("/api/projects", async (req, res) => {
     if (!req.isAuthenticated()) {
