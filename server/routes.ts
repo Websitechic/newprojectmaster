@@ -434,19 +434,95 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Messages
+  // Get messages by type (team/client)
   app.get("/api/projects/:id/messages", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const projectId = parseInt(req.params.id);
-    const projectMessages = await db
+    const { type } = req.query;
+    
+    let query = db
       .select()
       .from(messages)
-      .where(eq(messages.projectId, projectId))
-      .orderBy(desc(messages.createdAt));
-
+      .where(eq(messages.projectId, projectId));
+    
+    if (type) {
+      query = query.where(eq(messages.type, type as string));
+    }
+    
+    const projectMessages = await query.orderBy(desc(messages.createdAt));
     res.json(projectMessages);
+  });
+
+  // Send a message
+  app.post("/api/projects/:id/messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const projectId = parseInt(req.params.id);
+    const { content, type } = req.body;
+
+    const [message] = await db
+      .insert(messages)
+      .values({
+        content,
+        type,
+        projectId,
+        userId: req.user!.id,
+        createdAt: new Date()
+      })
+      .returning();
+
+    res.json(message);
+  });
+
+  // Upload resource
+  app.post("/api/projects/:id/resources", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    // Handle file upload
+    const projectId = parseInt(req.params.id);
+    const file = req.files?.file;
+    
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const [resource] = await db
+      .insert(resources)
+      .values({
+        name: file.name,
+        type: file.mimetype,
+        size: file.size,
+        path: `/uploads/${projectId}/${file.name}`,
+        projectId,
+        uploadedBy: req.user!.id,
+        createdAt: new Date()
+      })
+      .returning();
+
+    res.json(resource);
+  });
+
+  // Get resources
+  app.get("/api/projects/:id/resources", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const projectId = parseInt(req.params.id);
+    const projectResources = await db
+      .select()
+      .from(resources)
+      .where(eq(resources.projectId, projectId))
+      .orderBy(desc(resources.createdAt));
+
+    res.json(projectResources);
   });
 
   // Performance
