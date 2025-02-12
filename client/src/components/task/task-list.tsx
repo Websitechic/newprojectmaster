@@ -35,10 +35,16 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
 
   const createTask = useMutation({
     mutationFn: async (task: typeof newTask) => {
+      // Format the deadline properly if it exists
+      const formattedTask = {
+        ...task,
+        deadline: task.deadline ? new Date(task.deadline).toISOString() : null,
+      };
+
       const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...task, projectId }),
+        body: JSON.stringify({ ...formattedTask, projectId }),
       });
       if (!response.ok) throw new Error("Failed to create task");
       return response.json();
@@ -68,10 +74,16 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
 
   const updateTask = useMutation({
     mutationFn: async (task: Task) => {
+      // Format the deadline properly if it exists
+      const formattedTask = {
+        ...task,
+        deadline: task.deadline ? new Date(task.deadline).toISOString() : null,
+      };
+
       const response = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(task),
+        body: JSON.stringify(formattedTask),
       });
       if (!response.ok) throw new Error("Failed to update task");
       return response.json();
