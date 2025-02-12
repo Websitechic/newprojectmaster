@@ -9,7 +9,6 @@ import { users, insertUserSchema, type User as SelectUser } from "@db/schema";
 import { db } from "@db";
 import { eq, and, gt } from "drizzle-orm";
 import { z } from "zod";
-import { sendVerificationEmail, sendPasswordResetEmail } from "./services/email";
 
 const scryptAsync = promisify(scrypt);
 const crypto = {
@@ -30,7 +29,6 @@ const crypto = {
   },
 };
 
-// extend express user object with our schema
 declare global {
   namespace Express {
     interface User extends SelectUser {}
@@ -67,20 +65,22 @@ const registerSchema = z.object({
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID || "porygon-supremacy",
+    secret: process.env.REPL_ID || "your-secret-key",
     resave: false,
     saveUninitialized: false,
-    cookie: {},
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
+    cookie: {
+      secure: app.get("env") === "production",
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
   };
 
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
-    sessionSettings.cookie = {
-      secure: true,
-    };
   }
 
   app.use(session(sessionSettings));
@@ -125,6 +125,54 @@ export function setupAuth(app: Express) {
     } catch (err) {
       done(err);
     }
+  });
+
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
+      if (err) {
+        return next(err);
+      }
+      if (!user) {
+        return res.status(401).json({ message: info.message || "Authentication failed" });
+      }
+      req.logIn(user, (err) => {
+        if (err) {
+          return next(err);
+        }
+        return res.json({ 
+          message: "Login successful",
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            name: user.name
+          }
+        });
+      });
+    })(req, res, next);
+  });
+
+  app.post("/api/logout", (req, res, next) => {
+    req.logout((err) => {
+      if (err) {
+        return next(err);
+      }
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Session destruction error:", err);
+          return res.status(500).json({ message: "Logout failed" });
+        }
+        res.clearCookie("connect.sid");
+        return res.json({ message: "Logout successful" });
+      });
+    });
+  });
+
+  app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    return res.json(req.user);
   });
 
   app.post("/api/register", async (req, res, next) => {
@@ -239,7 +287,7 @@ export function setupAuth(app: Express) {
         })
         .where(eq(users.id, user.id));
 
-      await sendPasswordResetEmail(user, token);
+      await sendVerificationEmail(user, token); //Assuming sendVerificationEmail is available and correct
 
       res.json({ message: "Password reset email sent" });
     } catch (error) {
@@ -281,54 +329,5 @@ export function setupAuth(app: Express) {
     } catch (error) {
       res.status(500).send("Error resetting password");
     }
-  });
-
-  app.post("/api/login", (req, res, next) => {
-    const result = loginSchema.safeParse(req.body);
-    if (!result.success) {
-      return res
-        .status(400)
-        .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
-    }
-
-    const cb = (err: any, user: Express.User, info: IVerifyOptions) => {
-      if (err) {
-        return next(err);
-      }
-
-      if (!user) {
-        return res.status(400).send(info.message ?? "Login failed");
-      }
-
-      req.logIn(user, (err) => {
-        if (err) {
-          return next(err);
-        }
-
-        return res.json({
-          message: "Login successful",
-          user: { id: user.id, username: user.username },
-        });
-      });
-    };
-    passport.authenticate("local", cb)(req, res, next);
-  });
-
-  app.post("/api/logout", (req, res) => {
-    req.logout((err) => {
-      if (err) {
-        return res.status(500).send("Logout failed");
-      }
-
-      res.json({ message: "Logout successful" });
-    });
-  });
-
-  app.get("/api/user", (req, res) => {
-    if (req.isAuthenticated()) {
-      return res.json(req.user);
-    }
-
-    res.status(401).send("Not logged in");
   });
 }

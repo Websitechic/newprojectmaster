@@ -3,10 +3,32 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeEmailService } from "./services/email";
 import { setupVideoSocket } from "./video-socket";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+import { Server } from "socket.io";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Session middleware setup
+const MemoryStore = createMemoryStore(session);
+const sessionMiddleware = session({
+  secret: process.env.REPL_ID || "your-secret-key",
+  resave: false,
+  saveUninitialized: false,
+  store: new MemoryStore({
+    checkPeriod: 86400000, // prune expired entries every 24h
+  }),
+  cookie: {
+    secure: app.get("env") === "production",
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+});
+
+app.use(sessionMiddleware);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -44,8 +66,17 @@ app.use((req, res, next) => {
 
   const server = registerRoutes(app);
 
-  // Setup video socket handler
-  setupVideoSocket(server);
+  // Make session available to WebSocket
+  const io = new Server(server, {
+    cors: {
+      origin: "*", // Adjust origin as needed
+      methods: ["GET", "POST"]
+    }
+  });
+  const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
+  io.use(wrap(sessionMiddleware));
+  setupVideoSocket(io);
+
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

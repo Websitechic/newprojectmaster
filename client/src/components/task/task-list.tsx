@@ -103,13 +103,15 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     mutationFn: async (formData: TaskFormData) => {
       if (!editTask) throw new Error("No task selected for update");
 
-      const response = await fetch(`/api/tasks/${editTask.id}`, {
+      const response = await fetch(`/api/tasks/${editTask.id}/progress`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({
+          status: formData.status,
+          progress: 0, 
           title: formData.title,
           description: formData.description,
-          status: formData.status,
           assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
           deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
         }),
@@ -264,38 +266,45 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
         </Table>
       </div>
 
-      <Dialog open={!!editTask && isDialogOpen} onOpenChange={(open) => {
-        setIsDialogOpen(open);
-        if (!open) setEditTask(null);
-      }}>
+      <Dialog 
+        open={isDialogOpen} 
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditTask(null);
+            setNewTask({
+              title: "",
+              description: "",
+              status: "todo",
+              assigneeId: "",
+              deadline: "",
+            });
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
+            <DialogTitle>{editTask ? "Edit Task" : "Create New Task"}</DialogTitle>
           </DialogHeader>
-          {editTask && (
-            <TaskForm
-              task={{
-                title: editTask.title,
-                description: editTask.description || "",
-                status: editTask.status || "todo",
-                assigneeId: editTask.assigneeId?.toString() || "",
-                deadline: editTask.deadline ? new Date(editTask.deadline).toISOString().slice(0, 16) : "",
-              }}
-              staff={staff}
-              onSubmit={updateTask.mutate}
-              onChange={(formData) => {
-                if (editTask) {
-                  setEditTask({
-                    ...editTask,
-                    ...formData,
-                    assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
-                    deadline: formData.deadline ? new Date(formData.deadline) : null,
-                  });
-                }
-              }}
-              isEditing={true}
-            />
-          )}
+          <TaskForm
+            task={editTask ? {
+              title: editTask.title,
+              description: editTask.description || "",
+              status: editTask.status || "todo",
+              assigneeId: editTask.assigneeId?.toString() || "",
+              deadline: editTask.deadline ? new Date(editTask.deadline).toISOString().slice(0, 16) : "",
+            } : newTask}
+            staff={staff}
+            onSubmit={editTask ? updateTask.mutate : createTask.mutate}
+            onChange={editTask ? 
+              (formData) => setEditTask({
+                ...editTask,
+                ...formData,
+                assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
+                deadline: formData.deadline ? new Date(formData.deadline) : null,
+              }) : setNewTask}
+            isEditing={!!editTask}
+          />
         </DialogContent>
       </Dialog>
     </div>
