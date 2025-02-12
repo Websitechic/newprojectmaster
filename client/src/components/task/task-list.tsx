@@ -93,10 +93,15 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
   });
 
   const updateTask = useMutation({
-    mutationFn: async (task: Task) => {
+    mutationFn: async (data: { task: Task; formData: TaskFormData }) => {
+      const { task, formData } = data;
       const formattedTask = {
         ...task,
-        deadline: task.deadline ? new Date(task.deadline).toISOString() : null,
+        title: formData.title,
+        description: formData.description,
+        status: formData.status,
+        assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
       };
 
       const response = await fetch(`/api/tasks/${task.id}`, {
@@ -109,6 +114,7 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
       setEditTask(null);
       toast({
         title: "Success",
@@ -133,6 +139,7 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
       toast({
         title: "Success",
         description: "Task deleted successfully",
@@ -179,9 +186,9 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
             <TaskForm
               task={newTask}
               staff={staff}
-              onSubmit={(task) => createTask.mutate(task as TaskFormData)}
+              onSubmit={(formData) => createTask.mutate(formData)}
               onChange={setNewTask}
-              projectId={projectId}
+              isEditing={false}
             />
           </DialogContent>
         </Dialog>
@@ -249,15 +256,29 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
           {editTask && (
             <TaskForm
               task={{
-                ...editTask,
+                title: editTask.title,
+                description: editTask.description || "",
+                status: editTask.status || "todo",
                 assigneeId: editTask.assigneeId?.toString() || "",
                 deadline: editTask.deadline ? new Date(editTask.deadline).toISOString().slice(0, 16) : "",
-                status: editTask.status || "todo",
               }}
               staff={staff}
-              onSubmit={(task) => updateTask.mutate({ ...editTask, ...task } as Task)}
-              onChange={(task) => setEditTask({ ...editTask, ...task } as Task)}
-              projectId={projectId}
+              onSubmit={(formData) => {
+                if (editTask) {
+                  updateTask.mutate({ task: editTask, formData });
+                }
+              }}
+              onChange={(formData) => {
+                if (editTask) {
+                  setEditTask({
+                    ...editTask,
+                    ...formData,
+                    assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
+                    deadline: formData.deadline ? new Date(formData.deadline) : null,
+                  });
+                }
+              }}
+              isEditing={true}
             />
           )}
         </DialogContent>
@@ -269,12 +290,12 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
 interface TaskFormProps {
   task: TaskFormData;
   staff?: StaffMember[];
-  onSubmit: (task: TaskFormData) => void;
-  onChange: (task: TaskFormData) => void;
-  projectId: number;
+  onSubmit: (formData: TaskFormData) => void;
+  onChange: (formData: TaskFormData) => void;
+  isEditing: boolean;
 }
 
-function TaskForm({ task, staff, onSubmit, onChange }: TaskFormProps) {
+function TaskForm({ task, staff, onSubmit, onChange, isEditing }: TaskFormProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -339,7 +360,7 @@ function TaskForm({ task, staff, onSubmit, onChange }: TaskFormProps) {
         />
       </div>
       <Button onClick={() => onSubmit(task)} className="w-full">
-        {task.id ? 'Update Task' : 'Create Task'}
+        {isEditing ? 'Update Task' : 'Create Task'}
       </Button>
     </div>
   );
