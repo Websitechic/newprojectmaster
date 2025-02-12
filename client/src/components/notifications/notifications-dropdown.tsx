@@ -70,10 +70,16 @@ export function NotificationsDropdown() {
     newWs.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('WebSocket message received:', data);
+
         if (data.type === "notification") {
+          console.log('Processing notification:', data.data);
           // Add new notification to the cache
           queryClient.setQueryData<Notification[]>(["/api/notifications"], (old = []) => {
-            return [data.data, ...old];
+            console.log('Current notifications:', old);
+            const updated = [data.data, ...old];
+            console.log('Updated notifications:', updated);
+            return updated;
           });
 
           // Show toast notification

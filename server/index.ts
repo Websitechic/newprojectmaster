@@ -2,7 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeEmailService } from "./services/email";
-import { setupVideoSocket } from "./video-socket";
+import { setupWebSocket } from "./websocket";
+import { WebSocketServer } from "ws";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { setupAuth } from "./auth";
@@ -89,11 +90,23 @@ let emailServiceInitialized = false;
     log("Setting up routes and server...");
     const server = registerRoutes(app);
 
-    // Make session available to WebSocket
+    // Setup WebSocket server
     log("Setting up WebSocket...");
-    const io = setupVideoSocket(server);
-    const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
-    io.use(wrap(sessionMiddleware));
+    const wss = new WebSocketServer({ server, path: "/ws" });
+    setupWebSocket(wss);
+
+    // Handle WebSocket upgrade with session
+    wss.on("upgrade", (request, socket, head) => {
+      sessionMiddleware(request as any, {} as any, () => {
+        if (request.headers["sec-websocket-protocol"] === "vite-hmr") {
+          socket.destroy();
+          return;
+        }
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit("connection", ws, request);
+        });
+      });
+    });
 
     // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

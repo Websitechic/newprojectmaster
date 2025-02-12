@@ -11,12 +11,11 @@ declare global {
 interface ExtendedWebSocket extends WebSocket {
   userId?: number;
   projectId?: number;
-}
-
-interface CustomRequest extends Express.Request {
-  session: Session & {
-    passport?: {
-      user?: number;
+  request: any & {
+    session: Session & {
+      passport?: {
+        user?: number;
+      };
     };
   };
 }
@@ -27,79 +26,89 @@ export function setupWebSocket(wss: WebSocketServer) {
     global.connectedClients = new Map();
   }
 
-  wss.on("connection", (ws: ExtendedWebSocket) => {
-    console.log("New WebSocket connection");
+  // Authentication middleware
+  wss.on("connection", async (ws: ExtendedWebSocket) => {
+    try {
+      console.log("New WebSocket connection, checking session");
 
-    ws.on("message", async (data: string) => {
-      try {
-        const message = JSON.parse(data);
+      const userId = ws.request?.session?.passport?.user;
+      if (!userId) {
+        console.error("No authenticated user found in session");
+        ws.close(1008, "Authentication required");
+        return;
+      }
 
-        if (message.type === "auth") {
-          const userId = message.userId;
-          if (userId) {
-            ws.userId = userId;
-            global.connectedClients.set(userId, ws);
-            console.log(`User ${userId} authenticated via WebSocket`);
+      // Store authenticated user's WebSocket connection
+      ws.userId = userId;
+      global.connectedClients.set(userId, ws);
+      console.log(`WebSocket authenticated for user ${userId}`);
 
-            // Send acknowledgment
-            ws.send(JSON.stringify({
-              type: "auth_success",
-              userId: userId
-            }));
-          }
-        } else if (message.type === "join_project") {
-          ws.projectId = message.projectId;
-        } else if (message.type === "chat_message") {
-          if (!ws.userId || !ws.projectId) {
-            return;
-          }
+      // Send authentication success message
+      ws.send(JSON.stringify({
+        type: "auth_success",
+        userId: userId
+      }));
 
-          const newMessage = await db
-            .insert(messages)
-            .values({
-              content: message.content,
-              projectId: ws.projectId,
-              userId: ws.userId,
-            })
-            .returning();
+      ws.on("message", async (data: string) => {
+        try {
+          const message = JSON.parse(data);
+          console.log('Received WebSocket message:', message);
 
-          // Broadcast to all clients in the same project
-          const messageData = JSON.stringify({
-            type: "new_message",
-            message: newMessage[0],
-          });
-
-          for (const [userId, client] of global.connectedClients) {
-            if (client.projectId === ws.projectId && client.readyState === WebSocket.OPEN) {
-              client.send(messageData);
+          if (message.type === "join_project") {
+            ws.projectId = message.projectId;
+            console.log(`User ${userId} joined project ${message.projectId}`);
+          } else if (message.type === "chat_message") {
+            if (!ws.userId || !ws.projectId) {
+              console.error("Missing userId or projectId for chat message");
+              return;
             }
-          }
-        } else if (message.type === "status_update") {
-          // Broadcast status updates to all connected clients
-          for (const [userId, client] of global.connectedClients) {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({
-                type: "status_update",
+
+            const [newMessage] = await db
+              .insert(messages)
+              .values({
+                content: message.content,
+                projectId: ws.projectId,
                 userId: ws.userId,
-                status: message.status,
-              }));
-            }
+                createdAt: new Date()
+              })
+              .returning();
+
+            // Broadcast to all clients in the same project
+            const messageData = JSON.stringify({
+              type: "new_message",
+              message: newMessage,
+            });
+
+            global.connectedClients.forEach((client, clientId) => {
+              if ((client as ExtendedWebSocket).projectId === ws.projectId && 
+                  client.readyState === WebSocket.OPEN) {
+                client.send(messageData);
+              }
+            });
           }
+        } catch (error) {
+          console.error("Error processing WebSocket message:", error);
         }
-      } catch (error) {
-        console.error("WebSocket message error:", error);
-      }
-    });
+      });
 
-    ws.on("close", () => {
-      if (ws.userId) {
-        global.connectedClients.delete(ws.userId);
-        console.log(`User ${ws.userId} disconnected`);
-      }
-    });
+      ws.on("close", () => {
+        if (ws.userId) {
+          global.connectedClients.delete(ws.userId);
+          console.log(`User ${ws.userId} disconnected from WebSocket`);
+        }
+      });
 
-    // Send initial connection acknowledgment
-    ws.send(JSON.stringify({ type: "connected" }));
+      ws.on("error", (error) => {
+        console.error(`WebSocket error for user ${ws.userId}:`, error);
+        ws.close(1011, "Internal server error");
+      });
+
+    } catch (error) {
+      console.error("WebSocket connection error:", error);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close(1011, "Internal server error");
+      }
+    }
   });
 
   return wss;

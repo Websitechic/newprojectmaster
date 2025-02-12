@@ -449,10 +449,24 @@ export function registerRoutes(app: Express): Server {
         // Send notification through WebSocket if user is connected
         const ws = global.connectedClients?.get(newTask.assigneeId);
         if (ws && ws.readyState === WebSocket.OPEN) {
+          console.log(`Sending notification to user ${newTask.assigneeId}:`, notification);
+          console.log('WebSocket state:', {
+            readyState: ws.readyState,
+            connectedClientsSize: global.connectedClients?.size,
+            notificationData: notification
+          });
           ws.send(JSON.stringify({
             type: "notification",
             data: notification
           }));
+        } else {
+          console.log(`User ${newTask.assigneeId} not connected or WebSocket not ready`);
+          console.log('Debug info:', {
+            wsExists: !!ws,
+            readyState: ws?.readyState,
+            connectedClientsSize: global.connectedClients?.size,
+            assigneeId: newTask.assigneeId
+          });
         }
       }
 
