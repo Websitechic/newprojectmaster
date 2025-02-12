@@ -1,4 +1,4 @@
-import { Express, Response, NextFunction } from "express";
+import { Express, Response, Request } from "express";
 import { createServer, Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { setupWebSocket } from "./websocket";
@@ -446,27 +446,13 @@ export function registerRoutes(app: Express): Server {
           })
           .returning();
 
-        // Send notification through WebSocket if user is connected
-        const ws = global.connectedClients?.get(newTask.assigneeId);
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          console.log(`Sending notification to user ${newTask.assigneeId}:`, notification);
-          console.log('WebSocket state:', {
-            readyState: ws.readyState,
-            connectedClientsSize: global.connectedClients?.size,
-            notificationData: notification
-          });
-          ws.send(JSON.stringify({
+        // Send notification through SSE if user is connected
+        const clientResponse = global.sseClients?.get(newTask.assigneeId);
+        if (clientResponse) {
+          clientResponse.write(`data: ${JSON.stringify({
             type: "notification",
             data: notification
-          }));
-        } else {
-          console.log(`User ${newTask.assigneeId} not connected or WebSocket not ready`);
-          console.log('Debug info:', {
-            wsExists: !!ws,
-            readyState: ws?.readyState,
-            connectedClientsSize: global.connectedClients?.size,
-            assigneeId: newTask.assigneeId
-          });
+          })}\n\n`);
         }
       }
 
@@ -563,6 +549,33 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Add new endpoints for notifications
+  // Add SSE endpoint
+  app.get("/api/notifications/stream", (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    // Set headers for SSE
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    // Send initial connection message
+    res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+
+    // Store the response object in a Map keyed by user ID
+    const userId = req.user!.id;
+    if (!global.sseClients) {
+      global.sseClients = new Map();
+    }
+    global.sseClients.set(userId, res);
+
+    // Handle client disconnect
+    req.on("close", () => {
+      global.sseClients.delete(userId);
+    });
+  });
+
 
   // Get user notifications
   app.get("/api/notifications", async (req, res) => {

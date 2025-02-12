@@ -17,8 +17,7 @@ export function NotificationsDropdown() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [wsConnected, setWsConnected] = useState(false);
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
 
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -53,33 +52,23 @@ export function NotificationsDropdown() {
   useEffect(() => {
     if (!user) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    const newWs = new WebSocket(wsUrl);
+    const eventSource = new EventSource("/api/notifications/stream");
 
-    newWs.onopen = () => {
-      console.log("WebSocket connected");
-      setWsConnected(true);
-      // Send authentication message
-      newWs.send(JSON.stringify({
-        type: "auth",
-        userId: user.id
-      }));
+    eventSource.onopen = () => {
+      console.log("SSE connection opened");
+      setIsConnected(true);
     };
 
-    newWs.onmessage = (event) => {
+    eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('WebSocket message received:', data);
+        console.log('SSE message received:', data);
 
         if (data.type === "notification") {
           console.log('Processing notification:', data.data);
           // Add new notification to the cache
           queryClient.setQueryData<Notification[]>(["/api/notifications"], (old = []) => {
-            console.log('Current notifications:', old);
-            const updated = [data.data, ...old];
-            console.log('Updated notifications:', updated);
-            return updated;
+            return [data.data, ...old];
           });
 
           // Show toast notification
@@ -89,19 +78,17 @@ export function NotificationsDropdown() {
           });
         }
       } catch (error) {
-        console.error("Error processing WebSocket message:", error);
+        console.error("Error processing SSE message:", error);
       }
     };
 
-    newWs.onclose = () => {
-      console.log("WebSocket disconnected");
-      setWsConnected(false);
+    eventSource.onerror = (error) => {
+      console.error("SSE connection error:", error);
+      setIsConnected(false);
     };
 
-    setWs(newWs);
-
     return () => {
-      newWs.close();
+      eventSource.close();
     };
   }, [user, queryClient, toast]);
 
