@@ -113,18 +113,26 @@ let emailServiceInitialized = false;
 
     // Try to start the server on port 5000, if fails try next available port
     const startServer = (port: number) => {
-      server.listen(port, "0.0.0.0", () => {
-        log(`Server started successfully on port ${port}`);
-        if (!emailServiceInitialized) {
-          log("Note: Server is running without email service functionality");
-        }
-      }).on('error', (e: any) => {
+      const MAX_PORT = 5010; // Don't try forever, set a reasonable limit
+      if (port > MAX_PORT) {
+        log(`Could not find an available port between 5000 and ${MAX_PORT}`);
+        process.exit(1);
+      }
+
+      server.on('error', (e: any) => {
         if (e.code === 'EADDRINUSE') {
           log(`Port ${port} is in use, trying ${port + 1}`);
           startServer(port + 1);
         } else {
           log(`Error starting server: ${e.message}`);
           process.exit(1);
+        }
+      });
+
+      server.listen(port, "0.0.0.0", () => {
+        log(`Server started successfully on port ${port}`);
+        if (!emailServiceInitialized) {
+          log("Note: Server is running without email service functionality");
         }
       });
     };
