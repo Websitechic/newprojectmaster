@@ -294,7 +294,7 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
                   <SelectValue placeholder="Select assignee" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {staff?.map((member) => (
                     <SelectItem key={member.id} value={member.id.toString()}>
                       {member.name}
