@@ -437,7 +437,7 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // If there's an assignee, create a notification
+      // If there's an assignee, create a notification with enhanced content
       if (newTask.assigneeId) {
         try {
           const [notification] = await db
@@ -445,7 +445,7 @@ export function registerRoutes(app: Express): Server {
             .values({
               userId: newTask.assigneeId,
               type: "task_assigned",
-              content: `You have been assigned a new task: ${newTask.title}`,
+              content: `${req.user!.name} has assigned you a new task: ${newTask.title}`,
               referenceId: newTask.id,
               referenceType: "task",
               createdAt: new Date(),

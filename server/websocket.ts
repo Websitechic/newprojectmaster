@@ -7,22 +7,42 @@ import { messages } from "@db/schema";
 interface ExtendedWebSocket extends WebSocket {
   userId?: number;
   projectId?: number;
-  request: any & {
-    session: Session & {
-      passport?: {
-        user?: number;
-      };
+  isAlive: boolean;
+}
+
+interface ExtendedRequest extends Request {
+  session: Session & {
+    passport?: {
+      user?: number;
     };
   };
 }
 
 export function setupWebSocket(wss: WebSocketServer) {
+  // Set up ping interval to keep connections alive
+  const interval = setInterval(() => {
+    wss.clients.forEach((ws: ExtendedWebSocket) => {
+      if (!ws.isAlive) {
+        console.log(`Terminating inactive connection for user ${ws.userId}`);
+        return ws.terminate();
+      }
+
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000);
+
+  wss.on('close', () => {
+    clearInterval(interval);
+  });
+
   // Authentication middleware
-  wss.on("connection", async (ws: ExtendedWebSocket) => {
+  wss.on("connection", async (ws: ExtendedWebSocket, request: ExtendedRequest) => {
     try {
       console.log("New WebSocket connection, checking session");
+      ws.isAlive = true;
 
-      const userId = ws.request?.session?.passport?.user;
+      const userId = request.session?.passport?.user;
       console.log("WebSocket connection - Session user ID:", userId);
 
       if (!userId) {
@@ -44,6 +64,11 @@ export function setupWebSocket(wss: WebSocketServer) {
         type: "auth_success",
         userId: userId
       }));
+
+      // Set up WebSocket event handlers
+      ws.on('pong', () => {
+        ws.isAlive = true;
+      });
 
       ws.on("message", async (data: string) => {
         try {
@@ -75,8 +100,8 @@ export function setupWebSocket(wss: WebSocketServer) {
               message: newMessage,
             });
 
-            global.connectedClients.forEach((client, clientId) => {
-              if ((client as ExtendedWebSocket).projectId === ws.projectId && 
+            wss.clients.forEach((client: ExtendedWebSocket) => {
+              if (client.projectId === ws.projectId && 
                   client.readyState === WebSocket.OPEN) {
                 client.send(messageData);
               }

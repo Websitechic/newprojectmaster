@@ -55,7 +55,9 @@ export function NotificationsDropdown() {
   const setupEventSource = useCallback(() => {
     if (!user) return null;
 
-    const eventSource = new EventSource("/api/notifications/stream");
+    const eventSource = new EventSource("/api/notifications/stream", {
+      withCredentials: true
+    });
 
     eventSource.onopen = () => {
       console.log("SSE connection opened");
