@@ -8,6 +8,7 @@ import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/dashboard/projects";
 import ProjectDetails from "@/pages/dashboard/project-details";
+import ProjectTasks from "@/pages/dashboard/project-tasks";
 import Tasks from "@/pages/dashboard/tasks";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/dashboard" component={() => <PrivateRoute component={Dashboard} />} />
       <Route path="/dashboard/projects" component={() => <PrivateRoute component={Projects} />} />
       <Route path="/dashboard/projects/:id" component={() => <PrivateRoute component={ProjectDetails} />} />
+      <Route path="/dashboard/projects/:id/tasks" component={() => <PrivateRoute component={ProjectTasks} />} />
       <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />
       <Route component={NotFound} />
     </Switch>
