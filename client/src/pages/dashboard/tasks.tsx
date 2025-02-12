@@ -3,6 +3,7 @@ import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { useLocation } from "wouter";
 import { TaskList } from "@/components/task/task-list";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Select,
   SelectContent,
@@ -12,21 +13,26 @@ import {
 } from "@/components/ui/select";
 import type { Task, Project } from "@db/schema";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 export default function Tasks() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
   const [selectedProject, setSelectedProject] = useState<string>("");
+  const { user } = useAuth();
 
-  const { data: tasks } = useQuery<Task[]>({
+  const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
     refetchOnWindowFocus: true,
-    staleTime: 5000, // Consider data stale after 5 seconds
+    staleTime: 1000, // Reduce stale time to update more frequently
+    enabled: !!user, // Only fetch if user is authenticated
   });
 
-  const { data: projects } = useQuery<Project[]>({
+  const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     refetchOnWindowFocus: true,
+    staleTime: 1000, // Keep consistent with tasks stale time
+    enabled: !!user, // Only fetch if user is authenticated
   });
 
   const filteredTasks = tasks?.filter(task => {
@@ -35,6 +41,18 @@ export default function Tasks() {
     if (filter === "all" && selectedProject) return task.projectId === parseInt(selectedProject);
     return task.status === filter && task.projectId === parseInt(selectedProject);
   });
+
+  if (!user) {
+    return null; // Let the auth redirect handle this
+  }
+
+  if (tasksLoading || projectsLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen">

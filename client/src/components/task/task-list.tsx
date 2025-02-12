@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Table,
   TableBody,
@@ -36,6 +37,7 @@ const defaultTask: TaskFormData = {
 
 export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: number }) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -44,6 +46,7 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
   const { data: staff } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/staff", projectId],
     refetchOnWindowFocus: true,
+    enabled: !!user, // Only fetch if user is authenticated
   });
 
   const handleEditClick = (task: Task) => {
@@ -84,8 +87,22 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update both global and project-specific tasks
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
+        if (!oldTasks) return [data];
+        return [...oldTasks, data];
+      });
+
+      queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+        if (!oldTasks) return [data];
+        return [...oldTasks, data];
+      });
+
+      // Invalidate queries to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+
       setIsDialogOpen(false);
       setFormData(defaultTask);
       toast({
@@ -125,12 +142,21 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
       return response.json();
     },
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.setQueryData(["/api/projects", projectId, "tasks"], (old: Task[] | undefined) => {
-        if (!old) return [response.task];
-        return old.map(task => task.id === response.task.id ? response.task : task);
+      // Update both the project tasks and global tasks cache
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
+        if (!oldTasks) return [response.task];
+        return oldTasks.map(task => task.id === response.task.id ? response.task : task);
       });
+
+      queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+        if (!oldTasks) return [response.task];
+        return oldTasks.map(task => task.id === response.task.id ? response.task : task);
+      });
+
+      // Invalidate queries to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+
       setIsDialogOpen(false);
       setEditTask(null);
       setFormData(defaultTask);
@@ -161,6 +187,7 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] }); //Invalidate project tasks as well
       toast({
         title: "Success",
         description: "Task deleted successfully",

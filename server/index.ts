@@ -24,7 +24,8 @@ const sessionMiddleware = session({
     secure: app.get("env") === "production",
     httpOnly: true,
     sameSite: "lax",
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    path: "/"
   }
 });
 
