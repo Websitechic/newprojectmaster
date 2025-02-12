@@ -1,26 +1,46 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash, Plus } from "lucide-react";
-import type { Task, Project } from "@db/schema";
+import type { Task } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
+
+interface StaffMember {
+  id: number;
+  name: string;
+}
 
 interface TaskListProps {
   tasks: Task[];
   projectId: number;
 }
 
+interface TaskFormData {
+  title: string;
+  description: string;
+  status: 'todo' | 'in_progress' | 'completed' | 'review';
+  assigneeId: string;
+  deadline: string;
+}
+
 export function TaskList({ tasks, projectId }: TaskListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editTask, setEditTask] = useState<Task | null>(null);
-  const [newTask, setNewTask] = useState({
+  const [newTask, setNewTask] = useState<TaskFormData>({
     title: "",
     description: "",
     status: "todo",
@@ -28,16 +48,15 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     deadline: "",
   });
 
-  // Fetch available staff for assignment
-  const { data: staff } = useQuery({
+  const { data: staff } = useQuery<StaffMember[]>({
     queryKey: ["/api/staff"],
   });
 
   const createTask = useMutation({
-    mutationFn: async (task: typeof newTask) => {
-      // Format the deadline properly if it exists
+    mutationFn: async (task: TaskFormData) => {
       const formattedTask = {
         ...task,
+        assigneeId: task.assigneeId ? parseInt(task.assigneeId) : null,
         deadline: task.deadline ? new Date(task.deadline).toISOString() : null,
       };
 
@@ -50,7 +69,6 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate both the global tasks query and the project-specific tasks query
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
       toast({
@@ -76,7 +94,6 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
 
   const updateTask = useMutation({
     mutationFn: async (task: Task) => {
-      // Format the deadline properly if it exists
       const formattedTask = {
         ...task,
         deadline: task.deadline ? new Date(task.deadline).toISOString() : null,
@@ -130,19 +147,20 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     },
   });
 
-  const onDragEnd = (result: any) => {
-    if (!result.destination) return;
-
-    const task = tasks.find(t => t.id.toString() === result.draggableId);
-    if (task) {
-      updateTask.mutate({
-        ...task,
-        status: result.destination.droppableId,
-      });
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case "todo":
+        return "bg-gray-500";
+      case "in_progress":
+        return "bg-blue-500";
+      case "completed":
+        return "bg-green-500";
+      case "review":
+        return "bg-yellow-500";
+      default:
+        return "bg-gray-500";
     }
   };
-
-  const columns = ["todo", "in_progress", "completed", "review"];
 
   return (
     <div>
@@ -161,7 +179,7 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
             <TaskForm
               task={newTask}
               staff={staff}
-              onSubmit={(task) => createTask.mutate(task)}
+              onSubmit={(task) => createTask.mutate(task as TaskFormData)}
               onChange={setNewTask}
               projectId={projectId}
             />
@@ -169,80 +187,59 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
         </Dialog>
       </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-4 gap-4">
-          {columns.map(status => (
-            <div key={status} className="space-y-4">
-              <h3 className="font-semibold capitalize">{status.replace("_", " ")}</h3>
-              <Droppable droppableId={status}>
-                {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="min-h-[200px] space-y-2"
-                  >
-                    {tasks
-                      .filter(task => task.status === status)
-                      .map((task, index) => (
-                        <Draggable
-                          key={task.id}
-                          draggableId={task.id.toString()}
-                          index={index}
-                        >
-                          {(provided) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                            >
-                              <Card className="p-4">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <h4 className="font-semibold">{task.title}</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      {task.description}
-                                    </p>
-                                    {task.assigneeId && (
-                                      <p className="text-sm text-muted-foreground mt-2">
-                                        Assigned to: {staff?.find(s => s.id === task.assigneeId)?.name}
-                                      </p>
-                                    )}
-                                    {task.deadline && (
-                                      <p className="text-sm text-muted-foreground">
-                                        Due: {new Date(task.deadline).toLocaleDateString()}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => setEditTask(task)}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => deleteTask.mutate(task.id)}
-                                    >
-                                      <Trash className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </Card>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                    {provided.placeholder}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Assignee</TableHead>
+              <TableHead>Deadline</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tasks.map((task) => (
+              <TableRow key={task.id}>
+                <TableCell className="font-medium">{task.title}</TableCell>
+                <TableCell>{task.description}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={getStatusColor(task.status || 'todo')}>
+                    {(task.status || 'todo').replace("_", " ")}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {staff?.find((s) => s.id === (task.assigneeId ? parseInt(String(task.assigneeId)) : null))?.name || "Unassigned"}
+                </TableCell>
+                <TableCell>
+                  {task.deadline
+                    ? new Date(task.deadline).toLocaleDateString()
+                    : "No deadline"}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditTask(task)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteTask.mutate(task.id)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
                   </div>
-                )}
-              </Droppable>
-            </div>
-          ))}
-        </div>
-      </DragDropContext>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       <Dialog open={!!editTask} onOpenChange={() => setEditTask(null)}>
         <DialogContent>
@@ -251,10 +248,15 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
           </DialogHeader>
           {editTask && (
             <TaskForm
-              task={editTask}
+              task={{
+                ...editTask,
+                assigneeId: editTask.assigneeId?.toString() || "",
+                deadline: editTask.deadline ? new Date(editTask.deadline).toISOString().slice(0, 16) : "",
+                status: editTask.status || "todo",
+              }}
               staff={staff}
-              onSubmit={(task) => updateTask.mutate(task as Task)}
-              onChange={(task) => setEditTask(task as Task)}
+              onSubmit={(task) => updateTask.mutate({ ...editTask, ...task } as Task)}
+              onChange={(task) => setEditTask({ ...editTask, ...task } as Task)}
               projectId={projectId}
             />
           )}
@@ -265,14 +267,14 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
 }
 
 interface TaskFormProps {
-  task: any;
-  staff?: any[];
-  onSubmit: (task: any) => void;
-  onChange: (task: any) => void;
+  task: TaskFormData;
+  staff?: StaffMember[];
+  onSubmit: (task: TaskFormData) => void;
+  onChange: (task: TaskFormData) => void;
   projectId: number;
 }
 
-function TaskForm({ task, staff, onSubmit, onChange, projectId }: TaskFormProps) {
+function TaskForm({ task, staff, onSubmit, onChange }: TaskFormProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -290,6 +292,25 @@ function TaskForm({ task, staff, onSubmit, onChange, projectId }: TaskFormProps)
           onChange={e => onChange({ ...task, description: e.target.value })}
           placeholder="Enter task description"
         />
+      </div>
+      <div>
+        <Label>Status</Label>
+        <Select
+          value={task.status}
+          onValueChange={(value: 'todo' | 'in_progress' | 'completed' | 'review') => 
+            onChange({ ...task, status: value })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todo">To Do</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="review">Review</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div>
         <Label>Assignee</Label>
@@ -317,7 +338,7 @@ function TaskForm({ task, staff, onSubmit, onChange, projectId }: TaskFormProps)
           onChange={e => onChange({ ...task, deadline: e.target.value })}
         />
       </div>
-      <Button onClick={() => onSubmit({ ...task, projectId })} className="w-full">
+      <Button onClick={() => onSubmit(task)} className="w-full">
         {task.id ? 'Update Task' : 'Create Task'}
       </Button>
     </div>
