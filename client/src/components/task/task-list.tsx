@@ -142,7 +142,7 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
       return response.json();
     },
     onSuccess: (response) => {
-      // Optimistically update cache before invalidation
+      // Update the cache immediately
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
         if (!oldTasks) return [response.task];
         return oldTasks.map(task => task.id === response.task.id ? response.task : task);
@@ -152,10 +152,6 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
         if (!oldTasks) return [response.task];
         return oldTasks.map(task => task.id === response.task.id ? response.task : task);
       });
-
-      // Then invalidate to ensure consistency with server
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
 
       setIsDialogOpen(false);
       setEditTask(null);
