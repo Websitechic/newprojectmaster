@@ -72,7 +72,7 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
         body: JSON.stringify({
           ...data,
           projectId,
-          assigneeId: data.assigneeId ? parseInt(data.assigneeId) : null,
+          assigneeId: data.assigneeId && data.assigneeId !== 'unassigned' ? parseInt(data.assigneeId) : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
         }),
       });
@@ -111,7 +111,7 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
         credentials: 'include',
         body: JSON.stringify({
           ...data,
-          assigneeId: data.assigneeId ? parseInt(data.assigneeId) : null,
+          assigneeId: data.assigneeId && data.assigneeId !== 'unassigned' ? parseInt(data.assigneeId) : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
         }),
       });
