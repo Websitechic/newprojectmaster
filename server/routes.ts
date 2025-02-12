@@ -422,7 +422,7 @@ export function registerRoutes(app: Express): Server {
           title,
           description: description || "",
           status: status || "todo",
-          assigneeId: assigneeId || null,
+          assigneeId: assigneeId ? parseInt(assigneeId) : null,
           projectId,
           deadline: taskDeadline,
           assignedBy: req.user!.id,
@@ -447,6 +447,93 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error creating task:", error);
       res.status(500).json({ error: "Failed to create task" });
+    }
+  });
+
+  // Update task (Project Manager only)
+  app.put("/api/tasks/:id", isProjectManager, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const { title, description, status, assigneeId, deadline } = req.body;
+
+      if (!title) {
+        return res.status(400).json({ error: "Title is required" });
+      }
+
+      // Convert deadline string to Date if present
+      let taskDeadline = null;
+      if (deadline) {
+        try {
+          taskDeadline = new Date(deadline);
+          if (isNaN(taskDeadline.getTime())) {
+            return res.status(400).json({ error: "Invalid deadline date format" });
+          }
+        } catch (error) {
+          return res.status(400).json({ error: "Invalid deadline date format" });
+        }
+      }
+
+      // Verify task exists and belongs to a project managed by the current user
+      const [existingTask] = await db
+        .select({
+          task: tasks,
+          project: {
+            managerId: projects.managerId
+          }
+        })
+        .from(tasks)
+        .innerJoin(projects, eq(tasks.projectId, projects.id))
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+
+      if (!existingTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      if (existingTask.project.managerId !== req.user!.id) {
+        return res.status(403).json({ error: "Not authorized to update this task" });
+      }
+
+      // Update the task
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          title,
+          description: description || "",
+          status: status || "todo",
+          assigneeId: assigneeId ? parseInt(assigneeId) : null,
+          deadline: taskDeadline,
+          updatedAt: new Date(),
+        })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      if (!updatedTask) {
+        return res.status(500).json({ error: "Failed to update task" });
+      }
+
+      // Send notification through WebSocket if there's an assignee change
+      if (updatedTask.assigneeId && updatedTask.assigneeId !== existingTask.task.assigneeId) {
+        const ws = global.connectedClients?.get(updatedTask.assigneeId);
+        if (ws) {
+          ws.send(JSON.stringify({
+            type: "notification",
+            message: `You have been assigned to task: ${updatedTask.title}`,
+            task: updatedTask,
+          }));
+        }
+      }
+
+      return res.json({ 
+        success: true,
+        task: updatedTask 
+      });
+    } catch (error) {
+      console.error("Error updating task:", error);
+      return res.status(500).json({ 
+        error: "Failed to update task",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 

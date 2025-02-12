@@ -116,11 +116,18 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
         }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to update task');
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server returned non-JSON response");
       }
-      return response.json();
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update task");
+      }
+
+      return result.task;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -269,7 +276,7 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
               <Label htmlFor="status">Status</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value: TaskFormData["status"]) => 
+                onValueChange={(value: TaskFormData["status"]) =>
                   setFormData({ ...formData, status: value })
                 }
               >

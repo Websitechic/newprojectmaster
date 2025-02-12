@@ -33,6 +33,7 @@ app.use(sessionMiddleware);
 // Setup authentication after session middleware
 setupAuth(app);
 
+// Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -51,11 +52,9 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
-
       log(logLine);
     }
   });
@@ -63,40 +62,75 @@ app.use((req, res, next) => {
   next();
 });
 
+let emailServiceInitialized = false;
+
 (async () => {
-  // Initialize email service
-  await initializeEmailService();
+  try {
+    log("Starting server initialization...");
 
-  const server = registerRoutes(app);
-
-  // Make session available to WebSocket
-  const io = setupVideoSocket(server);
-  const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
-  io.use(wrap(sessionMiddleware));
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  const PORT = process.env.PORT || 5000;
-  server.listen(PORT, "0.0.0.0", () => {
-    log(`serving on port ${PORT}`);
-  }).on('error', (e: any) => {
-    if (e.code === 'EADDRINUSE') {
-      log(`Port ${PORT} is in use, trying ${PORT + 1}`);
-      server.listen(PORT + 1, "0.0.0.0", () => {
-        log(`serving on port ${PORT + 1}`);
-      });
+    // Initialize email service with timeout
+    try {
+      log("Initializing email service...");
+      await Promise.race([
+        initializeEmailService(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Email service initialization timeout")), 5000)
+        )
+      ]);
+      emailServiceInitialized = true;
+      log("Email service initialized successfully");
+    } catch (error) {
+      log("Warning: Email service initialization failed - continuing without email service");
+      console.error("Email service error:", error);
     }
-  });
+
+    log("Setting up routes and server...");
+    const server = registerRoutes(app);
+
+    // Make session available to WebSocket
+    log("Setting up WebSocket...");
+    const io = setupVideoSocket(server);
+    const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
+    io.use(wrap(sessionMiddleware));
+
+    // Error handling middleware
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      console.error("Error:", err);
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ error: message });
+    });
+
+    // Setup Vite or static serving
+    if (app.get("env") === "development") {
+      log("Setting up Vite development server...");
+      await setupVite(app, server);
+    } else {
+      log("Setting up static file serving...");
+      serveStatic(app);
+    }
+
+    // Try to start the server on port 5000, if fails try next available port
+    const startServer = (port: number) => {
+      server.listen(port, "0.0.0.0", () => {
+        log(`Server started successfully on port ${port}`);
+        if (!emailServiceInitialized) {
+          log("Note: Server is running without email service functionality");
+        }
+      }).on('error', (e: any) => {
+        if (e.code === 'EADDRINUSE') {
+          log(`Port ${port} is in use, trying ${port + 1}`);
+          startServer(port + 1);
+        } else {
+          log(`Error starting server: ${e.message}`);
+          process.exit(1);
+        }
+      });
+    };
+
+    startServer(5000);
+  } catch (error) {
+    console.error("Fatal server initialization error:", error);
+    process.exit(1);
+  }
 })();
