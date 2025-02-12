@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { AlertTriangle } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,7 +15,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"client" | "project_manager" | "staff">("staff");
   const [resetMode, setResetMode] = useState(false);
-  const { login, register } = useUser();
+  const { loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,16 +23,12 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        // For login, only send username and password
-        const result = await login({ 
+        await loginMutation.mutateAsync({ 
           username, 
           password
         });
-        if (!result.ok) {
-          throw new Error(result.message);
-        }
       } else {
-        const result = await register({
+        await registerMutation.mutateAsync({
           username,
           password,
           role,
@@ -41,9 +36,6 @@ export default function AuthPage() {
           email,
           status: "offline"
         });
-        if (!result.ok) {
-          throw new Error(result.message);
-        }
       }
     } catch (error: any) {
       toast({
@@ -56,7 +48,6 @@ export default function AuthPage() {
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    // We'll implement password reset functionality in the next step
     toast({
       title: "Not implemented",
       description: "Password reset functionality will be added soon.",
