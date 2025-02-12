@@ -88,8 +88,15 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  const PORT = 5000;
+  const PORT = process.env.PORT || 5000;
   server.listen(PORT, "0.0.0.0", () => {
     log(`serving on port ${PORT}`);
+  }).on('error', (e: any) => {
+    if (e.code === 'EADDRINUSE') {
+      log(`Port ${PORT} is in use, trying ${PORT + 1}`);
+      server.listen(PORT + 1, "0.0.0.0", () => {
+        log(`serving on port ${PORT + 1}`);
+      });
+    }
   });
 })();
