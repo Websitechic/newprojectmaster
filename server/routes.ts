@@ -385,20 +385,55 @@ export function registerRoutes(app: Express): Server {
   // Create Task (Project Manager only)
   app.post("/api/tasks", isProjectManager, async (req, res) => {
     try {
+      const { title, description, status, assigneeId, deadline, projectId } = req.body;
+
+      if (!title || !projectId) {
+        return res.status(400).json({ error: "Title and project ID are required" });
+      }
+
+      // Convert deadline string to Date if present
+      let taskDeadline = null;
+      if (deadline) {
+        try {
+          taskDeadline = new Date(deadline);
+          if (isNaN(taskDeadline.getTime())) {
+            return res.status(400).json({ error: "Invalid deadline date format" });
+          }
+        } catch (error) {
+          return res.status(400).json({ error: "Invalid deadline date format" });
+        }
+      }
+
+      // Verify project exists
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Create the task
       const [newTask] = await db
         .insert(tasks)
         .values({
-          ...req.body,
+          title,
+          description: description || "",
+          status: status || "todo",
+          assigneeId: assigneeId || null,
+          projectId,
+          deadline: taskDeadline,
           assignedBy: req.user!.id,
-          status: "new",
           createdAt: new Date(),
           updatedAt: new Date(),
         })
         .returning();
 
-      // Send notification through WebSocket
+      // Send notification through WebSocket if there's an assignee
       if (newTask.assigneeId) {
-        const ws = global.connectedClients.get(newTask.assigneeId);
+        const ws = global.connectedClients?.get(newTask.assigneeId);
         if (ws) {
           ws.send(JSON.stringify({
             type: "notification",
@@ -454,16 +489,16 @@ export function registerRoutes(app: Express): Server {
 
     const projectId = parseInt(req.params.id);
     const { type } = req.query;
-    
+
     let query = db
       .select()
       .from(messages)
       .where(eq(messages.projectId, projectId));
-    
+
     if (type) {
       query = query.where(eq(messages.type, type as string));
     }
-    
+
     const projectMessages = await query.orderBy(desc(messages.createdAt));
     res.json(projectMessages);
   });
@@ -500,7 +535,7 @@ export function registerRoutes(app: Express): Server {
     // Handle file upload
     const projectId = parseInt(req.params.id);
     const file = req.files?.file;
-    
+
     if (!file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
