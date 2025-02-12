@@ -24,18 +24,20 @@ export default function Tasks() {
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
     refetchOnWindowFocus: true,
-    staleTime: 1000, // Reduce stale time to update more frequently
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: !!user, // Only fetch if user is authenticated
   });
 
   const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     refetchOnWindowFocus: true,
-    staleTime: 1000, // Keep consistent with tasks stale time
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: !!user, // Only fetch if user is authenticated
   });
 
-  const filteredTasks = tasks?.filter(task => {
+  const filteredTasks = tasks?.filter((task: Task) => {
     if (filter === "all" && !selectedProject) return true;
     if (filter !== "all" && !selectedProject) return task.status === filter;
     if (filter === "all" && selectedProject) return task.projectId === parseInt(selectedProject);
