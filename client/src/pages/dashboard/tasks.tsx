@@ -20,10 +20,13 @@ export default function Tasks() {
 
   const { data: tasks } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
+    refetchOnWindowFocus: true,
+    staleTime: 5000, // Consider data stale after 5 seconds
   });
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+    refetchOnWindowFocus: true,
   });
 
   const filteredTasks = tasks?.filter(task => {

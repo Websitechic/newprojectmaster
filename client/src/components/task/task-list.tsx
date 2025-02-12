@@ -42,7 +42,8 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
   const [formData, setFormData] = useState<TaskFormData>(defaultTask);
 
   const { data: staff } = useQuery<{ id: number; name: string }[]>({
-    queryKey: ["/api/staff"],
+    queryKey: ["/api/staff", projectId],
+    refetchOnWindowFocus: true,
   });
 
   const handleEditClick = (task: Task) => {
@@ -116,21 +117,20 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
         }),
       });
 
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Server returned non-JSON response");
-      }
-
-      const result = await response.json();
-
       if (!response.ok) {
+        const result = await response.json();
         throw new Error(result.error || "Failed to update task");
       }
 
-      return result.task;
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.setQueryData(["/api/projects", projectId, "tasks"], (old: Task[] | undefined) => {
+        if (!old) return [response.task];
+        return old.map(task => task.id === response.task.id ? response.task : task);
+      });
       setIsDialogOpen(false);
       setEditTask(null);
       setFormData(defaultTask);
