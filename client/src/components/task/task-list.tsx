@@ -53,17 +53,16 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
   });
 
   const createTask = useMutation({
-    mutationFn: async (task: TaskFormData) => {
-      const formattedTask = {
-        ...task,
-        assigneeId: task.assigneeId ? parseInt(task.assigneeId) : null,
-        deadline: task.deadline ? new Date(task.deadline).toISOString() : null,
-      };
-
+    mutationFn: async (formData: TaskFormData) => {
       const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formattedTask, projectId }),
+        body: JSON.stringify({
+          ...formData,
+          projectId,
+          assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
+          deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
+        }),
       });
       if (!response.ok) throw new Error("Failed to create task");
       return response.json();
@@ -93,21 +92,19 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
   });
 
   const updateTask = useMutation({
-    mutationFn: async (data: { task: Task; formData: TaskFormData }) => {
-      const { task, formData } = data;
-      const formattedTask = {
-        ...task,
-        title: formData.title,
-        description: formData.description,
-        status: formData.status,
-        assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
-        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
-      };
+    mutationFn: async (formData: TaskFormData) => {
+      if (!editTask) throw new Error("No task selected for update");
 
-      const response = await fetch(`/api/tasks/${task.id}`, {
+      const response = await fetch(`/api/tasks/${editTask.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formattedTask),
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          status: formData.status,
+          assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
+          deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
+        }),
       });
       if (!response.ok) throw new Error("Failed to update task");
       return response.json();
@@ -186,7 +183,7 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
             <TaskForm
               task={newTask}
               staff={staff}
-              onSubmit={(formData) => createTask.mutate(formData)}
+              onSubmit={createTask.mutate}
               onChange={setNewTask}
               isEditing={false}
             />
@@ -263,11 +260,7 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
                 deadline: editTask.deadline ? new Date(editTask.deadline).toISOString().slice(0, 16) : "",
               }}
               staff={staff}
-              onSubmit={(formData) => {
-                if (editTask) {
-                  updateTask.mutate({ task: editTask, formData });
-                }
-              }}
+              onSubmit={updateTask.mutate}
               onChange={(formData) => {
                 if (editTask) {
                   setEditTask({
@@ -343,6 +336,7 @@ function TaskForm({ task, staff, onSubmit, onChange, isEditing }: TaskFormProps)
             <SelectValue placeholder="Select assignee" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="">Unassigned</SelectItem>
             {staff?.map((member) => (
               <SelectItem key={member.id} value={member.id.toString()}>
                 {member.name}
