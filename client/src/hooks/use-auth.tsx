@@ -20,11 +20,18 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<{ message: string; user: User }, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
+  registerMutation: UseMutationResult<{ message: string; user: User }, Error, RegisterData>;
 };
 
 type LoginData = {
   username: string;
   password: string;
+};
+
+type RegisterData = LoginData & {
+  name: string;
+  email: string;
+  role: "client" | "project_manager" | "staff";
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -78,6 +85,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const registerMutation = useMutation({
+    mutationFn: async (data: RegisterData) => {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include"
+      });
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error);
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/user"], data.user);
+      toast({
+        title: "Success",
+        description: "Successfully registered",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/logout", { 
@@ -110,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         loginMutation,
         logoutMutation,
+        registerMutation,
       }}
     >
       {children}

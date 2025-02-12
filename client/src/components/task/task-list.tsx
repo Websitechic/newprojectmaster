@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,16 +17,6 @@ import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash, Plus } from "lucide-react";
 import type { Task } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
-
-interface StaffMember {
-  id: number;
-  name: string;
-}
-
-interface TaskListProps {
-  tasks: Task[];
-  projectId: number;
-}
 
 interface TaskFormData {
   title: string;
@@ -36,35 +26,54 @@ interface TaskFormData {
   deadline: string;
 }
 
-export function TaskList({ tasks, projectId }: TaskListProps) {
+const defaultTask: TaskFormData = {
+  title: "",
+  description: "",
+  status: "todo",
+  assigneeId: "",
+  deadline: "",
+};
+
+export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: number }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newTask, setNewTask] = useState<TaskFormData>({
-    title: "",
-    description: "",
-    status: "todo",
-    assigneeId: "",
-    deadline: "",
-  });
+  const [formData, setFormData] = useState<TaskFormData>(defaultTask);
 
-  const { data: staff } = useQuery<StaffMember[]>({
+  const { data: staff } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/staff"],
   });
 
+  const handleEditClick = (task: Task) => {
+    setEditTask(task);
+    setFormData({
+      title: task.title,
+      description: task.description || "",
+      status: task.status as TaskFormData["status"] || "todo",
+      assigneeId: task.assigneeId?.toString() || "",
+      deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : "",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleNewTask = () => {
+    setEditTask(null);
+    setFormData(defaultTask);
+    setIsDialogOpen(true);
+  };
+
   const createTask = useMutation({
-    mutationFn: async (formData: TaskFormData) => {
+    mutationFn: async (data: TaskFormData) => {
       const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({
-          title: formData.title,
-          description: formData.description,
-          status: formData.status,
-          projectId: projectId,
-          assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
-          deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
+          ...data,
+          projectId,
+          assigneeId: data.assigneeId ? parseInt(data.assigneeId) : null,
+          deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
         }),
       });
 
@@ -76,15 +85,8 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
-      setNewTask({
-        title: "",
-        description: "",
-        status: "todo",
-        assigneeId: "",
-        deadline: "",
-      });
       setIsDialogOpen(false);
+      setFormData(defaultTask);
       toast({
         title: "Success",
         description: "Task created successfully",
@@ -100,20 +102,17 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
   });
 
   const updateTask = useMutation({
-    mutationFn: async (formData: TaskFormData) => {
+    mutationFn: async (data: TaskFormData) => {
       if (!editTask) throw new Error("No task selected for update");
 
-      const response = await fetch(`/api/tasks/${editTask.id}/progress`, {
+      const response = await fetch(`/api/tasks/${editTask.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: 'include',
         body: JSON.stringify({
-          status: formData.status,
-          progress: 0, 
-          title: formData.title,
-          description: formData.description,
-          assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
-          deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
+          ...data,
+          assigneeId: data.assigneeId ? parseInt(data.assigneeId) : null,
+          deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
         }),
       });
 
@@ -125,9 +124,9 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
-      setEditTask(null);
       setIsDialogOpen(false);
+      setEditTask(null);
+      setFormData(defaultTask);
       toast({
         title: "Success",
         description: "Task updated successfully",
@@ -146,6 +145,7 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     mutationFn: async (taskId: number) => {
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: "DELETE",
+        credentials: 'include',
       });
       if (!response.ok) {
         const errorText = await response.text();
@@ -154,7 +154,6 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
       toast({
         title: "Success",
         description: "Task deleted successfully",
@@ -169,44 +168,22 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     },
   });
 
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case "todo":
-        return "bg-gray-500";
-      case "in_progress":
-        return "bg-blue-500";
-      case "completed":
-        return "bg-green-500";
-      case "review":
-        return "bg-yellow-500";
-      default:
-        return "bg-gray-500";
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editTask) {
+      updateTask.mutate(formData);
+    } else {
+      createTask.mutate(formData);
     }
   };
 
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Task
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Task</DialogTitle>
-            </DialogHeader>
-            <TaskForm
-              task={newTask}
-              staff={staff}
-              onSubmit={createTask.mutate}
-              onChange={setNewTask}
-              isEditing={false}
-            />
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleNewTask}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Task
+        </Button>
       </div>
 
       <div className="rounded-md border">
@@ -227,12 +204,12 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
                 <TableCell className="font-medium">{task.title}</TableCell>
                 <TableCell>{task.description}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={getStatusColor(task.status || 'todo')}>
-                    {(task.status || 'todo').replace("_", " ")}
+                  <Badge className={`bg-${task.status === 'completed' ? 'green' : task.status === 'in_progress' ? 'blue' : task.status === 'review' ? 'yellow' : 'gray'}-500`}>
+                    {task.status?.replace('_', ' ') || 'todo'}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {staff?.find((s) => s.id === (task.assigneeId ? parseInt(String(task.assigneeId)) : null))?.name || "Unassigned"}
+                  {staff?.find((s) => s.id === task.assigneeId)?.name || "Unassigned"}
                 </TableCell>
                 <TableCell>
                   {task.deadline
@@ -244,10 +221,7 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => {
-                        setEditTask(task);
-                        setIsDialogOpen(true);
-                      }}
+                      onClick={() => handleEditClick(task)}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -266,127 +240,84 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
         </Table>
       </div>
 
-      <Dialog 
-        open={isDialogOpen} 
-        onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setEditTask(null);
-            setNewTask({
-              title: "",
-              description: "",
-              status: "todo",
-              assigneeId: "",
-              deadline: "",
-            });
-          }
-        }}
-      >
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editTask ? "Edit Task" : "Create New Task"}</DialogTitle>
           </DialogHeader>
-          <TaskForm
-            task={editTask ? {
-              title: editTask.title,
-              description: editTask.description || "",
-              status: editTask.status || "todo",
-              assigneeId: editTask.assigneeId?.toString() || "",
-              deadline: editTask.deadline ? new Date(editTask.deadline).toISOString().slice(0, 16) : "",
-            } : newTask}
-            staff={staff}
-            onSubmit={editTask ? updateTask.mutate : createTask.mutate}
-            onChange={editTask ? 
-              (formData) => setEditTask({
-                ...editTask,
-                ...formData,
-                assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
-                deadline: formData.deadline ? new Date(formData.deadline) : null,
-              }) : setNewTask}
-            isEditing={!!editTask}
-          />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Enter task title"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Enter task description"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value: TaskFormData["status"]) => 
+                  setFormData({ ...formData, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todo">To Do</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="review">Review</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="assignee">Assignee</Label>
+              <Select
+                value={formData.assigneeId}
+                onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Unassigned</SelectItem>
+                  {staff?.map((member) => (
+                    <SelectItem key={member.id} value={member.id.toString()}>
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="deadline">Deadline</Label>
+              <Input
+                id="deadline"
+                type="datetime-local"
+                value={formData.deadline}
+                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+              />
+            </div>
+            <Button type="submit" className="w-full">
+              {editTask ? "Update Task" : "Create Task"}
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-interface TaskFormProps {
-  task: TaskFormData;
-  staff?: StaffMember[];
-  onSubmit: (formData: TaskFormData) => void;
-  onChange: (formData: TaskFormData) => void;
-  isEditing: boolean;
-}
-
-function TaskForm({ task, staff, onSubmit, onChange, isEditing }: TaskFormProps) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <Label>Title</Label>
-        <Input
-          value={task.title}
-          onChange={e => onChange({ ...task, title: e.target.value })}
-          placeholder="Enter task title"
-        />
-      </div>
-      <div>
-        <Label>Description</Label>
-        <Input
-          value={task.description}
-          onChange={e => onChange({ ...task, description: e.target.value })}
-          placeholder="Enter task description"
-        />
-      </div>
-      <div>
-        <Label>Status</Label>
-        <Select
-          value={task.status}
-          onValueChange={(value: 'todo' | 'in_progress' | 'completed' | 'review') => 
-            onChange({ ...task, status: value })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todo">To Do</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="review">Review</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label>Assignee</Label>
-        <Select
-          value={task.assigneeId}
-          onValueChange={(value) => onChange({ ...task, assigneeId: value })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select assignee" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">Unassigned</SelectItem>
-            {staff?.map((member) => (
-              <SelectItem key={member.id} value={member.id.toString()}>
-                {member.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label>Deadline</Label>
-        <Input
-          type="datetime-local"
-          value={task.deadline}
-          onChange={e => onChange({ ...task, deadline: e.target.value })}
-        />
-      </div>
-      <Button onClick={() => onSubmit(task)} className="w-full">
-        {isEditing ? 'Update Task' : 'Create Task'}
-      </Button>
     </div>
   );
 }

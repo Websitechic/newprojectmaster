@@ -5,7 +5,7 @@ import { initializeEmailService } from "./services/email";
 import { setupVideoSocket } from "./video-socket";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { Server } from "socket.io";
+import { setupAuth } from "./auth";
 
 const app = express();
 app.use(express.json());
@@ -29,6 +29,9 @@ const sessionMiddleware = session({
 });
 
 app.use(sessionMiddleware);
+
+// Setup authentication after session middleware
+setupAuth(app);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -67,16 +70,9 @@ app.use((req, res, next) => {
   const server = registerRoutes(app);
 
   // Make session available to WebSocket
-  const io = new Server(server, {
-    cors: {
-      origin: "*", // Adjust origin as needed
-      methods: ["GET", "POST"]
-    }
-  });
+  const io = setupVideoSocket(server);
   const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
   io.use(wrap(sessionMiddleware));
-  setupVideoSocket(io);
-
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

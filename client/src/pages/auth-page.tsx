@@ -23,18 +23,14 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        await loginMutation.mutateAsync({ 
-          username, 
-          password
-        });
+        await loginMutation.mutateAsync({ username, password });
       } else {
         await registerMutation.mutateAsync({
           username,
           password,
-          role,
           name,
           email,
-          status: "offline"
+          role
         });
       }
     } catch (error: any) {

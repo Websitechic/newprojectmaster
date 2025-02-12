@@ -5,9 +5,9 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, insertUserSchema, type User as SelectUser } from "@db/schema";
+import { users, type User as SelectUser } from "@db/schema";
 import { db } from "@db";
-import { eq, and, gt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
@@ -35,31 +35,19 @@ declare global {
   }
 }
 
-// Add role validation
-const validRoles = ["client", "project_manager", "staff"] as const;
-const validSpecializations = [
-  "developer",
-  "designer",
-  "copywriter",
-  "media_buyer",
-  "automation_expert",
-  "marketing_specialist"
-] as const;
-
-// Update the login schema
+// Login schema
 const loginSchema = z.object({
   username: z.string(),
   password: z.string()
 });
 
-// Update registration validation
+// Registration validation
 const registerSchema = z.object({
   username: z.string().min(3),
   password: z.string().min(6),
   name: z.string(),
   email: z.string().email(),
-  role: z.enum(validRoles),
-  specialization: z.enum(validSpecializations).optional(),
+  role: z.enum(["client", "project_manager", "staff"]),
 });
 
 export function setupAuth(app: Express) {
@@ -184,12 +172,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password, role, specialization, name, email } = result.data;
-
-      // Additional role-specific validation
-      if (role === "staff" && !specialization) {
-        return res.status(400).send("Staff members must specify their specialization");
-      }
+      const { username, password, role, name, email } = result.data;
 
       // Check if user already exists
       const [existingUser] = await db
@@ -209,12 +192,11 @@ export function setupAuth(app: Express) {
       const [newUser] = await db
         .insert(users)
         .values({
+          username,
+          password: hashedPassword,
+          role,
           name,
           email,
-          username,
-          role,
-          specialization,
-          password: hashedPassword,
           status: "offline",
         })
         .returning();
@@ -226,14 +208,18 @@ export function setupAuth(app: Express) {
         }
         return res.json({
           message: "Registration successful",
-          user: { id: newUser.id, username: newUser.username, role: newUser.role },
+          user: { 
+            id: newUser.id, 
+            username: newUser.username, 
+            role: newUser.role,
+            name: newUser.name
+          },
         });
       });
     } catch (error) {
       next(error);
     }
   });
-
   // Email verification endpoint
   app.get("/api/verify-email/:token", async (req, res) => {
     try {
