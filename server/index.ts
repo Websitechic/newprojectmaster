@@ -107,7 +107,7 @@ let emailServiceInitialized = false;
     });
 
     // Handle upgrade events for WebSocket connections
-    server.on("upgrade", (request, socket, head) => {
+    server.on("upgrade", (request: any, socket, head) => {
       const pathname = new URL(request.url || "", "http://localhost").pathname;
 
       // Skip Vite HMR connections
@@ -118,11 +118,19 @@ let emailServiceInitialized = false;
 
       // Only handle our WebSocket path
       if (pathname === "/ws") {
-        // Apply session middleware
-        sessionMiddleware(request as any, {} as any, () => {
+        // Apply session middleware to the upgrade request
+        sessionMiddleware(request, {} as Response, async (err) => {
+          if (err) {
+            console.error("WebSocket session middleware error:", err);
+            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
           console.log("WebSocket upgrade - Session:", request.session?.id);
           console.log("WebSocket upgrade - User:", request.session?.passport?.user);
 
+          // Ensure authenticated
           if (!request.session?.passport?.user) {
             console.error("WebSocket upgrade - No authenticated user found");
             socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
@@ -130,10 +138,20 @@ let emailServiceInitialized = false;
             return;
           }
 
-          wss.handleUpgrade(request, socket, head, (ws) => {
-            wss.emit("connection", ws, request);
-          });
+          try {
+            wss.handleUpgrade(request, socket, head, (ws) => {
+              // Attach user data to the WebSocket instance
+              (ws as any).userId = request.session.passport.user;
+              wss.emit("connection", ws, request);
+            });
+          } catch (error) {
+            console.error("WebSocket upgrade error:", error);
+            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+            socket.destroy();
+          }
         });
+      } else {
+        socket.destroy();
       }
     });
 

@@ -439,25 +439,38 @@ export function registerRoutes(app: Express): Server {
 
       // If there's an assignee, create a notification
       if (newTask.assigneeId) {
-        const [notification] = await db
-          .insert(notifications)
-          .values({
-            userId: newTask.assigneeId,
-            type: "task_assigned",
-            content: `You have been assigned a new task: ${newTask.title}`,
-            referenceId: newTask.id,
-            referenceType: "task",
-            createdAt: new Date(),
-          })
-          .returning();
+        try {
+          const [notification] = await db
+            .insert(notifications)
+            .values({
+              userId: newTask.assigneeId,
+              type: "task_assigned",
+              content: `You have been assigned a new task: ${newTask.title}`,
+              referenceId: newTask.id,
+              referenceType: "task",
+              createdAt: new Date(),
+            })
+            .returning();
 
-        // Send notification through SSE if user is connected
-        const clientResponse = global.sseClients?.get(newTask.assigneeId);
-        if (clientResponse) {
-          clientResponse.write(`data: ${JSON.stringify({
-            type: "notification",
-            data: notification
-          })}\n\n`);
+          // Send notification through SSE if user is connected
+          const clientResponse = global.sseClients?.get(newTask.assigneeId);
+          if (clientResponse && !clientResponse.writableEnded) {
+            try {
+              clientResponse.write(`data: ${JSON.stringify({
+                type: "notification",
+                data: notification
+              })}\n\n`);
+              console.log(`Notification sent to user ${newTask.assigneeId} via SSE`);
+            } catch (error) {
+              console.error(`Error sending SSE notification to user ${newTask.assigneeId}:`, error);
+              // Remove the client if there was an error sending
+              global.sseClients.delete(newTask.assigneeId);
+            }
+          } else {
+            console.log(`User ${newTask.assigneeId} not connected via SSE`);
+          }
+        } catch (error) {
+          console.error("Error creating or sending notification:", error);
         }
       }
 
