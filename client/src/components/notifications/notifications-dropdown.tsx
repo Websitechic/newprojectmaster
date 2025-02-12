@@ -1,6 +1,6 @@
 import { Bell } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,11 +13,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import type { Notification } from "@db/schema";
 
+const RETRY_INTERVAL = 5000; // 5 seconds
+
 export function NotificationsDropdown() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -49,14 +52,15 @@ export function NotificationsDropdown() {
     },
   });
 
-  useEffect(() => {
-    if (!user) return;
+  const setupEventSource = useCallback(() => {
+    if (!user) return null;
 
     const eventSource = new EventSource("/api/notifications/stream");
 
     eventSource.onopen = () => {
       console.log("SSE connection opened");
       setIsConnected(true);
+      setRetryCount(0); // Reset retry count on successful connection
     };
 
     eventSource.onmessage = (event) => {
@@ -65,7 +69,6 @@ export function NotificationsDropdown() {
         console.log('SSE message received:', data);
 
         if (data.type === "notification") {
-          console.log('Processing notification:', data.data);
           // Add new notification to the cache
           queryClient.setQueryData<Notification[]>(["/api/notifications"], (old = []) => {
             return [data.data, ...old];
@@ -85,12 +88,30 @@ export function NotificationsDropdown() {
     eventSource.onerror = (error) => {
       console.error("SSE connection error:", error);
       setIsConnected(false);
+      eventSource.close();
+
+      // Implement exponential backoff for retries
+      const maxRetries = 5;
+      if (retryCount < maxRetries) {
+        const timeout = Math.min(1000 * Math.pow(2, retryCount), 30000);
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          setupEventSource();
+        }, timeout);
+      }
     };
 
+    return eventSource;
+  }, [user, queryClient, toast, retryCount]);
+
+  useEffect(() => {
+    const eventSource = setupEventSource();
     return () => {
-      eventSource.close();
+      if (eventSource) {
+        eventSource.close();
+      }
     };
-  }, [user, queryClient, toast]);
+  }, [setupEventSource]);
 
   if (!user) return null;
 
@@ -129,7 +150,7 @@ export function NotificationsDropdown() {
             >
               <div className="text-sm">{notification.content}</div>
               <div className="mt-1 text-xs text-muted-foreground">
-                {new Date(notification.createdAt).toLocaleString()}
+                {new Date(notification.createdAt!).toLocaleString()}
               </div>
             </DropdownMenuItem>
           ))

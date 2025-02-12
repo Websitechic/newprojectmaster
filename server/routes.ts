@@ -1,4 +1,4 @@
-import { Express, Response, Request } from "express";
+import { Express, Response, Request, NextFunction } from "express";
 import { createServer, Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { setupWebSocket } from "./websocket";
@@ -549,7 +549,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Add new endpoints for notifications
-  // Add SSE endpoint
+  // Add SSE endpoint with proper error handling
   app.get("/api/notifications/stream", (req: Request, res: Response) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -559,6 +559,7 @@ export function registerRoutes(app: Express): Server {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no"); // Disable proxy buffering
 
     // Send initial connection message
     res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
@@ -573,6 +574,28 @@ export function registerRoutes(app: Express): Server {
     // Handle client disconnect
     req.on("close", () => {
       global.sseClients.delete(userId);
+      console.log(`SSE connection closed for user ${userId}`);
+    });
+
+    // Handle errors
+    req.on("error", (error) => {
+      console.error(`SSE error for user ${userId}:`, error);
+      global.sseClients.delete(userId);
+      res.end();
+    });
+
+    // Keep connection alive
+    const keepAlive = setInterval(() => {
+      if (res.writableEnded) {
+        clearInterval(keepAlive);
+        return;
+      }
+      res.write(": keepalive\n\n");
+    }, 30000);
+
+    // Cleanup on connection close
+    req.on("close", () => {
+      clearInterval(keepAlive);
     });
   });
 

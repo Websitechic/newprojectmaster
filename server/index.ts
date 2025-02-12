@@ -8,6 +8,22 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { setupAuth } from "./auth";
 
+// Declare global SSE clients map
+declare global {
+  var sseClients: Map<number, Response>;
+  var connectedClients: Map<number, WebSocket>;
+}
+
+// Initialize global SSE clients map
+if (!global.sseClients) {
+  global.sseClients = new Map();
+}
+
+// Initialize global WebSocket clients map
+if (!global.connectedClients) {
+  global.connectedClients = new Map();
+}
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -40,28 +56,12 @@ setupAuth(app);
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-      log(logLine);
+      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
-
   next();
 });
 
@@ -95,19 +95,6 @@ let emailServiceInitialized = false;
     const wss = new WebSocketServer({ server, path: "/ws" });
     setupWebSocket(wss);
 
-    // Handle WebSocket upgrade with session
-    wss.on("upgrade", (request, socket, head) => {
-      sessionMiddleware(request as any, {} as any, () => {
-        if (request.headers["sec-websocket-protocol"] === "vite-hmr") {
-          socket.destroy();
-          return;
-        }
-        wss.handleUpgrade(request, socket, head, (ws) => {
-          wss.emit("connection", ws, request);
-        });
-      });
-    });
-
     // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       console.error("Error:", err);
@@ -125,33 +112,13 @@ let emailServiceInitialized = false;
       serveStatic(app);
     }
 
-    // Try to start the server on port 5000, if fails try next available port
-    const startServer = (port: number) => {
-      const MAX_PORT = 5010; // Don't try forever, set a reasonable limit
-      if (port > MAX_PORT) {
-        log(`Could not find an available port between 5000 and ${MAX_PORT}`);
-        process.exit(1);
+    // Start the server
+    server.listen(5000, "0.0.0.0", () => {
+      log(`Server started successfully on port 5000`);
+      if (!emailServiceInitialized) {
+        log("Note: Server is running without email service functionality");
       }
-
-      server.on('error', (e: any) => {
-        if (e.code === 'EADDRINUSE') {
-          log(`Port ${port} is in use, trying ${port + 1}`);
-          startServer(port + 1);
-        } else {
-          log(`Error starting server: ${e.message}`);
-          process.exit(1);
-        }
-      });
-
-      server.listen(port, "0.0.0.0", () => {
-        log(`Server started successfully on port ${port}`);
-        if (!emailServiceInitialized) {
-          log("Note: Server is running without email service functionality");
-        }
-      });
-    };
-
-    startServer(5000);
+    });
   } catch (error) {
     console.error("Fatal server initialization error:", error);
     process.exit(1);
