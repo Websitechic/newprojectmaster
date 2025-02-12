@@ -137,7 +137,7 @@ let emailServiceInitialized = false;
       });
     };
 
-    startServer(5000);
+    startServer(3000);
   } catch (error) {
     console.error("Fatal server initialization error:", error);
     process.exit(1);
