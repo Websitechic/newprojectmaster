@@ -1,6 +1,5 @@
 import { Express, Response, Request, NextFunction } from "express";
 import { createServer, Server } from "http";
-import { WebSocketServer, WebSocket } from "ws";
 import { setupWebSocket } from "./websocket";
 import { setupAuth } from "./auth";
 import { db } from "@db";
@@ -16,15 +15,19 @@ import {
   notifications
 } from "@db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { randomBytes } from "crypto";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
+  console.log("Auth check - Session:", req.session?.id);
+  console.log("Auth check - User:", req.user);
+
   if (!req.isAuthenticated()) {
+    console.log("Authentication failed - no valid session");
     return res.status(401).send("Not authenticated");
   }
 
   if (req.user!.role !== UserRole.PROJECT_MANAGER) {
+    console.log("Authorization failed - not a project manager");
     return res.status(403).send("Only project managers can perform this action");
   }
 
@@ -35,8 +38,6 @@ export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
   const server = createServer(app);
-  const wss = new WebSocketServer({ server, path: "/ws" });
-  setupWebSocket(wss);
 
   // Get available clients (for project managers)
   app.get("/api/clients", isProjectManager, async (req, res) => {
@@ -346,7 +347,11 @@ export function registerRoutes(app: Express): Server {
 
   // Tasks
   app.get("/api/tasks", async (req, res) => {
+    console.log("GET /api/tasks - Session:", req.session?.id);
+    console.log("GET /api/tasks - User:", req.user);
+
     if (!req.isAuthenticated()) {
+      console.log("Tasks endpoint - Authentication failed");
       return res.status(401).send("Not authenticated");
     }
 

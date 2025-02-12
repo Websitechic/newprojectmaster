@@ -38,12 +38,13 @@ const sessionMiddleware = session({
     checkPeriod: 86400000, // prune expired entries every 24h
   }),
   cookie: {
-    secure: app.get("env") === "production",
+    secure: process.env.NODE_ENV === "production",
     httpOnly: true,
     sameSite: "lax",
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     path: "/"
-  }
+  },
+  name: "session_id" // Custom session cookie name
 });
 
 // Apply session middleware
@@ -63,6 +64,14 @@ app.use((req, res, next) => {
     }
   });
   next();
+});
+
+// Error handling middleware
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("Server Error:", err);
+  res.status(500).json({
+    error: app.get("env") === "development" ? err.message : "Internal Server Error"
+  });
 });
 
 let emailServiceInitialized = false;
@@ -92,16 +101,43 @@ let emailServiceInitialized = false;
 
     // Setup WebSocket server
     log("Setting up WebSocket...");
-    const wss = new WebSocketServer({ server, path: "/ws" });
-    setupWebSocket(wss);
-
-    // Error handling middleware
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error("Error:", err);
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ error: message });
+    const wss = new WebSocketServer({ 
+      noServer: true,
+      path: "/ws"
     });
+
+    // Handle upgrade events for WebSocket connections
+    server.on("upgrade", (request, socket, head) => {
+      const pathname = new URL(request.url || "", "http://localhost").pathname;
+
+      // Skip Vite HMR connections
+      if (request.headers["sec-websocket-protocol"]?.includes("vite-hmr")) {
+        socket.destroy();
+        return;
+      }
+
+      // Only handle our WebSocket path
+      if (pathname === "/ws") {
+        // Apply session middleware
+        sessionMiddleware(request as any, {} as any, () => {
+          console.log("WebSocket upgrade - Session:", request.session?.id);
+          console.log("WebSocket upgrade - User:", request.session?.passport?.user);
+
+          if (!request.session?.passport?.user) {
+            console.error("WebSocket upgrade - No authenticated user found");
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
+          wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit("connection", ws, request);
+          });
+        });
+      }
+    });
+
+    setupWebSocket(wss);
 
     // Setup Vite or static serving
     if (app.get("env") === "development") {

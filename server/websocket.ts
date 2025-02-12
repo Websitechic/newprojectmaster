@@ -4,10 +4,6 @@ import type { Message } from "@db/schema";
 import { db } from "@db";
 import { messages } from "@db/schema";
 
-declare global {
-  var connectedClients: Map<number, WebSocket>;
-}
-
 interface ExtendedWebSocket extends WebSocket {
   userId?: number;
   projectId?: number;
@@ -21,17 +17,14 @@ interface ExtendedWebSocket extends WebSocket {
 }
 
 export function setupWebSocket(wss: WebSocketServer) {
-  // Initialize global connected clients map if not exists
-  if (!global.connectedClients) {
-    global.connectedClients = new Map();
-  }
-
   // Authentication middleware
   wss.on("connection", async (ws: ExtendedWebSocket) => {
     try {
       console.log("New WebSocket connection, checking session");
 
       const userId = ws.request?.session?.passport?.user;
+      console.log("WebSocket connection - Session user ID:", userId);
+
       if (!userId) {
         console.error("No authenticated user found in session");
         ws.close(1008, "Authentication required");
@@ -40,6 +33,9 @@ export function setupWebSocket(wss: WebSocketServer) {
 
       // Store authenticated user's WebSocket connection
       ws.userId = userId;
+      if (!global.connectedClients) {
+        global.connectedClients = new Map();
+      }
       global.connectedClients.set(userId, ws);
       console.log(`WebSocket authenticated for user ${userId}`);
 
