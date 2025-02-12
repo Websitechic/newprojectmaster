@@ -50,7 +50,9 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate both the global tasks query and the project-specific tasks query
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
       toast({
         title: "Success",
         description: "Task created successfully",

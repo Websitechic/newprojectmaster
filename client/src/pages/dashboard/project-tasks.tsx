@@ -7,10 +7,11 @@ import type { Task } from "@db/schema";
 
 export default function ProjectTasks() {
   const { id } = useParams();
-  const projectId = parseInt(id);
+  const projectId = parseInt(id!);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
-    queryKey: [`/api/projects/${id}/tasks`],
+    queryKey: [`/api/projects/${projectId}/tasks`],
+    queryFn: () => fetch(`/api/projects/${projectId}/tasks`).then(res => res.json()),
     enabled: !!id,
   });
 
