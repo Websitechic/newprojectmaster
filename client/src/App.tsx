@@ -2,7 +2,7 @@ import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { useUser } from "@/hooks/use-user";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
@@ -12,7 +12,7 @@ import ProjectTasks from "@/pages/dashboard/project-tasks";
 import Tasks from "@/pages/dashboard/tasks";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
-  const { user, isLoading } = useUser();
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -23,15 +23,14 @@ function PrivateRoute({ component: Component, ...rest }: any) {
   }
 
   if (!user) {
-    window.location.href = "/";
-    return null;
+    return <Redirect to="/" />;
   }
 
   return <Component {...rest} />;
 }
 
 function Router() {
-  const { user, isLoading } = useUser();
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -63,8 +62,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

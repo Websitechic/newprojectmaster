@@ -40,6 +40,7 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newTask, setNewTask] = useState<TaskFormData>({
     title: "",
     description: "",
@@ -58,28 +59,35 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
-          projectId,
+          title: formData.title,
+          description: formData.description,
+          status: formData.status,
+          projectId: projectId,
           assigneeId: formData.assigneeId ? parseInt(formData.assigneeId) : null,
           deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
         }),
       });
-      if (!response.ok) throw new Error("Failed to create task");
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to create task');
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
-      toast({
-        title: "Success",
-        description: "Task created successfully",
-      });
       setNewTask({
         title: "",
         description: "",
         status: "todo",
         assigneeId: "",
         deadline: "",
+      });
+      setIsDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Task created successfully",
       });
     },
     onError: (error: Error) => {
@@ -106,13 +114,18 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
           deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
         }),
       });
-      if (!response.ok) throw new Error("Failed to update task");
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to update task');
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
       setEditTask(null);
+      setIsDialogOpen(false);
       toast({
         title: "Success",
         description: "Task updated successfully",
@@ -132,7 +145,10 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: "DELETE",
       });
-      if (!response.ok) throw new Error("Failed to delete task");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to delete task');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -169,7 +185,7 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -226,7 +242,10 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setEditTask(task)}
+                      onClick={() => {
+                        setEditTask(task);
+                        setIsDialogOpen(true);
+                      }}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -245,7 +264,10 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
         </Table>
       </div>
 
-      <Dialog open={!!editTask} onOpenChange={() => setEditTask(null)}>
+      <Dialog open={!!editTask && isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) setEditTask(null);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
