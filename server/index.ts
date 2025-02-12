@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Session middleware setup
+// Session middleware setup with consistent configuration
 const MemoryStore = createMemoryStore(session);
 const sessionMiddleware = session({
   secret: process.env.REPL_ID || "your-secret-key",
@@ -29,6 +29,7 @@ const sessionMiddleware = session({
   }
 });
 
+// Apply session middleware
 app.use(sessionMiddleware);
 
 // Setup authentication after session middleware
@@ -74,7 +75,7 @@ let emailServiceInitialized = false;
       log("Initializing email service...");
       await Promise.race([
         initializeEmailService(),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error("Email service initialization timeout")), 5000)
         )
       ]);
@@ -137,7 +138,7 @@ let emailServiceInitialized = false;
       });
     };
 
-    startServer(3000);
+    startServer(5000);
   } catch (error) {
     console.error("Fatal server initialization error:", error);
     process.exit(1);
