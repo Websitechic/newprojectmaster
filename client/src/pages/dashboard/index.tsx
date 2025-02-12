@@ -89,7 +89,16 @@ export default function Dashboard() {
             </div>
             <div className="space-y-6">
               <h2 className="text-2xl font-bold">Tasks</h2>
-              <TaskList tasks={tasks || []} />
+              {projects && projects.length > 0 ? (
+                <TaskList 
+                  tasks={tasks?.filter(task => task.projectId === projects[0].id) || []} 
+                  projectId={projects[0].id} 
+                />
+              ) : (
+                <div className="text-center text-muted-foreground mt-8">
+                  No projects available. Create a project to manage tasks.
+                </div>
+              )}
               <ChatWindow />
             </div>
           </div>

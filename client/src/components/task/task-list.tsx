@@ -1,14 +1,15 @@
-
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Trash, Plus } from "lucide-react";
-import type { Task } from "@db/schema";
+import type { Task, Project } from "@db/schema";
+import { useToast } from "@/hooks/use-toast";
 
 interface TaskListProps {
   tasks: Task[];
@@ -16,15 +17,20 @@ interface TaskListProps {
 }
 
 export function TaskList({ tasks, projectId }: TaskListProps) {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
-    status: "new",
+    status: "todo",
     assigneeId: "",
-    startDate: "",
-    endDate: "",
+    deadline: "",
+  });
+
+  // Fetch available staff for assignment
+  const { data: staff } = useQuery({
+    queryKey: ["/api/staff"],
   });
 
   const createTask = useMutation({
@@ -38,8 +44,25 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["api/tasks"] });
-      setNewTask({ title: "", description: "", status: "new", assigneeId: "", startDate: "", endDate: "" });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({
+        title: "Success",
+        description: "Task created successfully",
+      });
+      setNewTask({
+        title: "",
+        description: "",
+        status: "todo",
+        assigneeId: "",
+        deadline: "",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -54,8 +77,19 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       setEditTask(null);
+      toast({
+        title: "Success",
+        description: "Task updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -67,13 +101,24 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
       if (!response.ok) throw new Error("Failed to delete task");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({
+        title: "Success",
+        description: "Task deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
-    
+
     const task = tasks.find(t => t.id.toString() === result.draggableId);
     if (task) {
       updateTask.mutate({
@@ -83,7 +128,7 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
     }
   };
 
-  const columns = ["new", "in_progress", "completed", "overdue"];
+  const columns = ["todo", "in_progress", "completed", "review"];
 
   return (
     <div>
@@ -101,8 +146,10 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
             </DialogHeader>
             <TaskForm
               task={newTask}
+              staff={staff}
               onSubmit={(task) => createTask.mutate(task)}
               onChange={setNewTask}
+              projectId={projectId}
             />
           </DialogContent>
         </Dialog>
@@ -136,7 +183,22 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
                             >
                               <Card className="p-4">
                                 <div className="flex justify-between items-start">
-                                  <h4 className="font-semibold">{task.title}</h4>
+                                  <div>
+                                    <h4 className="font-semibold">{task.title}</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      {task.description}
+                                    </p>
+                                    {task.assigneeId && (
+                                      <p className="text-sm text-muted-foreground mt-2">
+                                        Assigned to: {staff?.find(s => s.id === task.assigneeId)?.name}
+                                      </p>
+                                    )}
+                                    {task.deadline && (
+                                      <p className="text-sm text-muted-foreground">
+                                        Due: {new Date(task.deadline).toLocaleDateString()}
+                                      </p>
+                                    )}
+                                  </div>
                                   <div className="flex gap-2">
                                     <Button
                                       variant="ghost"
@@ -154,9 +216,6 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
                                     </Button>
                                   </div>
                                 </div>
-                                <p className="text-sm text-muted-foreground">
-                                  {task.description}
-                                </p>
                               </Card>
                             </div>
                           )}
@@ -179,8 +238,10 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
           {editTask && (
             <TaskForm
               task={editTask}
+              staff={staff}
               onSubmit={(task) => updateTask.mutate(task as Task)}
               onChange={(task) => setEditTask(task as Task)}
+              projectId={projectId}
             />
           )}
         </DialogContent>
@@ -189,7 +250,15 @@ export function TaskList({ tasks, projectId }: TaskListProps) {
   );
 }
 
-function TaskForm({ task, onSubmit, onChange }: any) {
+interface TaskFormProps {
+  task: any;
+  staff?: any[];
+  onSubmit: (task: any) => void;
+  onChange: (task: any) => void;
+  projectId: number;
+}
+
+function TaskForm({ task, staff, onSubmit, onChange, projectId }: TaskFormProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -197,6 +266,7 @@ function TaskForm({ task, onSubmit, onChange }: any) {
         <Input
           value={task.title}
           onChange={e => onChange({ ...task, title: e.target.value })}
+          placeholder="Enter task title"
         />
       </div>
       <div>
@@ -204,32 +274,36 @@ function TaskForm({ task, onSubmit, onChange }: any) {
         <Input
           value={task.description}
           onChange={e => onChange({ ...task, description: e.target.value })}
+          placeholder="Enter task description"
         />
       </div>
       <div>
-        <Label>Assignee ID</Label>
-        <Input
+        <Label>Assignee</Label>
+        <Select
           value={task.assigneeId}
-          onChange={e => onChange({ ...task, assigneeId: e.target.value })}
-        />
+          onValueChange={(value) => onChange({ ...task, assigneeId: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select assignee" />
+          </SelectTrigger>
+          <SelectContent>
+            {staff?.map((member) => (
+              <SelectItem key={member.id} value={member.id.toString()}>
+                {member.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div>
-        <Label>Start Date</Label>
+        <Label>Deadline</Label>
         <Input
           type="datetime-local"
-          value={task.startDate}
-          onChange={e => onChange({ ...task, startDate: e.target.value })}
+          value={task.deadline}
+          onChange={e => onChange({ ...task, deadline: e.target.value })}
         />
       </div>
-      <div>
-        <Label>End Date</Label>
-        <Input
-          type="datetime-local"
-          value={task.endDate}
-          onChange={e => onChange({ ...task, endDate: e.target.value })}
-        />
-      </div>
-      <Button onClick={() => onSubmit(task)}>
+      <Button onClick={() => onSubmit({ ...task, projectId })} className="w-full">
         {task.id ? 'Update Task' : 'Create Task'}
       </Button>
     </div>

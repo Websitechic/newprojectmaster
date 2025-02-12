@@ -3,8 +3,6 @@ import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { useLocation } from "wouter";
 import { TaskList } from "@/components/task/task-list";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,20 +10,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Task } from "@db/schema";
+import type { Task, Project } from "@db/schema";
 import { useState } from "react";
 
 export default function Tasks() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
+  const [selectedProject, setSelectedProject] = useState<string>("");
 
   const { data: tasks } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
   });
 
+  const { data: projects } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
   const filteredTasks = tasks?.filter(task => {
-    if (filter === "all") return true;
-    return task.status === filter;
+    if (filter === "all" && !selectedProject) return true;
+    if (filter !== "all" && !selectedProject) return task.status === filter;
+    if (filter === "all" && selectedProject) return task.projectId === parseInt(selectedProject);
+    return task.status === filter && task.projectId === parseInt(selectedProject);
   });
 
   return (
@@ -37,6 +42,19 @@ export default function Tasks() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Tasks</h1>
             <div className="flex gap-4">
+              <Select value={selectedProject} onValueChange={setSelectedProject}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Projects</SelectItem>
+                  {projects?.map((project) => (
+                    <SelectItem key={project.id} value={project.id.toString()}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={filter} onValueChange={setFilter}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter by status" />
@@ -46,16 +64,19 @@ export default function Tasks() {
                   <SelectItem value="todo">To Do</SelectItem>
                   <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="review">Review</SelectItem>
                 </SelectContent>
               </Select>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                New Task
-              </Button>
             </div>
           </div>
 
-          <TaskList tasks={filteredTasks || []} />
+          {selectedProject ? (
+            <TaskList tasks={filteredTasks || []} projectId={parseInt(selectedProject)} />
+          ) : (
+            <div className="text-center text-muted-foreground mt-8">
+              Please select a project to manage tasks
+            </div>
+          )}
         </div>
       </div>
     </div>
