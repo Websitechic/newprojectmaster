@@ -1,6 +1,6 @@
 import { Express, Response, NextFunction } from "express";
 import { createServer, Server } from "http";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 import { setupWebSocket } from "./websocket";
 import { setupAuth } from "./auth";
 import { db } from "@db";
@@ -12,7 +12,8 @@ import {
   performance,
   users,
   UserRole,
-  clientInvitations
+  clientInvitations,
+  notifications
 } from "@db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -431,14 +432,26 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Send notification through WebSocket if there's an assignee
+      // If there's an assignee, create a notification
       if (newTask.assigneeId) {
+        const [notification] = await db
+          .insert(notifications)
+          .values({
+            userId: newTask.assigneeId,
+            type: "task_assigned",
+            content: `You have been assigned a new task: ${newTask.title}`,
+            referenceId: newTask.id,
+            referenceType: "task",
+            createdAt: new Date(),
+          })
+          .returning();
+
+        // Send notification through WebSocket if user is connected
         const ws = global.connectedClients?.get(newTask.assigneeId);
-        if (ws) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
             type: "notification",
-            message: `You have been assigned a new task: ${newTask.title}`,
-            task: newTask,
+            data: notification
           }));
         }
       }
@@ -473,25 +486,15 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      // Verify task exists and belongs to a project managed by the current user
+      // Verify task exists
       const [existingTask] = await db
-        .select({
-          task: tasks,
-          project: {
-            managerId: projects.managerId
-          }
-        })
+        .select()
         .from(tasks)
-        .innerJoin(projects, eq(tasks.projectId, projects.id))
         .where(eq(tasks.id, taskId))
         .limit(1);
 
       if (!existingTask) {
         return res.status(404).json({ error: "Task not found" });
-      }
-
-      if (existingTask.project.managerId !== req.user!.id) {
-        return res.status(403).json({ error: "Not authorized to update this task" });
       }
 
       // Update the task
@@ -508,62 +511,91 @@ export function registerRoutes(app: Express): Server {
         .where(eq(tasks.id, taskId))
         .returning();
 
-      if (!updatedTask) {
-        return res.status(500).json({ error: "Failed to update task" });
-      }
+      // If assignee has changed, create a notification
+      if (updatedTask.assigneeId && updatedTask.assigneeId !== existingTask.assigneeId) {
+        const [notification] = await db
+          .insert(notifications)
+          .values({
+            userId: updatedTask.assigneeId,
+            type: "task_assigned",
+            content: `You have been assigned to task: ${updatedTask.title}`,
+            referenceId: updatedTask.id,
+            referenceType: "task",
+            createdAt: new Date(),
+          })
+          .returning();
 
-      // Send notification through WebSocket if there's an assignee change
-      if (updatedTask.assigneeId && updatedTask.assigneeId !== existingTask.task.assigneeId) {
+        // Send notification through WebSocket if user is connected
         const ws = global.connectedClients?.get(updatedTask.assigneeId);
-        if (ws) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
             type: "notification",
-            message: `You have been assigned to task: ${updatedTask.title}`,
-            task: updatedTask,
+            data: notification
           }));
         }
       }
 
-      return res.json({ 
+      return res.json({
         success: true,
-        task: updatedTask 
+        task: updatedTask
       });
     } catch (error) {
       console.error("Error updating task:", error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "Failed to update task",
         details: error instanceof Error ? error.message : String(error)
       });
     }
   });
 
-  // Update task status/progress (Staff only)
-  app.put("/api/tasks/:id/progress", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== "staff") {
-      return res.status(403).send("Only staff members can update task progress");
+  // Add new endpoints for notifications
+
+  // Get user notifications
+  app.get("/api/notifications", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
     }
 
     try {
-      const taskId = parseInt(req.params.id);
-      const { status, progress } = req.body;
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user!.id))
+        .orderBy(desc(notifications.createdAt));
 
-      const [updatedTask] = await db
-        .update(tasks)
-        .set({
-          status,
-          progress,
-          updatedAt: new Date()
-        })
+      res.json(userNotifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Mark notification as read
+  app.put("/api/notifications/:id/read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const notificationId = parseInt(req.params.id);
+
+      const [updatedNotification] = await db
+        .update(notifications)
+        .set({ read: true })
         .where(and(
-          eq(tasks.id, taskId),
-          eq(tasks.assigneeId, req.user!.id)
+          eq(notifications.id, notificationId),
+          eq(notifications.userId, req.user!.id)
         ))
         .returning();
 
-      res.json(updatedTask);
+      if (!updatedNotification) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+
+      res.json(updatedNotification);
     } catch (error) {
-      console.error("Error updating task:", error);
-      res.status(500).json({ error: "Failed to update task" });
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ error: "Failed to update notification" });
     }
   });
 
