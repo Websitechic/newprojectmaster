@@ -74,6 +74,8 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
+const PORT = process.env.PORT || 5000;
+const HOST = '0.0.0.0';
 let emailServiceInitialized = false;
 
 (async () => {
@@ -104,6 +106,10 @@ let emailServiceInitialized = false;
     const wss = new WebSocketServer({ 
       noServer: true,
       path: "/ws"
+    });
+
+    server.listen(PORT, HOST, () => {
+      log(`Server running at http://${HOST}:${PORT}`);
     });
 
     // Handle upgrade events for WebSocket connections
