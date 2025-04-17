@@ -117,6 +117,22 @@ export const performance = pgTable("performance", {
   date: timestamp("date").defaultNow(),
 });
 
+export const timesheets = pgTable("timesheets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  clockIn: timestamp("clock_in").notNull(),
+  clockOut: timestamp("clock_out"),
+  breakStart1: timestamp("break_start_1"),
+  breakEnd1: timestamp("break_end_1"),
+  breakStart2: timestamp("break_start_2"),
+  breakEnd2: timestamp("break_end_2"),
+  totalBreakTime: integer("total_break_time").default(0), // in minutes
+  dayOfWeek: text("day_of_week").notNull(),
+  status: text("status", { enum: ["active", "completed"] }).default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),

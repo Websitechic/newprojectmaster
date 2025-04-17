@@ -775,5 +775,158 @@ export function registerRoutes(app: Express): Server {
     res.json(userPerformance);
   });
 
+  // Timesheet endpoints
+  app.post("/api/timesheet/clock-in", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      
+      // Validate working hours
+      const hour = now.getHours();
+      const minutes = now.getMinutes();
+      const timeValue = hour + minutes/60;
+      
+      if (dayOfWeek === 1 && (timeValue < 8.25)) { // Monday
+        return res.status(400).json({ error: "Too early - work starts at 8:15 AM on Mondays" });
+      } else if (dayOfWeek >= 2 && dayOfWeek <= 5 && timeValue < 9) { // Tue-Fri
+        return res.status(400).json({ error: "Too early - work starts at 9:00 AM" });
+      } else if (dayOfWeek === 0 || dayOfWeek === 6) {
+        return res.status(400).json({ error: "Not a working day" });
+      }
+
+      const [timesheet] = await db
+        .insert(timesheets)
+        .values({
+          userId: req.user!.id,
+          clockIn: now,
+          dayOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek],
+          status: "active"
+        })
+        .returning();
+
+      res.json(timesheet);
+    } catch (error) {
+      console.error("Error clocking in:", error);
+      res.status(500).json({ error: "Failed to clock in" });
+    }
+  });
+
+  app.post("/api/timesheet/clock-out", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const [timesheet] = await db
+        .update(timesheets)
+        .set({
+          clockOut: new Date(),
+          status: "completed",
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(timesheets.userId, req.user!.id),
+          eq(timesheets.status, "active")
+        ))
+        .returning();
+
+      res.json(timesheet);
+    } catch (error) {
+      console.error("Error clocking out:", error);
+      res.status(500).json({ error: "Failed to clock out" });
+    }
+  });
+
+  app.post("/api/timesheet/break", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const activeTimesheet = await db
+        .select()
+        .from(timesheets)
+        .where(and(
+          eq(timesheets.userId, req.user!.id),
+          eq(timesheets.status, "active")
+        ))
+        .limit(1);
+
+      if (!activeTimesheet.length) {
+        return res.status(400).json({ error: "No active timesheet found" });
+      }
+
+      const timesheet = activeTimesheet[0];
+      const now = new Date();
+      let update: any = {};
+
+      if (!timesheet.breakStart1) {
+        update.breakStart1 = now;
+      } else if (!timesheet.breakEnd1) {
+        update.breakEnd1 = now;
+        const breakMinutes = Math.round((now.getTime() - timesheet.breakStart1.getTime()) / 60000);
+        update.totalBreakTime = breakMinutes;
+      } else if (!timesheet.breakStart2) {
+        if (timesheet.totalBreakTime >= 60) {
+          return res.status(400).json({ error: "First break was 1 hour or longer" });
+        }
+        update.breakStart2 = now;
+      } else if (!timesheet.breakEnd2) {
+        update.breakEnd2 = now;
+        const breakMinutes = Math.round((now.getTime() - timesheet.breakStart2.getTime()) / 60000);
+        update.totalBreakTime = timesheet.totalBreakTime + breakMinutes;
+      }
+
+      const [updatedTimesheet] = await db
+        .update(timesheets)
+        .set(update)
+        .where(eq(timesheets.id, timesheet.id))
+        .returning();
+
+      res.json(updatedTimesheet);
+    } catch (error) {
+      console.error("Error managing break:", error);
+      res.status(500).json({ error: "Failed to manage break" });
+    }
+  });
+
+  // Project manager endpoints
+  app.get("/api/timesheet/reports", isProjectManager, async (req, res) => {
+    try {
+      const { startDate, endDate, userId } = req.query;
+      
+      let query = db
+        .select({
+          timesheet: timesheets,
+          user: {
+            id: users.id,
+            name: users.name
+          }
+        })
+        .from(timesheets)
+        .innerJoin(users, eq(users.id, timesheets.userId));
+
+      if (startDate) {
+        query = query.where(gte(timesheets.clockIn, new Date(startDate as string)));
+      }
+      if (endDate) {
+        query = query.where(lte(timesheets.clockIn, new Date(endDate as string)));
+      }
+      if (userId) {
+        query = query.where(eq(timesheets.userId, parseInt(userId as string)));
+      }
+
+      const records = await query.orderBy(desc(timesheets.clockIn));
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching timesheet reports:", error);
+      res.status(500).json({ error: "Failed to fetch reports" });
+    }
+  });
+
   return server;
 }
