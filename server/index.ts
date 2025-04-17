@@ -108,10 +108,6 @@ let emailServiceInitialized = false;
       path: "/ws"
     });
 
-    server.listen(PORT, HOST, () => {
-      log(`Server running at http://${HOST}:${PORT}`);
-    });
-
     // Handle upgrade events for WebSocket connections
     server.on("upgrade", (request: any, socket, head) => {
       const pathname = new URL(request.url || "", "http://localhost").pathname;
