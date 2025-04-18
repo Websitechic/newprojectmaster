@@ -143,13 +143,27 @@ export function NotificationsDropdown() {
               key={notification.id}
               className={`flex flex-col items-start p-4 ${
                 !notification.read ? "bg-accent/50" : ""
-              }`}
+              } ${notification.type === "task_assigned" ? "border-l-4 border-primary" : ""}`}
               onClick={() => {
                 if (!notification.read) {
                   markAsReadMutation.mutate(notification.id);
                 }
+                
+                // Navigate to tasks if it's a task notification
+                if (notification.type === "task_assigned") {
+                  // For staff, the task will already be on their dashboard
+                  if (user?.role === "staff") {
+                    window.location.href = "/";
+                  } else if (notification.referenceType === "task" && notification.referenceId) {
+                    // For project managers, navigate to the specific project's tasks
+                    window.location.href = `/dashboard/tasks`;
+                  }
+                }
               }}
             >
+              <div className="text-sm font-medium">
+                {notification.type === "task_assigned" ? "✅ Task Assignment" : "Notification"}
+              </div>
               <div className="text-sm">{notification.content}</div>
               <div className="mt-1 text-xs text-muted-foreground">
                 {new Date(notification.createdAt!).toLocaleString()}
