@@ -54,14 +54,19 @@ export function Header() {
               <div className="hidden md:block text-left">
                 <p className="text-sm font-medium flex items-center gap-1.5">
                   {user?.name}
-                  <OnlineStatus status={status} lastActive={lastActive} size="sm" />
+                  <OnlineStatus status={status} lastActive={lastActive} size="sm" showText={false} />
                 </p>
                 <p className="text-xs text-muted-foreground capitalize">{user?.role.replace('_', ' ')}</p>
               </div>
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold">My Account</span>
+                <OnlineStatus status={status} lastActive={lastActive} size="sm" />
+              </div>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="gap-2">
               <User className="h-4 w-4" />

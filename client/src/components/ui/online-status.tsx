@@ -1,7 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 
 interface OnlineStatusProps {
@@ -48,32 +47,17 @@ export function OnlineStatus({
     ? formatDistanceToNow(new Date(lastActive), { addSuffix: true })
     : null;
     
-  const statusIndicator = (
-    <div className="flex items-center gap-1.5">
+  // Simple status indicator with dot and text
+  return (
+    <div className={cn("flex items-center gap-1.5", className)}>
       <div className={cn("rounded-full", dotSizes[size], statusColors[status])} />
       {showText && <span className={cn("font-medium", textSizes[size])}>{statusText[status]}</span>}
+      {formattedLastActive && (status === "idle" || status === "offline") && (
+        <span className={cn("text-muted-foreground", textSizes[size])}>
+          ({formattedLastActive})
+        </span>
+      )}
     </div>
-  );
-  
-  // If there's no last active time or user is online, just show the status
-  if (!lastActive || status === "online") {
-    return <div className={cn("flex items-center", className)}>{statusIndicator}</div>;
-  }
-  
-  // If offline or idle, show the tooltip with "last seen" information
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className={cn("flex items-center cursor-default", className)}>
-            {statusIndicator}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="top" align="center" className="text-xs">
-          Last seen {formattedLastActive}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
   );
 }
 
@@ -96,35 +80,10 @@ export function OnlineStatusBadge({
   };
   
   // Format time since last active
-  const formattedLastActive = lastActive 
+  const formattedLastActive = lastActive && (status === "idle" || status === "offline")
     ? formatDistanceToNow(new Date(lastActive), { addSuffix: true })
     : null;
   
-  // If offline and we have last active info, add tooltip
-  if ((status === "offline" || status === "idle") && lastActive) {
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge 
-              variant="outline" 
-              className={cn("cursor-default", statusColors[status], className)}
-            >
-              <div className="flex items-center gap-1.5">
-                <div className={cn("rounded-full w-2 h-2", statusColors[status])} />
-                {showText && statusText[status]}
-              </div>
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent side="top" align="center" className="text-xs">
-            Last seen {formattedLastActive}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
-  
-  // Simple badge for online status or when no lastActive is available
   return (
     <Badge 
       variant="outline" 
@@ -132,7 +91,16 @@ export function OnlineStatusBadge({
     >
       <div className="flex items-center gap-1.5">
         <div className={cn("rounded-full w-2 h-2", statusColors[status])} />
-        {showText && statusText[status]}
+        {showText && (
+          <>
+            {statusText[status]}
+            {formattedLastActive && (
+              <span className="ml-1 text-xs opacity-80">
+                ({formattedLastActive})
+              </span>
+            )}
+          </>
+        )}
       </div>
     </Badge>
   );
