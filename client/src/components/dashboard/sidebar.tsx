@@ -98,8 +98,15 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
           variant="ghost"
           className="w-full justify-start"
           onClick={async () => {
-            await logout();
-            setLocation('/auth'); // Redirect to login/auth page after logout
+            try {
+              await logout();
+              // Use direct window location for more reliable redirection
+              window.location.href = '/auth';
+            } catch (error) {
+              console.error("Logout failed:", error);
+              // Still try to redirect even if logout API call fails
+              window.location.href = '/auth';
+            }
           }}
         >
           <LogOut size={20} className="mr-3" />
