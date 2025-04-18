@@ -52,6 +52,13 @@ const projectSchema = z.object({
     "automation",
     "social_media"
   ]),
+  category: z.enum([
+    "website_development",
+    "dpl_outright",
+    "dpl_partnership",
+    "direct_marketing",
+    "support_maintenance"
+  ]),
   clientType: z.enum(["existing", "new"]),
   clientId: z.number().optional(),
   clientEmail: z.string().email().optional(),
@@ -99,6 +106,7 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
         name: data.name,
         description: data.description,
         type: data.type,
+        category: data.category,
         // Ensure dates are properly formatted as ISO strings
         startDate: new Date(data.startDate).toISOString(),
         endDate: new Date(data.endDate).toISOString(),
@@ -196,6 +204,31 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
                   <SelectItem value="content_creation">Content Creation</SelectItem>
                   <SelectItem value="automation">Automation</SelectItem>
                   <SelectItem value="social_media">Social Media</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Project Category</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select project category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="website_development">Website Development</SelectItem>
+                  <SelectItem value="dpl_outright">DPL Outright</SelectItem>
+                  <SelectItem value="dpl_partnership">DPL Partnership</SelectItem>
+                  <SelectItem value="direct_marketing">Direct Marketing</SelectItem>
+                  <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

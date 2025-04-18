@@ -95,6 +95,60 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch project" });
     }
   });
+  
+  // Delete project (Project Manager only)
+  app.delete("/api/projects/:id", isProjectManager, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Verify the project exists and is managed by this PM
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(and(
+          eq(projects.id, projectId),
+          eq(projects.managerId, req.user!.id)
+        ))
+        .limit(1);
+      
+      if (!project) {
+        return res.status(404).json({ 
+          error: "Project not found or you don't have permission to delete it" 
+        });
+      }
+      
+      // First delete related records to avoid foreign key constraint errors
+      // Delete project members
+      await db
+        .delete(projectMembers)
+        .where(eq(projectMembers.projectId, projectId));
+        
+      // Delete project tasks
+      await db
+        .delete(tasks)
+        .where(eq(tasks.projectId, projectId));
+        
+      // Delete project messages
+      await db
+        .delete(messages)
+        .where(eq(messages.projectId, projectId));
+        
+      // Delete client invitations
+      await db
+        .delete(clientInvitations)
+        .where(eq(clientInvitations.projectId, projectId));
+        
+      // Finally delete the project
+      await db
+        .delete(projects)
+        .where(eq(projects.id, projectId));
+      
+      res.json({ message: "Project deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      res.status(500).json({ error: "Failed to delete project" });
+    }
+  });
 
   // Get project tasks
   app.get("/api/projects/:id/tasks", async (req, res) => {

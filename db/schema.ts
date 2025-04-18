@@ -63,6 +63,15 @@ export const projects = pgTable("projects", {
       "social_media"
     ]
   }).notNull(),
+  category: text("category", { 
+    enum: [
+      "website_development", 
+      "dpl_outright", 
+      "dpl_partnership", 
+      "direct_marketing", 
+      "support_maintenance"
+    ]
+  }),
   status: text("status", { enum: ["active", "inactive", "pending"] }).default("pending"),
   clientId: integer("client_id").references(() => users.id),
   pendingClientEmail: text("pending_client_email"),
