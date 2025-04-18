@@ -93,26 +93,26 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <>
-      <Card onClick={handleCardClick} className="cursor-pointer hover:shadow-lg transition-shadow">
-        <CardHeader className="pb-2">
+      <Card onClick={handleCardClick} className="cursor-pointer hover:shadow-lg transition-shadow h-full">
+        <CardHeader className="pb-0 pt-3 px-3">
           <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-semibold text-lg">{project.name}</h3>
-              <p className="text-sm text-muted-foreground">
+            <div className="flex-1 mr-2">
+              <h3 className="font-semibold text-base truncate" title={project.name}>{project.name}</h3>
+              <p className="text-xs text-muted-foreground">
                 {formatDate(project.startDate)} - {formatDate(project.endDate)}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 flex-shrink-0">
               {isProjectManager && (
                 <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                   <AlertDialogTrigger asChild>
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="icon"
                       onClick={handleDeleteClick}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 w-7"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -137,46 +137,41 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 </AlertDialog>
               )}
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
                 onClick={handleVideoClick}
+                className="h-7 w-7"
               >
-                <Video className="h-4 w-4" />
+                <Video className="h-3.5 w-3.5" />
               </Button>
               <Badge
                 variant="secondary"
-                className={statusColors[project.status as keyof typeof statusColors] || "bg-gray-500"}
+                className={`${statusColors[project.status as keyof typeof statusColors] || "bg-gray-500"} text-xs px-1.5 py-0.5`}
               >
                 {project.status}
               </Badge>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            {project.description || "No description available"}
-          </p>
+        <CardContent className="px-3 py-2">
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-xs">
               <span>Progress</span>
               <span>{project.progress || 0}%</span>
             </div>
-            <Progress value={project.progress || 0} />
+            <Progress value={project.progress || 0} className="h-1.5" />
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <div className="flex -space-x-2">
-            <Avatar className="border-2 border-background">
-              <AvatarFallback>JD</AvatarFallback>
+        <CardFooter className="flex justify-between p-3 pt-1">
+          <div className="flex -space-x-1.5">
+            <Avatar className="h-6 w-6 border-2 border-background">
+              <AvatarFallback className="text-xs">JD</AvatarFallback>
             </Avatar>
-            <Avatar className="border-2 border-background">
-              <AvatarFallback>AB</AvatarFallback>
-            </Avatar>
-            <Avatar className="border-2 border-background">
-              <AvatarFallback>+2</AvatarFallback>
+            <Avatar className="h-6 w-6 border-2 border-background">
+              <AvatarFallback className="text-xs">AB</AvatarFallback>
             </Avatar>
           </div>
-          <Badge variant="outline" className="ml-auto">
+          <Badge variant="outline" className="ml-auto text-xs px-1.5 py-0.5">
             {formatDate(project.updatedAt)}
           </Badge>
         </CardFooter>

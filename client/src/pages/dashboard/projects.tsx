@@ -44,15 +44,8 @@ export default function Projects() {
     return project.status === filter;
   });
   
-  // Set of expanded categories (initially all expanded)
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set([
-    'website_development',
-    'dpl_outright',
-    'dpl_partnership',
-    'direct_marketing',
-    'support_maintenance',
-    'uncategorized' // For projects without a category
-  ]));
+  // Set of expanded categories (initially all collapsed)
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   
   // Group projects by category
   const projectsByCategory = useMemo(() => {
@@ -145,21 +138,21 @@ export default function Projects() {
                     open={expandedCategories.has(category)} 
                     onOpenChange={() => toggleCategory(category)}
                   >
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 hover:bg-muted rounded-t-lg text-left">
-                      <h2 className="text-xl font-semibold flex items-center">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 hover:bg-muted rounded-t-lg text-left border-b border-border/50">
+                      <h2 className="text-lg font-semibold flex items-center">
                         {expandedCategories.has(category) ? 
-                          <ChevronDown className="mr-2 h-5 w-5" /> : 
-                          <ChevronRight className="mr-2 h-5 w-5" />
+                          <ChevronDown className="mr-2 h-4 w-4 text-primary" /> : 
+                          <ChevronRight className="mr-2 h-4 w-4 text-primary" />
                         }
                         {displayName}
                       </h2>
-                      <span className="bg-primary/10 text-primary rounded-full px-3 py-1 text-xs">
+                      <span className="bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-xs font-medium">
                         {projects.length} {projects.length === 1 ? 'project' : 'projects'}
                       </span>
                     </CollapsibleTrigger>
                     
                     <CollapsibleContent>
-                      <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                         {projects.map((project) => (
                           <ProjectCard key={project.id} project={project} />
                         ))}
