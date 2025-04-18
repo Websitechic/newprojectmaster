@@ -54,6 +54,7 @@ function Router() {
       <Route path="/dashboard/projects/:id" component={() => <PrivateRoute component={ProjectDetails} />} />
       <Route path="/dashboard/projects/:id/tasks" component={() => <PrivateRoute component={ProjectTasks} />} />
       <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />
+      <Route path="/dashboard/staff-report" component={() => <PrivateRoute component={StaffReport} />} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -40,7 +40,8 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   const { logout, user } = useUser();
   const [, setLocation] = useLocation();
 
-  const menuItems = [
+  // Base menu items for all users
+  const baseMenuItems = [
     {
       icon: <LayoutDashboard size={20} />,
       label: "Dashboard",
@@ -57,11 +58,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/tasks",
     },
     {
-      icon: <Users size={20} />,
-      label: "Team",
-      href: "/dashboard/team",
-    },
-    {
       icon: <MessageSquare size={20} />,
       label: "Messages",
       href: "/dashboard/messages",
@@ -71,6 +67,22 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Settings",
       href: "/dashboard/settings",
     },
+  ];
+  
+  // Project manager specific menu items
+  const pmMenuItems = user?.role === "project_manager" ? [
+    {
+      icon: <Users size={20} />,
+      label: "Staff Report",
+      href: "/dashboard/staff-report",
+    }
+  ] : [];
+  
+  // Combine menu items based on user role
+  const menuItems = [
+    ...baseMenuItems.slice(0, 3), // Dashboard, Projects, Tasks
+    ...pmMenuItems,               // Project manager specific items
+    ...baseMenuItems.slice(3)     // Messages, Settings
   ];
 
   return (

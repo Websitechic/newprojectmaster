@@ -83,16 +83,11 @@ export default function StaffReport() {
   const [filterSpecialization, setFilterSpecialization] = useState<string | null>(null);
   const [taskView, setTaskView] = useState<'active' | 'all'>('active');
 
-  const { data: staffReport, isLoading, error } = useQuery<StaffMember[]>({
+  const { data: staffReport, isLoading, error } = useQuery<StaffMember[], Error>({
     queryKey: ["/api/staff-report"],
     enabled: user?.role === "project_manager",
-    onError: (error: Error) => {
-      toast({
-        title: "Error loading staff report",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const filteredStaff = filterSpecialization
