@@ -35,7 +35,7 @@ const defaultTask: TaskFormData = {
   deadline: "",
 };
 
-export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId?: number }) {
+export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: number }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();

@@ -2,16 +2,33 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeEmailService } from "./services/email";
-import { setupVideoSocket } from "./video-socket";
+import { setupWebSocket } from "./websocket";
+import { WebSocketServer } from "ws";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { setupAuth } from "./auth";
+
+// Declare global SSE clients map
+declare global {
+  var sseClients: Map<number, Response>;
+  var connectedClients: Map<number, WebSocket>;
+}
+
+// Initialize global SSE clients map
+if (!global.sseClients) {
+  global.sseClients = new Map();
+}
+
+// Initialize global WebSocket clients map
+if (!global.connectedClients) {
+  global.connectedClients = new Map();
+}
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Session middleware setup
+// Session middleware setup with consistent configuration
 const MemoryStore = createMemoryStore(session);
 const sessionMiddleware = session({
   secret: process.env.REPL_ID || "your-secret-key",
@@ -21,14 +38,16 @@ const sessionMiddleware = session({
     checkPeriod: 86400000, // prune expired entries every 24h
   }),
   cookie: {
-    secure: app.get("env") === "production",
+    secure: process.env.NODE_ENV === "production",
     httpOnly: true,
     sameSite: "lax",
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     path: "/"
-  }
+  },
+  name: "session_id" // Custom session cookie name
 });
 
+// Apply session middleware
 app.use(sessionMiddleware);
 
 // Setup authentication after session middleware
@@ -38,29 +57,21 @@ setupAuth(app);
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-      log(logLine);
+      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
-
   next();
+});
+
+// Error handling middleware
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("Server Error:", err);
+  res.status(500).json({
+    error: app.get("env") === "development" ? err.message : "Internal Server Error"
+  });
 });
 
 let emailServiceInitialized = false;
@@ -74,7 +85,7 @@ let emailServiceInitialized = false;
       log("Initializing email service...");
       await Promise.race([
         initializeEmailService(),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error("Email service initialization timeout")), 5000)
         )
       ]);
@@ -88,19 +99,63 @@ let emailServiceInitialized = false;
     log("Setting up routes and server...");
     const server = registerRoutes(app);
 
-    // Make session available to WebSocket
+    // Setup WebSocket server
     log("Setting up WebSocket...");
-    const io = setupVideoSocket(server);
-    const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next);
-    io.use(wrap(sessionMiddleware));
-
-    // Error handling middleware
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error("Error:", err);
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ error: message });
+    const wss = new WebSocketServer({ 
+      noServer: true,
+      path: "/ws"
     });
+
+    // Handle upgrade events for WebSocket connections
+    server.on("upgrade", (request: any, socket, head) => {
+      const pathname = new URL(request.url || "", "http://localhost").pathname;
+
+      // Skip Vite HMR connections
+      if (request.headers["sec-websocket-protocol"]?.includes("vite-hmr")) {
+        socket.destroy();
+        return;
+      }
+
+      // Only handle our WebSocket path
+      if (pathname === "/ws") {
+        // Apply session middleware to the upgrade request
+        sessionMiddleware(request, {} as Response, async (err) => {
+          if (err) {
+            console.error("WebSocket session middleware error:", err);
+            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
+          console.log("WebSocket upgrade - Session:", request.session?.id);
+          console.log("WebSocket upgrade - User:", request.session?.passport?.user);
+
+          // Ensure authenticated
+          if (!request.session?.passport?.user) {
+            console.error("WebSocket upgrade - No authenticated user found");
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
+          try {
+            wss.handleUpgrade(request, socket, head, (ws) => {
+              // Attach user data to the WebSocket instance
+              (ws as any).userId = request.session.passport.user;
+              wss.emit("connection", ws, request);
+            });
+          } catch (error) {
+            console.error("WebSocket upgrade error:", error);
+            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+            socket.destroy();
+          }
+        });
+      } else {
+        socket.destroy();
+      }
+    });
+
+    setupWebSocket(wss);
 
     // Setup Vite or static serving
     if (app.get("env") === "development") {
@@ -111,33 +166,13 @@ let emailServiceInitialized = false;
       serveStatic(app);
     }
 
-    // Try to start the server on port 5000, if fails try next available port
-    const startServer = (port: number) => {
-      const MAX_PORT = 5010; // Don't try forever, set a reasonable limit
-      if (port > MAX_PORT) {
-        log(`Could not find an available port between 5000 and ${MAX_PORT}`);
-        process.exit(1);
+    // Start the server
+    server.listen(5000, "0.0.0.0", () => {
+      log(`Server started successfully on port 5000`);
+      if (!emailServiceInitialized) {
+        log("Note: Server is running without email service functionality");
       }
-
-      server.on('error', (e: any) => {
-        if (e.code === 'EADDRINUSE') {
-          log(`Port ${port} is in use, trying ${port + 1}`);
-          startServer(port + 1);
-        } else {
-          log(`Error starting server: ${e.message}`);
-          process.exit(1);
-        }
-      });
-
-      server.listen(port, "0.0.0.0", () => {
-        log(`Server started successfully on port ${port}`);
-        if (!emailServiceInitialized) {
-          log("Note: Server is running without email service functionality");
-        }
-      });
-    };
-
-    startServer(3000);
+    });
   } catch (error) {
     console.error("Fatal server initialization error:", error);
     process.exit(1);

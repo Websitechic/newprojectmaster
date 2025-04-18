@@ -117,7 +117,21 @@ export const performance = pgTable("performance", {
   date: timestamp("date").defaultNow(),
 });
 
-// Relations
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  type: text("type", { 
+    enum: ["task_assigned", "task_updated", "task_completed", "mention"] 
+  }).notNull(),
+  content: text("content").notNull(),
+  referenceId: integer("reference_id"),
+  referenceType: text("reference_type", { 
+    enum: ["task", "project", "message"] 
+  }),
+  read: boolean("read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const projectsRelations = relations(projects, ({ one, many }) => ({
   client: one(users, {
     fields: [projects.clientId],
@@ -185,6 +199,12 @@ export const clientInvitationsRelations = relations(clientInvitations, ({ one })
   }),
 }));
 
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
 
 // Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
@@ -197,6 +217,9 @@ export const insertProjectMemberSchema = createInsertSchema(projectMembers);
 export const selectProjectMemberSchema = createSelectSchema(projectMembers);
 export const insertClientInvitationSchema = createInsertSchema(clientInvitations);
 export const selectClientInvitationSchema = createSelectSchema(clientInvitations);
+export const insertNotificationSchema = createInsertSchema(notifications);
+export const selectNotificationSchema = createSelectSchema(notifications);
+
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -206,3 +229,4 @@ export type Message = typeof messages.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
 export type Performance = typeof performance.$inferSelect;
 export type ClientInvitation = typeof clientInvitations.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
