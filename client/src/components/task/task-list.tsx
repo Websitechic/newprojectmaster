@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { Link, useLocation } from "wouter";
 import {
   Table,
   TableBody,
@@ -35,7 +36,9 @@ const defaultTask: TaskFormData = {
   deadline: "",
 };
 
-export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: number }) {
+export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: number | 0 }) {
+  // If no project is selected (projectId is 0), disable creating new tasks
+  const canCreateTasks = projectId !== 0;
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -47,6 +50,12 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
     queryKey: ["/api/staff", projectId],
     refetchOnWindowFocus: true,
     enabled: !!user, // Only fetch if user is authenticated
+  });
+  
+  // Get project data to display project names when viewing all tasks
+  const { data: projects } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/projects"],
+    enabled: projectId === 0 && !!user, // Only fetch when showing all tasks
   });
 
   const handleEditClick = (task: Task) => {
@@ -210,7 +219,11 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <Button onClick={handleNewTask}>
+        <Button 
+          onClick={handleNewTask} 
+          disabled={!canCreateTasks}
+          title={!canCreateTasks ? "Select a project to create tasks" : ""}
+        >
           <Plus className="h-4 w-4 mr-2" />
           New Task
         </Button>
@@ -222,6 +235,7 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
             <TableRow>
               <TableHead>Title</TableHead>
               <TableHead>Description</TableHead>
+              {projectId === 0 && <TableHead>Project</TableHead>}
               <TableHead>Status</TableHead>
               <TableHead>Assignee</TableHead>
               <TableHead>Deadline</TableHead>
@@ -233,6 +247,16 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
               <TableRow key={task.id}>
                 <TableCell className="font-medium">{task.title}</TableCell>
                 <TableCell>{task.description}</TableCell>
+                {projectId === 0 && (
+                  <TableCell>
+                    <Link 
+                      to={`/dashboard/projects/${task.projectId}`}
+                      className="text-primary hover:underline"
+                    >
+                      {projects?.find(p => p.id === task.projectId)?.name || `Project #${task.projectId}`}
+                    </Link>
+                  </TableCell>
+                )}
                 <TableCell>
                   <Badge className={`bg-${task.status === 'completed' ? 'green' : task.status === 'in_progress' ? 'blue' : task.status === 'review' ? 'yellow' : 'gray'}-500`}>
                     {task.status?.replace('_', ' ') || 'todo'}

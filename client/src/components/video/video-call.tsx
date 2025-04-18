@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Video, VideoOff, Mic, MicOff, PhoneOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useUser } from "@/hooks/use-user";
+import { useAuth } from "@/hooks/use-auth";
 
 interface VideoCallProps {
   projectId: number;
@@ -19,7 +19,7 @@ export function VideoCall({ projectId, onClose }: VideoCallProps) {
   const [peers, setPeers] = useState<{ [key: string]: Peer.Instance }>({});
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
-  const { user } = useUser();
+  const { user } = useAuth();
   const { toast } = useToast();
   const localVideoRef = useRef<HTMLVideoElement>(null);
 

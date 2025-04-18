@@ -21,14 +21,14 @@ import {
 } from "@/components/ui/dialog";
 import { ProjectForm } from "@/components/project/project-form";
 import type { Project } from "@db/schema";
-import { useUser } from "@/hooks/use-user";
+import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 
 export default function Projects() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { user } = useUser();
+  const { user } = useAuth();
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
