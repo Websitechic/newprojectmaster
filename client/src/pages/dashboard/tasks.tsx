@@ -14,6 +14,7 @@ import {
 import type { Task, Project } from "@db/schema";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export default function Tasks() {
   const [location] = useLocation();
@@ -37,7 +38,16 @@ export default function Tasks() {
     enabled: !!user, // Only fetch if user is authenticated
   });
 
-  const filteredTasks = tasks?.filter((task: Task) => {
+  // Filter tasks based on the user's role
+  const userTasks = tasks?.filter((task: Task) => {
+    // For staff, only show tasks assigned to them
+    if (user?.role === "staff") {
+      return task.assigneeId === user.id;
+    }
+    return true; // Managers and clients see all tasks
+  });
+
+  const filteredTasks = userTasks?.filter((task: Task) => {
     if (filter === "all" && !selectedProject) return true;
     if (filter !== "all" && !selectedProject) return task.status === filter;
     if (filter === "all" && selectedProject) return task.projectId === parseInt(selectedProject);
@@ -63,7 +73,17 @@ export default function Tasks() {
         <Header />
         <div className="flex-1 overflow-auto p-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Tasks</h1>
+            <div>
+              <h1 className="text-2xl font-bold">Tasks</h1>
+              {user.role === "staff" && (
+                <p className="text-muted-foreground mt-1">
+                  Viewing your assigned tasks
+                  <Badge className="ml-2" variant="outline">
+                    {filteredTasks?.length || 0} tasks
+                  </Badge>
+                </p>
+              )}
+            </div>
             <div className="flex gap-4">
               <Select value={selectedProject} onValueChange={setSelectedProject}>
                 <SelectTrigger className="w-[200px]">
@@ -93,11 +113,37 @@ export default function Tasks() {
             </div>
           </div>
 
-          {selectedProject ? (
-            <TaskList tasks={filteredTasks || []} projectId={parseInt(selectedProject)} />
+          {filteredTasks && filteredTasks.length > 0 ? (
+            selectedProject ? (
+              <TaskList tasks={filteredTasks} projectId={parseInt(selectedProject)} />
+            ) : (
+              <div className="grid gap-4">
+                {filteredTasks.map(task => (
+                  <div key={task.id} className="border rounded-md p-4">
+                    <h3 className="font-medium">{task.title}</h3>
+                    <p className="text-sm text-muted-foreground">{task.description}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant={task.status === 'completed' ? 'default' : 'outline'}>
+                        {task.status === 'todo' ? 'Todo' : 
+                         task.status === 'in_progress' ? 'In Progress' :
+                         task.status === 'completed' ? 'Completed' :
+                         task.status === 'review' ? 'Review' : 'Todo'}
+                      </Badge>
+                      {task.projectId && projects?.find(p => p.id === task.projectId) && (
+                        <Badge variant="secondary">
+                          {projects?.find(p => p.id === task.projectId)?.name}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
             <div className="text-center text-muted-foreground mt-8">
-              Please select a project to manage tasks
+              {user.role === "staff" 
+                ? "You don't have any assigned tasks that match the current filters" 
+                : "No tasks found with the current filter settings"}
             </div>
           )}
         </div>

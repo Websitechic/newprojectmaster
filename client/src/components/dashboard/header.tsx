@@ -1,14 +1,12 @@
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
+import { useAuth } from "@/hooks/use-auth";
 
 export function Header() {
+  const { user } = useAuth();
+  const isStaff = user?.role === "staff";
+  
   return (
     <header className="h-16 border-b px-6 flex items-center justify-between">
       <div className="flex items-center flex-1 max-w-lg">
@@ -22,38 +20,13 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center">
-                3
-              </span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuItem className="cursor-pointer">
-              <div className="flex flex-col">
-                <p className="font-medium">New task assigned</p>
-                <p className="text-sm text-muted-foreground">
-                  John assigned you a new task
-                </p>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">
-              <div className="flex flex-col">
-                <p className="font-medium">Project update</p>
-                <p className="text-sm text-muted-foreground">
-                  Website redesign is 70% complete
-                </p>
-              </div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {isStaff && (
+          <div className="text-sm mr-4">
+            <span className="font-medium">Role:</span> 
+            <span className="ml-2 text-muted-foreground capitalize">{user?.role}</span>
+          </div>
+        )}
+        <NotificationsDropdown />
       </div>
     </header>
   );
