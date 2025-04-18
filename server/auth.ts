@@ -5,9 +5,9 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, type User as SelectUser } from "@db/schema";
+import { users, type User as SelectUser, UserStatus } from "@db/schema";
 import { db } from "@db";
-import { eq } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm";
 import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
@@ -116,17 +116,35 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
+    passport.authenticate("local", async (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
         return next(err);
       }
       if (!user) {
         return res.status(401).json({ message: info.message || "Authentication failed" });
       }
-      req.logIn(user, (err) => {
+      
+      // Login the user
+      req.logIn(user, async (err) => {
         if (err) {
           return next(err);
         }
+        
+        // Update user status to online and last active timestamp
+        try {
+          await db
+            .update(users)
+            .set({ 
+              status: UserStatus.ONLINE,
+              lastActive: new Date()
+            })
+            .where(eq(users.id, user.id));
+            
+          console.log(`User ${user.id} (${user.username}) is now online`);
+        } catch (error) {
+          console.error('Error updating user status on login:', error);
+        }
+        
         return res.json({ 
           message: "Login successful",
           user: {
@@ -140,7 +158,25 @@ export function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.post("/api/logout", (req, res, next) => {
+  app.post("/api/logout", async (req, res, next) => {
+    // First update the user's status to offline
+    if (req.isAuthenticated() && req.user) {
+      try {
+        await db
+          .update(users)
+          .set({ 
+            status: UserStatus.OFFLINE,
+            lastActive: new Date()
+          })
+          .where(eq(users.id, req.user.id));
+          
+        console.log(`User ${req.user.id} (${req.user.username}) is now offline`);
+      } catch (error) {
+        console.error('Error updating user status on logout:', error);
+      }
+    }
+    
+    // Then proceed with the normal logout
     req.logout((err) => {
       if (err) {
         return next(err);
@@ -197,7 +233,7 @@ export function setupAuth(app: Express) {
           role,
           name,
           email,
-          status: "offline",
+          status: UserStatus.ONLINE, // Set to online since they'll be logged in
         })
         .returning();
 

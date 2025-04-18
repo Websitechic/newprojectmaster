@@ -13,6 +13,7 @@ import {
   UserRole,
   WorkStatus,
   AbsenceReason,
+  UserStatus,
   clientInvitations,
   notifications
 } from "@db/schema";
@@ -761,6 +762,15 @@ export function registerRoutes(app: Express): Server {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no"); // Disable proxy buffering
+
+    // Update user's last active time and status
+    db.update(users)
+      .set({ 
+        lastActive: new Date(),
+        status: UserStatus.ONLINE 
+      })
+      .where(eq(users.id, req.user!.id))
+      .catch(err => console.error("Error updating user activity status:", err));
 
     // Send initial connection message
     res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
