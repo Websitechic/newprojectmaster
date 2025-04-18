@@ -30,6 +30,12 @@ export const AbsenceReason = {
   NOT_APPLICABLE: "not_applicable",
 } as const;
 
+export const UserStatus = {
+  ONLINE: "online",
+  OFFLINE: "offline",
+  IDLE: "idle",
+} as const;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
@@ -40,7 +46,7 @@ export const users = pgTable("users", {
   specialization: text("specialization", { 
     enum: Object.values(UserSpecialization) 
   }),
-  status: text("status").default("offline"),
+  status: text("status", { enum: Object.values(UserStatus) }).default(UserStatus.OFFLINE),
   workStatus: text("work_status", { 
     enum: Object.values(WorkStatus)
   }).default(WorkStatus.ACTIVE),
