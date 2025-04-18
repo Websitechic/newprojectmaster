@@ -93,17 +93,11 @@ export default function Tasks() {
             </div>
           </div>
 
-          {filteredTasks && filteredTasks.length > 0 ? (
-            <TaskList 
-              tasks={filteredTasks} 
-              projectId={selectedProject ? parseInt(selectedProject) : 0} 
-            />
+          {selectedProject ? (
+            <TaskList tasks={filteredTasks || []} projectId={parseInt(selectedProject)} />
           ) : (
             <div className="text-center text-muted-foreground mt-8">
-              {tasks && tasks.length > 0 
-                ? "No tasks match your current filters" 
-                : "No tasks found. Select a project and create your first task!"
-              }
+              Please select a project to manage tasks
             </div>
           )}
         </div>

@@ -7,13 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectCard } from "@/components/project/project-card";
 import { TaskList } from "@/components/task/task-list";
 import { ChatWindow } from "@/components/chat/chat-window";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { useWebSocket } from "@/hooks/use-websocket";
 import type { Project, Task } from "@db/schema";
 
 export default function Dashboard() {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user } = useUser();
   const { updateStatus } = useWebSocket(user?.id);
 
   const { data: projects } = useQuery<Project[]>({

@@ -9,7 +9,7 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 
 interface SidebarItemProps {
@@ -37,7 +37,7 @@ function SidebarItem({ icon, label, href, active }: SidebarItemProps) {
 }
 
 export function Sidebar({ currentPath }: { currentPath: string }) {
-  const { logoutMutation, user } = useAuth();
+  const { logout, user } = useUser();
 
   const menuItems = [
     {
@@ -96,7 +96,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
         <Button
           variant="ghost"
           className="w-full justify-start"
-          onClick={() => logoutMutation.mutate()}
+          onClick={() => logout()}
         >
           <LogOut size={20} className="mr-3" />
           Logout

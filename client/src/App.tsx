@@ -10,7 +10,6 @@ import Projects from "@/pages/dashboard/projects";
 import ProjectDetails from "@/pages/dashboard/project-details";
 import ProjectTasks from "@/pages/dashboard/project-tasks";
 import Tasks from "@/pages/dashboard/tasks";
-import { ErrorLogger } from "./debug/ErrorLogger";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -64,7 +63,6 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ErrorLogger /> {/* Add the error logger to capture unhandled errors */}
         <Router />
         <Toaster />
       </AuthProvider>
