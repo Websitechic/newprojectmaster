@@ -11,6 +11,8 @@ import {
   performance,
   users,
   UserRole,
+  WorkStatus,
+  AbsenceReason,
   clientInvitations,
   notifications
 } from "@db/schema";

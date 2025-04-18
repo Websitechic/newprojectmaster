@@ -32,7 +32,20 @@ import {
   AccordionTrigger
 } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Users, ClipboardList, AlertCircle } from "lucide-react";
+import { 
+  Loader2, 
+  Users, 
+  ClipboardList, 
+  AlertCircle, 
+  Clock, 
+  Coffee, 
+  CalendarDays,
+  CheckCircle2,
+  Calendar,
+  TimerOff, 
+  TimerReset,
+  Play
+} from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface StaffMember {
@@ -41,11 +54,35 @@ interface StaffMember {
   username: string;
   email: string;
   specialization: string | null;
-  lastActive: string;
   status: string;
+  workStatus: 'active' | 'on_break' | 'absent';
+  breakStartTime: string | null;
+  breakCount: number;
+  absenceReason: 'leave' | 'off_day' | 'not_applicable' | null;
+  absenceEndDate: string | null;
+  currentTaskId: number | null;
+  taskStartTime: string | null;
+  lastActive: string;
   tasks: Task[];
   taskCount: number;
   activeTasks: number;
+  currentTask?: {
+    staffId: number;
+    taskId: number;
+    taskTitle: string;
+    projectId: number;
+    projectName: string;
+    startTime: string | null;
+    hoursWorked: number;
+  } | null;
+  breakInfo?: {
+    staffId: number;
+    breakStartTime: string;
+    breakDuration: number;
+    breakCount: number;
+    breakOvertime: boolean;
+  } | null;
+  absentDaysRemaining: number | null;
 }
 
 interface Task {
@@ -75,6 +112,24 @@ const specializationLabels: Record<string, string> = {
   media_buyer: "Media Buyer",
   automation_expert: "Automation Expert",
   marketing_specialist: "Marketing Specialist"
+};
+
+const workStatusLabels: Record<string, string> = {
+  active: "Active",
+  on_break: "On Break",
+  absent: "Absent"
+};
+
+const absenceReasonLabels: Record<string, string> = {
+  leave: "On Leave",
+  off_day: "Off Day",
+  not_applicable: "N/A"
+};
+
+const workStatusColors: Record<string, string> = {
+  active: "bg-green-100 text-green-800 border-green-300",
+  on_break: "bg-amber-100 text-amber-800 border-amber-300",
+  absent: "bg-red-100 text-red-800 border-red-300"
 };
 
 export default function StaffReport() {
@@ -125,6 +180,11 @@ export default function StaffReport() {
   // Get unique specializations from staff members
   const specializations = [...new Set(staffReport.map(member => member.specialization).filter(Boolean))];
 
+  // Group staff by work status
+  const activeStaff = filteredStaff?.filter(staff => staff.workStatus === 'active') || [];
+  const onBreakStaff = filteredStaff?.filter(staff => staff.workStatus === 'on_break') || [];
+  const absentStaff = filteredStaff?.filter(staff => staff.workStatus === 'absent') || [];
+
   return (
     <div className="p-6">
       <div className="flex flex-col space-y-6">
@@ -132,7 +192,7 @@ export default function StaffReport() {
           <div>
             <h1 className="text-2xl font-bold">Staff Report</h1>
             <p className="text-muted-foreground mt-1">
-              Overview of all staff members and their current tasks
+              Real-time monitoring of staff activity and task status
             </p>
           </div>
           <div className="flex items-center space-x-3">
@@ -152,151 +212,296 @@ export default function StaffReport() {
                 ))}
               </SelectContent>
             </Select>
-
-            <Tabs defaultValue="active" className="w-[200px]">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger 
-                  value="active" 
-                  onClick={() => setTaskView('active')}
-                >
-                  Active Tasks
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="all" 
-                  onClick={() => setTaskView('all')}
-                >
-                  All Tasks
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6">
+          {/* Summary Card */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-md">Staff Summary</CardTitle>
+              <CardTitle className="text-md">Staff Status Overview</CardTitle>
               <CardDescription>
-                {filteredStaff?.length} staff members | {filteredStaff?.reduce((sum, staff) => sum + staff.activeTasks, 0)} active tasks
+                {activeStaff.length} staff active | {onBreakStaff.length} on break | {absentStaff.length} absent
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Specialization</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead className="text-center">Active Tasks</TableHead>
-                    <TableHead className="text-center">Total Tasks</TableHead>
-                    <TableHead className="text-right">Last Active</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredStaff?.map((staff) => (
-                    <TableRow key={staff.id}>
-                      <TableCell className="font-medium">{staff.name}</TableCell>
-                      <TableCell>
-                        {staff.specialization ? (
-                          <Badge variant="outline">
-                            {specializationLabels[staff.specialization] || staff.specialization}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">Not specified</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{staff.email}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge 
-                          variant={staff.activeTasks > 0 ? "default" : "outline"}
-                          className={staff.activeTasks > 3 ? "bg-amber-500" : ""}
-                        >
-                          {staff.activeTasks}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">{staff.taskCount}</TableCell>
-                      <TableCell className="text-right text-muted-foreground text-xs">
-                        {formatDate(staff.lastActive)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="rounded-md border border-green-300 bg-green-50 p-3">
+                  <div className="flex items-center gap-2">
+                    <Play className="h-4 w-4 text-green-700" />
+                    <h3 className="text-sm font-medium text-green-800">Currently Engaged</h3>
+                  </div>
+                  <p className="mt-1 text-2xl font-bold text-green-800">{activeStaff.length}</p>
+                  <p className="text-xs text-green-700">Staff actively working on tasks</p>
+                </div>
+                
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
+                  <div className="flex items-center gap-2">
+                    <Coffee className="h-4 w-4 text-amber-700" />
+                    <h3 className="text-sm font-medium text-amber-800">On Break</h3>
+                  </div>
+                  <p className="mt-1 text-2xl font-bold text-amber-800">{onBreakStaff.length}</p>
+                  <p className="text-xs text-amber-700">
+                    {onBreakStaff.filter(s => s.breakInfo?.breakOvertime).length > 0 ? 
+                      `${onBreakStaff.filter(s => s.breakInfo?.breakOvertime).length} exceeding break time` : 
+                      'All breaks within allowed time'}
+                  </p>
+                </div>
+                
+                <div className="rounded-md border border-red-300 bg-red-50 p-3">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-red-700" />
+                    <h3 className="text-sm font-medium text-red-800">Absent</h3>
+                  </div>
+                  <p className="mt-1 text-2xl font-bold text-red-800">{absentStaff.length}</p>
+                  <p className="text-xs text-red-700">
+                    {absentStaff.filter(s => s.absenceReason === 'leave').length} on leave, 
+                    {absentStaff.filter(s => s.absenceReason === 'off_day').length} off day
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-md">Staff Task Details</CardTitle>
-              <CardDescription>
-                Detailed breakdown of tasks assigned to each staff member
-              </CardDescription>
+          {/* Active Staff Section */}
+          <Card className="border-green-200">
+            <CardHeader className="pb-2 border-b border-green-100">
+              <div className="flex items-center">
+                <div className="bg-green-100 p-1.5 rounded-full mr-2">
+                  <Play className="h-5 w-5 text-green-700" />
+                </div>
+                <div>
+                  <CardTitle className="text-md">Currently Engaged Staff</CardTitle>
+                  <CardDescription>
+                    {activeStaff.length} staff members actively working on projects
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <Accordion type="multiple" className="w-full">
-                {filteredStaff?.map((staff) => {
-                  const displayTasks = taskView === 'active' 
-                    ? staff.tasks.filter(task => task.status !== 'completed')
-                    : staff.tasks;
-                    
-                  return (
-                    <AccordionItem key={staff.id} value={`staff-${staff.id}`}>
-                      <AccordionTrigger className="hover:no-underline px-4">
-                        <div className="flex justify-between w-full">
-                          <span>{staff.name}</span>
-                          <span className="text-muted-foreground text-sm">
-                            {taskView === 'active' ? staff.activeTasks : staff.taskCount} tasks
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-1">
-                        {displayTasks.length > 0 ? (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Task</TableHead>
-                                <TableHead>Project</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Deadline</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {displayTasks.map((task) => (
-                                <TableRow key={task.id}>
-                                  <TableCell className="font-medium">{task.title}</TableCell>
-                                  <TableCell>{task.projectName}</TableCell>
-                                  <TableCell>
-                                    <Badge 
-                                      variant="secondary"
-                                      className={statusColors[task.status] || ""}
-                                    >
-                                      {task.status.replace('_', ' ')}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {formatDate(task.deadline)}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        ) : (
-                          <div className="flex items-center justify-center py-8">
-                            <div className="flex flex-col items-center text-center">
-                              <ClipboardList className="h-8 w-8 text-muted-foreground mb-2" />
-                              <p className="text-sm text-muted-foreground">
-                                {taskView === 'active' 
-                                  ? 'No active tasks assigned'
-                                  : 'No tasks assigned'}
-                              </p>
-                            </div>
+            <CardContent className="pt-4">
+              {activeStaff.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff Member</TableHead>
+                      <TableHead>Current Project</TableHead>
+                      <TableHead>Current Task</TableHead>
+                      <TableHead className="text-center">Hours Worked</TableHead>
+                      <TableHead className="text-right">Start Time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activeStaff.map((staff) => (
+                      <TableRow key={staff.id}>
+                        <TableCell>
+                          <div className="font-medium">{staff.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {staff.specialization ? specializationLabels[staff.specialization] : 'No specialization'}
                           </div>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
+                        </TableCell>
+                        <TableCell>
+                          {staff.currentTask ? (
+                            <div>{staff.currentTask.projectName}</div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No active project</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {staff.currentTask ? (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
+                              {staff.currentTask.taskTitle}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No active task</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {staff.currentTask?.hoursWorked ? (
+                            <div className="font-medium">
+                              {staff.currentTask.hoursWorked.toFixed(2)} hrs
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">N/A</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          {staff.taskStartTime ? formatDate(staff.taskStartTime, "h:mm a") : "N/A"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="bg-green-50 p-3 rounded-full mb-3">
+                    <CheckCircle2 className="h-6 w-6 text-green-500" />
+                  </div>
+                  <h3 className="text-md font-medium mb-1">No Active Staff</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    There are currently no staff members actively engaged in tasks.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* On Break Staff Section */}
+          <Card className="border-amber-200">
+            <CardHeader className="pb-2 border-b border-amber-100">
+              <div className="flex items-center">
+                <div className="bg-amber-100 p-1.5 rounded-full mr-2">
+                  <Coffee className="h-5 w-5 text-amber-700" />
+                </div>
+                <div>
+                  <CardTitle className="text-md">Staff On Break</CardTitle>
+                  <CardDescription>
+                    {onBreakStaff.length} staff members currently on break
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {onBreakStaff.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff Member</TableHead>
+                      <TableHead>Break Started</TableHead> 
+                      <TableHead className="text-center">Duration</TableHead>
+                      <TableHead className="text-center">Daily Breaks</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {onBreakStaff.map((staff) => (
+                      <TableRow key={staff.id}>
+                        <TableCell>
+                          <div className="font-medium">{staff.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {staff.specialization ? specializationLabels[staff.specialization] : 'No specialization'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {staff.breakInfo?.breakStartTime ? (
+                            formatDate(staff.breakInfo.breakStartTime, "h:mm a")
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Unknown</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {staff.breakInfo?.breakDuration ? (
+                            <div className={`font-medium ${staff.breakInfo.breakOvertime ? 'text-red-600' : 'text-amber-700'}`}>
+                              {staff.breakInfo.breakDuration} mins
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">N/A</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-800">
+                            {staff.breakCount}/{staff.breakCount >= 2 ? '2 (max)' : '2'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {staff.breakInfo?.breakOvertime ? (
+                            <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-100">
+                              Overtime
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-green-50 text-green-800 border-green-200">
+                              Within limit
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="bg-amber-50 p-3 rounded-full mb-3">
+                    <TimerReset className="h-6 w-6 text-amber-500" />
+                  </div>
+                  <h3 className="text-md font-medium mb-1">No Staff On Break</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    There are currently no staff members on break.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Absent Staff Section */}
+          <Card className="border-red-200">
+            <CardHeader className="pb-2 border-b border-red-100">
+              <div className="flex items-center">
+                <div className="bg-red-100 p-1.5 rounded-full mr-2">
+                  <Calendar className="h-5 w-5 text-red-700" />
+                </div>
+                <div>
+                  <CardTitle className="text-md">Absent Staff</CardTitle>
+                  <CardDescription>
+                    {absentStaff.length} staff members currently absent
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {absentStaff.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff Member</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead className="text-center">Days Remaining</TableHead>
+                      <TableHead className="text-right">Expected Return</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {absentStaff.map((staff) => (
+                      <TableRow key={staff.id}>
+                        <TableCell>
+                          <div className="font-medium">{staff.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {staff.specialization ? specializationLabels[staff.specialization] : 'No specialization'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-red-50 border-red-200 text-red-800">
+                            {staff.absenceReason ? absenceReasonLabels[staff.absenceReason] : 'Unknown'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {staff.absentDaysRemaining !== null ? (
+                            <div className="font-medium">
+                              {staff.absentDaysRemaining} {staff.absentDaysRemaining === 1 ? 'day' : 'days'}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Unspecified</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {staff.absenceEndDate ? (
+                            formatDate(staff.absenceEndDate, "MMM d, yyyy")
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Not specified</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="bg-red-50 p-3 rounded-full mb-3">
+                    <TimerOff className="h-6 w-6 text-red-500" />
+                  </div>
+                  <h3 className="text-md font-medium mb-1">No Absent Staff</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    There are currently no staff members absent.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
