@@ -1,5 +1,6 @@
-import { Express, Response, Request, NextFunction } from "express";
+import { Express, Response, NextFunction } from "express";
 import { createServer, Server } from "http";
+import { WebSocketServer } from "ws";
 import { setupWebSocket } from "./websocket";
 import { setupAuth } from "./auth";
 import { db } from "@db";
@@ -11,23 +12,18 @@ import {
   performance,
   users,
   UserRole,
-  clientInvitations,
-  notifications
+  clientInvitations
 } from "@db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
+import { randomBytes } from "crypto";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
-  console.log("Auth check - Session:", req.session?.id);
-  console.log("Auth check - User:", req.user);
-
   if (!req.isAuthenticated()) {
-    console.log("Authentication failed - no valid session");
     return res.status(401).send("Not authenticated");
   }
 
   if (req.user!.role !== UserRole.PROJECT_MANAGER) {
-    console.log("Authorization failed - not a project manager");
     return res.status(403).send("Only project managers can perform this action");
   }
 
@@ -38,6 +34,8 @@ export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
   const server = createServer(app);
+  const wss = new WebSocketServer({ server, path: "/ws" });
+  setupWebSocket(wss);
 
   // Get available clients (for project managers)
   app.get("/api/clients", isProjectManager, async (req, res) => {
@@ -347,11 +345,7 @@ export function registerRoutes(app: Express): Server {
 
   // Tasks
   app.get("/api/tasks", async (req, res) => {
-    console.log("GET /api/tasks - Session:", req.session?.id);
-    console.log("GET /api/tasks - User:", req.user);
-
     if (!req.isAuthenticated()) {
-      console.log("Tasks endpoint - Authentication failed");
       return res.status(401).send("Not authenticated");
     }
 
@@ -437,40 +431,15 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // If there's an assignee, create a notification with enhanced content
+      // Send notification through WebSocket if there's an assignee
       if (newTask.assigneeId) {
-        try {
-          const [notification] = await db
-            .insert(notifications)
-            .values({
-              userId: newTask.assigneeId,
-              type: "task_assigned",
-              content: `${req.user!.name} has assigned you a new task: ${newTask.title}`,
-              referenceId: newTask.id,
-              referenceType: "task",
-              createdAt: new Date(),
-            })
-            .returning();
-
-          // Send notification through SSE if user is connected
-          const clientResponse = global.sseClients?.get(newTask.assigneeId);
-          if (clientResponse && !clientResponse.writableEnded) {
-            try {
-              clientResponse.write(`data: ${JSON.stringify({
-                type: "notification",
-                data: notification
-              })}\n\n`);
-              console.log(`Notification sent to user ${newTask.assigneeId} via SSE`);
-            } catch (error) {
-              console.error(`Error sending SSE notification to user ${newTask.assigneeId}:`, error);
-              // Remove the client if there was an error sending
-              global.sseClients.delete(newTask.assigneeId);
-            }
-          } else {
-            console.log(`User ${newTask.assigneeId} not connected via SSE`);
-          }
-        } catch (error) {
-          console.error("Error creating or sending notification:", error);
+        const ws = global.connectedClients?.get(newTask.assigneeId);
+        if (ws) {
+          ws.send(JSON.stringify({
+            type: "notification",
+            message: `You have been assigned a new task: ${newTask.title}`,
+            task: newTask,
+          }));
         }
       }
 
@@ -504,15 +473,25 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      // Verify task exists
+      // Verify task exists and belongs to a project managed by the current user
       const [existingTask] = await db
-        .select()
+        .select({
+          task: tasks,
+          project: {
+            managerId: projects.managerId
+          }
+        })
         .from(tasks)
+        .innerJoin(projects, eq(tasks.projectId, projects.id))
         .where(eq(tasks.id, taskId))
         .limit(1);
 
       if (!existingTask) {
         return res.status(404).json({ error: "Task not found" });
+      }
+
+      if (existingTask.project.managerId !== req.user!.id) {
+        return res.status(403).json({ error: "Not authorized to update this task" });
       }
 
       // Update the task
@@ -529,141 +508,62 @@ export function registerRoutes(app: Express): Server {
         .where(eq(tasks.id, taskId))
         .returning();
 
-      // If assignee has changed, create a notification
-      if (updatedTask.assigneeId && updatedTask.assigneeId !== existingTask.assigneeId) {
-        const [notification] = await db
-          .insert(notifications)
-          .values({
-            userId: updatedTask.assigneeId,
-            type: "task_assigned",
-            content: `You have been assigned to task: ${updatedTask.title}`,
-            referenceId: updatedTask.id,
-            referenceType: "task",
-            createdAt: new Date(),
-          })
-          .returning();
+      if (!updatedTask) {
+        return res.status(500).json({ error: "Failed to update task" });
+      }
 
-        // Send notification through WebSocket if user is connected
+      // Send notification through WebSocket if there's an assignee change
+      if (updatedTask.assigneeId && updatedTask.assigneeId !== existingTask.task.assigneeId) {
         const ws = global.connectedClients?.get(updatedTask.assigneeId);
-        if (ws && ws.readyState === WebSocket.OPEN) {
+        if (ws) {
           ws.send(JSON.stringify({
             type: "notification",
-            data: notification
+            message: `You have been assigned to task: ${updatedTask.title}`,
+            task: updatedTask,
           }));
         }
       }
 
-      return res.json({
+      return res.json({ 
         success: true,
-        task: updatedTask
+        task: updatedTask 
       });
     } catch (error) {
       console.error("Error updating task:", error);
-      return res.status(500).json({
+      return res.status(500).json({ 
         error: "Failed to update task",
         details: error instanceof Error ? error.message : String(error)
       });
     }
   });
 
-  // Add new endpoints for notifications
-  // Add SSE endpoint with proper error handling
-  app.get("/api/notifications/stream", (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    // Set headers for SSE
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no"); // Disable proxy buffering
-
-    // Send initial connection message
-    res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
-
-    // Store the response object in a Map keyed by user ID
-    const userId = req.user!.id;
-    if (!global.sseClients) {
-      global.sseClients = new Map();
-    }
-    global.sseClients.set(userId, res);
-
-    // Handle client disconnect
-    req.on("close", () => {
-      global.sseClients.delete(userId);
-      console.log(`SSE connection closed for user ${userId}`);
-    });
-
-    // Handle errors
-    req.on("error", (error) => {
-      console.error(`SSE error for user ${userId}:`, error);
-      global.sseClients.delete(userId);
-      res.end();
-    });
-
-    // Keep connection alive
-    const keepAlive = setInterval(() => {
-      if (res.writableEnded) {
-        clearInterval(keepAlive);
-        return;
-      }
-      res.write(": keepalive\n\n");
-    }, 30000);
-
-    // Cleanup on connection close
-    req.on("close", () => {
-      clearInterval(keepAlive);
-    });
-  });
-
-
-  // Get user notifications
-  app.get("/api/notifications", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+  // Update task status/progress (Staff only)
+  app.put("/api/tasks/:id/progress", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "staff") {
+      return res.status(403).send("Only staff members can update task progress");
     }
 
     try {
-      const userNotifications = await db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.userId, req.user!.id))
-        .orderBy(desc(notifications.createdAt));
+      const taskId = parseInt(req.params.id);
+      const { status, progress } = req.body;
 
-      res.json(userNotifications);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-      res.status(500).json({ error: "Failed to fetch notifications" });
-    }
-  });
-
-  // Mark notification as read
-  app.put("/api/notifications/:id/read", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    try {
-      const notificationId = parseInt(req.params.id);
-
-      const [updatedNotification] = await db
-        .update(notifications)
-        .set({ read: true })
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          status,
+          progress,
+          updatedAt: new Date()
+        })
         .where(and(
-          eq(notifications.id, notificationId),
-          eq(notifications.userId, req.user!.id)
+          eq(tasks.id, taskId),
+          eq(tasks.assigneeId, req.user!.id)
         ))
         .returning();
 
-      if (!updatedNotification) {
-        return res.status(404).json({ error: "Notification not found" });
-      }
-
-      res.json(updatedNotification);
+      res.json(updatedTask);
     } catch (error) {
-      console.error("Error marking notification as read:", error);
-      res.status(500).json({ error: "Failed to update notification" });
+      console.error("Error updating task:", error);
+      res.status(500).json({ error: "Failed to update task" });
     }
   });
 
@@ -773,159 +673,6 @@ export function registerRoutes(app: Express): Server {
       .limit(7);
 
     res.json(userPerformance);
-  });
-
-  // Timesheet endpoints
-  app.post("/api/timesheet/clock-in", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    try {
-      const now = new Date();
-      const dayOfWeek = now.getDay();
-      
-      // Validate working hours
-      const hour = now.getHours();
-      const minutes = now.getMinutes();
-      const timeValue = hour + minutes/60;
-      
-      if (dayOfWeek === 1 && (timeValue < 8.25)) { // Monday
-        return res.status(400).json({ error: "Too early - work starts at 8:15 AM on Mondays" });
-      } else if (dayOfWeek >= 2 && dayOfWeek <= 5 && timeValue < 9) { // Tue-Fri
-        return res.status(400).json({ error: "Too early - work starts at 9:00 AM" });
-      } else if (dayOfWeek === 0 || dayOfWeek === 6) {
-        return res.status(400).json({ error: "Not a working day" });
-      }
-
-      const [timesheet] = await db
-        .insert(timesheets)
-        .values({
-          userId: req.user!.id,
-          clockIn: now,
-          dayOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek],
-          status: "active"
-        })
-        .returning();
-
-      res.json(timesheet);
-    } catch (error) {
-      console.error("Error clocking in:", error);
-      res.status(500).json({ error: "Failed to clock in" });
-    }
-  });
-
-  app.post("/api/timesheet/clock-out", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    try {
-      const [timesheet] = await db
-        .update(timesheets)
-        .set({
-          clockOut: new Date(),
-          status: "completed",
-          updatedAt: new Date()
-        })
-        .where(and(
-          eq(timesheets.userId, req.user!.id),
-          eq(timesheets.status, "active")
-        ))
-        .returning();
-
-      res.json(timesheet);
-    } catch (error) {
-      console.error("Error clocking out:", error);
-      res.status(500).json({ error: "Failed to clock out" });
-    }
-  });
-
-  app.post("/api/timesheet/break", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    try {
-      const activeTimesheet = await db
-        .select()
-        .from(timesheets)
-        .where(and(
-          eq(timesheets.userId, req.user!.id),
-          eq(timesheets.status, "active")
-        ))
-        .limit(1);
-
-      if (!activeTimesheet.length) {
-        return res.status(400).json({ error: "No active timesheet found" });
-      }
-
-      const timesheet = activeTimesheet[0];
-      const now = new Date();
-      let update: any = {};
-
-      if (!timesheet.breakStart1) {
-        update.breakStart1 = now;
-      } else if (!timesheet.breakEnd1) {
-        update.breakEnd1 = now;
-        const breakMinutes = Math.round((now.getTime() - timesheet.breakStart1.getTime()) / 60000);
-        update.totalBreakTime = breakMinutes;
-      } else if (!timesheet.breakStart2) {
-        if (timesheet.totalBreakTime >= 60) {
-          return res.status(400).json({ error: "First break was 1 hour or longer" });
-        }
-        update.breakStart2 = now;
-      } else if (!timesheet.breakEnd2) {
-        update.breakEnd2 = now;
-        const breakMinutes = Math.round((now.getTime() - timesheet.breakStart2.getTime()) / 60000);
-        update.totalBreakTime = timesheet.totalBreakTime + breakMinutes;
-      }
-
-      const [updatedTimesheet] = await db
-        .update(timesheets)
-        .set(update)
-        .where(eq(timesheets.id, timesheet.id))
-        .returning();
-
-      res.json(updatedTimesheet);
-    } catch (error) {
-      console.error("Error managing break:", error);
-      res.status(500).json({ error: "Failed to manage break" });
-    }
-  });
-
-  // Project manager endpoints
-  app.get("/api/timesheet/reports", isProjectManager, async (req, res) => {
-    try {
-      const { startDate, endDate, userId } = req.query;
-      
-      let query = db
-        .select({
-          timesheet: timesheets,
-          user: {
-            id: users.id,
-            name: users.name
-          }
-        })
-        .from(timesheets)
-        .innerJoin(users, eq(users.id, timesheets.userId));
-
-      if (startDate) {
-        query = query.where(gte(timesheets.clockIn, new Date(startDate as string)));
-      }
-      if (endDate) {
-        query = query.where(lte(timesheets.clockIn, new Date(endDate as string)));
-      }
-      if (userId) {
-        query = query.where(eq(timesheets.userId, parseInt(userId as string)));
-      }
-
-      const records = await query.orderBy(desc(timesheets.clockIn));
-      res.json(records);
-    } catch (error) {
-      console.error("Error fetching timesheet reports:", error);
-      res.status(500).json({ error: "Failed to fetch reports" });
-    }
   });
 
   return server;

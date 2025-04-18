@@ -46,44 +46,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useQuery<User | null>({
     queryKey: ["/api/user"],
     queryFn: async () => {
-      try {
-        const res = await fetch("/api/user", {
-          credentials: "include",
-          headers: {
-            "Accept": "application/json",
-          }
-        });
-
-        if (res.status === 401) return null;
-        if (!res.ok) throw new Error("Failed to fetch user");
-
-        return res.json();
-      } catch (err) {
-        console.error("Error fetching user:", err);
-        return null;
-      }
+      const res = await fetch("/api/user", {
+        credentials: "include"
+      });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Failed to fetch user");
+      return res.json();
     },
-    retry: false,
-    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       const res = await fetch("/api/login", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
         credentials: "include"
       });
-
       if (!res.ok) {
         const error = await res.text();
-        throw new Error(error || "Login failed");
+        throw new Error(error);
       }
-
       return res.json();
     },
     onSuccess: (data) => {
@@ -94,10 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
-      console.error("Login error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to login",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -107,19 +89,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (data: RegisterData) => {
       const res = await fetch("/api/register", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include"
       });
-
       if (!res.ok) {
         const error = await res.text();
-        throw new Error(error || "Registration failed");
+        throw new Error(error);
       }
-
       return res.json();
     },
     onSuccess: (data) => {
@@ -130,10 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
-      console.error("Registration error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to register",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -143,27 +119,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async () => {
       const res = await fetch("/api/logout", { 
         method: "POST",
-        credentials: "include",
-        headers: {
-          "Accept": "application/json"
-        }
+        credentials: "include"
       });
-
       if (!res.ok) throw new Error("Failed to logout");
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
-      queryClient.clear(); // Clear all queries on logout
       toast({
         title: "Success",
         description: "Successfully logged out",
       });
     },
     onError: (error: Error) => {
-      console.error("Logout error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to logout",
+        description: error.message,
         variant: "destructive",
       });
     },
