@@ -23,7 +23,7 @@ function PrivateRoute({ component: Component, ...rest }: any) {
   }
 
   if (!user) {
-    return <Redirect to="/" />;
+    return <Redirect to="/auth" />;
   }
 
   return <Component {...rest} />;
@@ -40,14 +40,13 @@ function Router() {
     );
   }
 
-  if (!user) {
-    return <AuthPage />;
-  }
-
   return (
     <Switch>
+      <Route path="/auth">
+        {user ? <Redirect to="/dashboard" /> : <AuthPage />}
+      </Route>
       <Route path="/">
-        <Redirect to="/dashboard" />
+        {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
       </Route>
       <Route path="/dashboard" component={() => <PrivateRoute component={Dashboard} />} />
       <Route path="/dashboard/projects" component={() => <PrivateRoute component={Projects} />} />

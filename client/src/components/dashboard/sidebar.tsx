@@ -38,6 +38,7 @@ function SidebarItem({ icon, label, href, active }: SidebarItemProps) {
 
 export function Sidebar({ currentPath }: { currentPath: string }) {
   const { logout, user } = useUser();
+  const [, setLocation] = useLocation();
 
   const menuItems = [
     {
@@ -96,7 +97,10 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
         <Button
           variant="ghost"
           className="w-full justify-start"
-          onClick={() => logout()}
+          onClick={async () => {
+            await logout();
+            setLocation('/auth'); // Redirect to login/auth page after logout
+          }}
         >
           <LogOut size={20} className="mr-3" />
           Logout
