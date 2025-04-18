@@ -10,6 +10,7 @@ import Projects from "@/pages/dashboard/projects";
 import ProjectDetails from "@/pages/dashboard/project-details";
 import ProjectTasks from "@/pages/dashboard/project-tasks";
 import Tasks from "@/pages/dashboard/tasks";
+import StaffReport from "@/pages/dashboard/staff-report";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();

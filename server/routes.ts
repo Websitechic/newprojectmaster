@@ -14,7 +14,7 @@ import {
   clientInvitations,
   notifications
 } from "@db/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull } from "drizzle-orm";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
@@ -69,6 +69,53 @@ export function registerRoutes(app: Express): Server {
 
     const staff = await query.orderBy(desc(users.lastActive));
     res.json(staff);
+  });
+  
+  // Get staff with their assigned tasks
+  app.get("/api/staff-report", isProjectManager, async (req, res) => {
+    try {
+      // Get all staff members
+      const staffMembers = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "staff"))
+        .orderBy(asc(users.name));
+      
+      // Get all tasks assigned to staff
+      const allTasks = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          description: tasks.description,
+          status: tasks.status,
+          projectId: tasks.projectId,
+          assigneeId: tasks.assigneeId,
+          deadline: tasks.deadline,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+          projectName: projects.name,
+        })
+        .from(tasks)
+        .where(isNotNull(tasks.assigneeId))
+        .innerJoin(projects, eq(tasks.projectId, projects.id));
+      
+      // Group tasks by assignee
+      const staffReport = staffMembers.map(staff => {
+        const assignedTasks = allTasks.filter(task => task.assigneeId === staff.id);
+        
+        return {
+          ...staff,
+          tasks: assignedTasks,
+          taskCount: assignedTasks.length,
+          activeTasks: assignedTasks.filter(task => task.status !== 'completed').length
+        };
+      });
+      
+      res.json(staffReport);
+    } catch (error) {
+      console.error("Error generating staff report:", error);
+      res.status(500).json({ error: "Failed to generate staff report" });
+    }
   });
 
   // Get project by ID
