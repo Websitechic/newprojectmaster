@@ -18,6 +18,18 @@ export const UserSpecialization = {
   MARKETING_SPECIALIST: "marketing_specialist",
 } as const;
 
+export const WorkStatus = {
+  ACTIVE: "active",
+  ON_BREAK: "on_break",
+  ABSENT: "absent",
+} as const;
+
+export const AbsenceReason = {
+  LEAVE: "leave",
+  OFF_DAY: "off_day",
+  NOT_APPLICABLE: "not_applicable",
+} as const;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
@@ -29,6 +41,17 @@ export const users = pgTable("users", {
     enum: Object.values(UserSpecialization) 
   }),
   status: text("status").default("offline"),
+  workStatus: text("work_status", { 
+    enum: Object.values(WorkStatus)
+  }).default(WorkStatus.ACTIVE),
+  breakStartTime: timestamp("break_start_time"),
+  breakCount: integer("break_count").default(0),
+  absenceReason: text("absence_reason", { 
+    enum: Object.values(AbsenceReason)
+  }).default(AbsenceReason.NOT_APPLICABLE),
+  absenceEndDate: timestamp("absence_end_date"),
+  currentTaskId: integer("current_task_id"),
+  taskStartTime: timestamp("task_start_time"),
   emailVerified: boolean("email_verified").default(false),
   verificationToken: text("verification_token"),
   resetPasswordToken: text("reset_password_token"),
@@ -212,6 +235,13 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, {
     fields: [notifications.userId],
     references: [users.id],
+  }),
+}));
+
+export const usersRelations = relations(users, ({ one }) => ({
+  currentTask: one(tasks, {
+    fields: [users.currentTaskId],
+    references: [tasks.id],
   }),
 }));
 

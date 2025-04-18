@@ -74,9 +74,24 @@ export function registerRoutes(app: Express): Server {
   // Get staff with their assigned tasks
   app.get("/api/staff-report", isProjectManager, async (req, res) => {
     try {
-      // Get all staff members
+      // Get all staff members with their current task details
       const staffMembers = await db
-        .select()
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          specialization: users.specialization,
+          role: users.role,
+          status: users.status,
+          workStatus: users.workStatus,
+          breakStartTime: users.breakStartTime,
+          breakCount: users.breakCount,
+          absenceReason: users.absenceReason,
+          absenceEndDate: users.absenceEndDate,
+          currentTaskId: users.currentTaskId,
+          taskStartTime: users.taskStartTime,
+          lastActive: users.lastActive
+        })
         .from(users)
         .where(eq(users.role, "staff"))
         .orderBy(asc(users.name));
@@ -99,15 +114,80 @@ export function registerRoutes(app: Express): Server {
         .where(isNotNull(tasks.assigneeId))
         .innerJoin(projects, eq(tasks.projectId, projects.id));
       
-      // Group tasks by assignee
+      // Get current project information for each staff member
+      const staffCurrentTasks = await Promise.all(
+        staffMembers
+          .filter(staff => staff.currentTaskId !== null)
+          .map(async (staff) => {
+            const currentTask = allTasks.find(task => task.id === staff.currentTaskId);
+            
+            if (!currentTask) return null;
+            
+            return {
+              staffId: staff.id,
+              taskId: currentTask.id,
+              taskTitle: currentTask.title,
+              projectId: currentTask.projectId,
+              projectName: currentTask.projectName,
+              startTime: staff.taskStartTime,
+              // Calculate hours worked based on start time
+              hoursWorked: staff.taskStartTime 
+                ? Math.round((new Date().getTime() - new Date(staff.taskStartTime).getTime()) / 36000) / 100 
+                : 0
+            };
+          })
+      );
+      
+      // Filter out nulls and organize by staff ID
+      const currentTasksByStaffId = staffCurrentTasks
+        .filter(Boolean)
+        .reduce((acc, task) => {
+          if (task) acc[task.staffId] = task;
+          return acc;
+        }, {} as Record<number, typeof staffCurrentTasks[0]>);
+      
+      // Prepare break information
+      const staffBreakInfo = staffMembers
+        .filter(staff => staff.workStatus === WorkStatus.ON_BREAK && staff.breakStartTime)
+        .map(staff => {
+          // Calculate break duration in minutes
+          const breakDuration = staff.breakStartTime 
+            ? Math.round((new Date().getTime() - new Date(staff.breakStartTime).getTime()) / 60000)
+            : 0;
+          
+          return {
+            staffId: staff.id,
+            breakStartTime: staff.breakStartTime,
+            breakDuration: breakDuration,
+            breakCount: staff.breakCount,
+            // Check if break is exceeding one hour (60 minutes)
+            breakOvertime: breakDuration > 60
+          };
+        });
+      
+      // Organize by staff ID
+      const breakInfoByStaffId = staffBreakInfo.reduce((acc, info) => {
+        acc[info.staffId] = info;
+        return acc;
+      }, {} as Record<number, typeof staffBreakInfo[0]>);
+      
+      // Group tasks by assignee and add categorized information
       const staffReport = staffMembers.map(staff => {
         const assignedTasks = allTasks.filter(task => task.assigneeId === staff.id);
+        const currentTask = currentTasksByStaffId[staff.id] || null;
+        const breakInfo = breakInfoByStaffId[staff.id] || null;
         
         return {
           ...staff,
           tasks: assignedTasks,
           taskCount: assignedTasks.length,
-          activeTasks: assignedTasks.filter(task => task.status !== 'completed').length
+          activeTasks: assignedTasks.filter(task => task.status !== 'completed').length,
+          currentTask,
+          breakInfo,
+          // Time until absence ends (in days), only if absent
+          absentDaysRemaining: staff.workStatus === WorkStatus.ABSENT && staff.absenceEndDate
+            ? Math.ceil((new Date(staff.absenceEndDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24))
+            : null
         };
       });
       
