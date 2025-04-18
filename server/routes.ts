@@ -786,6 +786,15 @@ export function registerRoutes(app: Express): Server {
     req.on("close", () => {
       global.sseClients.delete(userId);
       console.log(`SSE connection closed for user ${userId}`);
+      
+      // When SSE connection closes, update user status to idle
+      db.update(users)
+        .set({ 
+          lastActive: new Date(),
+          status: UserStatus.IDLE
+        })
+        .where(eq(users.id, userId))
+        .catch(err => console.error("Error updating user status on SSE disconnect:", err));
     });
 
     // Handle errors
@@ -966,6 +975,104 @@ export function registerRoutes(app: Express): Server {
       .limit(7);
 
     res.json(userPerformance);
+  });
+  
+  // User Status APIs
+  
+  // Heartbeat endpoint to update user's last active time
+  app.post("/api/user/heartbeat", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    
+    try {
+      await db.update(users)
+        .set({ 
+          lastActive: new Date(),
+          status: UserStatus.ONLINE 
+        })
+        .where(eq(users.id, req.user!.id));
+        
+      return res.json({ status: "success" });
+    } catch (error) {
+      console.error("Error updating user heartbeat:", error);
+      return res.status(500).json({ error: "Failed to update user status" });
+    }
+  });
+  
+  // Get user status (can be used to get status of a single user)
+  app.get("/api/users/:id/status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    
+    try {
+      const userId = parseInt(req.params.id);
+      
+      const [user] = await db.select({
+        id: users.id,
+        name: users.name,
+        status: users.status,
+        lastActive: users.lastActive,
+        role: users.role,
+        workStatus: users.workStatus
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Check if user is online but inactive for 10+ minutes
+      if (user.status === UserStatus.ONLINE && user.lastActive) {
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000); // 10 minutes ago
+        
+        if (new Date(user.lastActive) < tenMinutesAgo) {
+          // Update user status to idle
+          await db.update(users)
+            .set({ status: UserStatus.IDLE })
+            .where(eq(users.id, userId));
+            
+          user.status = UserStatus.IDLE;
+        }
+      }
+      
+      return res.json(user);
+    } catch (error) {
+      console.error("Error fetching user status:", error);
+      return res.status(500).json({ error: "Failed to fetch user status" });
+    }
+  });
+  
+  // Update user status (to manually set status)
+  app.put("/api/users/status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    
+    try {
+      const { status } = req.body;
+      
+      // Validate status
+      if (!Object.values(UserStatus).includes(status)) {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+      
+      const [updatedUser] = await db.update(users)
+        .set({ 
+          status,
+          lastActive: new Date() 
+        })
+        .where(eq(users.id, req.user!.id))
+        .returning();
+        
+      return res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      return res.status(500).json({ error: "Failed to update user status" });
+    }
   });
 
   return server;
