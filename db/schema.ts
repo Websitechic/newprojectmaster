@@ -135,7 +135,9 @@ export const tasks = pgTable("tasks", {
   status: text("status", { enum: ["todo", "in_progress", "completed", "review"] }).default("todo"),
   priority: text("priority", { enum: ["low", "medium", "high"] }).default("medium"),
   progress: integer("progress").default(0),
+  startDate: timestamp("start_date"),
   deadline: timestamp("deadline"),
+  workingHours: integer("working_hours"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
