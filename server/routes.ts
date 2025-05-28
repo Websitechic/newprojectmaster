@@ -441,6 +441,54 @@ export function registerRoutes(app: Express): Server {
           .returning();
       }
 
+      // If team members were specified in the request, invite them and send notifications
+      if (req.body.teamMembers && Array.isArray(req.body.teamMembers)) {
+        for (const memberId of req.body.teamMembers) {
+          try {
+            // Add team member to project
+            await db
+              .insert(projectMembers)
+              .values({
+                projectId: newProject.id,
+                userId: memberId,
+                invitedBy: req.user!.id,
+                invitationStatus: "pending"
+              });
+
+            // Create notification for the team member
+            const [notification] = await db
+              .insert(notifications)
+              .values({
+                userId: memberId,
+                type: "task_assigned", // Using existing type
+                content: `You have been added to the project: ${newProject.name}`,
+                referenceId: newProject.id,
+                referenceType: "project",
+                createdAt: new Date(),
+              })
+              .returning();
+
+            // Send notification through SSE if user is connected
+            const clientResponse = global.sseClients?.get(memberId);
+            if (clientResponse && !clientResponse.writableEnded) {
+              try {
+                clientResponse.write(`data: ${JSON.stringify({
+                  type: "notification",
+                  data: notification
+                })}\n\n`);
+                console.log(`Project addition notification sent to user ${memberId} via SSE`);
+              } catch (error) {
+                console.error(`Error sending SSE notification to user ${memberId}:`, error);
+                global.sseClients.delete(memberId);
+              }
+            }
+          } catch (error) {
+            console.error(`Error adding team member ${memberId} to project:`, error);
+            // Continue with other members even if one fails
+          }
+        }
+      }
+
       res.json(newProject);
     } catch (error) {
       console.error("Error creating project:", error);
@@ -491,6 +539,43 @@ export function registerRoutes(app: Express): Server {
           invitationStatus: "pending"
         })
         .returning();
+
+      // Get project details for notification
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      // Create notification for the invited staff member
+      const [notification] = await db
+        .insert(notifications)
+        .values({
+          userId,
+          type: "task_assigned", // Using existing type, could add new type for project invitations
+          content: `You have been invited to join project: ${project?.name || 'Unknown Project'}`,
+          referenceId: projectId,
+          referenceType: "project",
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Send notification through SSE if user is connected
+      const clientResponse = global.sseClients?.get(userId);
+      if (clientResponse && !clientResponse.writableEnded) {
+        try {
+          clientResponse.write(`data: ${JSON.stringify({
+            type: "notification",
+            data: notification
+          })}\n\n`);
+          console.log(`Project invitation notification sent to user ${userId} via SSE`);
+        } catch (error) {
+          console.error(`Error sending SSE notification to user ${userId}:`, error);
+          global.sseClients.delete(userId);
+        }
+      } else {
+        console.log(`User ${userId} not connected via SSE for project invitation`);
+      }
 
       res.json(invitation);
     } catch (error) {
