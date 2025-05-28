@@ -6,20 +6,29 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { TaskList } from "@/components/task/task-list";
 import { useAuth } from "@/hooks/use-auth";
 import type { Task } from "@db/schema";
+import { useEffect } from "react";
 
 export default function StaffProjectTasks() {
   const { id } = useParams();
   const { user } = useAuth();
   const projectId = parseInt(id!);
 
-  const { data: allTasks, isLoading } = useQuery<Task[]>({
+  const { data: allTasks, isLoading, refetch } = useQuery<Task[]>({
     queryKey: [`/api/projects/${projectId}/tasks`],
     queryFn: () => fetch(`/api/projects/${projectId}/tasks`).then(res => res.json()),
     enabled: !!id,
+    refetchInterval: 5000, // Refetch every 5 seconds to catch reassignments
   });
 
   // Filter tasks to show only those assigned to the current staff member
   const myTasks = allTasks?.filter(task => task.assigneeId === user?.id) || [];
+
+  // Refetch tasks when user changes (in case of reassignment)
+  useEffect(() => {
+    if (user?.id) {
+      refetch();
+    }
+  }, [user?.id, refetch]);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -36,6 +45,11 @@ export default function StaffProjectTasks() {
             <p className="text-muted-foreground">
               Tasks assigned to you in this project ({myTasks.length} tasks)
             </p>
+            {myTasks.length > 0 && (
+              <p className="text-sm text-blue-600 mt-1">
+                Note: Tasks will be automatically removed from this view if reassigned to another team member.
+              </p>
+            )}
           </div>
           
           {myTasks.length > 0 ? (
@@ -51,6 +65,9 @@ export default function StaffProjectTasks() {
               <p className="text-sm text-muted-foreground max-w-md">
                 You don't have any tasks assigned to you in this project yet. 
                 Your project manager will assign tasks to you when they're ready.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                If you previously had tasks that are no longer visible, they may have been reassigned to another team member.
               </p>
             </div>
           )}

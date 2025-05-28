@@ -213,6 +213,11 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
     }
   };
 
+  // Filter tasks for staff view to only show tasks assigned to the current user
+  const filteredTasks = isStaffView
+    ? tasks.filter((task) => task.assigneeId === user?.staffId)
+    : tasks;
+
   return (
     <div>
       <div className="flex justify-end mb-4">
@@ -237,7 +242,7 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tasks.map((task) => (
+            {filteredTasks.map((task) => (
               <TableRow key={task.id}>
                 <TableCell className="font-medium">{task.title}</TableCell>
                 <TableCell>{task.description}</TableCell>
@@ -255,22 +260,26 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
                     : "No deadline"}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditClick(task)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteTask.mutate(task.id)}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {!isStaffView ? (
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditClick(task)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteTask.mutate(task.id)}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">View Only</span>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
