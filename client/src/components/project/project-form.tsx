@@ -152,7 +152,7 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -317,7 +317,7 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="startDate"
@@ -401,7 +401,7 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
           />
         </div>
 
-        <Button type="submit" className="w-full" disabled={createProject.isPending}>
+        <Button type="submit" className="w-full mt-4" disabled={createProject.isPending}>
           {createProject.isPending ? "Creating..." : "Create Project"}
         </Button>
       </form>
