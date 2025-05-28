@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { useLocation } from "wouter";
 import { ProjectCard } from "@/components/project/project-card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import {
   Select,
@@ -152,10 +153,49 @@ export default function Projects() {
                     </CollapsibleTrigger>
                     
                     <CollapsibleContent>
-                      <div className="p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5">
+                      <div className="p-3 space-y-2">
                         {projects.map((project) => (
-                          <div key={project.id} className="min-w-0">
-                            <ProjectCard project={project} />
+                          <div 
+                            key={project.id} 
+                            className="flex items-center justify-between p-3 bg-card hover:bg-muted/50 border rounded-lg cursor-pointer transition-colors"
+                            onClick={() => window.location.href = `/dashboard/projects/${project.id}`}
+                          >
+                            <div className="flex items-center space-x-4 flex-1 min-w-0">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-sm truncate" title={project.name}>
+                                  {project.name}
+                                </h3>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {project.description || "No description"}
+                                </p>
+                              </div>
+                              <div className="flex items-center space-x-3">
+                                <div className="w-24">
+                                  <div className="flex justify-between text-xs mb-1">
+                                    <span>Progress</span>
+                                    <span>{project.progress || 0}%</span>
+                                  </div>
+                                  <div className="w-full bg-secondary rounded-full h-1.5">
+                                    <div 
+                                      className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+                                      style={{ width: `${project.progress || 0}%` }}
+                                    />
+                                  </div>
+                                </div>
+                                <Badge
+                                  variant="secondary"
+                                  className={`${
+                                    project.status === 'active' ? 'bg-green-500' :
+                                    project.status === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
+                                  } text-white text-xs`}
+                                >
+                                  {project.status}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {new Date(project.startDate || '').toLocaleDateString()} - {new Date(project.endDate || '').toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>
