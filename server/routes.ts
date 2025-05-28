@@ -110,7 +110,7 @@ export function registerRoutes(app: Express): Server {
     try {
       // Find the first project
       const [firstProject] = await db.select().from(projects).limit(1);
-
+      
       if (!firstProject) {
         return res.status(404).json({ error: "No projects found to join" });
       }
@@ -155,7 +155,7 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to add staff to project" });
     }
   });
-
+  
   // Get staff with their assigned tasks
   app.get("/api/staff-report", isProjectManager, async (req, res) => {
     try {
@@ -180,7 +180,7 @@ export function registerRoutes(app: Express): Server {
         .from(users)
         .where(eq(users.role, "staff"))
         .orderBy(asc(users.name));
-
+      
       // Get all tasks assigned to staff
       const allTasks = await db
         .select({
@@ -198,16 +198,16 @@ export function registerRoutes(app: Express): Server {
         .from(tasks)
         .where(isNotNull(tasks.assigneeId))
         .innerJoin(projects, eq(tasks.projectId, projects.id));
-
+      
       // Get current project information for each staff member
       const staffCurrentTasks = await Promise.all(
         staffMembers
           .filter(staff => staff.currentTaskId !== null)
           .map(async (staff) => {
             const currentTask = allTasks.find(task => task.id === staff.currentTaskId);
-
+            
             if (!currentTask) return null;
-
+            
             return {
               staffId: staff.id,
               taskId: currentTask.id,
@@ -222,7 +222,7 @@ export function registerRoutes(app: Express): Server {
             };
           })
       );
-
+      
       // Filter out nulls and organize by staff ID
       const currentTasksByStaffId = staffCurrentTasks
         .filter(Boolean)
@@ -230,7 +230,7 @@ export function registerRoutes(app: Express): Server {
           if (task) acc[task.staffId] = task;
           return acc;
         }, {} as Record<number, typeof staffCurrentTasks[0]>);
-
+      
       // Prepare break information
       const staffBreakInfo = staffMembers
         .filter(staff => staff.workStatus === WorkStatus.ON_BREAK && staff.breakStartTime)
@@ -239,7 +239,7 @@ export function registerRoutes(app: Express): Server {
           const breakDuration = staff.breakStartTime 
             ? Math.round((new Date().getTime() - new Date(staff.breakStartTime).getTime()) / 60000)
             : 0;
-
+          
           return {
             staffId: staff.id,
             breakStartTime: staff.breakStartTime,
@@ -249,19 +249,19 @@ export function registerRoutes(app: Express): Server {
             breakOvertime: breakDuration > 60
           };
         });
-
+      
       // Organize by staff ID
       const breakInfoByStaffId = staffBreakInfo.reduce((acc, info) => {
         acc[info.staffId] = info;
         return acc;
       }, {} as Record<number, typeof staffBreakInfo[0]>);
-
+      
       // Group tasks by assignee and add categorized information
       const staffReport = staffMembers.map(staff => {
         const assignedTasks = allTasks.filter(task => task.assigneeId === staff.id);
         const currentTask = currentTasksByStaffId[staff.id] || null;
         const breakInfo = breakInfoByStaffId[staff.id] || null;
-
+        
         return {
           ...staff,
           tasks: assignedTasks,
@@ -275,7 +275,7 @@ export function registerRoutes(app: Express): Server {
             : null
         };
       });
-
+      
       res.json(staffReport);
     } catch (error) {
       console.error("Error generating staff report:", error);
@@ -307,12 +307,12 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch project" });
     }
   });
-
+  
   // Delete project (Project Manager only)
   app.delete("/api/projects/:id", isProjectManager, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
-
+      
       // Verify the project exists and is managed by this PM
       const [project] = await db
         .select()
@@ -322,39 +322,39 @@ export function registerRoutes(app: Express): Server {
           eq(projects.managerId, req.user!.id)
         ))
         .limit(1);
-
+      
       if (!project) {
         return res.status(404).json({ 
           error: "Project not found or you don't have permission to delete it" 
         });
       }
-
+      
       // First delete related records to avoid foreign key constraint errors
       // Delete project members
       await db
         .delete(projectMembers)
         .where(eq(projectMembers.projectId, projectId));
-
+        
       // Delete project tasks
       await db
         .delete(tasks)
         .where(eq(tasks.projectId, projectId));
-
+        
       // Delete project messages
       await db
         .delete(messages)
         .where(eq(messages.projectId, projectId));
-
+        
       // Delete client invitations
       await db
         .delete(clientInvitations)
         .where(eq(clientInvitations.projectId, projectId));
-
+        
       // Finally delete the project
       await db
         .delete(projects)
         .where(eq(projects.id, projectId));
-
+      
       res.json({ message: "Project deleted successfully" });
     } catch (error) {
       console.error("Error deleting project:", error);
@@ -433,15 +433,15 @@ export function registerRoutes(app: Express): Server {
       } else {
         // Staff see projects they're invited to and have accepted
         console.log(`Fetching projects for staff user ${user.id} (${user.name})`);
-
+        
         // First, check ALL memberships for this user (not just accepted ones)
         const allMemberships = await db
           .select()
           .from(projectMembers)
           .where(eq(projectMembers.userId, user.id));
-
+        
         console.log(`Found ${allMemberships.length} total project memberships for user ${user.id}:`, allMemberships);
-
+        
         const memberProjects = await db
           .select()
           .from(projectMembers)
@@ -455,21 +455,21 @@ export function registerRoutes(app: Express): Server {
         if (memberProjects.length > 0) {
           const projectIds = memberProjects.map(pm => pm.projectId).filter(id => id !== null);
           console.log(`Project IDs for user ${user.id}:`, projectIds);
-
+          
           projectsList = await db
             .select()
             .from(projects)
             .where(inArray(projects.id, projectIds))
             .orderBy(desc(projects.updatedAt));
-
+            
           console.log(`Final projects list for user ${user.id}:`, projectsList);
         } else {
           console.log(`No accepted project memberships found for user ${user.id}`);
-
+          
           // Check if there are any projects at all
           const totalProjects = await db.select().from(projects);
           console.log(`Total projects in database: ${totalProjects.length}`);
-
+          
           if (totalProjects.length > 0) {
             console.log("Available projects:", totalProjects.map(p => ({ id: p.id, name: p.name })));
             console.log("Hint: Use POST /api/debug/add-me-to-project to join the first project");
@@ -770,7 +770,7 @@ export function registerRoutes(app: Express): Server {
   // Create Task (Project Manager only)
   app.post("/api/tasks", isProjectManager, async (req, res) => {
     try {
-      const { title, description, projectId, assigneeId, status, startDate, deadline, workingHours } = req.body;
+      const { title, description, status, assigneeId, deadline, projectId } = req.body;
 
       if (!title || !projectId) {
         return res.status(400).json({ error: "Title and project ID are required" });
@@ -801,19 +801,20 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Create the task
-      const [newTask] = await db.insert(tasks).values({
-        title,
-        description: description || "",
-        projectId,
-        assigneeId: assigneeId ? parseInt(assigneeId) : null,
-        assignedBy: req.user!.id,
-        status: status || "todo",
-        startDate: startDate ? new Date(startDate) : null,
-        deadline: taskDeadline,
-        workingHours: workingHours || null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }).returning();
+      const [newTask] = await db
+        .insert(tasks)
+        .values({
+          title,
+          description: description || "",
+          status: status || "todo",
+          assigneeId: assigneeId ? parseInt(assigneeId) : null,
+          projectId,
+          deadline: taskDeadline,
+          assignedBy: req.user!.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
 
       // If there's an assignee, create a notification with enhanced content
       if (newTask.assigneeId) {
@@ -863,7 +864,7 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/tasks/:id", isProjectManager, async (req, res) => {
     try {
       const taskId = parseInt(req.params.id);
-      const { title, description, status, assigneeId, startDate, deadline, workingHours } = req.body;
+      const { title, description, status, assigneeId, deadline } = req.body;
 
       if (!title) {
         return res.status(400).json({ error: "Title is required" });
@@ -893,21 +894,17 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Task not found" });
       }
 
-      const updateData: any = {
-        title,
-        description,
-        status,
-        assigneeId,
-        startDate: startDate ? new Date(startDate) : null,
-        deadline: deadline ? new Date(deadline) : null,
-        workingHours: workingHours || null,
-        updatedAt: new Date(),
-      };
-
       // Update the task
       const [updatedTask] = await db
         .update(tasks)
-        .set(updateData)
+        .set({
+          title,
+          description: description || "",
+          status: status || "todo",
+          assigneeId: assigneeId ? parseInt(assigneeId) : null,
+          deadline: taskDeadline,
+          updatedAt: new Date(),
+        })
         .where(eq(tasks.id, taskId))
         .returning();
 
@@ -984,7 +981,7 @@ export function registerRoutes(app: Express): Server {
     req.on("close", () => {
       global.sseClients.delete(userId);
       console.log(`SSE connection closed for user ${userId}`);
-
+      
       // When SSE connection closes, update user status to idle
       db.update(users)
         .set({ 
@@ -1151,7 +1148,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const projectId = parseInt(req.params.id);
-
+      
       // For now, return empty array as resources table doesn't exist yet
       // This can be implemented when file upload functionality is added
       res.json([]);
@@ -1176,15 +1173,15 @@ export function registerRoutes(app: Express): Server {
 
     res.json(userPerformance);
   });
-
+  
   // User Status APIs
-
+  
   // Heartbeat endpoint to update user's last active time
   app.post("/api/user/heartbeat", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
-
+    
     try {
       await db.update(users)
         .set({ 
@@ -1192,23 +1189,23 @@ export function registerRoutes(app: Express): Server {
           status: UserStatus.ONLINE 
         })
         .where(eq(users.id, req.user!.id));
-
+        
       return res.json({ status: "success" });
     } catch (error) {
       console.error("Error updating user heartbeat:", error);
       return res.status(500).json({ error: "Failed to update user status" });
     }
   });
-
+  
   // Get user status (can be used to get status of a single user)
   app.get("/api/users/:id/status", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
-
+    
     try {
       const userId = parseInt(req.params.id);
-
+      
       const [user] = await db.select({
         id: users.id,
         name: users.name,
@@ -1220,46 +1217,46 @@ export function registerRoutes(app: Express): Server {
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
-
+      
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-
+      
       // Check if user is online but inactive for 10+ minutes
       if (user.status === UserStatus.ONLINE && user.lastActive) {
         const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000); // 10 minutes ago
-
+        
         if (new Date(user.lastActive) < tenMinutesAgo) {
           // Update user status to idle
           await db.update(users)
             .set({ status: UserStatus.IDLE })
             .where(eq(users.id, userId));
-
+            
           user.status = UserStatus.IDLE;
         }
       }
-
+      
       return res.json(user);
     } catch (error) {
       console.error("Error fetching user status:", error);
       return res.status(500).json({ error: "Failed to fetch user status" });
     }
   });
-
+  
   // Update user status (to manually set status)
   app.put("/api/users/status", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
-
+    
     try {
       const { status } = req.body;
-
+      
       // Validate status
       if (!Object.values(UserStatus).includes(status)) {
         return res.status(400).json({ error: "Invalid status value" });
       }
-
+      
       const [updatedUser] = await db.update(users)
         .set({ 
           status,
@@ -1267,7 +1264,7 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(users.id, req.user!.id))
         .returning();
-
+        
       return res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user status:", error);
