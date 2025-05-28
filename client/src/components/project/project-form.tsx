@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, X } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -36,6 +36,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@db/schema";
@@ -43,15 +44,6 @@ import type { User } from "@db/schema";
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  type: z.enum([
-    "web_development",
-    "mobile_app",
-    "digital_marketing",
-    "ui_ux_design",
-    "content_creation",
-    "automation",
-    "social_media"
-  ]),
   category: z.enum([
     "website_development",
     "dpl_outright",
@@ -62,6 +54,7 @@ const projectSchema = z.object({
   clientType: z.enum(["existing", "new"]),
   clientId: z.number().optional(),
   clientEmail: z.string().email().optional(),
+  teamMembers: z.array(z.number()).default([]),
   startDate: z.date(),
   endDate: z.date(),
 }).refine(data => {
@@ -80,10 +73,16 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [clientType, setClientType] = useState<"existing" | "new">("existing");
+  const [selectedMembers, setSelectedMembers] = useState<User[]>([]);
 
   // Fetch available clients with proper typing
   const { data: clients, isLoading: isLoadingClients } = useQuery<User[]>({
     queryKey: ["/api/clients"],
+  });
+
+  // Fetch available staff members
+  const { data: staffMembers, isLoading: isLoadingStaff } = useQuery<User[]>({
+    queryKey: ["/api/staff"],
   });
 
   const form = useForm<ProjectFormValues>({
@@ -92,6 +91,7 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
       name: "",
       description: "",
       clientType: "existing",
+      teamMembers: [],
     },
   });
 
@@ -105,8 +105,9 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
       const requestBody = {
         name: data.name,
         description: data.description,
-        type: data.type,
+        type: "web_development", // Default type since we removed the selection
         category: data.category,
+        teamMembers: data.teamMembers,
         // Ensure dates are properly formatted as ISO strings
         startDate: new Date(data.startDate).toISOString(),
         endDate: new Date(data.endDate).toISOString(),
@@ -146,6 +147,20 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
     },
   });
 
+  const addTeamMember = (staffMember: User) => {
+    if (!selectedMembers.find(member => member.id === staffMember.id)) {
+      const newMembers = [...selectedMembers, staffMember];
+      setSelectedMembers(newMembers);
+      form.setValue("teamMembers", newMembers.map(member => member.id));
+    }
+  };
+
+  const removeTeamMember = (staffId: number) => {
+    const newMembers = selectedMembers.filter(member => member.id !== staffId);
+    setSelectedMembers(newMembers);
+    form.setValue("teamMembers", newMembers.map(member => member.id));
+  };
+
   const onSubmit = (data: ProjectFormValues) => {
     createProject.mutate(data);
   };
@@ -184,32 +199,69 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Project Type</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select project type" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="web_development">Web Development</SelectItem>
-                  <SelectItem value="mobile_app">Mobile App</SelectItem>
-                  <SelectItem value="digital_marketing">Digital Marketing</SelectItem>
-                  <SelectItem value="ui_ux_design">UI/UX Design</SelectItem>
-                  <SelectItem value="content_creation">Content Creation</SelectItem>
-                  <SelectItem value="automation">Automation</SelectItem>
-                  <SelectItem value="social_media">Social Media</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
+        <div className="space-y-4">
+          <FormLabel>Add Team Members</FormLabel>
+          
+          {/* Selected team members */}
+          {selectedMembers.length > 0 && (
+            <div className="flex flex-wrap gap-2 p-3 bg-muted rounded-md">
+              {selectedMembers.map((member) => (
+                <Badge key={member.id} variant="secondary" className="flex items-center gap-1">
+                  {member.name}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0 hover:bg-transparent"
+                    onClick={() => removeTeamMember(member.id)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              ))}
+            </div>
           )}
-        />
+
+          {/* Staff selection dropdown */}
+          <Select onValueChange={(value) => {
+            const staffMember = staffMembers?.find(staff => staff.id.toString() === value);
+            if (staffMember) {
+              addTeamMember(staffMember);
+            }
+          }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select staff members to add" />
+            </SelectTrigger>
+            <SelectContent>
+              {isLoadingStaff ? (
+                <div className="flex items-center justify-center p-4">
+                  <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                </div>
+              ) : staffMembers && staffMembers.length > 0 ? (
+                staffMembers
+                  .filter(staff => !selectedMembers.find(member => member.id === staff.id))
+                  .map((staff) => (
+                    <SelectItem key={staff.id} value={staff.id.toString()}>
+                      <div className="flex flex-col">
+                        <span>{staff.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {staff.specialization || staff.role}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))
+              ) : (
+                <div className="text-sm text-muted-foreground p-4 text-center">
+                  No staff members available
+                </div>
+              )}
+            </SelectContent>
+          </Select>
+          
+          <FormDescription>
+            Select staff members to add to this project. You can add more members later.
+          </FormDescription>
+        </div>
 
         <FormField
           control={form.control}
