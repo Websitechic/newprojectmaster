@@ -11,6 +11,9 @@ import ProjectDetails from "@/pages/dashboard/project-details";
 import ProjectTasks from "@/pages/dashboard/project-tasks";
 import Tasks from "@/pages/dashboard/tasks";
 import StaffReport from "@/pages/dashboard/staff-report";
+import StaffProjectTasks from "@/pages/dashboard/staff-project-tasks";
+import ProjectResources from "@/pages/dashboard/project-resources";
+import StaffProjectDetails from "@/pages/dashboard/staff-project-details";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -53,6 +56,9 @@ function Router() {
       <Route path="/dashboard/projects" component={() => <PrivateRoute component={Projects} />} />
       <Route path="/dashboard/projects/:id" component={() => <PrivateRoute component={ProjectDetails} />} />
       <Route path="/dashboard/projects/:id/tasks" component={() => <PrivateRoute component={ProjectTasks} />} />
+      <Route path="/dashboard/projects/:id/staff-tasks" component={StaffProjectTasks} />
+      <Route path="/dashboard/projects/:id/staff" component={StaffProjectDetails} />
+      <Route path="/dashboard/projects/:id/resources" component={ProjectResources} />
       <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />
       <Route path="/dashboard/staff-report" component={() => <PrivateRoute component={StaffReport} />} />
       <Route component={NotFound} />

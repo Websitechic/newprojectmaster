@@ -32,7 +32,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const isProjectManager = user?.role === 'project_manager';
 
   const statusColors = {
@@ -45,18 +45,18 @@ export function ProjectCard({ project }: ProjectCardProps) {
     if (!date) return "N/A";
     return new Date(date).toLocaleDateString();
   };
-  
+
   const deleteProject = useMutation({
     mutationFn: async () => {
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'DELETE',
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(errorText || 'Failed to delete project');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -74,21 +74,24 @@ export function ProjectCard({ project }: ProjectCardProps) {
       });
     },
   });
-  
+
   // Prevent card click when clicking delete button
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsDeleteDialogOpen(true);
   };
-  
+
   // Prevent card click when clicking video button
   const handleVideoClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowVideoCall(true);
   };
-  
+
   const handleCardClick = () => {
-    window.location.href = `/dashboard/projects/${project.id}`;
+    const targetPath = user?.role === 'staff'
+      ? `/dashboard/projects/${project.id}/staff`
+      : `/dashboard/projects/${project.id}`;
+    window.location.href = targetPath;
   };
 
   return (

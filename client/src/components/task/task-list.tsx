@@ -35,7 +35,13 @@ const defaultTask: TaskFormData = {
   deadline: "",
 };
 
-export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: number }) {
+interface TaskListProps {
+  tasks: Task[];
+  projectId?: number;
+  isStaffView?: boolean;
+}
+
+export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -210,10 +216,12 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <Button onClick={handleNewTask}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Task
-        </Button>
+        { !isStaffView && (
+          <Button onClick={handleNewTask}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Task
+          </Button>
+        )}
       </div>
 
       <div className="rounded-md border">
