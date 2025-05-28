@@ -992,6 +992,34 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Delete task (Project Manager only)
+  app.delete("/api/tasks/:id", isProjectManager, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+
+      // Verify task exists
+      const [existingTask] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+
+      if (!existingTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Delete the task
+      await db
+        .delete(tasks)
+        .where(eq(tasks.id, taskId));
+
+      res.json({ message: "Task deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
   // Add new endpoints for notifications
   // Add SSE endpoint with proper error handling
   app.get("/api/notifications/stream", (req: Request, res: Response) => {
