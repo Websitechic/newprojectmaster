@@ -100,6 +100,61 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch debug data" });
     }
   });
+
+  // Test endpoint to add current staff member to the first available project
+  app.post("/api/debug/add-me-to-project", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "staff") {
+      return res.status(403).send("Only staff members can use this endpoint");
+    }
+
+    try {
+      // Find the first project
+      const [firstProject] = await db.select().from(projects).limit(1);
+      
+      if (!firstProject) {
+        return res.status(404).json({ error: "No projects found to join" });
+      }
+
+      // Check if already a member
+      const [existingMember] = await db
+        .select()
+        .from(projectMembers)
+        .where(and(
+          eq(projectMembers.projectId, firstProject.id),
+          eq(projectMembers.userId, req.user!.id)
+        ))
+        .limit(1);
+
+      if (existingMember) {
+        return res.json({ 
+          message: "Already a member of this project",
+          project: firstProject,
+          membership: existingMember
+        });
+      }
+
+      // Add the staff member to the project
+      const [newMember] = await db
+        .insert(projectMembers)
+        .values({
+          projectId: firstProject.id,
+          userId: req.user!.id,
+          invitedBy: firstProject.managerId,
+          invitationStatus: "accepted",
+          joinedAt: new Date()
+        })
+        .returning();
+
+      res.json({
+        message: "Successfully added to project",
+        project: firstProject,
+        membership: newMember
+      });
+    } catch (error) {
+      console.error("Error adding staff to project:", error);
+      res.status(500).json({ error: "Failed to add staff to project" });
+    }
+  });
   
   // Get staff with their assigned tasks
   app.get("/api/staff-report", isProjectManager, async (req, res) => {
@@ -379,6 +434,14 @@ export function registerRoutes(app: Express): Server {
         // Staff see projects they're invited to and have accepted
         console.log(`Fetching projects for staff user ${user.id} (${user.name})`);
         
+        // First, check ALL memberships for this user (not just accepted ones)
+        const allMemberships = await db
+          .select()
+          .from(projectMembers)
+          .where(eq(projectMembers.userId, user.id));
+        
+        console.log(`Found ${allMemberships.length} total project memberships for user ${user.id}:`, allMemberships);
+        
         const memberProjects = await db
           .select()
           .from(projectMembers)
@@ -401,7 +464,16 @@ export function registerRoutes(app: Express): Server {
             
           console.log(`Final projects list for user ${user.id}:`, projectsList);
         } else {
-          console.log(`No project memberships found for user ${user.id}`);
+          console.log(`No accepted project memberships found for user ${user.id}`);
+          
+          // Check if there are any projects at all
+          const totalProjects = await db.select().from(projects);
+          console.log(`Total projects in database: ${totalProjects.length}`);
+          
+          if (totalProjects.length > 0) {
+            console.log("Available projects:", totalProjects.map(p => ({ id: p.id, name: p.name })));
+            console.log("Hint: Use POST /api/debug/add-me-to-project to join the first project");
+          }
         }
       }
 
