@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,9 @@ interface TaskFormData {
   description: string;
   status: 'todo' | 'in_progress' | 'completed' | 'review';
   assigneeId: string;
+  startDate: string;
   deadline: string;
+  workingHours: string;
 }
 
 const defaultTask: TaskFormData = {
@@ -32,7 +35,9 @@ const defaultTask: TaskFormData = {
   description: "",
   status: "todo",
   assigneeId: "",
+  startDate: "",
   deadline: "",
+  workingHours: "",
 };
 
 interface TaskListProps {
@@ -62,7 +67,9 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
       description: task.description || "",
       status: task.status as TaskFormData["status"] || "todo",
       assigneeId: task.assigneeId?.toString() || "",
+      startDate: task.startDate ? new Date(task.startDate).toISOString().slice(0, 16) : "",
       deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : "",
+      workingHours: task.workingHours?.toString() || "",
     });
     setIsDialogOpen(true);
   };
@@ -83,7 +90,9 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
           ...data,
           projectId,
           assigneeId: data.assigneeId && data.assigneeId !== 'unassigned' ? parseInt(data.assigneeId) : null,
+          startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+          workingHours: data.workingHours ? parseFloat(data.workingHours) : null,
         }),
       });
 
@@ -136,7 +145,9 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
         body: JSON.stringify({
           ...data,
           assigneeId: data.assigneeId && data.assigneeId !== 'unassigned' ? parseInt(data.assigneeId) : null,
+          startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+          workingHours: data.workingHours ? parseFloat(data.workingHours) : null,
         }),
       });
 
@@ -304,12 +315,14 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
+              <Label htmlFor="description">Task Details</Label>
+              <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Enter task description"
+                placeholder="Enter detailed task information... (use Enter for new lines)"
+                rows={4}
+                className="resize-vertical"
               />
             </div>
             <div className="space-y-2">
@@ -349,6 +362,27 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                type="datetime-local"
+                value={formData.startDate}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="workingHours">Number of Working Hours</Label>
+              <Input
+                id="workingHours"
+                type="number"
+                step="0.5"
+                min="0"
+                value={formData.workingHours}
+                onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
+                placeholder="e.g., 8 or 2.5"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="deadline">Deadline</Label>
