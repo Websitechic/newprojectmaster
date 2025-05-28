@@ -309,11 +309,12 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[800px] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editTask ? "Edit Task" : "Create New Task"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Title - Full width */}
             <div className="space-y-2">
               <Label htmlFor="title">Title</Label>
               <Input
@@ -324,6 +325,8 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
                 required
               />
             </div>
+
+            {/* Task Details - Full width */}
             <div className="space-y-2">
               <Label htmlFor="description">Task Details</Label>
               <Textarea
@@ -332,80 +335,95 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter detailed task description..."
                 rows={4}
-                className="resize-none"
+                className="resize-none min-h-[100px]"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: TaskFormData["status"]) =>
-                  setFormData({ ...formData, status: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="review">Review</SelectItem>
-                </SelectContent>
-              </Select>
+
+            {/* Two column grid for medium screens and up */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: TaskFormData["status"]) =>
+                    setFormData({ ...formData, status: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="review">Review</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assignee">Assignee</Label>
+                <Select
+                  value={formData.assigneeId}
+                  onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select assignee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {staff?.map((member) => (
+                      <SelectItem key={member.id} value={member.id.toString()}>
+                        {member.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input
+                  id="startDate"
+                  type="datetime-local"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="deadline">Deadline</Label>
+                <Input
+                  id="deadline"
+                  type="datetime-local"
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="assignee">Assignee</Label>
-              <Select
-                value={formData.assigneeId}
-                onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select assignee" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {staff?.map((member) => (
-                    <SelectItem key={member.id} value={member.id.toString()}>
-                      {member.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input
-                id="startDate"
-                type="datetime-local"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="deadline">Deadline</Label>
-              <Input
-                id="deadline"
-                type="datetime-local"
-                value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-              />
-            </div>
+
+            {/* Working hours - Full width but smaller */}
             <div className="space-y-2">
               <Label htmlFor="workingHours">Number of Working Hours</Label>
-              <Input
-                id="workingHours"
-                type="number"
-                min="1"
-                step="1"
-                value={formData.workingHours}
-                onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
-                placeholder="Enter estimated hours"
-              />
+              <div className="max-w-xs">
+                <Input
+                  id="workingHours"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formData.workingHours}
+                  onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
+                  placeholder="Enter estimated hours"
+                />
+              </div>
             </div>
-            <Button type="submit" className="w-full">
-              {editTask ? "Update Task" : "Create Task"}
-            </Button>
+
+            {/* Submit button */}
+            <div className="pt-4 border-t">
+              <Button type="submit" className="w-full md:w-auto md:min-w-[200px]">
+                {editTask ? "Update Task" : "Create Task"}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
