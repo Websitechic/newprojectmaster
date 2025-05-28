@@ -73,6 +73,33 @@ export function registerRoutes(app: Express): Server {
     const staff = await query.orderBy(desc(users.lastActive));
     res.json(staff);
   });
+
+  // Debug endpoint to check project memberships
+  app.get("/api/debug/project-memberships", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const allProjects = await db.select().from(projects);
+      const allMembers = await db.select().from(projectMembers);
+      const allUsers = await db.select({
+        id: users.id,
+        name: users.name,
+        role: users.role
+      }).from(users);
+
+      res.json({
+        projects: allProjects,
+        projectMembers: allMembers,
+        users: allUsers,
+        currentUser: req.user
+      });
+    } catch (error) {
+      console.error("Debug endpoint error:", error);
+      res.status(500).json({ error: "Failed to fetch debug data" });
+    }
+  });
   
   // Get staff with their assigned tasks
   app.get("/api/staff-report", isProjectManager, async (req, res) => {
@@ -349,7 +376,9 @@ export function registerRoutes(app: Express): Server {
           .where(eq(projects.managerId, user.id))
           .orderBy(desc(projects.updatedAt));
       } else {
-        // Staff see projects they're invited to
+        // Staff see projects they're invited to and have accepted
+        console.log(`Fetching projects for staff user ${user.id} (${user.name})`);
+        
         const memberProjects = await db
           .select()
           .from(projectMembers)
@@ -358,13 +387,21 @@ export function registerRoutes(app: Express): Server {
             eq(projectMembers.invitationStatus, "accepted")
           ));
 
+        console.log(`Found ${memberProjects.length} accepted project memberships for user ${user.id}:`, memberProjects);
+
         if (memberProjects.length > 0) {
           const projectIds = memberProjects.map(pm => pm.projectId).filter(id => id !== null);
+          console.log(`Project IDs for user ${user.id}:`, projectIds);
+          
           projectsList = await db
             .select()
             .from(projects)
             .where(inArray(projects.id, projectIds))
             .orderBy(desc(projects.updatedAt));
+            
+          console.log(`Final projects list for user ${user.id}:`, projectsList);
+        } else {
+          console.log(`No project memberships found for user ${user.id}`);
         }
       }
 
@@ -445,14 +482,15 @@ export function registerRoutes(app: Express): Server {
       if (req.body.teamMembers && Array.isArray(req.body.teamMembers)) {
         for (const memberId of req.body.teamMembers) {
           try {
-            // Add team member to project
+            // Add team member to project with accepted status (auto-accept for staff)
             await db
               .insert(projectMembers)
               .values({
                 projectId: newProject.id,
                 userId: memberId,
                 invitedBy: req.user!.id,
-                invitationStatus: "pending"
+                invitationStatus: "accepted",
+                joinedAt: new Date()
               });
 
             // Create notification for the team member
