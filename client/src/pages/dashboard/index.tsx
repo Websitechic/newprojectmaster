@@ -78,31 +78,20 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold">Recent Projects</h2>
-              <div className="grid gap-4">
-                {projects?.slice(0, 2).map(project => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold">Your Tasks</h2>
+            {tasks && tasks.length > 0 ? (
+              <TaskList 
+                tasks={user?.role === "staff" 
+                  ? tasks 
+                  : tasks?.slice(0, 5) || []} 
+                projectId={tasks[0]?.projectId || 0}
+              />
+            ) : (
+              <div className="text-center text-muted-foreground mt-8">
+                No tasks assigned to you yet.
               </div>
-            </div>
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold">Your Tasks</h2>
-              {tasks && tasks.length > 0 ? (
-                <TaskList 
-                  tasks={user?.role === "staff" 
-                    ? tasks 
-                    : tasks?.slice(0, 5) || []} 
-                  projectId={tasks[0]?.projectId || 0}
-                />
-              ) : (
-                <div className="text-center text-muted-foreground mt-8">
-                  No tasks assigned to you yet.
-                </div>
-              )}
-              <ChatWindow />
-            </div>
+            )}
           </div>
         </div>
       </div>
