@@ -155,7 +155,10 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   };
 
   // Filter tasks to show only those assigned to the current staff member
-  const filteredTasks = tasks.filter((task) => task.assigneeId === user?.id);
+  // Sort by ID to maintain consistent positioning regardless of timer state
+  const filteredTasks = tasks
+    .filter((task) => task.assigneeId === user?.id)
+    .sort((a, b) => a.id - b.id);
 
   return (
     <div>

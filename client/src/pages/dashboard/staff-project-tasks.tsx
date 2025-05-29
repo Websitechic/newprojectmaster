@@ -21,7 +21,8 @@ export default function StaffProjectTasks() {
   });
 
   // Filter tasks to show only those assigned to the current staff member
-  const myTasks = allTasks?.filter(task => task.assigneeId === user?.id) || [];
+  // Sort by ID to maintain consistent positioning
+  const myTasks = allTasks?.filter(task => task.assigneeId === user?.id).sort((a, b) => a.id - b.id) || [];
 
   // Refetch tasks when user changes (in case of reassignment)
   useEffect(() => {
