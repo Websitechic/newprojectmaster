@@ -44,9 +44,10 @@ interface TaskListProps {
   tasks: Task[];
   projectId?: number;
   isStaffView?: boolean;
+  showNewTaskButton?: boolean;
 }
 
-export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProps) {
+export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true }: TaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -232,7 +233,7 @@ export function TaskList({ tasks, projectId, isStaffView = false }: TaskListProp
   return (
     <div>
       <div className="flex justify-end mb-4">
-        { !isStaffView && (
+        { !isStaffView && showNewTaskButton && (
           <Button onClick={handleNewTask}>
             <Plus className="h-4 w-4 mr-2" />
             New Task
