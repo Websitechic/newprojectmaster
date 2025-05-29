@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectCard } from "@/components/project/project-card";
 import { TaskList } from "@/components/task/task-list";
+import { StaffTaskList } from "@/components/task/staff-task-list";
 import { ChatWindow } from "@/components/chat/chat-window";
 import { useUser } from "@/hooks/use-user";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -83,13 +84,18 @@ export default function Dashboard() {
               {user?.role === "staff" ? "Your Tasks" : "All Tasks"}
             </h2>
             {tasks && tasks.length > 0 ? (
-              <TaskList 
-                tasks={user?.role === "staff" 
-                  ? tasks 
-                  : tasks?.slice(0, 5) || []} 
-                projectId={tasks[0]?.projectId || 0}
-                showNewTaskButton={false}
-              />
+              user?.role === "staff" ? (
+                <StaffTaskList 
+                  tasks={tasks} 
+                  projectId={tasks[0]?.projectId || 0}
+                />
+              ) : (
+                <TaskList 
+                  tasks={tasks?.slice(0, 5) || []} 
+                  projectId={tasks[0]?.projectId || 0}
+                  showNewTaskButton={false}
+                />
+              )
             ) : (
               <div className="text-center text-muted-foreground mt-8">
                 No tasks assigned to you yet.

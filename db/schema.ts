@@ -138,6 +138,10 @@ export const tasks = pgTable("tasks", {
   startDate: timestamp("start_date"),
   deadline: timestamp("deadline"),
   workingHours: integer("working_hours"),
+  timeSpent: integer("time_spent").default(0), // in seconds
+  isTimerRunning: boolean("is_timer_running").default(false),
+  timerStartTime: timestamp("timer_start_time"),
+  hasBeenStarted: boolean("has_been_started").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

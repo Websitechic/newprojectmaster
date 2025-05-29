@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
-import { TaskList } from "@/components/task/task-list";
+import { StaffTaskList } from "@/components/task/staff-task-list";
 import { useAuth } from "@/hooks/use-auth";
 import type { Task } from "@db/schema";
 import { useEffect } from "react";
@@ -53,7 +53,7 @@ export default function StaffProjectTasks() {
           </div>
           
           {myTasks.length > 0 ? (
-            <TaskList tasks={myTasks} projectId={projectId} isStaffView={true} />
+            <StaffTaskList tasks={myTasks} projectId={projectId} />
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="bg-blue-50 p-4 rounded-full mb-4">

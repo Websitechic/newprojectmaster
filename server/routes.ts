@@ -949,7 +949,8 @@ export function registerRoutes(app: Express): Server {
           status: status || "todo",
           assigneeId: assigneeId ? parseInt(assigneeId) : null,
           deadline: taskDeadline,
-          updatedAt: new Date(),          startDate: taskStartDate,
+          updatedAt: new Date(),
+          startDate: taskStartDate,
           workingHours: taskWorkingHours
         })
         .where(eq(tasks.id, taskId))
@@ -989,6 +990,157 @@ export function registerRoutes(app: Express): Server {
         error: "Failed to update task",
         details: error instanceof Error ? error.message : String(error)
       });
+    }
+  });
+
+  // Start task timer (Staff only)
+  app.post("/api/tasks/:id/start-timer", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "staff") {
+      return res.status(403).send("Only staff members can start timers");
+    }
+
+    try {
+      const taskId = parseInt(req.params.id);
+
+      // Check if task exists and is assigned to this staff member
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(and(
+          eq(tasks.id, taskId),
+          eq(tasks.assigneeId, req.user!.id)
+        ))
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found or not assigned to you" });
+      }
+
+      // Check if any other task has a running timer for this user
+      const [runningTask] = await db
+        .select()
+        .from(tasks)
+        .where(and(
+          eq(tasks.assigneeId, req.user!.id),
+          eq(tasks.isTimerRunning, true)
+        ))
+        .limit(1);
+
+      if (runningTask && runningTask.id !== taskId) {
+        return res.status(400).json({ 
+          error: "Stop the current task timer before starting a new one." 
+        });
+      }
+
+      // Start the timer
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          isTimerRunning: true,
+          timerStartTime: new Date(),
+          hasBeenStarted: true,
+          updatedAt: new Date()
+        })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error starting timer:", error);
+      res.status(500).json({ error: "Failed to start timer" });
+    }
+  });
+
+  // Pause task timer (Staff only)
+  app.post("/api/tasks/:id/pause-timer", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "staff") {
+      return res.status(403).send("Only staff members can pause timers");
+    }
+
+    try {
+      const taskId = parseInt(req.params.id);
+
+      // Check if task exists and is assigned to this staff member
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(and(
+          eq(tasks.id, taskId),
+          eq(tasks.assigneeId, req.user!.id),
+          eq(tasks.isTimerRunning, true)
+        ))
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found, not assigned to you, or timer not running" });
+      }
+
+      // Calculate elapsed time
+      const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime!).getTime()) / 1000);
+      const newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
+
+      // Pause the timer
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          isTimerRunning: false,
+          timerStartTime: null,
+          timeSpent: newTimeSpent,
+          updatedAt: new Date()
+        })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error pausing timer:", error);
+      res.status(500).json({ error: "Failed to pause timer" });
+    }
+  });
+
+  // Submit task (Staff only)
+  app.post("/api/tasks/:id/submit", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "staff") {
+      return res.status(403).send("Only staff members can submit tasks");
+    }
+
+    try {
+      const taskId = parseInt(req.params.id);
+
+      // Check if task exists and is assigned to this staff member
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(and(
+          eq(tasks.id, taskId),
+          eq(tasks.assigneeId, req.user!.id)
+        ))
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found or not assigned to you" });
+      }
+
+      if (!task.hasBeenStarted) {
+        return res.status(400).json({ error: "Task must be started before it can be submitted" });
+      }
+
+      // Update task status to review
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          status: "review",
+          isTimerRunning: false,
+          timerStartTime: null,
+          updatedAt: new Date()
+        })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error submitting task:", error);
+      res.status(500).json({ error: "Failed to submit task" });
     }
   });
 
