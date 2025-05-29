@@ -192,3 +192,49 @@ export function useAuth() {
   }
   return context;
 }
+
+// Hook for notifications
+  const useNotifications = () => {
+    const { user } = useAuth();
+
+    useEffect(() => {
+      if (!user) return;
+
+      const eventSource = new EventSource('/api/notifications/stream', {
+        withCredentials: true
+      });
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'notification') {
+            queryClient.setQueryData(['/api/notifications'], (old: any[] = []) => {
+              return [data.data, ...old];
+            });
+
+            // Show toast notification
+            toast({
+              title: "New Notification",
+              description: data.data.content,
+            });
+          }
+        } catch (error) {
+          console.error('Failed to parse notification:', error);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('Notification stream error:', error);
+        // Close the connection on error to prevent retry loops
+        eventSource.close();
+      };
+
+      eventSource.onopen = () => {
+        console.log('Notification stream connected');
+      };
+
+      return () => {
+        eventSource.close();
+      };
+    }, [user]);
+  };
