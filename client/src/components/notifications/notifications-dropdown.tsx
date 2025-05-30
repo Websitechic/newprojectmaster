@@ -132,7 +132,7 @@ export function NotificationsDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto">
         {notifications.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground">
             No notifications
@@ -141,7 +141,7 @@ export function NotificationsDropdown() {
           notifications.map((notification) => (
             <DropdownMenuItem
               key={notification.id}
-              className={`flex flex-col items-start p-4 ${
+              className={`flex flex-col items-start p-3 md:p-4 ${
                 !notification.read ? "bg-accent/50" : ""
               } ${notification.type === "task_assigned" ? "border-l-4 border-primary" : ""}`}
               onClick={() => {
@@ -161,10 +161,10 @@ export function NotificationsDropdown() {
                 }
               }}
             >
-              <div className="text-sm font-medium">
+              <div className="text-sm font-medium break-words">
                 {notification.type === "task_assigned" ? "✅ Task Assignment" : "Notification"}
               </div>
-              <div className="text-sm">{notification.content}</div>
+              <div className="text-sm break-words w-full">{notification.content}</div>
               <div className="mt-1 text-xs text-muted-foreground">
                 {new Date(notification.createdAt!).toLocaleString()}
               </div>

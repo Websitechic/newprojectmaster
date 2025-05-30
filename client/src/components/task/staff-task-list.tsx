@@ -37,7 +37,11 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   // Get all projects to display project names for each task
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
-    queryFn: () => fetch("/api/projects").then(res => res.json()),
+    queryFn: () => fetch("/api/projects").then(res => {
+      if (!res.ok) throw new Error('Failed to fetch projects');
+      return res.json();
+    }),
+    enabled: !!user,
   });
 
   // Create a map of project IDs to project names
@@ -45,6 +49,12 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     acc[project.id] = project.name;
     return acc;
   }, {} as Record<number, string>) || {};
+
+  // Debug: Check if we have all projects for the tasks
+  const missingProjects = filteredTasks.filter(task => !projectMap[task.projectId]);
+  if (missingProjects.length > 0) {
+    console.warn('Tasks with missing project data:', missingProjects.map(t => ({ taskId: t.id, projectId: t.projectId })));
+  }
 
   // Update local timers every second for running tasks
   useEffect(() => {
@@ -237,7 +247,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                   <TableCell className="font-medium">
                     <div>
                       <div className="text-sm text-muted-foreground font-normal">
-                        {projectMap[task.projectId] || 'Unknown Project'}:
+                        {projectMap[task.projectId] || `Project ID: ${task.projectId}`}:
                       </div>
                       <div>{task.title}</div>
                     </div>
