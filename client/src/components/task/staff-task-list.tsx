@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,8 +9,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -33,6 +33,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Get all projects to display project names for each task
   const { data: projects } = useQuery<Project[]>({
@@ -49,6 +50,13 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     acc[project.id] = project.name;
     return acc;
   }, {} as Record<number, string>) || {};
+
+  // Filter tasks to show only those assigned to the current staff member
+  // Sort by ID to maintain consistent positioning regardless of timer state
+  const filteredTasks = tasks
+    .filter((task) => task.assigneeId === user?.id)
+    .filter(task => task.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => a.id - b.id);
 
   // Debug: Check if we have all projects for the tasks
   const missingProjects = filteredTasks.filter(task => !projectMap[task.projectId]);
@@ -216,14 +224,16 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     return task.isTimerRunning ? "text-blue-600 font-medium" : "text-gray-600";
   };
 
-  // Filter tasks to show only those assigned to the current staff member
-  // Sort by ID to maintain consistent positioning regardless of timer state
-  const filteredTasks = tasks
-    .filter((task) => task.assigneeId === user?.id)
-    .sort((a, b) => a.id - b.id);
-
   return (
-    <div>
+    <div className="space-y-4">
+      <div className="flex items-center space-x-2">
+        <Input
+          placeholder="Search tasks..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-sm"
+        />
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -241,7 +251,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
             {filteredTasks.map((task) => {
               const currentTime = localTimers[task.id] || task.timeSpent || 0;
               const timeOverLimit = isTimeOverLimit(task, currentTime);
-              
+
               return (
                 <TableRow key={task.id}>
                   <TableCell className="font-medium">

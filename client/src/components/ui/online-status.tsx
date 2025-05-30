@@ -23,30 +23,30 @@ export function OnlineStatus({
     idle: "bg-amber-400",
     offline: "bg-gray-400",
   };
-  
+
   const statusText = {
     online: "Online",
     idle: "Idle",
     offline: "Offline",
   };
-  
+
   const dotSizes = {
     sm: "w-2 h-2",
     md: "w-3 h-3", 
     lg: "w-4 h-4",
   };
-  
+
   const textSizes = {
     sm: "text-xs",
     md: "text-sm",
     lg: "text-base",
   };
-  
+
   // Format time since last active
   const formattedLastActive = lastActive 
     ? formatDistanceToNow(new Date(lastActive), { addSuffix: true })
     : null;
-    
+
   // Simple status indicator with dot and text
   return (
     <div className={cn("flex items-center gap-1.5", className)}>
@@ -78,19 +78,19 @@ export function OnlineStatusBadge({
     idle: "Idle",
     offline: "Offline",
   };
-  
+
   // Format time since last active
   const formattedLastActive = lastActive && (status === "idle" || status === "offline")
     ? formatDistanceToNow(new Date(lastActive), { addSuffix: true })
     : null;
-  
+
   return (
     <Badge 
       variant="outline" 
       className={cn(statusColors[status], className)}
     >
-      <div className="flex items-center gap-1.5">
-        <div className={cn("rounded-full w-2 h-2", statusColors[status])} />
+      <span className="flex items-center gap-1.5">
+        <span className={cn("rounded-full w-2 h-2", statusColors[status])} />
         {showText && (
           <>
             {statusText[status]}
@@ -101,7 +101,7 @@ export function OnlineStatusBadge({
             )}
           </>
         )}
-      </div>
+      </span>
     </Badge>
   );
 }
