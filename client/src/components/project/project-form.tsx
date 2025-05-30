@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -100,12 +100,26 @@ export function ProjectForm({ project, onSuccess }: { project?: Project; onSucce
     },
   });
 
-  // Set the client type state when editing a project
-  useState(() => {
+  // Set the client type state when editing a project - use useEffect instead of useState
+  React.useEffect(() => {
     if (project) {
-      setClientType(project.clientId ? "existing" : "new");
+      const initialClientType = project.clientId ? "existing" : "new";
+      setClientType(initialClientType);
+      
+      // Reset form with proper values when project changes
+      form.reset({
+        name: project.name || "",
+        description: project.description || "",
+        clientType: initialClientType,
+        clientId: project.clientId || undefined,
+        clientEmail: project.pendingClientEmail || "",
+        category: project.category || undefined,
+        teamMembers: [],
+        startDate: project.startDate ? new Date(project.startDate) : undefined,
+        endDate: project.endDate ? new Date(project.endDate) : undefined,
+      });
     }
-  });
+  }, [project, form]);
 
   const saveProject = useMutation({
     mutationFn: async (data: ProjectFormValues) => {
@@ -310,8 +324,7 @@ export function ProjectForm({ project, onSuccess }: { project?: Project; onSucce
             <FormItem>
               <FormLabel>Client Selection</FormLabel>
               <Tabs
-                value={field.value}
-                defaultValue={clientType}
+                value={clientType}
                 onValueChange={(value) => {
                   field.onChange(value);
                   setClientType(value as "existing" | "new");
@@ -332,7 +345,10 @@ export function ProjectForm({ project, onSuccess }: { project?: Project; onSucce
                             <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
                           </div>
                         ) : clients && clients.length > 0 ? (
-                          <Select onValueChange={(value) => field.onChange(parseInt(value))}>
+                          <Select 
+                            value={field.value ? field.value.toString() : ""} 
+                            onValueChange={(value) => field.onChange(parseInt(value))}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a client" />
