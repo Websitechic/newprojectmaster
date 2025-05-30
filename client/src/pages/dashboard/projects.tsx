@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { ProjectCard } from "@/components/project/project-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -21,20 +21,30 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ProjectForm } from "@/components/project/project-form";
 import type { Project } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
 import { useState, useMemo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Projects() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { user } = useUser();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -44,14 +54,14 @@ export default function Projects() {
     if (filter === "all") return true;
     return project.status === filter;
   });
-  
+
   // Set of expanded categories (initially all collapsed)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  
+
   // Group projects by category
   const projectsByCategory = useMemo(() => {
     if (!filteredProjects) return {};
-    
+
     // Define category display names
     const categoryDisplayNames: Record<string, string> = {
       'website_development': 'Website Development',
@@ -61,10 +71,10 @@ export default function Projects() {
       'support_maintenance': 'Support & Maintenance',
       'uncategorized': 'Uncategorized',
     };
-    
+
     // Group projects
     const groupedProjects: Record<string, { displayName: string, projects: Project[] }> = {};
-    
+
     filteredProjects.forEach(project => {
       const category = project.category || 'uncategorized';
       if (!groupedProjects[category]) {
@@ -75,10 +85,10 @@ export default function Projects() {
       }
       groupedProjects[category].projects.push(project);
     });
-    
+
     return groupedProjects;
   }, [filteredProjects]);
-  
+
   // Toggle category expansion
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => {
@@ -91,6 +101,32 @@ export default function Projects() {
       return newSet;
     });
   };
+
+   const deleteProjectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/projects/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete project");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({
+        title: "Success",
+        description: "Project deleted successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete project: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <div className="flex h-screen">
@@ -151,16 +187,16 @@ export default function Projects() {
                         {projects.length} {projects.length === 1 ? 'project' : 'projects'}
                       </span>
                     </CollapsibleTrigger>
-                    
+
                     <CollapsibleContent>
                       <div className="p-3 space-y-2">
                         {projects.map((project) => (
                           <div 
                             key={project.id} 
                             className="flex items-center justify-between p-3 bg-card hover:bg-muted/50 border rounded-lg cursor-pointer transition-colors"
-                            onClick={() => window.location.href = `/dashboard/projects/${project.id}`}
+                            
                           >
-                            <div className="flex items-center space-x-4 flex-1 min-w-0">
+                            <div className="flex items-center space-x-4 flex-1 min-w-0" onClick={() => window.location.href = `/dashboard/projects/${project.id}`}>
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-semibold text-sm truncate" title={project.name}>
                                   {project.name}
@@ -196,6 +232,45 @@ export default function Projects() {
                                 </span>
                               </div>
                             </div>
+                             <div className="space-x-2">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.location.href = `/dashboard/projects/${project.id}/edit`;
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="icon" variant="ghost">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the project from our servers.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          deleteProjectMutation.mutate(project.id);
+                                        }}
+                                        disabled={deleteProjectMutation.isPending}
+                                      >
+                                        {deleteProjectMutation.isPending ? "Deleting..." : "Delete"}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                           </div>
                         ))}
                       </div>
