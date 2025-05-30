@@ -42,6 +42,9 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const queryClient = useQueryClient();
 
   const isProjectManager = user?.role === 'project_manager';
+  
+  // Debug logging
+  console.log('User role:', user?.role, 'Is PM:', isProjectManager);
 
   const statusColors = {
     active: "bg-green-500",
