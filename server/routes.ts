@@ -1192,6 +1192,9 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
+      // If changing from completed back to another status, allow it
+      // Staff can now modify completed tasks to any other status
+
       const [updatedTask] = await db
         .update(tasks)
         .set(updateData)

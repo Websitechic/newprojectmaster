@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Table,
@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Play, Pause, Send, Clock } from "lucide-react";
-import type { Task } from "@db/schema";
+import type { Task, Project } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 
 interface StaffTaskListProps {
@@ -33,6 +33,13 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
+
+  // Get project data to display project name
+  const { data: project } = useQuery<Project>({
+    queryKey: [`/api/projects/${projectId}`],
+    queryFn: () => fetch(`/api/projects/${projectId}`).then(res => res.json()),
+    enabled: !!projectId,
+  });
 
   // Update local timers every second for running tasks
   useEffect(() => {
@@ -222,30 +229,31 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
               
               return (
                 <TableRow key={task.id}>
-                  <TableCell className="font-medium">{task.title}</TableCell>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div className="text-sm text-muted-foreground font-normal">
+                        {project?.name || 'Unknown Project'}:
+                      </div>
+                      <div>{task.title}</div>
+                    </div>
+                  </TableCell>
                   <TableCell className="max-w-xs truncate">{task.description}</TableCell>
                   <TableCell>
-                    {task.status === 'completed' ? (
-                      <Badge className="bg-green-500 text-white">
-                        completed
-                      </Badge>
-                    ) : (
-                      <Select
-                        value={task.status || 'todo'}
-                        onValueChange={(status) => updateTaskStatus.mutate({ taskId: task.id, status })}
-                        disabled={updateTaskStatus.isPending}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="todo">To Do</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="review">Review</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
+                    <Select
+                      value={task.status || 'todo'}
+                      onValueChange={(status) => updateTaskStatus.mutate({ taskId: task.id, status })}
+                      disabled={updateTaskStatus.isPending}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todo">To Do</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="review">Review</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     <div className={`flex items-center gap-1 ${getTimerColor(task, currentTime)}`}>
@@ -273,7 +281,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {task.status !== 'review' && task.status !== 'completed' && (
+                      {task.status !== 'review' && (
                         <>
                           <Button
                             variant="outline"
@@ -307,9 +315,9 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                           </Button>
                         </>
                       )}
-                      {(task.status === 'review' || task.status === 'completed') && (
+                      {task.status === 'review' && (
                         <span className="text-xs text-muted-foreground">
-                          {task.status === 'review' ? 'Under Review' : 'Completed'}
+                          Under Review
                         </span>
                       )}
                     </div>
