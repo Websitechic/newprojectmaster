@@ -47,6 +47,8 @@ export default function Projects() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -239,16 +241,35 @@ export default function Projects() {
                             </div>
                              {user?.role === "project_manager" && (
                               <div className="flex space-x-2">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    window.location.href = `/dashboard/projects/${project.id}/edit`;
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingProject(project);
+                                        setIsEditDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
+                                    <DialogHeader>
+                                      <DialogTitle>Edit Project</DialogTitle>
+                                    </DialogHeader>
+                                    {editingProject && (
+                                      <ProjectForm 
+                                        project={editingProject} 
+                                        onSuccess={() => {
+                                          setIsEditDialogOpen(false);
+                                          setEditingProject(null);
+                                        }} 
+                                      />
+                                    )}
+                                  </DialogContent>
+                                </Dialog>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <Button size="icon" variant="ghost">
