@@ -100,6 +100,13 @@ export function ProjectForm({ project, onSuccess }: { project?: Project; onSucce
     },
   });
 
+  // Set the client type state when editing a project
+  useState(() => {
+    if (project) {
+      setClientType(project.clientId ? "existing" : "new");
+    }
+  });
+
   const saveProject = useMutation({
     mutationFn: async (data: ProjectFormValues) => {
       if (!data.startDate || !data.endDate) {
@@ -303,7 +310,8 @@ export function ProjectForm({ project, onSuccess }: { project?: Project; onSucce
             <FormItem>
               <FormLabel>Client Selection</FormLabel>
               <Tabs
-                defaultValue="existing"
+                value={field.value}
+                defaultValue={clientType}
                 onValueChange={(value) => {
                   field.onChange(value);
                   setClientType(value as "existing" | "new");
