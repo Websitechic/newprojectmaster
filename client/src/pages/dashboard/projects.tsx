@@ -5,7 +5,12 @@ import { useLocation } from "wouter";
 import { ProjectCard } from "@/components/project/project-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Select,
   SelectContent,
@@ -232,7 +237,8 @@ export default function Projects() {
                                 </span>
                               </div>
                             </div>
-                             <div className="space-x-2">
+                             {user?.role === "project_manager" && (
+                              <div className="flex space-x-2">
                                 <Button
                                   size="icon"
                                   variant="ghost"
@@ -261,7 +267,7 @@ export default function Projects() {
                                       <AlertDialogAction
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          deleteProjectMutation.mutate(project.id);
+                                          deleteProjectMutation.mutate(project.id.toString());
                                         }}
                                         disabled={deleteProjectMutation.isPending}
                                       >
@@ -271,6 +277,7 @@ export default function Projects() {
                                   </AlertDialogContent>
                                 </AlertDialog>
                               </div>
+                            )}
                           </div>
                         ))}
                       </div>
