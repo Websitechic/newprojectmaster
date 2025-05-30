@@ -39,7 +39,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import type { User } from "@db/schema";
+import type { User, Project } from "@db/schema";
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -69,7 +69,7 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
-export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
+export function ProjectForm({ project, onSuccess }: { project?: Project; onSuccess?: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [clientType, setClientType] = useState<"existing" | "new">("existing");
@@ -88,14 +88,19 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      clientType: "existing",
+      name: project?.name || "",
+      description: project?.description || "",
+      clientType: project?.clientId ? "existing" : "new",
+      clientId: project?.clientId || undefined,
+      clientEmail: project?.pendingClientEmail || "",
+      category: project?.category || undefined,
       teamMembers: [],
+      startDate: project?.startDate ? new Date(project.startDate) : undefined,
+      endDate: project?.endDate ? new Date(project.endDate) : undefined,
     },
   });
 
-  const createProject = useMutation({
+  const saveProject = useMutation({
     mutationFn: async (data: ProjectFormValues) => {
       if (!data.startDate || !data.endDate) {
         throw new Error("Start and end dates are required");
@@ -117,8 +122,11 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
         ),
       };
 
-      const response = await fetch("/api/projects", {
-        method: "POST",
+      const url = project ? `/api/projects/${project.id}` : "/api/projects";
+      const method = project ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
@@ -133,7 +141,7 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Project created successfully",
+        description: project ? "Project updated successfully" : "Project created successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       onSuccess?.();
@@ -162,7 +170,7 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   const onSubmit = (data: ProjectFormValues) => {
-    createProject.mutate(data);
+    saveProject.mutate(data);
   };
 
   return (
@@ -453,8 +461,8 @@ export function ProjectForm({ onSuccess }: { onSuccess?: () => void }) {
           />
         </div>
 
-        <Button type="submit" className="w-full mt-4" disabled={createProject.isPending}>
-          {createProject.isPending ? "Creating..." : "Create Project"}
+        <Button type="submit" className="w-full mt-4" disabled={saveProject.isPending}>
+          {saveProject.isPending ? (project ? "Updating..." : "Creating...") : (project ? "Update Project" : "Create Project")}
         </Button>
       </form>
     </Form>

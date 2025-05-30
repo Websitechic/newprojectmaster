@@ -308,6 +308,82 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Update project (Project Manager only)
+  app.put("/api/projects/:id", isProjectManager, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { 
+        name, 
+        description, 
+        category, 
+        clientId, 
+        pendingClientEmail, 
+        teamMembers, 
+        startDate, 
+        endDate 
+      } = req.body;
+
+      // Verify the project exists and is managed by this PM
+      const [existingProject] = await db
+        .select()
+        .from(projects)
+        .where(and(
+          eq(projects.id, projectId),
+          eq(projects.managerId, req.user!.id)
+        ))
+        .limit(1);
+
+      if (!existingProject) {
+        return res.status(404).json({ 
+          error: "Project not found or you don't have permission to edit it" 
+        });
+      }
+
+      // Update the project
+      const [updatedProject] = await db
+        .update(projects)
+        .set({
+          name,
+          description,
+          category,
+          clientId: clientId || null,
+          pendingClientEmail: pendingClientEmail || null,
+          startDate: startDate ? new Date(startDate) : null,
+          endDate: endDate ? new Date(endDate) : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(projects.id, projectId))
+        .returning();
+
+      // Update team members if provided
+      if (teamMembers && Array.isArray(teamMembers)) {
+        // Remove existing team members
+        await db
+          .delete(projectMembers)
+          .where(eq(projectMembers.projectId, projectId));
+
+        // Add new team members
+        if (teamMembers.length > 0) {
+          await db.insert(projectMembers).values(
+            teamMembers.map((memberId: number) => ({
+              projectId,
+              userId: memberId,
+              role: "member" as const,
+              invitationStatus: "accepted" as const,
+              invitedBy: req.user!.id,
+              joinedAt: new Date(),
+            }))
+          );
+        }
+      }
+
+      res.json(updatedProject);
+    } catch (error) {
+      console.error("Error updating project:", error);
+      res.status(500).json({ error: "Failed to update project" });
+    }
+  });
+
   // Delete project (Project Manager only)
   app.delete("/api/projects/:id", isProjectManager, async (req, res) => {
     try {

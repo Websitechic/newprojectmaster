@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Video, Trash2 } from "lucide-react";
+import { Video, Trash2, Edit } from "lucide-react";
 import type { Project } from "@db/schema";
 import { VideoCall } from "@/components/video/video-call";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -21,6 +21,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface ProjectCardProps {
   project: Project;
@@ -29,6 +36,7 @@ interface ProjectCardProps {
 export function ProjectCard({ project }: ProjectCardProps) {
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -81,6 +89,12 @@ export function ProjectCard({ project }: ProjectCardProps) {
     setIsDeleteDialogOpen(true);
   };
 
+  // Prevent card click when clicking edit button
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditDialogOpen(true);
+  };
+
   // Prevent card click when clicking video button
   const handleVideoClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -107,37 +121,80 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </div>
             <div className="flex items-center gap-0.5 flex-shrink-0">
               {isProjectManager && (
-                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleDeleteClick}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 h-6 w-6 p-0"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
+                <>
+                  <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleEditClick}
+                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 h-6 w-6 p-0"
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Edit Project</DialogTitle>
+                      </DialogHeader>
+                      <ProjectForm 
+                        project={project} 
+                        onSuccess={() => setIsEditDialogOpen(false)} 
+                      />
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleDeleteClick}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 h-6 w-6 p-0"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </AlertDialogTrigger>
+                  <AlertDialogContent className="max-w-md">
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the project 
-                        "{project.name}" and all associated data including tasks, messages, and 
-                        team member assignments.
+                      <AlertDialogTitle className="text-red-600">Delete Project</AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-2">
+                        <p className="font-medium">
+                          Are you sure you want to delete the project "{project.name}"?
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          This action cannot be undone. This will permanently delete:
+                        </p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>All project tasks and their progress</li>
+                          <li>All messages and communications</li>
+                          <li>Team member assignments</li>
+                          <li>Project resources and files</li>
+                        </ul>
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogFooter className="gap-2">
+                      <AlertDialogCancel className="bg-gray-100 hover:bg-gray-200">
+                        Cancel
+                      </AlertDialogCancel>
                       <AlertDialogAction 
                         onClick={() => deleteProject.mutate()}
-                        className="bg-red-500 hover:bg-red-600"
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                        disabled={deleteProject.isPending}
                       >
-                        {deleteProject.isPending ? "Deleting..." : "Delete Project"}
+                        {deleteProject.isPending ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                            Deleting...
+                          </>
+                        ) : (
+                          "Delete Project"
+                        )}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
-                </AlertDialog>
+                  </AlertDialog>
+                </>
               )}
               <Button
                 variant="ghost"
