@@ -34,12 +34,17 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const queryClient = useQueryClient();
   const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
 
-  // Get project data to display project name
-  const { data: project } = useQuery<Project>({
-    queryKey: [`/api/projects/${projectId}`],
-    queryFn: () => fetch(`/api/projects/${projectId}`).then(res => res.json()),
-    enabled: !!projectId,
+  // Get all projects to display project names for each task
+  const { data: projects } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    queryFn: () => fetch("/api/projects").then(res => res.json()),
   });
+
+  // Create a map of project IDs to project names
+  const projectMap = projects?.reduce((acc, project) => {
+    acc[project.id] = project.name;
+    return acc;
+  }, {} as Record<number, string>) || {};
 
   // Update local timers every second for running tasks
   useEffect(() => {
@@ -232,7 +237,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                   <TableCell className="font-medium">
                     <div>
                       <div className="text-sm text-muted-foreground font-normal">
-                        {project?.name || 'Unknown Project'}:
+                        {projectMap[task.projectId] || 'Unknown Project'}:
                       </div>
                       <div>{task.title}</div>
                     </div>
