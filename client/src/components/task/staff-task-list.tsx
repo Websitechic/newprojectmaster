@@ -12,6 +12,13 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Play, Pause, Send, Clock } from "lucide-react";
 import type { Task } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -134,6 +141,39 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     },
   });
 
+  const updateTaskStatus = useMutation({
+    mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
+      const response = await fetch(`/api/tasks/${taskId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: 'include',
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update task status');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+      toast({
+        title: "Status Updated",
+        description: "Task status has been updated",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -185,9 +225,27 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                   <TableCell className="font-medium">{task.title}</TableCell>
                   <TableCell className="max-w-xs truncate">{task.description}</TableCell>
                   <TableCell>
-                    <Badge className={`bg-${task.status === 'completed' ? 'green' : task.status === 'in_progress' ? 'blue' : task.status === 'review' ? 'yellow' : 'gray'}-500`}>
-                      {task.status?.replace('_', ' ') || 'todo'}
-                    </Badge>
+                    {task.status === 'completed' ? (
+                      <Badge className="bg-green-500 text-white">
+                        completed
+                      </Badge>
+                    ) : (
+                      <Select
+                        value={task.status || 'todo'}
+                        onValueChange={(status) => updateTaskStatus.mutate({ taskId: task.id, status })}
+                        disabled={updateTaskStatus.isPending}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todo">To Do</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="review">Review</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className={`flex items-center gap-1 ${getTimerColor(task, currentTime)}`}>

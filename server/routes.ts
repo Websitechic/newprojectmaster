@@ -1144,6 +1144,67 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Update task status (Staff only)
+  app.put("/api/tasks/:id/status", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "staff") {
+      return res.status(403).send("Only staff members can update task status");
+    }
+
+    try {
+      const taskId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      // Validate status
+      const validStatuses = ["todo", "in_progress", "review", "completed"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+
+      // Check if task exists and is assigned to this staff member
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(and(
+          eq(tasks.id, taskId),
+          eq(tasks.assigneeId, req.user!.id)
+        ))
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found or not assigned to you" });
+      }
+
+      // Update task status
+      const updateData: any = {
+        status,
+        updatedAt: new Date()
+      };
+
+      // If setting to completed or review, stop the timer
+      if (status === "completed" || status === "review") {
+        updateData.isTimerRunning = false;
+        updateData.timerStartTime = null;
+        
+        // If timer was running, add elapsed time
+        if (task.isTimerRunning && task.timerStartTime) {
+          const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
+          updateData.timeSpent = (task.timeSpent || 0) + elapsedSeconds;
+        }
+      }
+
+      const [updatedTask] = await db
+        .update(tasks)
+        .set(updateData)
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      res.status(500).json({ error: "Failed to update task status" });
+    }
+  });
+
   // Delete task (Project Manager only)
   app.delete("/api/tasks/:id", isProjectManager, async (req, res) => {
     try {
