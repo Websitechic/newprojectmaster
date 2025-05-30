@@ -53,11 +53,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/projects",
     },
     {
-      icon: <CheckSquare size={20} />,
-      label: "Tasks",
-      href: "/dashboard/tasks",
-    },
-    {
       icon: <MessageSquare size={20} />,
       label: "Messages",
       href: "/dashboard/messages",
@@ -80,9 +75,9 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   
   // Combine menu items based on user role
   const menuItems = [
-    ...baseMenuItems.slice(0, 3), // Dashboard, Projects, Tasks
+    ...baseMenuItems.slice(0, 2), // Dashboard, Projects
     ...pmMenuItems,               // Project manager specific items
-    ...baseMenuItems.slice(3)     // Messages, Settings
+    ...baseMenuItems.slice(2)     // Messages, Settings
   ];
 
   return (
