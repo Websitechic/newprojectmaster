@@ -61,6 +61,8 @@ function Router() {
       <Route path="/dashboard/projects/:id/staff" component={StaffProjectDetails} />
       <Route path="/dashboard/projects/:id/resources" component={ProjectResources} />
       <Route path="/dashboard/projects/:id/plan/:planId" component={ProjectPlanDetails} />
+      <Route path="/dashboard/staff-report" component={() => <PrivateRoute component={StaffReport} />} />
+      <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />
       <Route component={NotFound} />
     </Switch>
   );

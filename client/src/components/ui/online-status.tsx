@@ -1,3 +1,4 @@
+
 import { cn } from "@/lib/utils";
 
 interface OnlineStatusProps {
@@ -56,18 +57,11 @@ export function OnlineStatus({
     return `${diffInDays}d ago`;
   })() : null;
 
-  // Simple status indicator with dot and text - using only inline elements
+  // Use only inline elements to avoid DOM nesting issues
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
-      <span 
-        className={cn("inline-block rounded-full", dotSizes[size], statusColors[status])}
-        aria-label={`Status: ${statusText[status]}`}
-      />
-      {showText && (
-        <span className={cn("font-medium", textSizes[size])}>
-          {statusText[status]}
-        </span>
-      )}
+      <span className={cn("inline-block rounded-full", dotSizes[size], statusColors[status])} />
+      {showText && <span className={cn("font-medium", textSizes[size])}>{statusText[status]}</span>}
       {formattedLastActive && (status === "idle" || status === "offline") && (
         <span className="text-xs text-muted-foreground">
           ({formattedLastActive})
