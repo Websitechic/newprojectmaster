@@ -59,6 +59,107 @@ export default function ProjectDetails() {
             <p className="text-muted-foreground">{project.description}</p>
           </div>
 
+          {/* Project Plan Section */}
+          <div className="mb-8">
+            <Card>
+              <CardHeader>
+                <h2 className="text-xl font-semibold">Project Plan</h2>
+                <p className="text-sm text-muted-foreground">
+                  Overview of project timeline, milestones, and key deliverables
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-sm">Timeline</h3>
+                    <div className="text-sm text-muted-foreground">
+                      <p><span className="font-medium">Start:</span> {new Date(project.startDate || '').toLocaleDateString()}</p>
+                      <p><span className="font-medium">End:</span> {new Date(project.endDate || '').toLocaleDateString()}</p>
+                      <p><span className="font-medium">Duration:</span> {
+                        project.startDate && project.endDate 
+                          ? Math.ceil((new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / (1000 * 3600 * 24)) + ' days'
+                          : 'N/A'
+                      }</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-sm">Progress</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Overall Progress</span>
+                        <span>{project.progress || 0}%</span>
+                      </div>
+                      <div className="w-full bg-secondary rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${project.progress || 0}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Status: <span className="capitalize font-medium">{project.status}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-sm">Project Details</h3>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p><span className="font-medium">Type:</span> <span className="capitalize">{project.type?.replace('_', ' ')}</span></p>
+                      <p><span className="font-medium">Category:</span> <span className="capitalize">{project.category?.replace('_', ' ')}</span></p>
+                      <p><span className="font-medium">Client:</span> {project.clientId ? 'Assigned' : 'Pending'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t">
+                  <h3 className="font-medium text-sm mb-3">Key Milestones</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <div>
+                        <p className="text-sm font-medium">Project Kickoff</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(project.startDate || '').toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
+                      <div className={`w-2 h-2 rounded-full ${project.progress && project.progress >= 50 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <div>
+                        <p className="text-sm font-medium">Mid-point Review</p>
+                        <p className="text-xs text-muted-foreground">
+                          {project.startDate && project.endDate 
+                            ? new Date(new Date(project.startDate).getTime() + (new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / 2).toLocaleDateString()
+                            : 'TBD'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
+                      <div className={`w-2 h-2 rounded-full ${project.progress && project.progress >= 100 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <div>
+                        <p className="text-sm font-medium">Project Completion</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(project.endDate || '').toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
+                      <div className={`w-2 h-2 rounded-full ${project.status === 'active' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                      <div>
+                        <p className="text-sm font-medium">Delivery & Handover</p>
+                        <p className="text-xs text-muted-foreground">
+                          Post completion
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {cards.map((card) => {
               const Icon = card.icon;
