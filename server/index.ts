@@ -1,12 +1,14 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import { initializeEmailService } from "./services/email";
 import { setupWebSocket } from "./websocket";
-import { WebSocketServer } from "ws";
+import { setupVideoSocket } from "./video-socket";
+import { registerVite } from "./vite";
+import { breakScheduler } from "./break-scheduler";
+import { setupAuth } from "./auth";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { setupAuth } from "./auth";
+import { initializeEmailService } from "./services/email";
+import { WebSocketServer } from "ws";
 
 // Declare global SSE clients map
 declare global {
@@ -167,11 +169,12 @@ let emailServiceInitialized = false;
     }
 
     // Start the server
-    server.listen(5000, "0.0.0.0", () => {
-      log(`Server started successfully on port 5000`);
-      if (!emailServiceInitialized) {
-        log("Note: Server is running without email service functionality");
-      }
+    const port = 5000;
+    server.listen(port, "0.0.0.0", () => {
+      console.log(`Server running on port ${port}`);
+
+      // Start the break scheduler
+      breakScheduler.start();
     });
   } catch (error) {
     console.error("Fatal server initialization error:", error);

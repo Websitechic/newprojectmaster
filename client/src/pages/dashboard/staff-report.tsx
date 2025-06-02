@@ -236,8 +236,16 @@ export default function StaffReport() {
             <CardHeader className="pb-2">
               <CardTitle className="text-md">Staff Status Overview</CardTitle>
               <CardDescription>
-                {activeStaff.length} staff active | {onBreakStaff.length} on break | {absentStaff.length} absent | {freeStaff.length} available
+                {activeStaff.length} staff active | {onBreakStaff.length} on scheduled break | {absentStaff.length} absent | {freeStaff.length} available
               </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800">
+                  <strong>Automatic Break System:</strong> Staff members are automatically put on break during their scheduled break times. 
+                  Running task timers are paused and will resume after the 1-hour break period.
+                </p>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-4 gap-4">
@@ -257,9 +265,7 @@ export default function StaffReport() {
                   </div>
                   <p className="mt-1 text-2xl font-bold text-amber-800">{onBreakStaff.length}</p>
                   <p className="text-xs text-amber-700">
-                    {onBreakStaff.filter(s => s.breakInfo?.breakOvertime).length > 0 ? 
-                      `${onBreakStaff.filter(s => s.breakInfo?.breakOvertime).length} exceeding break time` : 
-                      'All breaks within allowed time'}
+                    Automatic 1-hour scheduled breaks
                   </p>
                 </div>
                 
@@ -382,7 +388,7 @@ export default function StaffReport() {
                 <div>
                   <CardTitle className="text-md">Staff On Break</CardTitle>
                   <CardDescription>
-                    {onBreakStaff.length} staff members currently on break
+                    {onBreakStaff.length} staff members currently on scheduled break
                   </CardDescription>
                 </div>
               </div>
@@ -395,7 +401,7 @@ export default function StaffReport() {
                       <TableHead>Staff Member</TableHead>
                       <TableHead>Break Started</TableHead> 
                       <TableHead className="text-center">Duration</TableHead>
-                      <TableHead className="text-center">Daily Breaks</TableHead>
+                      <TableHead className="text-center">Break Type</TableHead>
                       <TableHead className="text-right">Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -426,7 +432,7 @@ export default function StaffReport() {
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-800">
-                            {staff.breakCount}/{staff.breakCount >= 2 ? '2 (max)' : '2'}
+                            Scheduled Break
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -451,7 +457,7 @@ export default function StaffReport() {
                   </div>
                   <h3 className="text-md font-medium mb-1">No Staff On Break</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
-                    There are currently no staff members on break.
+                    All staff members are currently active. Breaks are automatically scheduled based on individual break times.
                   </p>
                 </div>
               )}

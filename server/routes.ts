@@ -3,6 +3,7 @@ import { createServer, Server } from "http";
 import { setupWebSocket } from "./websocket";
 import { setupAuth } from "./auth";
 import { db } from "@db";
+import { breakScheduler } from "./break-scheduler";
 import {
   projects,
   tasks,
@@ -1664,6 +1665,17 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating user status:", error);
       return res.status(500).json({ error: "Failed to update user status" });
+    }
+  });
+
+  // Get active break sessions (for debugging/monitoring)
+  app.get("/api/break-status", isProjectManager, async (req, res) => {
+    try {
+      const activeBreaks = breakScheduler.getActiveBreaks();
+      res.json(activeBreaks);
+    } catch (error) {
+      console.error("Error fetching break status:", error);
+      res.status(500).json({ error: "Failed to fetch break status" });
     }
   });
 
