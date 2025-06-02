@@ -241,7 +241,12 @@ export default function Projects() {
                             </div>
                              {user?.role === "project_manager" && (
                               <div className="flex space-x-2">
-                                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                                <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
+                                  setIsEditDialogOpen(open);
+                                  if (!open) {
+                                    setEditingProject(null);
+                                  }
+                                }}>
                                   <DialogTrigger asChild>
                                     <Button
                                       size="icon"
@@ -249,6 +254,7 @@ export default function Projects() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setEditingProject(project);
+                                        setIsEditDialogOpen(true);
                                       }}
                                     >
                                       <Edit className="h-4 w-4" />
@@ -258,7 +264,7 @@ export default function Projects() {
                                     <DialogHeader>
                                       <DialogTitle>Edit Project</DialogTitle>
                                     </DialogHeader>
-                                    {editingProject && (
+                                    {editingProject && editingProject.id === project.id && (
                                       <ProjectForm 
                                         project={editingProject} 
                                         onSuccess={() => {

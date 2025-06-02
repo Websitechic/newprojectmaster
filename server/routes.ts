@@ -340,6 +340,8 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/projects/:id", isProjectManager, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
+      console.log("Updating project:", projectId, "with data:", req.body);
+
       const { 
         name, 
         description, 
@@ -350,6 +352,13 @@ export function registerRoutes(app: Express): Server {
         startDate, 
         endDate 
       } = req.body;
+
+      // Validate required fields
+      if (!name || !category || !startDate || !endDate) {
+        return res.status(400).json({ 
+          error: "Name, category, start date, and end date are required" 
+        });
+      }
 
       // Verify the project exists and is managed by this PM
       const [existingProject] = await db
@@ -367,18 +376,37 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
+      // Parse and validate dates
+      let parsedStartDate: Date | null = null;
+      let parsedEndDate: Date | null = null;
+
+      try {
+        parsedStartDate = new Date(startDate);
+        parsedEndDate = new Date(endDate);
+
+        if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+          throw new Error("Invalid date format");
+        }
+
+        if (parsedStartDate > parsedEndDate) {
+          return res.status(400).json({ error: "Start date cannot be after end date" });
+        }
+      } catch (error) {
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+
       // Update the project
       const [updatedProject] = await db
         .update(projects)
         .set({
-          name,
-          description,
+          name: name.trim(),
+          description: description?.trim() || null,
           type: "web_development", // Keep default type
           category,
           clientId: clientId || null,
-          pendingClientEmail: pendingClientEmail || null,
-          startDate: startDate ? new Date(startDate) : null,
-          endDate: endDate ? new Date(endDate) : null,
+          pendingClientEmail: pendingClientEmail?.trim() || null,
+          startDate: parsedStartDate,
+          endDate: parsedEndDate,
           updatedAt: new Date(),
         })
         .where(eq(projects.id, projectId))
@@ -406,10 +434,14 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
+      console.log("Project updated successfully:", updatedProject);
       res.json(updatedProject);
     } catch (error) {
       console.error("Error updating project:", error);
-      res.status(500).json({ error: "Failed to update project" });
+      res.status(500).json({ 
+        error: "Failed to update project",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
