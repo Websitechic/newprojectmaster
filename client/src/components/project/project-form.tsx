@@ -30,7 +30,6 @@ const projectSchema = z.object({
   description: z.string().optional(),
   category: z.string().min(1, "Category is required"),
   clientId: z.string().optional(),
-  pendingClientEmail: z.string().email().optional().or(z.literal("")),
   teamMembers: z.array(z.string()).optional(),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
@@ -54,7 +53,6 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       description: "",
       category: "",
       clientId: "",
-      pendingClientEmail: "",
       teamMembers: [],
       startDate: "",
       endDate: "",
@@ -69,7 +67,6 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         description: project.description || "",
         category: project.category || "",
         clientId: project.clientId?.toString() || "none",
-        pendingClientEmail: project.pendingClientEmail || "",
         teamMembers: [],
         startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
         endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
@@ -97,7 +94,6 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         description: data.description || "",
         category: data.category,
         clientId: data.clientId && data.clientId !== "" && data.clientId !== "none" ? parseInt(data.clientId) : null,
-        pendingClientEmail: data.pendingClientEmail || null,
         teamMembers: data.teamMembers?.map(id => parseInt(id)) || [],
         startDate: data.startDate,
         endDate: data.endDate,
@@ -292,17 +288,33 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
         <FormField
           control={form.control}
-          name="pendingClientEmail"
+          name="teamMembers"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Pending Client Email (if no client selected)</FormLabel>
-              <FormControl>
-                <Input 
-                  type="email" 
-                  placeholder="client@example.com" 
-                  {...field} 
-                />
-              </FormControl>
+              <FormLabel>Team Members</FormLabel>
+              <div className="space-y-2">
+                {staff?.map((member: any) => (
+                  <div key={member.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`member-${member.id}`}
+                      checked={field.value?.includes(member.id.toString()) || false}
+                      onChange={(e) => {
+                        const currentValue = field.value || [];
+                        if (e.target.checked) {
+                          field.onChange([...currentValue, member.id.toString()]);
+                        } else {
+                          field.onChange(currentValue.filter((id: string) => id !== member.id.toString()));
+                        }
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                    <label htmlFor={`member-${member.id}`} className="text-sm">
+                      {member.name} ({member.specialization})
+                    </label>
+                  </div>
+                ))}
+              </div>
               <FormMessage />
             </FormItem>
           )}

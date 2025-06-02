@@ -626,13 +626,25 @@ export function registerRoutes(app: Express): Server {
   // Create Project (Project Manager only)
   app.post("/api/projects", isProjectManager, async (req, res) => {
     try {
-      const { clientId, pendingClientEmail, startDate, endDate, ...projectData } = req.body;
+      const { 
+        name, 
+        description, 
+        type,
+        category, 
+        clientId, 
+        teamMembers, 
+        startDate, 
+        endDate 
+      } = req.body;
 
-      if (!clientId && !pendingClientEmail) {
-        return res.status(400).json({ error: "Either clientId or pendingClientEmail must be provided" });
+      console.log("Creating project with data:", req.body);
+
+      // Validate required fields
+      if (!name || !category || !startDate || !endDate) {
+        return res.status(400).json({ error: "Name, category, start date, and end date are required" });
       }
 
-      if (!projectData.type) {
+      if (!type) {
         return res.status(400).json({ error: "Project type is required" });
       }
 
@@ -662,7 +674,10 @@ export function registerRoutes(app: Express): Server {
         [newProject] = await db
           .insert(projects)
           .values({
-            ...projectData,
+            name,
+            description,
+            type,
+            category,
             clientId,
             managerId: req.user!.id,
             status: "pending",
@@ -673,25 +688,13 @@ export function registerRoutes(app: Express): Server {
           })
           .returning();
       } else {
-        // Create project with pending client email
-        [newProject] = await db
-          .insert(projects)
-          .values({
-            ...projectData,
-            pendingClientEmail,
-            managerId: req.user!.id,
-            status: "pending",
-            startDate: parsedStartDate,
-            endDate: parsedEndDate,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning();
+        // If the client ID is not present, return an error.
+        return res.status(400).json({ error: "Client ID is required" });
       }
 
       // If team members were specified in the request, invite them and send notifications
-      if (req.body.teamMembers && Array.isArray(req.body.teamMembers)) {
-        for (const memberId of req.body.teamMembers) {
+      if (teamMembers && Array.isArray(teamMembers)) {
+        for (const memberId of teamMembers) {
           try {
             // Add team member to project with accepted status (auto-accept for staff)
             await db
@@ -1323,7 +1326,7 @@ export function registerRoutes(app: Express): Server {
       if (status === "completed" || status === "review") {
         updateData.isTimerRunning = false;
         updateData.timerStartTime = null;
-        
+
         // If timer was running, add elapsed time
         if (task.isTimerRunning && task.timerStartTime) {
           const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
@@ -1712,7 +1715,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const projectId = parseInt(req.params.id);
-      
+
       const plans = await db
         .select()
         .from(projectPlans)
@@ -1734,7 +1737,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const planId = parseInt(req.params.id);
-      
+
       const [plan] = await db
         .select()
         .from(projectPlans)
@@ -1828,7 +1831,7 @@ export function registerRoutes(app: Express): Server {
         const deliverableValues = planDeliverables.map((deliverable: any, index: number) => {
           const deliverableStartDate = new Date(deliverable.startDate);
           const deliverableEndDate = new Date(deliverable.endDate);
-          
+
           if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableEndDate.getTime())) {
             throw new Error(`Invalid date format for deliverable: ${deliverable.name}`);
           }
@@ -1931,7 +1934,7 @@ export function registerRoutes(app: Express): Server {
           const deliverableValues = planDeliverables.map((deliverable: any, index: number) => {
             const deliverableStartDate = new Date(deliverable.startDate);
             const deliverableEndDate = new Date(deliverable.endDate);
-            
+
             if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableEndDate.getTime())) {
               throw new Error(`Invalid date format for deliverable: ${deliverable.name}`);
             }
