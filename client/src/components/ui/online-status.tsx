@@ -49,7 +49,7 @@ export function OnlineStatus({
 
   // Simple status indicator with dot and text
   return (
-    <div className={cn("flex items-center gap-1.5", className)}>
+    <span className={cn("flex items-center gap-1.5", className)}>
       <div className={cn("rounded-full", dotSizes[size], statusColors[status])} />
       {showText && <span className={cn("font-medium", textSizes[size])}>{statusText[status]}</span>}
       {formattedLastActive && (status === "idle" || status === "offline") && (
@@ -57,7 +57,7 @@ export function OnlineStatus({
           ({formattedLastActive})
         </span>
       )}
-    </div>
+    </span>
   );
 }
 
