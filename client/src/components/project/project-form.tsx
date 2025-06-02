@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -88,20 +88,20 @@ export function ProjectForm({ project, onSuccess }: { project?: Project; onSucce
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
-      name: project?.name || "",
-      description: project?.description || "",
-      clientType: project?.clientId ? "existing" : "new",
-      clientId: project?.clientId || undefined,
-      clientEmail: project?.pendingClientEmail || "",
-      category: project?.category || undefined,
+      name: "",
+      description: "",
+      clientType: "existing",
+      clientId: undefined,
+      clientEmail: "",
+      category: undefined,
       teamMembers: [],
-      startDate: project?.startDate ? new Date(project.startDate) : undefined,
-      endDate: project?.endDate ? new Date(project.endDate) : undefined,
+      startDate: undefined,
+      endDate: undefined,
     },
   });
 
-  // Set the client type state when editing a project - use useEffect instead of useState
-  React.useEffect(() => {
+  // Initialize form values when project prop changes
+  useEffect(() => {
     if (project) {
       const initialClientType = project.clientId ? "existing" : "new";
       setClientType(initialClientType);
@@ -117,6 +117,20 @@ export function ProjectForm({ project, onSuccess }: { project?: Project; onSucce
         teamMembers: [],
         startDate: project.startDate ? new Date(project.startDate) : undefined,
         endDate: project.endDate ? new Date(project.endDate) : undefined,
+      });
+    } else {
+      // Reset to default values when no project (creating new)
+      setClientType("existing");
+      form.reset({
+        name: "",
+        description: "",
+        clientType: "existing",
+        clientId: undefined,
+        clientEmail: "",
+        category: undefined,
+        teamMembers: [],
+        startDate: undefined,
+        endDate: undefined,
       });
     }
   }, [project, form]);
@@ -191,6 +205,25 @@ export function ProjectForm({ project, onSuccess }: { project?: Project; onSucce
   };
 
   const onSubmit = (data: ProjectFormValues) => {
+    // Validate that we have either clientId or clientEmail based on clientType
+    if (data.clientType === "existing" && !data.clientId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select an existing client",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (data.clientType === "new" && !data.clientEmail) {
+      toast({
+        title: "Validation Error", 
+        description: "Please provide a client email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
     saveProject.mutate(data);
   };
 
@@ -298,7 +331,7 @@ export function ProjectForm({ project, onSuccess }: { project?: Project; onSucce
           render={({ field }) => (
             <FormItem>
               <FormLabel>Project Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select project category" />

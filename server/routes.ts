@@ -345,6 +345,7 @@ export function registerRoutes(app: Express): Server {
         .set({
           name,
           description,
+          type: "web_development", // Keep default type
           category,
           clientId: clientId || null,
           pendingClientEmail: pendingClientEmail || null,
@@ -1315,7 +1316,7 @@ export function registerRoutes(app: Express): Server {
   // Add new endpoints for notifications
   // Add SSE endpoint with proper error handling
   app.get("/api/notifications/stream", (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).send("Not authenticated");
     }
 

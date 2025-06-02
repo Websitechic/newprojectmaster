@@ -249,7 +249,6 @@ export default function Projects() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setEditingProject(project);
-                                        setIsEditDialogOpen(true);
                                       }}
                                     >
                                       <Edit className="h-4 w-4" />
