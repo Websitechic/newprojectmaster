@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useContext } from "react";
+import { ReactNode, createContext, useContext, useEffect } from "react";
 import {
   useQuery,
   useMutation,
@@ -194,47 +194,71 @@ export function useAuth() {
 }
 
 // Hook for notifications
-  const useNotifications = () => {
-    const { user } = useAuth();
+export const useNotifications = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-    useEffect(() => {
-      if (!user) return;
+  useEffect(() => {
+    if (!user) return;
 
-      const eventSource = new EventSource('/api/notifications/stream', {
-        withCredentials: true
-      });
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    
+    const connect = () => {
+      try {
+        eventSource = new EventSource('/api/notifications/stream', {
+          withCredentials: true
+        });
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'notification') {
-            queryClient.setQueryData(['/api/notifications'], (old: any[] = []) => {
-              return [data.data, ...old];
-            });
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'notification') {
+              queryClient.setQueryData(['/api/notifications'], (old: any[] = []) => {
+                return [data.data, ...old];
+              });
 
-            // Show toast notification
-            toast({
-              title: "New Notification",
-              description: data.data.content,
-            });
+              // Show toast notification
+              toast({
+                title: "New Notification",
+                description: data.data.content,
+              });
+            }
+          } catch (error) {
+            console.error('Failed to parse notification:', error);
           }
-        } catch (error) {
-          console.error('Failed to parse notification:', error);
-        }
-      };
+        };
 
-      eventSource.onerror = (error) => {
-        console.error('Notification stream error:', error);
-        // Close the connection on error to prevent retry loops
+        eventSource.onerror = (error) => {
+          console.error('Notification stream error:', error);
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          
+          // Reconnect after 5 seconds if user is still authenticated
+          if (user) {
+            reconnectTimeout = setTimeout(connect, 5000);
+          }
+        };
+
+        eventSource.onopen = () => {
+          console.log('Notification stream connected');
+        };
+      } catch (error) {
+        console.error('Failed to create SSE connection:', error);
+      }
+    };
+
+    connect();
+
+    return () => {
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (eventSource) {
         eventSource.close();
-      };
-
-      eventSource.onopen = () => {
-        console.log('Notification stream connected');
-      };
-
-      return () => {
-        eventSource.close();
-      };
-    }, [user]);
-  };
+      }
+    };
+  }, [user, toast]);
+};

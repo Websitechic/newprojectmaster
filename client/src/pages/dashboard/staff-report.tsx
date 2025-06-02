@@ -139,12 +139,67 @@ export default function StaffReport() {
   const [filterSpecialization, setFilterSpecialization] = useState<string | null>(null);
   const [taskView, setTaskView] = useState<'active' | 'all'>('active');
 
+  // Check if user is authenticated and has proper role
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm text-destructive">You must be logged in to view this page</p>
+      </div>
+    );
+  }
+
+  if (user.role !== "project_manager") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm text-destructive">Only project managers can access the staff report</p>
+      </div>
+    );
+  }
+
   const { data: staffReport, isLoading, error } = useQuery<StaffMember[], Error>({
     queryKey: ["/api/staff-report"],
+    queryFn: async () => {
+      const response = await fetch("/api/staff-report", {
+        credentials: "include",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Authentication required");
+        }
+        if (response.status === 403) {
+          throw new Error("Access denied - Project Manager role required");
+        }
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP ${response.status}: Failed to fetch staff report`);
+      }
+
+      return response.json();
+    },
     enabled: user?.role === "project_manager",
-    retry: 3,
+    retry: (failureCount, error) => {
+      // Don't retry on 401/403 errors (authentication/authorization)
+      if (error?.message?.includes('Authentication') || error?.message?.includes('Access denied')) {
+        return false;
+      }
+      return failureCount < 3;
+    },
     refetchOnWindowFocus: false,
     refetchInterval: 30000, // Refresh every 30 seconds
+    onError: (error) => {
+      console.error("Staff report query error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load staff report. Please try refreshing the page.",
+        variant: "destructive",
+      });
+    },
   });
 
   const filteredStaff = filterSpecialization

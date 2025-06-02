@@ -1380,13 +1380,19 @@ export function registerRoutes(app: Express): Server {
   // Add SSE endpoint with proper error handling
   app.get("/api/notifications/stream", (req: Request, res: Response) => {
     if (!req.isAuthenticated() || !req.user) {
-      return res.status(401).send("Not authenticated");
+      console.log("SSE connection attempted without authentication");
+      return res.status(401).json({ error: "Not authenticated" });
     }
+
+    const userId = req.user!.id;
+    console.log(`SSE connection established for user ${userId}`);
 
     // Set headers for SSE
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("X-Accel-Buffering", "no"); // Disable proxy buffering
 
     // Update user's last active time and status
@@ -1395,22 +1401,44 @@ export function registerRoutes(app: Express): Server {
         lastActive: new Date(),
         status: UserStatus.ONLINE 
       })
-      .where(eq(users.id, req.user!.id))
+      .where(eq(users.id, userId))
       .catch(err => console.error("Error updating user activity status:", err));
 
     // Send initial connection message
-    res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+    try {
+      res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+    } catch (error) {
+      console.error(`Error sending initial SSE message to user ${userId}:`, error);
+      return;
+    }
 
     // Store the response object in a Map keyed by user ID
-    const userId = req.user!.id;
     if (!global.sseClients) {
       global.sseClients = new Map();
     }
     global.sseClients.set(userId, res);
 
+    // Keep connection alive
+    const keepAlive = setInterval(() => {
+      if (res.writableEnded) {
+        clearInterval(keepAlive);
+        global.sseClients.delete(userId);
+        return;
+      }
+      try {
+        res.write(": keepalive\n\n");
+      } catch (error) {
+        console.error(`Error sending keepalive to user ${userId}:`, error);
+        clearInterval(keepAlive);
+        global.sseClients.delete(userId);
+        res.end();
+      }
+    }, 30000);
+
     // Handle client disconnect
-    req.on("close", () => {
-      global.sseClients.delete(userId);
+    const cleanup = () => {
+      clearInterval(keepAlive);
+      global.sseClients?.delete(userId);
       console.log(`SSE connection closed for user ${userId}`);
 
       // When SSE connection closes, update user status to idle
@@ -1421,27 +1449,14 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(users.id, userId))
         .catch(err => console.error("Error updating user status on SSE disconnect:", err));
-    });
+    };
 
-    // Handle errors
-    req.on("error", (error) => {
+    req.on("close", cleanup);
+    req.on("aborted", cleanup);
+    res.on("close", cleanup);
+    res.on("error", (error) => {
       console.error(`SSE error for user ${userId}:`, error);
-      global.sseClients.delete(userId);
-      res.end();
-    });
-
-    // Keep connection alive
-    const keepAlive = setInterval(() => {
-      if (res.writableEnded) {
-        clearInterval(keepAlive);
-        return;
-      }
-      res.write(": keepalive\n\n");
-    }, 30000);
-
-    // Cleanup on connection close
-    req.on("close", () => {
-      clearInterval(keepAlive);
+      cleanup();
     });
   });
 
@@ -1609,8 +1624,9 @@ export function registerRoutes(app: Express): Server {
 
   // Heartbeat endpoint to update user's last active time
   app.post("/api/user/heartbeat", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+    if (!req.isAuthenticated() || !req.user) {
+      console.log("Heartbeat attempted without authentication");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     try {

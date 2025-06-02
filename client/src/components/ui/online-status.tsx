@@ -1,51 +1,61 @@
-import React from "react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow } from "date-fns";
+
+<old_str>import { cn } from "@/lib/utils";
 
 interface OnlineStatusProps {
-  status: "online" | "offline" | "idle";
-  lastActive?: string | Date | null;
+  status: "online" | "idle" | "offline";
+  lastActive?: string;
   showText?: boolean;
-  className?: string;
   size?: "sm" | "md" | "lg";
+  className?: string;
 }
 
-export function OnlineStatus({
-  status,
-  lastActive,
-  showText = true,
-  className,
+const statusColors = {
+  online: "bg-green-500",
+  idle: "bg-yellow-500", 
+  offline: "bg-gray-400"
+};
+
+const statusText = {
+  online: "Online",
+  idle: "Idle",
+  offline: "Offline"
+};
+
+const dotSizes = {
+  sm: "w-2 h-2",
+  md: "w-3 h-3", 
+  lg: "w-4 h-4"
+};
+
+const textSizes = {
+  sm: "text-xs",
+  md: "text-sm",
+  lg: "text-base"
+};
+
+export function OnlineStatus({ 
+  status, 
+  lastActive, 
+  showText = true, 
   size = "md",
+  className 
 }: OnlineStatusProps) {
-  const statusColors = {
-    online: "bg-green-500",
-    idle: "bg-amber-400",
-    offline: "bg-gray-400",
-  };
-
-  const statusText = {
-    online: "Online",
-    idle: "Idle",
-    offline: "Offline",
-  };
-
-  const dotSizes = {
-    sm: "w-2 h-2",
-    md: "w-3 h-3", 
-    lg: "w-4 h-4",
-  };
-
-  const textSizes = {
-    sm: "text-xs",
-    md: "text-sm",
-    lg: "text-base",
-  };
-
-  // Format time since last active
-  const formattedLastActive = lastActive 
-    ? formatDistanceToNow(new Date(lastActive), { addSuffix: true })
-    : null;
+  // Format last active time
+  const formattedLastActive = lastActive ? (() => {
+    const now = new Date();
+    const lastActiveDate = new Date(lastActive);
+    const diffInMs = now.getTime() - lastActiveDate.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    
+    if (diffInMinutes < 1) return "just now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d ago`;
+  })() : null;
 
   // Simple status indicator with dot and text
   return (
@@ -60,48 +70,83 @@ export function OnlineStatus({
     </span>
   );
 }
+</old_str>
+<new_str>import { cn } from "@/lib/utils";
 
-export function OnlineStatusBadge({
-  status,
-  lastActive,
-  showText = true,
-  className,
-}: Omit<OnlineStatusProps, "size">) {
-  const statusColors = {
-    online: "bg-green-100 text-green-800 border-green-200",
-    idle: "bg-amber-100 text-amber-700 border-amber-200",
-    offline: "bg-gray-100 text-gray-700 border-gray-200",
-  };
+interface OnlineStatusProps {
+  status: "online" | "idle" | "offline";
+  lastActive?: string;
+  showText?: boolean;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}
 
-  const statusText = {
-    online: "Online",
-    idle: "Idle",
-    offline: "Offline",
-  };
+const statusColors = {
+  online: "bg-green-500",
+  idle: "bg-yellow-500", 
+  offline: "bg-gray-400"
+};
 
-  // Format time since last active
-  const formattedLastActive = lastActive && (status === "idle" || status === "offline")
-    ? formatDistanceToNow(new Date(lastActive), { addSuffix: true })
-    : null;
+const statusText = {
+  online: "Online",
+  idle: "Idle",
+  offline: "Offline"
+};
 
+const dotSizes = {
+  sm: "w-2 h-2",
+  md: "w-3 h-3", 
+  lg: "w-4 h-4"
+};
+
+const textSizes = {
+  sm: "text-xs",
+  md: "text-sm",
+  lg: "text-base"
+};
+
+export function OnlineStatus({ 
+  status, 
+  lastActive, 
+  showText = true, 
+  size = "md",
+  className 
+}: OnlineStatusProps) {
+  // Format last active time
+  const formattedLastActive = lastActive ? (() => {
+    const now = new Date();
+    const lastActiveDate = new Date(lastActive);
+    const diffInMs = now.getTime() - lastActiveDate.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    
+    if (diffInMinutes < 1) return "just now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d ago`;
+  })() : null;
+
+  // Simple status indicator with dot and text - using only inline elements
   return (
-    <Badge 
-      variant="outline" 
-      className={cn(statusColors[status], className)}
-    >
-      <span className="flex items-center gap-1.5">
-        <span className={cn("rounded-full w-2 h-2", statusColors[status])} />
-        {showText && (
-          <>
-            {statusText[status]}
-            {formattedLastActive && (
-              <span className="ml-1 text-xs opacity-80">
-                ({formattedLastActive})
-              </span>
-            )}
-          </>
-        )}
-      </span>
-    </Badge>
+    <span className={cn("inline-flex items-center gap-1.5", className)}>
+      <span 
+        className={cn("inline-block rounded-full", dotSizes[size], statusColors[status])}
+        aria-label={`Status: ${statusText[status]}`}
+      />
+      {showText && (
+        <span className={cn("font-medium", textSizes[size])}>
+          {statusText[status]}
+        </span>
+      )}
+      {formattedLastActive && (status === "idle" || status === "offline") && (
+        <span className="text-xs text-muted-foreground">
+          ({formattedLastActive})
+        </span>
+      )}
+    </span>
   );
 }
+</new_str>
