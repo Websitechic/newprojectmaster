@@ -44,7 +44,8 @@ import {
   Calendar,
   TimerOff, 
   TimerReset,
-  Play
+  Play,
+  UserCheck
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -184,6 +185,20 @@ export default function StaffReport() {
   const activeStaff = filteredStaff?.filter(staff => staff.workStatus === 'active') || [];
   const onBreakStaff = filteredStaff?.filter(staff => staff.workStatus === 'on_break') || [];
   const absentStaff = filteredStaff?.filter(staff => staff.workStatus === 'absent') || [];
+  
+  // Free staff: those with no tasks assigned or all tasks completed
+  const freeStaff = filteredStaff?.filter(staff => {
+    // Only consider staff who are not absent
+    if (staff.workStatus === 'absent') return false;
+    
+    // Staff with no tasks assigned
+    if (staff.taskCount === 0) return true;
+    
+    // Staff with all tasks completed
+    if (staff.taskCount > 0 && staff.activeTasks === 0) return true;
+    
+    return false;
+  }) || [];
 
   return (
     <div className="p-6">
@@ -221,11 +236,11 @@ export default function StaffReport() {
             <CardHeader className="pb-2">
               <CardTitle className="text-md">Staff Status Overview</CardTitle>
               <CardDescription>
-                {activeStaff.length} staff active | {onBreakStaff.length} on break | {absentStaff.length} absent
+                {activeStaff.length} staff active | {onBreakStaff.length} on break | {absentStaff.length} absent | {freeStaff.length} available
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div className="rounded-md border border-green-300 bg-green-50 p-3">
                   <div className="flex items-center gap-2">
                     <Play className="h-4 w-4 text-green-700" />
@@ -257,6 +272,18 @@ export default function StaffReport() {
                   <p className="text-xs text-red-700">
                     {absentStaff.filter(s => s.absenceReason === 'leave').length} on leave, 
                     {absentStaff.filter(s => s.absenceReason === 'off_day').length} off day
+                  </p>
+                </div>
+                
+                <div className="rounded-md border border-blue-300 bg-blue-50 p-3">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="h-4 w-4 text-blue-700" />
+                    <h3 className="text-sm font-medium text-blue-800">Available</h3>
+                  </div>
+                  <p className="mt-1 text-2xl font-bold text-blue-800">{freeStaff.length}</p>
+                  <p className="text-xs text-blue-700">
+                    {freeStaff.filter(s => s.taskCount === 0).length} no tasks, 
+                    {freeStaff.filter(s => s.taskCount > 0 && s.activeTasks === 0).length} completed all
                   </p>
                 </div>
               </div>
@@ -499,6 +526,82 @@ export default function StaffReport() {
                   <h3 className="text-md font-medium mb-1">No Absent Staff</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
                     There are currently no staff members absent.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Free Staff Section */}
+          <Card className="border-blue-200">
+            <CardHeader className="pb-2 border-b border-blue-100">
+              <div className="flex items-center">
+                <div className="bg-blue-100 p-1.5 rounded-full mr-2">
+                  <UserCheck className="h-5 w-5 text-blue-700" />
+                </div>
+                <div>
+                  <CardTitle className="text-md">Available Staff</CardTitle>
+                  <CardDescription>
+                    {freeStaff.length} staff members available for new assignments
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {freeStaff.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff Member</TableHead>
+                      <TableHead>Specialization</TableHead>
+                      <TableHead className="text-center">Task Status</TableHead>
+                      <TableHead className="text-center">Work Status</TableHead>
+                      <TableHead className="text-right">Last Active</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {freeStaff.map((staff) => (
+                      <TableRow key={staff.id}>
+                        <TableCell>
+                          <div className="font-medium">{staff.name}</div>
+                          <div className="text-xs text-muted-foreground">{staff.email}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
+                            {staff.specialization ? specializationLabels[staff.specialization] : 'No specialization'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {staff.taskCount === 0 ? (
+                            <Badge variant="outline" className="bg-gray-50 border-gray-200 text-gray-800">
+                              No tasks assigned
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
+                              All tasks completed ({staff.taskCount})
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className={workStatusColors[staff.workStatus]}>
+                            {workStatusLabels[staff.workStatus]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          {formatDate(staff.lastActive, "MMM d, h:mm a")}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="bg-blue-50 p-3 rounded-full mb-3">
+                    <UserCheck className="h-6 w-6 text-blue-500" />
+                  </div>
+                  <h3 className="text-md font-medium mb-1">No Available Staff</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    All staff members are currently assigned to active tasks or are absent.
                   </p>
                 </div>
               )}
