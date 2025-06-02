@@ -16,7 +16,9 @@ import {
   AbsenceReason,
   UserStatus,
   clientInvitations,
-  notifications
+  notifications,
+  projectPlans,
+  deliverables
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull } from "drizzle-orm";
 
@@ -1697,6 +1699,331 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating user status:", error);
       return res.status(500).json({ error: "Failed to update user status" });
+    }
+  });
+
+  // Project Plans API Routes
+
+  // Get project plans for a project
+  app.get("/api/projects/:id/plans", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      const plans = await db
+        .select()
+        .from(projectPlans)
+        .where(eq(projectPlans.projectId, projectId))
+        .orderBy(desc(projectPlans.updatedAt));
+
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching project plans:", error);
+      res.status(500).json({ error: "Failed to fetch project plans" });
+    }
+  });
+
+  // Get specific project plan with deliverables
+  app.get("/api/project-plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const planId = parseInt(req.params.id);
+      
+      const [plan] = await db
+        .select()
+        .from(projectPlans)
+        .where(eq(projectPlans.id, planId))
+        .limit(1);
+
+      if (!plan) {
+        return res.status(404).json({ error: "Project plan not found" });
+      }
+
+      const planDeliverables = await db
+        .select()
+        .from(deliverables)
+        .where(eq(deliverables.projectPlanId, planId))
+        .orderBy(asc(deliverables.order));
+
+      res.json({ ...plan, deliverables: planDeliverables });
+    } catch (error) {
+      console.error("Error fetching project plan:", error);
+      res.status(500).json({ error: "Failed to fetch project plan" });
+    }
+  });
+
+  // Create project plan (Project Manager only)
+  app.post("/api/projects/:id/plans", isProjectManager, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { name, description, startDate, endDate, deliverables: planDeliverables } = req.body;
+
+      if (!name) {
+        return res.status(400).json({ error: "Plan name is required" });
+      }
+
+      // Verify project exists
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Parse dates
+      let parsedStartDate: Date | null = null;
+      let parsedEndDate: Date | null = null;
+
+      if (startDate) {
+        parsedStartDate = new Date(startDate);
+        if (isNaN(parsedStartDate.getTime())) {
+          return res.status(400).json({ error: "Invalid start date format" });
+        }
+      }
+
+      if (endDate) {
+        parsedEndDate = new Date(endDate);
+        if (isNaN(parsedEndDate.getTime())) {
+          return res.status(400).json({ error: "Invalid end date format" });
+        }
+      }
+
+      if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+        return res.status(400).json({ error: "Start date cannot be after end date" });
+      }
+
+      // Create project plan
+      const [newPlan] = await db
+        .insert(projectPlans)
+        .values({
+          projectId,
+          name,
+          description: description || "",
+          startDate: parsedStartDate,
+          endDate: parsedEndDate,
+          createdBy: req.user!.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      // Create deliverables if provided
+      if (planDeliverables && Array.isArray(planDeliverables) && planDeliverables.length > 0) {
+        const deliverableValues = planDeliverables.map((deliverable: any, index: number) => {
+          const deliverableStartDate = new Date(deliverable.startDate);
+          const deliverableEndDate = new Date(deliverable.endDate);
+          
+          if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableEndDate.getTime())) {
+            throw new Error(`Invalid date format for deliverable: ${deliverable.name}`);
+          }
+
+          const duration = Math.ceil((deliverableEndDate.getTime() - deliverableStartDate.getTime()) / (1000 * 3600 * 24));
+
+          return {
+            projectPlanId: newPlan.id,
+            name: deliverable.name,
+            description: deliverable.description || "",
+            startDate: deliverableStartDate,
+            endDate: deliverableEndDate,
+            duration,
+            order: index,
+            assigneeId: deliverable.assigneeId ? parseInt(deliverable.assigneeId) : null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        });
+
+        await db.insert(deliverables).values(deliverableValues);
+      }
+
+      res.json(newPlan);
+    } catch (error) {
+      console.error("Error creating project plan:", error);
+      res.status(500).json({ 
+        error: "Failed to create project plan",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Update project plan (Project Manager only)
+  app.put("/api/project-plans/:id", isProjectManager, async (req, res) => {
+    try {
+      const planId = parseInt(req.params.id);
+      const { name, description, startDate, endDate, status, deliverables: planDeliverables } = req.body;
+
+      if (!name) {
+        return res.status(400).json({ error: "Plan name is required" });
+      }
+
+      // Verify plan exists
+      const [existingPlan] = await db
+        .select()
+        .from(projectPlans)
+        .where(eq(projectPlans.id, planId))
+        .limit(1);
+
+      if (!existingPlan) {
+        return res.status(404).json({ error: "Project plan not found" });
+      }
+
+      // Parse dates
+      let parsedStartDate: Date | null = null;
+      let parsedEndDate: Date | null = null;
+
+      if (startDate) {
+        parsedStartDate = new Date(startDate);
+        if (isNaN(parsedStartDate.getTime())) {
+          return res.status(400).json({ error: "Invalid start date format" });
+        }
+      }
+
+      if (endDate) {
+        parsedEndDate = new Date(endDate);
+        if (isNaN(parsedEndDate.getTime())) {
+          return res.status(400).json({ error: "Invalid end date format" });
+        }
+      }
+
+      if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+        return res.status(400).json({ error: "Start date cannot be after end date" });
+      }
+
+      // Update project plan
+      const [updatedPlan] = await db
+        .update(projectPlans)
+        .set({
+          name,
+          description: description || "",
+          startDate: parsedStartDate,
+          endDate: parsedEndDate,
+          status: status || "draft",
+          updatedAt: new Date(),
+        })
+        .where(eq(projectPlans.id, planId))
+        .returning();
+
+      // Update deliverables if provided
+      if (planDeliverables && Array.isArray(planDeliverables)) {
+        // Delete existing deliverables
+        await db
+          .delete(deliverables)
+          .where(eq(deliverables.projectPlanId, planId));
+
+        // Create new deliverables
+        if (planDeliverables.length > 0) {
+          const deliverableValues = planDeliverables.map((deliverable: any, index: number) => {
+            const deliverableStartDate = new Date(deliverable.startDate);
+            const deliverableEndDate = new Date(deliverable.endDate);
+            
+            if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableEndDate.getTime())) {
+              throw new Error(`Invalid date format for deliverable: ${deliverable.name}`);
+            }
+
+            const duration = Math.ceil((deliverableEndDate.getTime() - deliverableStartDate.getTime()) / (1000 * 3600 * 24));
+
+            return {
+              projectPlanId: planId,
+              name: deliverable.name,
+              description: deliverable.description || "",
+              startDate: deliverableStartDate,
+              endDate: deliverableEndDate,
+              duration,
+              order: index,
+              assigneeId: deliverable.assigneeId ? parseInt(deliverable.assigneeId) : null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+          });
+
+          await db.insert(deliverables).values(deliverableValues);
+        }
+      }
+
+      res.json(updatedPlan);
+    } catch (error) {
+      console.error("Error updating project plan:", error);
+      res.status(500).json({ 
+        error: "Failed to update project plan",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Delete project plan (Project Manager only)
+  app.delete("/api/project-plans/:id", isProjectManager, async (req, res) => {
+    try {
+      const planId = parseInt(req.params.id);
+
+      // Verify plan exists
+      const [plan] = await db
+        .select()
+        .from(projectPlans)
+        .where(eq(projectPlans.id, planId))
+        .limit(1);
+
+      if (!plan) {
+        return res.status(404).json({ error: "Project plan not found" });
+      }
+
+      // Delete deliverables first
+      await db
+        .delete(deliverables)
+        .where(eq(deliverables.projectPlanId, planId));
+
+      // Delete project plan
+      await db
+        .delete(projectPlans)
+        .where(eq(projectPlans.id, planId));
+
+      res.json({ message: "Project plan deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting project plan:", error);
+      res.status(500).json({ error: "Failed to delete project plan" });
+    }
+  });
+
+  // Update deliverable status
+  app.put("/api/deliverables/:id/status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const deliverableId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      const validStatuses = ["pending", "in_progress", "completed", "overdue"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+
+      const [updatedDeliverable] = await db
+        .update(deliverables)
+        .set({
+          status,
+          updatedAt: new Date(),
+        })
+        .where(eq(deliverables.id, deliverableId))
+        .returning();
+
+      if (!updatedDeliverable) {
+        return res.status(404).json({ error: "Deliverable not found" });
+      }
+
+      res.json(updatedDeliverable);
+    } catch (error) {
+      console.error("Error updating deliverable status:", error);
+      res.status(500).json({ error: "Failed to update deliverable status" });
     }
   });
 

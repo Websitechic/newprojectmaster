@@ -13,6 +13,7 @@ import Tasks from "@/pages/dashboard/tasks";
 import StaffReport from "@/pages/dashboard/staff-report";
 import StaffProjectTasks from "@/pages/dashboard/staff-project-tasks";
 import ProjectResources from "@/pages/dashboard/project-resources";
+import ProjectPlanDetails from "@/pages/dashboard/project-plan-details";
 import StaffProjectDetails from "@/pages/dashboard/staff-project-details";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
@@ -59,8 +60,7 @@ function Router() {
       <Route path="/dashboard/projects/:id/staff-tasks" component={StaffProjectTasks} />
       <Route path="/dashboard/projects/:id/staff" component={StaffProjectDetails} />
       <Route path="/dashboard/projects/:id/resources" component={ProjectResources} />
-      <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />
-      <Route path="/dashboard/staff-report" component={() => <PrivateRoute component={StaffReport} />} />
+      <Route path="/dashboard/projects/:id/plan/:planId" component={ProjectPlanDetails} />
       <Route component={NotFound} />
     </Switch>
   );

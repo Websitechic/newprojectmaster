@@ -245,6 +245,35 @@ export const clientInvitationsRelations = relations(clientInvitations, ({ one })
   }),
 }));
 
+export const projectPlans = pgTable("project_plans", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").references(() => projects.id).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  status: text("status", { enum: ["draft", "active", "completed", "on_hold"] }).default("draft"),
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const deliverables = pgTable("deliverables", {
+  id: serial("id").primaryKey(),
+  projectPlanId: integer("project_plan_id").references(() => projectPlans.id).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  duration: integer("duration"), // in days
+  status: text("status", { enum: ["pending", "in_progress", "completed", "overdue"] }).default("pending"),
+  order: integer("order").default(0),
+  dependencies: jsonb("dependencies"), // Array of deliverable IDs this depends on
+  assigneeId: integer("assignee_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, {
     fields: [notifications.userId],
@@ -256,6 +285,29 @@ export const usersRelations = relations(users, ({ one }) => ({
   currentTask: one(tasks, {
     fields: [users.currentTaskId],
     references: [tasks.id],
+  }),
+}));
+
+export const projectPlansRelations = relations(projectPlans, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [projectPlans.projectId],
+    references: [projects.id],
+  }),
+  creator: one(users, {
+    fields: [projectPlans.createdBy],
+    references: [users.id],
+  }),
+  deliverables: many(deliverables),
+}));
+
+export const deliverablesRelations = relations(deliverables, ({ one }) => ({
+  projectPlan: one(projectPlans, {
+    fields: [deliverables.projectPlanId],
+    references: [projectPlans.id],
+  }),
+  assignee: one(users, {
+    fields: [deliverables.assigneeId],
+    references: [users.id],
   }),
 }));
 
@@ -272,6 +324,10 @@ export const insertClientInvitationSchema = createInsertSchema(clientInvitations
 export const selectClientInvitationSchema = createSelectSchema(clientInvitations);
 export const insertNotificationSchema = createInsertSchema(notifications);
 export const selectNotificationSchema = createSelectSchema(notifications);
+export const insertProjectPlanSchema = createInsertSchema(projectPlans);
+export const selectProjectPlanSchema = createSelectSchema(projectPlans);
+export const insertDeliverableSchema = createInsertSchema(deliverables);
+export const selectDeliverableSchema = createSelectSchema(deliverables);
 
 
 // Types
@@ -283,3 +339,5 @@ export type ProjectMember = typeof projectMembers.$inferSelect;
 export type Performance = typeof performance.$inferSelect;
 export type ClientInvitation = typeof clientInvitations.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type ProjectPlan = typeof projectPlans.$inferSelect;
+export type Deliverable = typeof deliverables.$inferSelect;

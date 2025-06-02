@@ -5,16 +5,32 @@ import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, MessageSquare, Users, FileText } from "lucide-react";
-import type { Project } from "@db/schema";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ClipboardList, MessageSquare, Users, FileText, Calendar, Plus, Edit } from "lucide-react";
+import { ProjectPlanForm } from "@/components/project/project-plan-form";
+import type { Project, ProjectPlan } from "@db/schema";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ProjectDetails() {
   const { id } = useParams();
   const [_, setLocation] = useLocation();
+  const { user } = useAuth();
+  const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<(ProjectPlan & { deliverables?: any[] }) | null>(null);
+
+  const isProjectManager = user?.role === "project_manager";
 
   const { data: project, isLoading } = useQuery<Project>({
     queryKey: ["api/projects", id],
     queryFn: () => fetch(`/api/projects/${id}`).then(res => res.json())
+  });
+
+  const { data: projectPlans } = useQuery({
+    queryKey: [`/api/projects/${id}/plans`],
+    queryFn: () => fetch(`/api/projects/${id}/plans`).then(res => res.json()),
+    enabled: !!id,
   });
 
   if (isLoading || !project) {
@@ -59,103 +75,132 @@ export default function ProjectDetails() {
             <p className="text-muted-foreground">{project.description}</p>
           </div>
 
-          {/* Project Plan Section */}
+          {/* Project Plans Section */}
           <div className="mb-8">
             <Card>
               <CardHeader>
-                <h2 className="text-xl font-semibold">Project Plan</h2>
-                <p className="text-sm text-muted-foreground">
-                  Overview of project timeline, milestones, and key deliverables
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold">Project Plans</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Detailed project plans with deliverables and timelines
+                    </p>
+                  </div>
+                  {isProjectManager && (
+                    <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Plan
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>
+                            {editingPlan ? "Edit Project Plan" : "Create Project Plan"}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <ProjectPlanForm
+                          projectId={parseInt(id!)}
+                          plan={editingPlan || undefined}
+                          onSuccess={() => {
+                            setIsPlanDialogOpen(false);
+                            setEditingPlan(null);
+                          }}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-sm">Timeline</h3>
-                    <div className="text-sm text-muted-foreground">
-                      <p><span className="font-medium">Start:</span> {new Date(project.startDate || '').toLocaleDateString()}</p>
-                      <p><span className="font-medium">End:</span> {new Date(project.endDate || '').toLocaleDateString()}</p>
-                      <p><span className="font-medium">Duration:</span> {
-                        project.startDate && project.endDate 
-                          ? Math.ceil((new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / (1000 * 3600 * 24)) + ' days'
-                          : 'N/A'
-                      }</p>
-                    </div>
+                {projectPlans && projectPlans.length > 0 ? (
+                  <div className="space-y-4">
+                    {projectPlans.map((plan: any) => (
+                      <div key={plan.id} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-semibold">{plan.name}</h3>
+                            <Badge variant={
+                              plan.status === 'active' ? 'default' :
+                              plan.status === 'completed' ? 'secondary' :
+                              plan.status === 'on_hold' ? 'destructive' : 'outline'
+                            }>
+                              {plan.status}
+                            </Badge>
+                          </div>
+                          {isProjectManager && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingPlan(plan);
+                                setIsPlanDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </Button>
+                          )}
+                        </div>
+                        
+                        {plan.description && (
+                          <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
+                        )}
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <span className="font-medium">Timeline:</span>
+                            <p className="text-muted-foreground">
+                              {plan.startDate ? new Date(plan.startDate).toLocaleDateString() : 'TBD'} - 
+                              {plan.endDate ? new Date(plan.endDate).toLocaleDateString() : 'TBD'}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="font-medium">Duration:</span>
+                            <p className="text-muted-foreground">
+                              {plan.startDate && plan.endDate 
+                                ? Math.ceil((new Date(plan.endDate).getTime() - new Date(plan.startDate).getTime()) / (1000 * 3600 * 24)) + ' days'
+                                : 'TBD'
+                              }
+                            </p>
+                          </div>
+                          <div>
+                            <span className="font-medium">Created:</span>
+                            <p className="text-muted-foreground">
+                              {new Date(plan.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <Button
+                          variant="link"
+                          className="mt-3 p-0 h-auto"
+                          onClick={() => setLocation(`/dashboard/projects/${id}/plan/${plan.id}`)}
+                        >
+                          View Deliverables →
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-sm">Progress</h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Overall Progress</span>
-                        <span>{project.progress || 0}%</span>
-                      </div>
-                      <div className="w-full bg-secondary rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${project.progress || 0}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Status: <span className="capitalize font-medium">{project.status}</span>
-                      </p>
-                    </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="font-medium mb-2">No Project Plans</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {isProjectManager 
+                        ? "Create your first project plan to organize deliverables and timelines."
+                        : "No project plans have been created yet."
+                      }
+                    </p>
+                    {isProjectManager && (
+                      <Button onClick={() => setIsPlanDialogOpen(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create First Plan
+                      </Button>
+                    )}
                   </div>
-
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-sm">Project Details</h3>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <p><span className="font-medium">Type:</span> <span className="capitalize">{project.type?.replace('_', ' ')}</span></p>
-                      <p><span className="font-medium">Category:</span> <span className="capitalize">{project.category?.replace('_', ' ')}</span></p>
-                      <p><span className="font-medium">Client:</span> {project.clientId ? 'Assigned' : 'Pending'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-4 border-t">
-                  <h3 className="font-medium text-sm mb-3">Key Milestones</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <div>
-                        <p className="text-sm font-medium">Project Kickoff</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(project.startDate || '').toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
-                      <div className={`w-2 h-2 rounded-full ${project.progress && project.progress >= 50 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <div>
-                        <p className="text-sm font-medium">Mid-point Review</p>
-                        <p className="text-xs text-muted-foreground">
-                          {project.startDate && project.endDate 
-                            ? new Date(new Date(project.startDate).getTime() + (new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / 2).toLocaleDateString()
-                            : 'TBD'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
-                      <div className={`w-2 h-2 rounded-full ${project.progress && project.progress >= 100 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <div>
-                        <p className="text-sm font-medium">Project Completion</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(project.endDate || '').toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
-                      <div className={`w-2 h-2 rounded-full ${project.status === 'active' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                      <div>
-                        <p className="text-sm font-medium">Delivery & Handover</p>
-                        <p className="text-xs text-muted-foreground">
-                          Post completion
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
