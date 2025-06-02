@@ -139,9 +139,6 @@ export default function StaffReport() {
   const [filterSpecialization, setFilterSpecialization] = useState<string | null>(null);
   const [taskView, setTaskView] = useState<'active' | 'all'>('active');
 
-  console.log("Staff Report - User:", user);
-  console.log("Staff Report - User role:", user?.role);
-
   const { data: staffReport, isLoading, error } = useQuery<StaffMember[], Error>({
     queryKey: ["/api/staff-report"],
     enabled: user?.role === "project_manager",
@@ -149,10 +146,6 @@ export default function StaffReport() {
     refetchOnWindowFocus: false,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
-
-  console.log("Staff Report Query - isLoading:", isLoading);
-  console.log("Staff Report Query - error:", error);
-  console.log("Staff Report Query - data:", staffReport);
 
   const filteredStaff = filterSpecialization
     ? staffReport?.filter(member => member.specialization === filterSpecialization)
