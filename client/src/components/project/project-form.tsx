@@ -68,7 +68,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         name: project.name || "",
         description: project.description || "",
         category: project.category || "",
-        clientId: project.clientId?.toString() || "",
+        clientId: project.clientId?.toString() || "none",
         pendingClientEmail: project.pendingClientEmail || "",
         teamMembers: [],
         startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
@@ -96,7 +96,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         name: data.name,
         description: data.description || "",
         category: data.category,
-        clientId: data.clientId && data.clientId !== "" ? parseInt(data.clientId) : null,
+        clientId: data.clientId && data.clientId !== "" && data.clientId !== "none" ? parseInt(data.clientId) : null,
         pendingClientEmail: data.pendingClientEmail || null,
         teamMembers: data.teamMembers?.map(id => parseInt(id)) || [],
         startDate: data.startDate,
@@ -277,7 +277,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">No client selected</SelectItem>
+                  <SelectItem value="none">No client selected</SelectItem>
                   {clients?.map((client: any) => (
                     <SelectItem key={client.id} value={client.id.toString()}>
                       {client.name} ({client.email})

@@ -403,8 +403,8 @@ export function registerRoutes(app: Express): Server {
           description: description?.trim() || null,
           type: "web_development", // Keep default type
           category,
-          clientId: clientId || null,
-          pendingClientEmail: pendingClientEmail?.trim() || null,
+          clientId: clientId && clientId !== 0 ? clientId : null,
+          pendingClientEmail: (!clientId || clientId === 0) && pendingClientEmail ? pendingClientEmail.trim() : null,
           startDate: parsedStartDate,
           endDate: parsedEndDate,
           updatedAt: new Date(),
