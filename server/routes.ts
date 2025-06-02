@@ -58,6 +58,33 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Update existing users' break times (one-time setup)
+  app.post("/api/setup-break-times", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "project_manager") {
+      return res.status(403).send("Only project managers can perform this action");
+    }
+
+    try {
+      // Update specific users' break times
+      await db.update(users)
+        .set({ breakOneTime: "22:00", breakTwoTime: "12:00" })
+        .where(eq(users.username, "testpm"));
+
+      await db.update(users)
+        .set({ breakOneTime: "12:30", breakTwoTime: "15:00" })
+        .where(eq(users.username, "testuser"));
+
+      await db.update(users)
+        .set({ breakOneTime: "13:00", breakTwoTime: "16:00" })
+        .where(eq(users.username, "Staff1"));
+
+      res.json({ message: "Break times updated successfully for existing users" });
+    } catch (error) {
+      console.error("Error updating break times:", error);
+      res.status(500).json({ error: "Failed to update break times" });
+    }
+  });
+
   // Get available staff by specialization (for project managers)
   app.get("/api/staff", isProjectManager, async (req, res) => {
     const { specialization } = req.query;

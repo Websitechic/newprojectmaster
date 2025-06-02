@@ -48,6 +48,8 @@ const registerSchema = z.object({
   name: z.string(),
   email: z.string().email(),
   role: z.enum(["client", "project_manager", "staff"]),
+  breakOneTime: z.string().optional(),
+  breakTwoTime: z.string().optional(),
 });
 
 export function setupAuth(app: Express) {
@@ -208,7 +210,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password, role, name, email } = result.data;
+      const { username, password, role, name, email, breakOneTime, breakTwoTime } = result.data;
 
       // Check if user already exists
       const [existingUser] = await db
@@ -219,6 +221,22 @@ export function setupAuth(app: Express) {
 
       if (existingUser) {
         return res.status(400).send("Username already exists");
+      }
+
+      // Validate break times for non-client users
+      if (role !== "client") {
+        if (!breakOneTime || !breakTwoTime) {
+          return res.status(400).send("Break times are required for staff and project managers");
+        }
+
+        // Check if break times are at least 1 hour apart
+        const break1 = new Date(`2000-01-01T${breakOneTime}:00`);
+        const break2 = new Date(`2000-01-01T${breakTwoTime}:00`);
+        const timeDiff = Math.abs(break2.getTime() - break1.getTime()) / (1000 * 60 * 60);
+
+        if (timeDiff < 1) {
+          return res.status(400).send("Break times must be at least 1 hour apart");
+        }
       }
 
       // Hash the password
@@ -234,6 +252,8 @@ export function setupAuth(app: Express) {
           name,
           email,
           status: UserStatus.ONLINE, // Set to online since they'll be logged in
+          breakOneTime: role !== "client" ? breakOneTime : null,
+          breakTwoTime: role !== "client" ? breakTwoTime : null,
         })
         .returning();
 

@@ -14,6 +14,8 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"client" | "project_manager" | "staff">("staff");
+  const [breakOneTime, setBreakOneTime] = useState("");
+  const [breakTwoTime, setBreakTwoTime] = useState("");
   const [resetMode, setResetMode] = useState(false);
   const { loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
@@ -25,12 +27,40 @@ export default function AuthPage() {
       if (isLogin) {
         await loginMutation.mutateAsync({ username, password });
       } else {
+        // Validate break times for non-client users
+        if (role !== "client") {
+          if (!breakOneTime || !breakTwoTime) {
+            toast({
+              title: "Error",
+              description: "Please select both break times",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          // Check if break times are at least 1 hour apart
+          const break1 = new Date(`2000-01-01T${breakOneTime}:00`);
+          const break2 = new Date(`2000-01-01T${breakTwoTime}:00`);
+          const timeDiff = Math.abs(break2.getTime() - break1.getTime()) / (1000 * 60 * 60);
+
+          if (timeDiff < 1) {
+            toast({
+              title: "Error",
+              description: "Break times must be at least 1 hour apart",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+
         await registerMutation.mutateAsync({
           username,
           password,
           name,
           email,
-          role
+          role,
+          breakOneTime: role !== "client" ? breakOneTime : undefined,
+          breakTwoTime: role !== "client" ? breakTwoTime : undefined
         });
       }
     } catch (error: any) {
@@ -153,6 +183,36 @@ export default function AuthPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {role !== "client" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="breakOneTime">First Break Time</Label>
+                      <Input
+                        id="breakOneTime"
+                        type="time"
+                        value={breakOneTime}
+                        onChange={(e) => setBreakOneTime(e.target.value)}
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Choose your first 1-hour break time
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="breakTwoTime">Second Break Time</Label>
+                      <Input
+                        id="breakTwoTime"
+                        type="time"
+                        value={breakTwoTime}
+                        onChange={(e) => setBreakTwoTime(e.target.value)}
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Choose your second 1-hour break time (must be at least 1 hour from first break)
+                      </p>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </CardContent>
