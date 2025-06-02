@@ -1764,8 +1764,15 @@ export function registerRoutes(app: Express): Server {
       const projectId = parseInt(req.params.id);
       const { name, description, startDate, endDate, deliverables: planDeliverables } = req.body;
 
+      console.log("Creating project plan for project:", projectId);
+      console.log("Plan data:", { name, description, startDate, endDate, deliverables: planDeliverables });
+
       if (!name) {
         return res.status(400).json({ error: "Plan name is required" });
+      }
+
+      if (!planDeliverables || !Array.isArray(planDeliverables) || planDeliverables.length === 0) {
+        return res.status(400).json({ error: "At least one deliverable is required" });
       }
 
       // Verify project exists

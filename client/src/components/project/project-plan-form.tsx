@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -57,7 +56,7 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
           description: "",
           startDate: "",
           endDate: "",
-          assigneeId: "",
+          assigneeId: "none",
         },
       ],
     },
@@ -89,14 +88,14 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
               description: d.description || "",
               startDate: d.startDate ? new Date(d.startDate).toISOString().split('T')[0] : "",
               endDate: d.endDate ? new Date(d.endDate).toISOString().split('T')[0] : "",
-              assigneeId: d.assigneeId?.toString() || "",
+              assigneeId: d.assigneeId?.toString() || "none",
             }))
           : [{
               name: "",
               description: "",
               startDate: "",
               endDate: "",
-              assigneeId: "",
+              assigneeId: "none",
             }],
       });
     }
@@ -115,7 +114,7 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
           description: d.description || "",
           startDate: d.startDate,
           endDate: d.endDate,
-          assigneeId: d.assigneeId && d.assigneeId !== "" ? parseInt(d.assigneeId) : null,
+          assigneeId: d.assigneeId && d.assigneeId !== "none" ? parseInt(d.assigneeId) : null,
         })),
       };
 
@@ -188,7 +187,7 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
       description: "",
       startDate: "",
       endDate: "",
-      assigneeId: "",
+      assigneeId: "none",
     });
   };
 
@@ -377,7 +376,7 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">No assignee</SelectItem>
+                          <SelectItem value="none">No assignee</SelectItem>
                           {staff?.map((member: any) => (
                             <SelectItem key={member.id} value={member.id.toString()}>
                               {member.name} ({member.specialization})
