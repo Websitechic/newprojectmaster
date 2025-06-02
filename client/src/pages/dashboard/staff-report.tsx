@@ -532,7 +532,7 @@ export default function StaffReport() {
             </CardContent>
           </Card>
 
-          {/* Free Staff Section */}
+          {/* Free Staff Section - Organized by Department */}
           <Card className="border-blue-200">
             <CardHeader className="pb-2 border-b border-blue-100">
               <div className="flex items-center">
@@ -540,7 +540,7 @@ export default function StaffReport() {
                   <UserCheck className="h-5 w-5 text-blue-700" />
                 </div>
                 <div>
-                  <CardTitle className="text-md">Available Staff</CardTitle>
+                  <CardTitle className="text-md">Available Staff by Department</CardTitle>
                   <CardDescription>
                     {freeStaff.length} staff members available for new assignments
                   </CardDescription>
@@ -549,51 +549,84 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {freeStaff.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Staff Member</TableHead>
-                      <TableHead>Specialization</TableHead>
-                      <TableHead className="text-center">Task Status</TableHead>
-                      <TableHead className="text-center">Work Status</TableHead>
-                      <TableHead className="text-right">Last Active</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {freeStaff.map((staff) => (
-                      <TableRow key={staff.id}>
-                        <TableCell>
-                          <div className="font-medium">{staff.name}</div>
-                          <div className="text-xs text-muted-foreground">{staff.email}</div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
-                            {staff.specialization ? specializationLabels[staff.specialization] : 'No specialization'}
+                <div className="space-y-6">
+                  {/* Group free staff by specialization */}
+                  {(() => {
+                    // Group staff by specialization
+                    const staffByDepartment = freeStaff.reduce((acc, staff) => {
+                      const department = staff.specialization || 'unassigned';
+                      if (!acc[department]) {
+                        acc[department] = [];
+                      }
+                      acc[department].push(staff);
+                      return acc;
+                    }, {} as Record<string, typeof freeStaff>);
+
+                    // Sort departments
+                    const sortedDepartments = Object.keys(staffByDepartment).sort((a, b) => {
+                      if (a === 'unassigned') return 1;
+                      if (b === 'unassigned') return -1;
+                      return a.localeCompare(b);
+                    });
+
+                    return sortedDepartments.map((department) => (
+                      <div key={department} className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-lg font-semibold text-blue-900">
+                            {department === 'unassigned' ? 'Unassigned Staff' : specializationLabels[department] || department}
+                          </h3>
+                          <Badge variant="outline" className="bg-blue-100 border-blue-300 text-blue-800">
+                            {staffByDepartment[department].length} available
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {staff.taskCount === 0 ? (
-                            <Badge variant="outline" className="bg-gray-50 border-gray-200 text-gray-800">
-                              No tasks assigned
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
-                              All tasks completed ({staff.taskCount})
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className={workStatusColors[staff.workStatus]}>
-                            {workStatusLabels[staff.workStatus]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          {formatDate(staff.lastActive, "MMM d, h:mm a")}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </div>
+                        
+                        <div className="grid gap-3">
+                          {staffByDepartment[department].map((staff) => (
+                            <div key={staff.id} className="bg-white rounded-md border border-blue-200 p-3 hover:shadow-sm transition-shadow">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3">
+                                    <div>
+                                      <div className="font-medium text-gray-900">{staff.name}</div>
+                                      <div className="text-xs text-gray-500">{staff.email}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                  <div className="text-center">
+                                    {staff.taskCount === 0 ? (
+                                      <Badge variant="outline" className="bg-gray-50 border-gray-200 text-gray-800">
+                                        No tasks assigned
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
+                                        All tasks completed ({staff.taskCount})
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="text-center">
+                                    <Badge variant="outline" className={workStatusColors[staff.workStatus]}>
+                                      {workStatusLabels[staff.workStatus]}
+                                    </Badge>
+                                  </div>
+                                  
+                                  <div className="text-right min-w-[100px]">
+                                    <div className="text-xs text-gray-500">Last Active</div>
+                                    <div className="text-sm font-medium">
+                                      {formatDate(staff.lastActive, "MMM d, h:mm a")}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-blue-50 p-3 rounded-full mb-3">
