@@ -26,17 +26,19 @@ import { eq, and, desc, inArray, asc, isNotNull } from "drizzle-orm";
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
   console.log("Auth check - Session:", req.session?.id);
   console.log("Auth check - User:", req.user);
+  console.log("Auth check - User role:", req.user?.role);
 
   if (!req.isAuthenticated()) {
     console.log("Authentication failed - no valid session");
-    return res.status(401).send("Not authenticated");
+    return res.status(401).json({ error: "Not authenticated" });
   }
 
   if (req.user!.role !== UserRole.PROJECT_MANAGER) {
-    console.log("Authorization failed - not a project manager");
-    return res.status(403).send("Only project managers can perform this action");
+    console.log("Authorization failed - not a project manager, role is:", req.user!.role);
+    return res.status(403).json({ error: "Only project managers can perform this action" });
   }
 
+  console.log("Project manager authentication successful");
   next();
 };
 
@@ -189,6 +191,8 @@ export function registerRoutes(app: Express): Server {
   // Get staff with their assigned tasks
   app.get("/api/staff-report", isProjectManager, async (req, res) => {
     try {
+      console.log("Fetching staff report for project manager:", req.user?.id);
+      
       // Get all staff members with their current task details
       const staffMembers = await db
         .select({
@@ -210,6 +214,8 @@ export function registerRoutes(app: Express): Server {
         .from(users)
         .where(eq(users.role, "staff"))
         .orderBy(asc(users.name));
+
+      console.log(`Found ${staffMembers.length} staff members`);
 
       // Get all tasks assigned to staff
       const allTasks = await db
@@ -306,10 +312,14 @@ export function registerRoutes(app: Express): Server {
         };
       });
 
+      console.log("Staff report generated successfully with", staffReport.length, "staff members");
       res.json(staffReport);
     } catch (error) {
       console.error("Error generating staff report:", error);
-      res.status(500).json({ error: "Failed to generate staff report" });
+      res.status(500).json({ 
+        error: "Failed to generate staff report",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
@@ -1382,6 +1392,7 @@ export function registerRoutes(app: Express): Server {
   // Add SSE endpoint with proper error handling
   app.get("/api/notifications/stream", (req: Request, res: Response) => {
     if (!req.isAuthenticated() || !req.user) {
+      console.log("SSE connection rejected - not authenticated");
       return res.status(401).send("Not authenticated");
     }
 
