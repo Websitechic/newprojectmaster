@@ -246,7 +246,7 @@ export default function StaffReport() {
                   Running task timers are paused and will resume after the 1-hour break period.
                 </p>
               </div>
-            </CardHeader>
+            </CardContent>
             <CardContent>
               <div className="grid grid-cols-4 gap-4">
                 <div className="rounded-md border border-green-300 bg-green-50 p-3">
