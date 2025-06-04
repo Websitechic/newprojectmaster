@@ -1,9 +1,13 @@
 import { Express, Response, Request, NextFunction } from "express";
+import express from "express";
 import { createServer, Server } from "http";
 import { setupWebSocket } from "./websocket";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { breakScheduler } from "./break-scheduler";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import {
   projects,
   tasks,
@@ -18,7 +22,8 @@ import {
   clientInvitations,
   notifications,
   projectPlans,
-  deliverables
+  deliverables,
+  leaveApplications
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull } from "drizzle-orm";
 
@@ -35,8 +40,39 @@ const isProjectManager = (req: Express.Request, res: Response, next: NextFunctio
   next();
 };
 
+// Configure multer for file uploads
+const uploadDir = path.join(process.cwd(), 'uploads', 'leave-proof');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
+
+  // Serve uploaded files
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   const server = createServer(app);
 
@@ -2059,6 +2095,236 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching break status:", error);
       res.status(500).json({ error: "Failed to fetch break status" });
+    }
+  });
+
+  // Leave Applications API Routes
+
+  // Get leave applications for the current user (Staff only)
+  app.get("/api/leave-applications", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "staff") {
+      return res.status(403).json({ error: "Only staff members can view leave applications" });
+    }
+
+    try {
+      const applications = await db
+        .select()
+        .from(leaveApplications)
+        .where(eq(leaveApplications.userId, req.user!.id))
+        .orderBy(desc(leaveApplications.createdAt));
+
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching leave applications:", error);
+      res.status(500).json({ error: "Failed to fetch leave applications" });
+    }
+  });
+
+  // Submit leave application (Staff only)
+  app.post("/api/leave-applications", upload.single('proofImage'), async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "staff") {
+      return res.status(403).json({ error: "Only staff members can submit leave applications" });
+    }
+
+    try {
+      const { leaveType, reason, startDate, endDate } = req.body;
+
+      if (!leaveType || !reason || !startDate || !endDate) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+
+      // Parse dates
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      if (start > end) {
+        return res.status(400).json({ error: "Start date cannot be after end date" });
+      }
+
+      // Calculate total days
+      const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+      // Check leave of absence limit (14 days per year)
+      if (leaveType === "leave_of_absence") {
+        const currentYear = new Date().getFullYear();
+        
+        // Get approved leave of absence applications for current year
+        const existingApplications = await db
+          .select()
+          .from(leaveApplications)
+          .where(and(
+            eq(leaveApplications.userId, req.user!.id),
+            eq(leaveApplications.leaveType, "leave_of_absence"),
+            eq(leaveApplications.status, "approved")
+          ));
+
+        const usedDays = existingApplications
+          .filter(app => new Date(app.startDate).getFullYear() === currentYear)
+          .reduce((total, app) => total + app.totalDays, 0);
+
+        if (usedDays + totalDays > 14) {
+          return res.status(400).json({ 
+            error: `Leave of absence exceeds annual limit. You have ${14 - usedDays} days remaining.` 
+          });
+        }
+      }
+
+      // Handle file upload if present
+      let proofImageUrl = null;
+      if (req.file) {
+        proofImageUrl = `/uploads/leave-proof/${req.file.filename}`;
+      }
+
+      // Create leave application
+      const [newApplication] = await db
+        .insert(leaveApplications)
+        .values({
+          userId: req.user!.id,
+          leaveType,
+          reason,
+          startDate: start,
+          endDate: end,
+          totalDays,
+          proofImageUrl,
+          status: "pending",
+          appliedAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      // Create notification for project managers
+      const projectManagers = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "project_manager"));
+
+      for (const pm of projectManagers) {
+        try {
+          const [notification] = await db
+            .insert(notifications)
+            .values({
+              userId: pm.id,
+              type: "task_assigned", // Using existing type
+              content: `${req.user!.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
+              referenceId: newApplication.id,
+              referenceType: "project", // Using existing type
+              createdAt: new Date(),
+            })
+            .returning();
+
+          // Send notification through SSE if PM is connected
+          const clientResponse = global.sseClients?.get(pm.id);
+          if (clientResponse && !clientResponse.writableEnded) {
+            try {
+              clientResponse.write(`data: ${JSON.stringify({
+                type: "notification",
+                data: notification
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error sending SSE notification to PM ${pm.id}:`, error);
+              global.sseClients.delete(pm.id);
+            }
+          }
+        } catch (error) {
+          console.error(`Error creating notification for PM ${pm.id}:`, error);
+        }
+      }
+
+      res.json(newApplication);
+    } catch (error) {
+      console.error("Error creating leave application:", error);
+      res.status(500).json({ error: "Failed to create leave application" });
+    }
+  });
+
+  // Get all leave applications (Project Manager only)
+  app.get("/api/leave-applications/all", isProjectManager, async (req, res) => {
+    try {
+      const applications = await db
+        .select({
+          id: leaveApplications.id,
+          leaveType: leaveApplications.leaveType,
+          reason: leaveApplications.reason,
+          startDate: leaveApplications.startDate,
+          endDate: leaveApplications.endDate,
+          totalDays: leaveApplications.totalDays,
+          proofImageUrl: leaveApplications.proofImageUrl,
+          status: leaveApplications.status,
+          appliedAt: leaveApplications.appliedAt,
+          reviewedAt: leaveApplications.reviewedAt,
+          reviewComments: leaveApplications.reviewComments,
+          userName: users.name,
+          userEmail: users.email,
+        })
+        .from(leaveApplications)
+        .innerJoin(users, eq(leaveApplications.userId, users.id))
+        .orderBy(desc(leaveApplications.createdAt));
+
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching all leave applications:", error);
+      res.status(500).json({ error: "Failed to fetch leave applications" });
+    }
+  });
+
+  // Review leave application (Project Manager only)
+  app.put("/api/leave-applications/:id/review", isProjectManager, async (req, res) => {
+    try {
+      const applicationId = parseInt(req.params.id);
+      const { status, reviewComments } = req.body;
+
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const [updatedApplication] = await db
+        .update(leaveApplications)
+        .set({
+          status,
+          reviewComments: reviewComments || null,
+          reviewedAt: new Date(),
+          reviewedBy: req.user!.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(leaveApplications.id, applicationId))
+        .returning();
+
+      if (!updatedApplication) {
+        return res.status(404).json({ error: "Leave application not found" });
+      }
+
+      // Create notification for the applicant
+      const [notification] = await db
+        .insert(notifications)
+        .values({
+          userId: updatedApplication.userId,
+          type: "task_updated", // Using existing type
+          content: `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
+          referenceId: updatedApplication.id,
+          referenceType: "project", // Using existing type
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Send notification through SSE if user is connected
+      const clientResponse = global.sseClients?.get(updatedApplication.userId);
+      if (clientResponse && !clientResponse.writableEnded) {
+        try {
+          clientResponse.write(`data: ${JSON.stringify({
+            type: "notification",
+            data: notification
+          })}\n\n`);
+        } catch (error) {
+          console.error(`Error sending SSE notification to user ${updatedApplication.userId}:`, error);
+          global.sseClients.delete(updatedApplication.userId);
+        }
+      }
+
+      res.json(updatedApplication);
+    } catch (error) {
+      console.error("Error reviewing leave application:", error);
+      res.status(500).json({ error: "Failed to review leave application" });
     }
   });
 

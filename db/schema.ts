@@ -311,6 +311,35 @@ export const deliverablesRelations = relations(deliverables, ({ one }) => ({
   }),
 }));
 
+export const leaveApplications = pgTable("leave_applications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  leaveType: text("leave_type", { enum: ["day_off", "leave_of_absence"] }).notNull(),
+  reason: text("reason").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  totalDays: integer("total_days").notNull(),
+  proofImageUrl: text("proof_image_url"),
+  status: text("status", { enum: ["pending", "approved", "rejected"] }).default("pending"),
+  appliedAt: timestamp("applied_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewComments: text("review_comments"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const leaveApplicationsRelations = relations(leaveApplications, ({ one }) => ({
+  user: one(users, {
+    fields: [leaveApplications.userId],
+    references: [users.id],
+  }),
+  reviewer: one(users, {
+    fields: [leaveApplications.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
 // Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -328,6 +357,8 @@ export const insertProjectPlanSchema = createInsertSchema(projectPlans);
 export const selectProjectPlanSchema = createSelectSchema(projectPlans);
 export const insertDeliverableSchema = createInsertSchema(deliverables);
 export const selectDeliverableSchema = createSelectSchema(deliverables);
+export const insertLeaveApplicationSchema = createInsertSchema(leaveApplications);
+export const selectLeaveApplicationSchema = createSelectSchema(leaveApplications);
 
 
 // Types
@@ -341,3 +372,4 @@ export type ClientInvitation = typeof clientInvitations.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type ProjectPlan = typeof projectPlans.$inferSelect;
 export type Deliverable = typeof deliverables.$inferSelect;
+export type LeaveApplication = typeof leaveApplications.$inferSelect;

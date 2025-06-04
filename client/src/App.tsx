@@ -15,6 +15,8 @@ import StaffProjectTasks from "@/pages/dashboard/staff-project-tasks";
 import ProjectResources from "@/pages/dashboard/project-resources";
 import ProjectPlanDetails from "@/pages/dashboard/project-plan-details";
 import StaffProjectDetails from "@/pages/dashboard/staff-project-details";
+import LeaveApplication from "@/pages/dashboard/leave-application";
+import LeaveManagement from "@/pages/dashboard/leave-management";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -63,6 +65,8 @@ function Router() {
       <Route path="/dashboard/projects/:id/plan/:planId" component={ProjectPlanDetails} />
       <Route path="/dashboard/staff-report" component={() => <PrivateRoute component={StaffReport} />} />
       <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />
+      <Route path="/dashboard/leave-application" component={() => <PrivateRoute component={LeaveApplication} />} />
+      <Route path="/dashboard/leave-management" component={() => <PrivateRoute component={LeaveManagement} />} />
       <Route component={NotFound} />
     </Switch>
   );

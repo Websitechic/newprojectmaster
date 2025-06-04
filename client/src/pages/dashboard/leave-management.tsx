@@ -1,0 +1,518 @@
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  CalendarDays,
+  CheckCircle,
+  XCircle,
+  Clock,
+  User,
+  FileText,
+  Eye,
+  AlertCircle,
+} from "lucide-react";
+import { formatDate } from "@/lib/utils";
+
+interface LeaveApplicationWithUser {
+  id: number;
+  leaveType: "day_off" | "leave_of_absence";
+  reason: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  proofImageUrl?: string;
+  status: "pending" | "approved" | "rejected";
+  appliedAt: string;
+  reviewedAt?: string;
+  reviewComments?: string;
+  userName: string;
+  userEmail: string;
+}
+
+const leaveTypeLabels = {
+  day_off: "Day Off",
+  leave_of_absence: "Leave of Absence",
+};
+
+const statusColors = {
+  pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  approved: "bg-green-100 text-green-800 border-green-300",
+  rejected: "bg-red-100 text-red-800 border-red-300",
+};
+
+const statusIcons = {
+  pending: Clock,
+  approved: CheckCircle,
+  rejected: XCircle,
+};
+
+const leaveTypeColors = {
+  day_off: "bg-blue-100 text-blue-800 border-blue-300",
+  leave_of_absence: "bg-purple-100 text-purple-800 border-purple-300",
+};
+
+export default function LeaveManagement() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedApplication, setSelectedApplication] = useState<LeaveApplicationWithUser | null>(null);
+  const [reviewComments, setReviewComments] = useState("");
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const [reviewAction, setReviewAction] = useState<"approved" | "rejected" | null>(null);
+
+  // Check if user is project manager
+  if (!user || user.role !== "project_manager") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm text-destructive">Only project managers can access leave management</p>
+      </div>
+    );
+  }
+
+  // Fetch all leave applications
+  const { data: leaveApplications, isLoading } = useQuery<LeaveApplicationWithUser[]>({
+    queryKey: ["/api/leave-applications/all"],
+    queryFn: async () => {
+      const response = await fetch("/api/leave-applications/all", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch leave applications");
+      return response.json();
+    },
+  });
+
+  // Review leave application
+  const reviewApplication = useMutation({
+    mutationFn: async ({ applicationId, status, comments }: { 
+      applicationId: number; 
+      status: "approved" | "rejected"; 
+      comments: string; 
+    }) => {
+      const response = await fetch(`/api/leave-applications/${applicationId}/review`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          status,
+          reviewComments: comments,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: `Leave application ${reviewAction}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/leave-applications/all"] });
+      setIsReviewDialogOpen(false);
+      setSelectedApplication(null);
+      setReviewComments("");
+      setReviewAction(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleReview = (application: LeaveApplicationWithUser, action: "approved" | "rejected") => {
+    setSelectedApplication(application);
+    setReviewAction(action);
+    setIsReviewDialogOpen(true);
+  };
+
+  const confirmReview = () => {
+    if (selectedApplication && reviewAction) {
+      reviewApplication.mutate({
+        applicationId: selectedApplication.id,
+        status: reviewAction,
+        comments: reviewComments,
+      });
+    }
+  };
+
+  // Filter applications
+  const pendingApplications = leaveApplications?.filter(app => app.status === "pending") || [];
+  const reviewedApplications = leaveApplications?.filter(app => app.status !== "pending") || [];
+
+  return (
+    <div className="p-6">
+      <div className="flex flex-col space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Leave Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Review and manage staff leave applications
+          </p>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-yellow-600" />
+                <CardTitle className="text-lg">Pending Review</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-yellow-600">{pendingApplications.length}</p>
+              <p className="text-sm text-muted-foreground">Applications awaiting review</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <CardTitle className="text-lg">Approved</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-green-600">
+                {reviewedApplications.filter(app => app.status === "approved").length}
+              </p>
+              <p className="text-sm text-muted-foreground">Approved applications</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <XCircle className="h-5 w-5 text-red-600" />
+                <CardTitle className="text-lg">Rejected</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-red-600">
+                {reviewedApplications.filter(app => app.status === "rejected").length}
+              </p>
+              <p className="text-sm text-muted-foreground">Rejected applications</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Pending Applications */}
+        {pendingApplications.length > 0 && (
+          <Card className="border-yellow-200">
+            <CardHeader className="bg-yellow-50">
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-yellow-600" />
+                Pending Applications
+              </CardTitle>
+              <CardDescription>
+                Applications requiring your review
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Staff Member</TableHead>
+                    <TableHead>Leave Type</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Days</TableHead>
+                    <TableHead>Applied</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingApplications.map((application) => (
+                    <TableRow key={application.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{application.userName}</div>
+                            <div className="text-sm text-muted-foreground">{application.userEmail}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={leaveTypeColors[application.leaveType]}>
+                          {leaveTypeLabels[application.leaveType]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {formatDate(application.startDate, "MMM d")} - {formatDate(application.endDate, "MMM d, yyyy")}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium">{application.totalDays}</span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(application.appliedAt, "MMM d, yyyy")}
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <p className="text-sm truncate" title={application.reason}>
+                          {application.reason}
+                        </p>
+                        {application.proofImageUrl && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <FileText className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Proof attached</span>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedApplication(application);
+                              // You could open a detailed view dialog here
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-green-600 hover:text-green-700"
+                            onClick={() => handleReview(application, "approved")}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleReview(application, "rejected")}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* All Applications */}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Applications</CardTitle>
+            <CardDescription>
+              Complete history of leave applications
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">Loading applications...</p>
+              </div>
+            ) : !leaveApplications || leaveApplications.length === 0 ? (
+              <div className="text-center py-8">
+                <CalendarDays className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No leave applications found</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Staff Member</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Days</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Applied</TableHead>
+                    <TableHead>Reason</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leaveApplications.map((application) => {
+                    const StatusIcon = statusIcons[application.status];
+                    return (
+                      <TableRow key={application.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <div className="font-medium">{application.userName}</div>
+                              <div className="text-sm text-muted-foreground">{application.userEmail}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={leaveTypeColors[application.leaveType]}>
+                            {leaveTypeLabels[application.leaveType]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {formatDate(application.startDate, "MMM d")} - {formatDate(application.endDate, "MMM d, yyyy")}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium">{application.totalDays}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={statusColors[application.status]}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(application.appliedAt, "MMM d, yyyy")}
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <p className="text-sm truncate" title={application.reason}>
+                            {application.reason}
+                          </p>
+                          {application.reviewComments && (
+                            <p className="text-xs text-muted-foreground mt-1" title={application.reviewComments}>
+                              Review: {application.reviewComments}
+                            </p>
+                          )}
+                          {application.proofImageUrl && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <FileText className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">Proof attached</span>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Review Dialog */}
+        <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {reviewAction === "approved" ? "Approve" : "Reject"} Leave Application
+              </DialogTitle>
+              <DialogDescription>
+                {selectedApplication && (
+                  <>
+                    {reviewAction === "approved" ? "Approve" : "Reject"} {selectedApplication.userName}'s{" "}
+                    {leaveTypeLabels[selectedApplication.leaveType].toLowerCase()} request for{" "}
+                    {selectedApplication.totalDays} day{selectedApplication.totalDays !== 1 ? 's' : ''}.
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedApplication && (
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-md">
+                  <h4 className="font-medium mb-2">Application Details</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="font-medium">Period:</span>{" "}
+                      {formatDate(selectedApplication.startDate, "MMM d")} - {formatDate(selectedApplication.endDate, "MMM d, yyyy")}
+                    </div>
+                    <div>
+                      <span className="font-medium">Days:</span> {selectedApplication.totalDays}
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <span className="font-medium">Reason:</span>
+                    <p className="text-sm mt-1">{selectedApplication.reason}</p>
+                  </div>
+                  {selectedApplication.proofImageUrl && (
+                    <div className="mt-2">
+                      <span className="font-medium">Proof:</span>
+                      <img
+                        src={selectedApplication.proofImageUrl}
+                        alt="Leave proof"
+                        className="mt-1 max-w-xs h-32 object-cover rounded border"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="review-comments">
+                    Comments {reviewAction === "rejected" ? "(Required)" : "(Optional)"}
+                  </Label>
+                  <Textarea
+                    id="review-comments"
+                    placeholder={
+                      reviewAction === "approved"
+                        ? "Add any comments about the approval..."
+                        : "Please provide a reason for rejection..."
+                    }
+                    value={reviewComments}
+                    onChange={(e) => setReviewComments(e.target.value)}
+                    required={reviewAction === "rejected"}
+                  />
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmReview}
+                disabled={reviewApplication.isPending || (reviewAction === "rejected" && !reviewComments.trim())}
+                className={reviewAction === "approved" ? "bg-green-600 hover:bg-green-700" : ""}
+                variant={reviewAction === "rejected" ? "destructive" : "default"}
+              >
+                {reviewApplication.isPending
+                  ? "Processing..."
+                  : reviewAction === "approved"
+                  ? "Approve"
+                  : "Reject"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}

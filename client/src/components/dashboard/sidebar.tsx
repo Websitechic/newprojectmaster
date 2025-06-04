@@ -63,7 +63,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/settings",
     },
   ];
-  
+
   // Project manager specific menu items
   const pmMenuItems = user?.role === "project_manager" ? [
     {
@@ -72,7 +72,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/staff-report",
     }
   ] : [];
-  
+
   // Combine menu items based on user role
   const menuItems = [
     ...baseMenuItems.slice(0, 2), // Dashboard, Projects
