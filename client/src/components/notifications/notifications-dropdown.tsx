@@ -1,6 +1,6 @@
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, useCallback } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,164 +9,162 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import type { Notification } from "@db/schema";
 
-const RETRY_INTERVAL = 5000; // 5 seconds
+interface Notification {
+  id: number;
+  type: string;
+  content: string;
+  read: boolean;
+  createdAt: string;
+}
 
 export function NotificationsDropdown() {
-  const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [isConnected, setIsConnected] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
+    queryFn: () => fetch("/api/notifications", { credentials: "include" }).then(res => res.json()),
     enabled: !!user,
+    refetchInterval: 30000,
   });
+
+  // Set up SSE connection for real-time notifications
+  useEffect(() => {
+    if (!user || isConnecting) return;
+
+    const connectSSE = () => {
+      if (isConnecting) return;
+
+      console.log("Setting up SSE connection for notifications...");
+      setIsConnecting(true);
+
+      try {
+        const eventSource = new EventSource("/api/notifications/stream", {
+          withCredentials: true
+        });
+        eventSourceRef.current = eventSource;
+
+        eventSource.onopen = () => {
+          console.log("SSE connection opened for notifications");
+          setIsConnecting(false);
+          // Clear any pending reconnection attempts
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+          }
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log("SSE message received:", data);
+
+            if (data.type === "notification") {
+              queryClient.setQueryData(["/api/notifications"], (old: Notification[] = []) => {
+                return [data.data, ...old];
+              });
+            }
+          } catch (error) {
+            console.error("Failed to parse SSE message:", error);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          console.error("SSE connection error:", error);
+          setIsConnecting(false);
+
+          if (eventSource.readyState !== EventSource.CLOSED) {
+            eventSource.close();
+          }
+          eventSourceRef.current = null;
+
+          // Attempt to reconnect after a delay if user is still authenticated
+          if (user && !reconnectTimeoutRef.current) {
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectTimeoutRef.current = null;
+              connectSSE();
+            }, 5000);
+          }
+        };
+      } catch (error) {
+        console.error("Failed to create SSE connection:", error);
+        setIsConnecting(false);
+      }
+    };
+
+    // Delay initial connection to ensure authentication is complete
+    const connectionTimeout = setTimeout(() => {
+      connectSSE();
+    }, 2000);
+
+    return () => {
+      clearTimeout(connectionTimeout);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (eventSourceRef.current && eventSourceRef.current.readyState !== EventSource.CLOSED) {
+        eventSourceRef.current.close();
+      }
+      eventSourceRef.current = null;
+      setIsConnecting(false);
+    };
+  }, [user, queryClient]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAsReadMutation = useMutation({
-    mutationFn: async (notificationId: number) => {
-      const response = await fetch(`/api/notifications/${notificationId}/read`, {
+  const markAsRead = async (notificationId: number) => {
+    try {
+      await fetch(`/api/notifications/${notificationId}/read`, {
         method: "PUT",
         credentials: "include",
       });
-      if (!response.ok) {
-        throw new Error("Failed to mark notification as read");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
-  const setupEventSource = useCallback(() => {
-    if (!user) return null;
-
-    const eventSource = new EventSource("/api/notifications/stream", {
-      withCredentials: true
-    });
-
-    eventSource.onopen = () => {
-      console.log("SSE connection opened");
-      setIsConnected(true);
-      setRetryCount(0); // Reset retry count on successful connection
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('SSE message received:', data);
-
-        if (data.type === "notification") {
-          // Add new notification to the cache
-          queryClient.setQueryData<Notification[]>(["/api/notifications"], (old = []) => {
-            return [data.data, ...old];
-          });
-
-          // Show toast notification
-          toast({
-            title: "New Notification",
-            description: data.data.content,
-          });
-        }
-      } catch (error) {
-        console.error("Error processing SSE message:", error);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error("SSE connection error:", error);
-      setIsConnected(false);
-      eventSource.close();
-
-      // Implement exponential backoff for retries
-      const maxRetries = 5;
-      if (retryCount < maxRetries) {
-        const timeout = Math.min(1000 * Math.pow(2, retryCount), 30000);
-        setTimeout(() => {
-          setRetryCount(prev => prev + 1);
-          setupEventSource();
-        }, timeout);
-      }
-    };
-
-    return eventSource;
-  }, [user, queryClient, toast, retryCount]);
-
-  useEffect(() => {
-    const eventSource = setupEventSource();
-    return () => {
-      if (eventSource && typeof eventSource.close === 'function') {
-        eventSource.close();
-      }
-    };
-  }, [eventSource]);
-
-  if (!user) return null;
+      queryClient.setQueryData(["/api/notifications"], (old: Notification[] = []) =>
+        old.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      );
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+          <Bell size={20} />
           {unreadCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
             >
               {unreadCount}
             </Badge>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto">
+      <DropdownMenuContent align="end" className="w-80">
         {notifications.length === 0 ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">
+          <DropdownMenuItem disabled>
             No notifications
-          </div>
+          </DropdownMenuItem>
         ) : (
-          notifications.map((notification) => (
+          notifications.slice(0, 5).map((notification) => (
             <DropdownMenuItem
               key={notification.id}
-              className={`flex flex-col items-start p-3 md:p-4 ${
-                !notification.read ? "bg-accent/50" : ""
-              } ${notification.type === "task_assigned" ? "border-l-4 border-primary" : ""}`}
-              onClick={() => {
-                if (!notification.read) {
-                  markAsReadMutation.mutate(notification.id);
-                }
-
-                // Navigate to tasks if it's a task notification
-                if (notification.type === "task_assigned") {
-                  // For staff, the task will already be on their dashboard
-                  if (user?.role === "staff") {
-                    window.location.href = "/";
-                  } else if (notification.referenceType === "task" && notification.referenceId) {
-                    // For project managers, navigate to the specific project's tasks
-                    window.location.href = `/dashboard/tasks`;
-                  }
-                }
-              }}
+              className={`cursor-pointer ${!notification.read ? 'bg-muted' : ''}`}
+              onClick={() => markAsRead(notification.id)}
             >
-              <div className="text-sm font-medium break-words">
-                {notification.type === "task_assigned" ? "✅ Task Assignment" : "Notification"}
-              </div>
-              <div className="text-sm break-words w-full">{notification.content}</div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {new Date(notification.createdAt!).toLocaleString()}
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm">{notification.content}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(notification.createdAt).toLocaleString()}
+                </p>
               </div>
             </DropdownMenuItem>
           ))

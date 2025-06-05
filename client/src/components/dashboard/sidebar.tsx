@@ -67,7 +67,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     fetchUnreadCount();
   }, []);
 
-  // Listen for real-time message updates
+  // Set up SSE connection for real-time updates (direct messages only)
   useEffect(() => {
     if (!user) return;
 
@@ -86,25 +86,25 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
         });
 
         eventSource.onopen = () => {
-          console.log("SSE connection opened");
+          console.log('SSE connection opened');
           isConnecting = false;
         };
 
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log("SSE message received:", data);
 
             if (data.type === 'direct_message') {
+              // Increment unread direct messages count
               setUnreadDirectMessages(prev => prev + 1);
             }
           } catch (error) {
-            console.error('Failed to parse SSE data:', error);
+            console.error('Failed to parse SSE message:', error);
           }
         };
 
         eventSource.onerror = (error) => {
-          console.error("SSE connection error:", error);
+          console.error('SSE connection error:', error);
           isConnecting = false;
 
           if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
@@ -121,7 +121,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
           }
         };
       } catch (error) {
-        console.error("Failed to create SSE connection:", error);
+        console.error('Failed to create SSE connection:', error);
         isConnecting = false;
       }
     };
@@ -129,7 +129,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     // Delay connection to ensure authentication is complete
     const connectionDelay = setTimeout(() => {
       connectSSE();
-    }, 1500);
+    }, 3000); // Increased delay to avoid conflicts with notifications dropdown
 
     return () => {
       clearTimeout(connectionDelay);

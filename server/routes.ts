@@ -1510,8 +1510,8 @@ export function registerRoutes(app: Express): Server {
   // Add new endpoints for notifications
   // Add SSE endpoint with proper error handling
   app.get("/api/notifications/stream", (req: Request, res: Response) => {
-    // Check if user exists in session
-    if (!req.user || !req.user.id) {
+    // Check if user is authenticated
+    if (!req.isAuthenticated() || !req.user || !req.user.id) {
       console.log("SSE connection attempted without valid user session");
       return res.status(401).json({ error: "Not authenticated" });
     }
