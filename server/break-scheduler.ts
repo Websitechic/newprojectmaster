@@ -73,6 +73,10 @@ class BreakScheduler {
   }
 
   private async checkBreakStart(user: any, currentTime: string) {
+    if (!user || !user.breakOneTime || !user.breakTwoTime) {
+      return;
+    }
+
     const breakOneTime = user.breakOneTime;
     const breakTwoTime = user.breakTwoTime;
 
@@ -115,7 +119,13 @@ class BreakScheduler {
   }
 
   private timeToMinutes(time: string): number {
+    if (!time || typeof time !== 'string') {
+      return 0;
+    }
     const [hours, minutes] = time.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) {
+      return 0;
+    }
     return hours * 60 + minutes;
   }
 
@@ -163,7 +173,7 @@ class BreakScheduler {
 
       if (runningTask) {
         // Pause the timer and save elapsed time
-        const elapsedSeconds = Math.floor((new Date().getTime() - new Date(runningTask.timerStartTime!).getTime()) / 1000);
+        const elapsedSeconds = Math.floor((now.getTime() - new Date(runningTask.timerStartTime!).getTime()) / 1000);
         const newTimeSpent = (runningTask.timeSpent || 0) + elapsedSeconds;
 
         await db
@@ -172,7 +182,7 @@ class BreakScheduler {
             isTimerRunning: false,
             timerStartTime: null,
             timeSpent: newTimeSpent,
-            updatedAt: new Date()
+            updatedAt: now
           })
           .where(eq(tasks.id, runningTask.id));
 
@@ -181,7 +191,6 @@ class BreakScheduler {
         console.log(`Paused timer for task ${runningTask.id} during break`);
       }
 
-      const now = new Date();
       const endTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
 
       // Update user status to on break
@@ -219,13 +228,15 @@ class BreakScheduler {
 
       console.log(`Ending break for user ${userId}`);
 
+      const resumeTime = new Date();
+
       // Update user status back to active
       await db
         .update(users)
         .set({
           workStatus: WorkStatus.ACTIVE,
           breakStartTime: null,
-          lastActive: new Date()
+          lastActive: resumeTime
         })
         .where(eq(users.id, userId));
 
@@ -235,8 +246,8 @@ class BreakScheduler {
           .update(tasks)
           .set({
             isTimerRunning: true,
-            timerStartTime: new Date(),
-            updatedAt: new Date()
+            timerStartTime: resumeTime,
+            updatedAt: resumeTime
           })
           .where(eq(tasks.id, breakSession.pausedTaskId));
 
