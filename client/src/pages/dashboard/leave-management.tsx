@@ -87,6 +87,7 @@ export default function LeaveManagement() {
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplicationWithUser | null>(null);
   const [reviewComments, setReviewComments] = useState("");
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [reviewAction, setReviewAction] = useState<"approved" | "rejected" | null>(null);
 
   // Check if user is project manager
@@ -304,7 +305,7 @@ export default function LeaveManagement() {
                             variant="outline"
                             onClick={() => {
                               setSelectedApplication(application);
-                              // You could open a detailed view dialog here
+                              setIsDetailDialogOpen(true);
                             }}
                           >
                             <Eye className="h-4 w-4" />
@@ -426,6 +427,144 @@ export default function LeaveManagement() {
             )}
           </CardContent>
         </Card>
+
+        {/* Detail Dialog */}
+        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Leave Application Details</DialogTitle>
+              <DialogDescription>
+                {selectedApplication && (
+                  <>
+                    Leave application submitted by {selectedApplication.userName}
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedApplication && (
+              <div className="space-y-6">
+                {/* Applicant Information */}
+                <div className="bg-gray-50 p-4 rounded-md">
+                  <h4 className="font-medium mb-3">Applicant Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Name:</span> {selectedApplication.userName}
+                    </div>
+                    <div>
+                      <span className="font-medium">Email:</span> {selectedApplication.userEmail}
+                    </div>
+                    <div>
+                      <span className="font-medium">Applied On:</span> {formatDate(selectedApplication.appliedAt, "MMM d, yyyy 'at' h:mm a")}
+                    </div>
+                    <div>
+                      <span className="font-medium">Status:</span>
+                      <Badge variant="outline" className={`ml-2 ${statusColors[selectedApplication.status]}`}>
+                        {selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Leave Details */}
+                <div className="bg-blue-50 p-4 rounded-md">
+                  <h4 className="font-medium mb-3">Leave Details</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Type:</span>
+                      <Badge variant="outline" className={`ml-2 ${selectedApplication.leaveType === 'day_off' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-purple-100 text-purple-800 border-purple-300'}`}>
+                        {leaveTypeLabels[selectedApplication.leaveType]}
+                      </Badge>
+                    </div>
+                    <div>
+                      <span className="font-medium">Duration:</span> {selectedApplication.totalDays} day{selectedApplication.totalDays !== 1 ? 's' : ''}
+                    </div>
+                    <div>
+                      <span className="font-medium">Start Date:</span> {formatDate(selectedApplication.startDate, "MMM d, yyyy")}
+                    </div>
+                    <div>
+                      <span className="font-medium">End Date:</span> {formatDate(selectedApplication.endDate, "MMM d, yyyy")}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reason */}
+                <div>
+                  <h4 className="font-medium mb-2">Reason for Leave</h4>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <p className="text-sm">{selectedApplication.reason}</p>
+                  </div>
+                </div>
+
+                {/* Proof Image */}
+                {selectedApplication.proofImageUrl && (
+                  <div>
+                    <h4 className="font-medium mb-2">Supporting Document</h4>
+                    <div className="border rounded-md p-2">
+                      <img
+                        src={selectedApplication.proofImageUrl}
+                        alt="Leave proof document"
+                        className="max-w-full h-auto max-h-96 object-contain rounded"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Review Information */}
+                {selectedApplication.status !== "pending" && (
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h4 className="font-medium mb-3">Review Information</h4>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="font-medium">Reviewed On:</span> {selectedApplication.reviewedAt ? formatDate(selectedApplication.reviewedAt, "MMM d, yyyy 'at' h:mm a") : 'N/A'}
+                      </div>
+                      {selectedApplication.reviewComments && (
+                        <div>
+                          <span className="font-medium">Review Comments:</span>
+                          <p className="mt-1 bg-white p-2 rounded border">{selectedApplication.reviewComments}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                {selectedApplication.status === "pending" && (
+                  <div className="flex gap-2 pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      className="text-green-600 hover:text-green-700"
+                      onClick={() => {
+                        setIsDetailDialogOpen(false);
+                        handleReview(selectedApplication, "approved");
+                      }}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => {
+                        setIsDetailDialogOpen(false);
+                        handleReview(selectedApplication, "rejected");
+                      }}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Reject
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Review Dialog */}
         <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
