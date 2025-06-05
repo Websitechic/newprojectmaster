@@ -67,14 +67,18 @@ interface StaffMember {
   tasks: Task[];
   taskCount: number;
   activeTasks: number;
-  currentTask?: {
+  isCurrentlyEngaged: boolean;
+  engagedTask?: {
     staffId: number;
     taskId: number;
     taskTitle: string;
     projectId: number;
     projectName: string;
-    startTime: string | null;
-    hoursWorked: number;
+    assignedHours: number;
+    totalHoursSpent: number;
+    currentSessionHours: number;
+    timerStartTime: string;
+    isTimerRunning: boolean;
   } | null;
   breakInfo?: {
     staffId: number;
@@ -237,23 +241,20 @@ export default function StaffReport() {
   // Get unique specializations from staff members
   const specializations = [...new Set(staffReport.map(member => member.specialization).filter(Boolean))];
 
-  // Group staff by work status
-  const activeStaff = filteredStaff?.filter(staff => staff.workStatus === 'active') || [];
+  // Group staff by engagement status
+  const engagedStaff = filteredStaff?.filter(staff => staff.isCurrentlyEngaged) || [];
   const onBreakStaff = filteredStaff?.filter(staff => staff.workStatus === 'on_break') || [];
   const absentStaff = filteredStaff?.filter(staff => staff.workStatus === 'absent') || [];
   
-  // Free staff: those with no tasks assigned or all tasks completed
-  const freeStaff = filteredStaff?.filter(staff => {
-    // Only consider staff who are not absent
-    if (staff.workStatus === 'absent') return false;
+  // Available staff: those not absent, not on break, and not currently engaged with running timers
+  const availableStaff = filteredStaff?.filter(staff => {
+    // Exclude absent and on break staff
+    if (staff.workStatus === 'absent' || staff.workStatus === 'on_break') return false;
     
-    // Staff with no tasks assigned
-    if (staff.taskCount === 0) return true;
+    // Exclude currently engaged staff (those with running timers)
+    if (staff.isCurrentlyEngaged) return false;
     
-    // Staff with all tasks completed
-    if (staff.taskCount > 0 && staff.activeTasks === 0) return true;
-    
-    return false;
+    return true;
   }) || [];
 
   return (
@@ -292,7 +293,7 @@ export default function StaffReport() {
             <CardHeader className="pb-2">
               <CardTitle className="text-md">Staff Status Overview</CardTitle>
               <CardDescription>
-                {activeStaff.length} staff active | {onBreakStaff.length} on scheduled break | {absentStaff.length} absent | {freeStaff.length} available
+                {engagedStaff.length} currently engaged | {onBreakStaff.length} on scheduled break | {absentStaff.length} absent | {availableStaff.length} available
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -310,8 +311,8 @@ export default function StaffReport() {
                     <Play className="h-4 w-4 text-green-700" />
                     <h3 className="text-sm font-medium text-green-800">Currently Engaged</h3>
                   </div>
-                  <p className="mt-1 text-2xl font-bold text-green-800">{activeStaff.length}</p>
-                  <p className="text-xs text-green-700">Staff actively working on tasks</p>
+                  <p className="mt-1 text-2xl font-bold text-green-800">{engagedStaff.length}</p>
+                  <p className="text-xs text-green-700">Staff with active task timers</p>
                 </div>
                 
                 <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
@@ -342,17 +343,16 @@ export default function StaffReport() {
                     <UserCheck className="h-4 w-4 text-blue-700" />
                     <h3 className="text-sm font-medium text-blue-800">Available</h3>
                   </div>
-                  <p className="mt-1 text-2xl font-bold text-blue-800">{freeStaff.length}</p>
+                  <p className="mt-1 text-2xl font-bold text-blue-800">{availableStaff.length}</p>
                   <p className="text-xs text-blue-700">
-                    {freeStaff.filter(s => s.taskCount === 0).length} no tasks, 
-                    {freeStaff.filter(s => s.taskCount > 0 && s.activeTasks === 0).length} completed all
+                    Staff ready for new assignments
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Active Staff Section */}
+          {/* Currently Engaged Staff Section */}
           <Card className="border-green-200">
             <CardHeader className="pb-2 border-b border-green-100">
               <div className="flex items-center">
@@ -362,25 +362,27 @@ export default function StaffReport() {
                 <div>
                   <CardTitle className="text-md">Currently Engaged Staff</CardTitle>
                   <CardDescription>
-                    {activeStaff.length} staff members actively working on projects
+                    {engagedStaff.length} staff members with active task timers
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              {activeStaff.length > 0 ? (
+              {engagedStaff.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Staff Member</TableHead>
                       <TableHead>Current Project</TableHead>
                       <TableHead>Current Task</TableHead>
-                      <TableHead className="text-center">Hours Worked</TableHead>
-                      <TableHead className="text-right">Start Time</TableHead>
+                      <TableHead className="text-center">Assigned Hours</TableHead>
+                      <TableHead className="text-center">Total Hours Spent</TableHead>
+                      <TableHead className="text-center">Current Session</TableHead>
+                      <TableHead className="text-right">Timer Started</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {activeStaff.map((staff) => (
+                    {engagedStaff.map((staff) => (
                       <TableRow key={staff.id}>
                         <TableCell>
                           <div className="font-medium">{staff.name}</div>
@@ -389,32 +391,57 @@ export default function StaffReport() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {staff.currentTask ? (
-                            <div>{staff.currentTask.projectName}</div>
+                          {staff.engagedTask ? (
+                            <div className="font-medium">{staff.engagedTask.projectName}</div>
                           ) : (
-                            <span className="text-xs text-muted-foreground">No active project</span>
+                            <span className="text-xs text-muted-foreground">No project</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {staff.currentTask ? (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
-                              {staff.currentTask.taskTitle}
+                          {staff.engagedTask ? (
+                            <Badge variant="outline" className="bg-green-50 text-green-800 border-green-200">
+                              <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                {staff.engagedTask.taskTitle}
+                              </div>
                             </Badge>
                           ) : (
-                            <span className="text-xs text-muted-foreground">No active task</span>
+                            <span className="text-xs text-muted-foreground">No task</span>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
-                          {staff.currentTask?.hoursWorked ? (
+                          {staff.engagedTask?.assignedHours ? (
+                            <div className="font-medium text-blue-700">
+                              {staff.engagedTask.assignedHours} hrs
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Not set</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {staff.engagedTask ? (
                             <div className="font-medium">
-                              {staff.currentTask.hoursWorked.toFixed(2)} hrs
+                              {staff.engagedTask.totalHoursSpent.toFixed(2)} hrs
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">N/A</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {staff.engagedTask ? (
+                            <div className="font-medium text-green-700">
+                              {staff.engagedTask.currentSessionHours.toFixed(2)} hrs
                             </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">N/A</span>
                           )}
                         </TableCell>
                         <TableCell className="text-right text-sm">
-                          {staff.taskStartTime ? formatDate(staff.taskStartTime, "h:mm a") : "N/A"}
+                          {staff.engagedTask?.timerStartTime ? (
+                            formatDate(staff.engagedTask.timerStartTime, "h:mm a")
+                          ) : (
+                            "N/A"
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -425,9 +452,9 @@ export default function StaffReport() {
                   <div className="bg-green-50 p-3 rounded-full mb-3">
                     <CheckCircle2 className="h-6 w-6 text-green-500" />
                   </div>
-                  <h3 className="text-md font-medium mb-1">No Active Staff</h3>
+                  <h3 className="text-md font-medium mb-1">No Currently Engaged Staff</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
-                    There are currently no staff members actively engaged in tasks.
+                    There are currently no staff members with active task timers running.
                   </p>
                 </div>
               )}
@@ -594,7 +621,7 @@ export default function StaffReport() {
             </CardContent>
           </Card>
 
-          {/* Free Staff Section */}
+          {/* Available Staff Section */}
           <Card className="border-blue-200">
             <CardHeader className="pb-2 border-b border-blue-100">
               <div className="flex items-center">
@@ -604,13 +631,13 @@ export default function StaffReport() {
                 <div>
                   <CardTitle className="text-md">Available Staff</CardTitle>
                   <CardDescription>
-                    {freeStaff.length} staff members available for new assignments
+                    {availableStaff.length} staff members available for new assignments
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              {freeStaff.length > 0 ? (
+              {availableStaff.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -622,7 +649,7 @@ export default function StaffReport() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {freeStaff.map((staff) => (
+                    {availableStaff.map((staff) => (
                       <TableRow key={staff.id}>
                         <TableCell>
                           <div className="font-medium">{staff.name}</div>
@@ -638,9 +665,13 @@ export default function StaffReport() {
                             <Badge variant="outline" className="bg-gray-50 border-gray-200 text-gray-800">
                               No tasks assigned
                             </Badge>
-                          ) : (
+                          ) : staff.activeTasks === 0 ? (
                             <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
                               All tasks completed ({staff.taskCount})
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-orange-50 border-orange-200 text-orange-800">
+                              {staff.activeTasks} active tasks
                             </Badge>
                           )}
                         </TableCell>
@@ -663,7 +694,7 @@ export default function StaffReport() {
                   </div>
                   <h3 className="text-md font-medium mb-1">No Available Staff</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
-                    All staff members are currently assigned to active tasks or are absent.
+                    All staff members are currently engaged, on break, or absent.
                   </p>
                 </div>
               )}

@@ -288,7 +288,7 @@ export function registerRoutes(app: Express): Server {
         .where(eq(users.role, "staff"))
         .orderBy(asc(users.name));
 
-      // Get all tasks assigned to staff
+      // Get all tasks assigned to staff with additional timer and hours information
       const allTasks = await db
         .select({
           id: tasks.id,
@@ -301,42 +301,50 @@ export function registerRoutes(app: Express): Server {
           createdAt: tasks.createdAt,
           updatedAt: tasks.updatedAt,
           projectName: projects.name,
+          workingHours: tasks.workingHours,
+          timeSpent: tasks.timeSpent,
+          isTimerRunning: tasks.isTimerRunning,
+          timerStartTime: tasks.timerStartTime,
         })
         .from(tasks)
         .where(isNotNull(tasks.assigneeId))
         .innerJoin(projects, eq(tasks.projectId, projects.id));
 
-      // Get current project information for each staff member
-      const staffCurrentTasks = await Promise.all(
-        staffMembers
-          .filter(staff => staff.currentTaskId !== null)
-          .map(async (staff) => {
-            const currentTask = allTasks.find(task => task.id === staff.currentTaskId);
+      // Get currently engaged staff - those with running task timers
+      const engagedStaffTasks = allTasks
+        .filter(task => task.isTimerRunning && task.timerStartTime)
+        .map(task => {
+          const staff = staffMembers.find(s => s.id === task.assigneeId);
+          if (!staff) return null;
 
-            if (!currentTask) return null;
+          // Calculate current session hours (from timer start)
+          const currentSessionHours = task.timerStartTime 
+            ? Math.round((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 36000) / 100 
+            : 0;
 
-            return {
-              staffId: staff.id,
-              taskId: currentTask.id,
-              taskTitle: currentTask.title,
-              projectId: currentTask.projectId,
-              projectName: currentTask.projectName,
-              startTime: staff.taskStartTime,
-              // Calculate hours worked based on start time
-              hoursWorked: staff.taskStartTime 
-                ? Math.round((new Date().getTime() - new Date(staff.taskStartTime).getTime()) / 36000) / 100 
-                : 0
-            };
-          })
-      );
+          // Calculate total hours spent (including previous sessions)
+          const totalHoursSpent = ((task.timeSpent || 0) + (currentSessionHours * 3600)) / 3600;
 
-      // Filter out nulls and organize by staff ID
-      const currentTasksByStaffId = staffCurrentTasks
-        .filter(Boolean)
-        .reduce((acc, task) => {
-          if (task) acc[task.staffId] = task;
-          return acc;
-        }, {} as Record<number, typeof staffCurrentTasks[0]>);
+          return {
+            staffId: staff.id,
+            taskId: task.id,
+            taskTitle: task.title,
+            projectId: task.projectId,
+            projectName: task.projectName,
+            assignedHours: task.workingHours || 0,
+            totalHoursSpent: Math.round(totalHoursSpent * 100) / 100,
+            currentSessionHours: Math.round(currentSessionHours * 100) / 100,
+            timerStartTime: task.timerStartTime,
+            isTimerRunning: task.isTimerRunning
+          };
+        })
+        .filter(Boolean);
+
+      // Organize engaged tasks by staff ID
+      const engagedTasksByStaffId = engagedStaffTasks.reduce((acc, task) => {
+        if (task) acc[task.staffId] = task;
+        return acc;
+      }, {} as Record<number, typeof engagedStaffTasks[0]>);
 
       // Prepare break information
       const staffBreakInfo = staffMembers
@@ -369,7 +377,7 @@ export function registerRoutes(app: Express): Server {
       // Group tasks by assignee and add categorized information
       const staffReport = staffMembers.map(staff => {
         const assignedTasks = allTasks.filter(task => task.assigneeId === staff.id);
-        const currentTask = currentTasksByStaffId[staff.id] || null;
+        const engagedTask = engagedTasksByStaffId[staff.id] || null;
         const breakInfo = breakInfoByStaffId[staff.id] || null;
 
         return {
@@ -377,8 +385,10 @@ export function registerRoutes(app: Express): Server {
           tasks: assignedTasks,
           taskCount: assignedTasks.length,
           activeTasks: assignedTasks.filter(task => task.status !== 'completed').length,
-          currentTask,
+          engagedTask, // Current task with running timer
           breakInfo,
+          // Determine if staff is currently engaged (has running timer)
+          isCurrentlyEngaged: !!engagedTask,
           // Time until absence ends (in days), only if absent
           absentDaysRemaining: staff.workStatus === WorkStatus.ABSENT && staff.absenceEndDate
             ? Math.ceil((new Date(staff.absenceEndDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24))
