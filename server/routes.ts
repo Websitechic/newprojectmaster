@@ -2710,8 +2710,8 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Invalid user ID" });
       }
 
-      const unreadCount = await db
-        .select({ count: count() })
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
         .from(directMessages)
         .where(
           and(
@@ -2720,7 +2720,7 @@ export function registerRoutes(app: Express): Server {
           )
         );
 
-      const countValue = unreadCount[0]?.count || 0;
+      const countValue = result[0]?.count || 0;
       res.json({ count: Number(countValue) });
     } catch (error) {
       console.error("Error fetching unread count:", error);
