@@ -38,29 +38,44 @@ export function ProjectChat({ projectId, chatType }: ProjectChatProps) {
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/projects", projectId, "messages", chatType],
     queryFn: async () => {
+      console.log(`Fetching messages for project ${projectId}, type ${chatType}`);
       const response = await fetch(`/api/projects/${projectId}/messages?type=${chatType}`);
-      if (!response.ok) throw new Error("Failed to fetch messages");
-      return response.json();
+      if (!response.ok) {
+        console.error(`Failed to fetch messages: ${response.status} ${response.statusText}`);
+        throw new Error("Failed to fetch messages");
+      }
+      const data = await response.json();
+      console.log(`Fetched ${data.length} messages:`, data);
+      return data;
     },
   });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
+      console.log(`Sending message to project ${projectId}, type ${chatType}:`, content);
       const response = await fetch(`/api/projects/${projectId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content, type: chatType }),
       });
-      if (!response.ok) throw new Error("Failed to send message");
-      return response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Failed to send message: ${response.status} ${response.statusText}`, errorText);
+        throw new Error("Failed to send message");
+      }
+      const result = await response.json();
+      console.log("Message sent successfully:", result);
+      return result;
     },
     onSuccess: () => {
+      console.log("Message sent, invalidating queries");
       queryClient.invalidateQueries({ 
         queryKey: ["/api/projects", projectId, "messages", chatType] 
       });
       setMessage("");
     },
     onError: (error: Error) => {
+      console.error("Error sending message:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -83,24 +98,37 @@ export function ProjectChat({ projectId, chatType }: ProjectChatProps) {
   useEffect(() => {
     if (!user?.id || !projectId) return;
 
+    console.log(`Setting up SSE for project ${projectId}, chat type ${chatType}`);
+    
     const eventSource = new EventSource("/api/notifications/stream", {
       withCredentials: true
     });
 
+    eventSource.onopen = () => {
+      console.log("SSE connection opened for project chat");
+    };
+
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log("SSE message received in project chat:", data);
         if (data.type === "project_message" && data.data.projectId === projectId) {
+          console.log("Project message received, invalidating queries");
           queryClient.invalidateQueries({ 
             queryKey: ["/api/projects", projectId, "messages", chatType] 
           });
         }
       } catch (error) {
-        console.error("Error parsing message:", error);
+        console.error("Error parsing SSE message:", error);
       }
     };
 
+    eventSource.onerror = (error) => {
+      console.error("SSE error in project chat:", error);
+    };
+
     return () => {
+      console.log("Closing SSE connection for project chat");
       eventSource.close();
     };
   }, [user?.id, projectId, chatType, queryClient]);

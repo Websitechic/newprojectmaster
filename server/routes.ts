@@ -1475,7 +1475,8 @@ export function registerRoutes(app: Express): Server {
   // Add new endpoints for notifications
   // Add SSE endpoint with proper error handling and rate limiting
   app.get("/api/notifications/stream", (req: Request, res: Response) => {
-    if (!req.isAuthenticated() || !req.user?.id) {
+    // Check authentication differently for SSE
+    if (!req.user?.id) {
       console.log("SSE connection attempted without authentication");
       return res.status(401).json({ error: "Not authenticated" });
     }
