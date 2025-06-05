@@ -1,9 +1,12 @@
+
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -12,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -23,9 +26,19 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Plus, Trash2, CheckCircle } from "lucide-react";
 import type { Project } from "@db/schema";
 
+const deliverableSchema = z.object({
+  name: z.string().min(1, "Deliverable name is required"),
+  description: z.string().optional(),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
+  assigneeId: z.string().optional(),
+});
+
 const projectSchema = z.object({
+  // Project details
   name: z.string().min(1, "Project name is required"),
   description: z.string().optional(),
   category: z.string().min(1, "Category is required"),
@@ -33,6 +46,13 @@ const projectSchema = z.object({
   teamMembers: z.array(z.string()).optional(),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
+  
+  // Project plan details
+  planName: z.string().min(1, "Plan name is required"),
+  planDescription: z.string().optional(),
+  planStartDate: z.string().min(1, "Plan start date is required"),
+  planEndDate: z.string().min(1, "Plan end date is required"),
+  deliverables: z.array(deliverableSchema).min(1, "At least one deliverable is required"),
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -45,6 +65,9 @@ interface ProjectFormProps {
 export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("details");
+  const [detailsCompleted, setDetailsCompleted] = useState(false);
+  const [planCompleted, setPlanCompleted] = useState(false);
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
@@ -56,23 +79,50 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       teamMembers: [],
       startDate: "",
       endDate: "",
+      planName: "",
+      planDescription: "",
+      planStartDate: "",
+      planEndDate: "",
+      deliverables: [
+        {
+          name: "",
+          description: "",
+          startDate: "",
+          endDate: "",
+          assigneeId: "none",
+        },
+      ],
     },
   });
 
-  // Update form values when project prop changes
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "deliverables",
+  });
+
+  // Watch form values to check completion
+  const watchedValues = form.watch();
+
+  // Check if project details tab is completed
   useEffect(() => {
-    if (project) {
-      form.reset({
-        name: project.name || "",
-        description: project.description || "",
-        category: project.category || "",
-        clientId: project.clientId?.toString() || "none",
-        teamMembers: [],
-        startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
-        endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
-      });
-    }
-  }, [project, form]);
+    const isDetailsComplete = 
+      watchedValues.name &&
+      watchedValues.category &&
+      watchedValues.startDate &&
+      watchedValues.endDate;
+    setDetailsCompleted(!!isDetailsComplete);
+  }, [watchedValues.name, watchedValues.category, watchedValues.startDate, watchedValues.endDate]);
+
+  // Check if project plan tab is completed
+  useEffect(() => {
+    const isPlanComplete = 
+      watchedValues.planName &&
+      watchedValues.planStartDate &&
+      watchedValues.planEndDate &&
+      watchedValues.deliverables?.length > 0 &&
+      watchedValues.deliverables.every(d => d.name && d.startDate && d.endDate);
+    setPlanCompleted(!!isPlanComplete);
+  }, [watchedValues.planName, watchedValues.planStartDate, watchedValues.planEndDate, watchedValues.deliverables]);
 
   // Fetch clients for the dropdown
   const { data: clients } = useQuery({
@@ -80,7 +130,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
     queryFn: () => fetch("/api/clients").then(res => res.json()),
   });
 
-  // Fetch staff for team members
+  // Fetch staff for team members and assignees
   const { data: staff } = useQuery({
     queryKey: ["/api/staff"],
     queryFn: () => fetch("/api/staff").then(res => res.json()),
@@ -88,8 +138,8 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
   const saveProject = useMutation({
     mutationFn: async (data: ProjectFormData) => {
-      // Prepare the data
-      const formData = {
+      // Prepare the project data
+      const projectData = {
         name: data.name,
         description: data.description || "",
         category: data.category,
@@ -97,75 +147,84 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         teamMembers: data.teamMembers?.map(id => parseInt(id)) || [],
         startDate: data.startDate,
         endDate: data.endDate,
+        type: "web_development",
       };
 
-      console.log("Submitting project data:", formData);
+      console.log("Submitting project data:", projectData);
 
-      if (project) {
-        // Update existing project
-        const response = await fetch(`/api/projects/${project.id}`, {
-          method: "PUT",
-          headers: { 
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify(formData),
-        });
+      // Create the project first
+      const projectResponse = await fetch("/api/projects", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(projectData),
+      });
 
-        if (!response.ok) {
-          const errorData = await response.text();
-          console.error("Update error response:", errorData);
-          try {
-            const errorJson = JSON.parse(errorData);
-            throw new Error(errorJson.error || "Failed to update project");
-          } catch {
-            throw new Error(`Failed to update project: ${response.status} ${response.statusText}`);
-          }
+      if (!projectResponse.ok) {
+        const errorData = await projectResponse.text();
+        console.error("Create project error response:", errorData);
+        try {
+          const errorJson = JSON.parse(errorData);
+          throw new Error(errorJson.error || "Failed to create project");
+        } catch {
+          throw new Error(`Failed to create project: ${projectResponse.status} ${projectResponse.statusText}`);
         }
-
-        return response.json();
-      } else {
-        // Create new project
-        const response = await fetch("/api/projects", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({
-            ...formData,
-            type: "web_development", // Default type
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.text();
-          console.error("Create error response:", errorData);
-          try {
-            const errorJson = JSON.parse(errorData);
-            throw new Error(errorJson.error || "Failed to create project");
-          } catch {
-            throw new Error(`Failed to create project: ${response.status} ${response.statusText}`);
-          }
-        }
-
-        return response.json();
       }
+
+      const createdProject = await projectResponse.json();
+
+      // Now create the project plan
+      const planData = {
+        name: data.planName,
+        description: data.planDescription || "",
+        startDate: data.planStartDate,
+        endDate: data.planEndDate,
+        status: "draft",
+        deliverables: data.deliverables.map(d => ({
+          name: d.name,
+          description: d.description || "",
+          startDate: d.startDate,
+          endDate: d.endDate,
+          assigneeId: d.assigneeId && d.assigneeId !== "none" ? parseInt(d.assigneeId) : null,
+        })),
+      };
+
+      const planResponse = await fetch(`/api/projects/${createdProject.id}/plans`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(planData),
+      });
+
+      if (!planResponse.ok) {
+        const errorData = await planResponse.text();
+        console.error("Create plan error response:", errorData);
+        try {
+          const errorJson = JSON.parse(errorData);
+          throw new Error(errorJson.error || "Failed to create project plan");
+        } catch {
+          throw new Error(`Failed to create project plan: ${planResponse.status} ${planResponse.statusText}`);
+        }
+      }
+
+      return createdProject;
     },
     onSuccess: (data) => {
-      console.log("Project saved successfully:", data);
+      console.log("Project and plan created successfully:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       toast({
         title: "Success",
-        description: project ? "Project updated successfully!" : "Project created successfully!",
+        description: "Project and project plan created successfully!",
       });
-      if (!project) {
-        form.reset();
-      }
+      form.reset();
       onSuccess?.();
     },
     onError: (error: Error) => {
-      console.error("Project save error:", error);
+      console.error("Project creation error:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -174,155 +233,386 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
     },
   });
 
+  const addDeliverable = () => {
+    append({
+      name: "",
+      description: "",
+      startDate: "",
+      endDate: "",
+      assigneeId: "none",
+    });
+  };
+
+  const canCreateProject = detailsCompleted && planCompleted && !project;
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((data) => saveProject.mutate(data))} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Project Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter project name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="details" className="flex items-center gap-2">
+              {detailsCompleted && <CheckCircle className="h-4 w-4 text-green-500" />}
+              Project Details
+            </TabsTrigger>
+            <TabsTrigger value="plan" className="flex items-center gap-2">
+              {planCompleted && <CheckCircle className="h-4 w-4 text-green-500" />}
+              Project Plan
+            </TabsTrigger>
+          </TabsList>
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Enter project description" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <TabsContent value="details" className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter project name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="website_development">Website Development</SelectItem>
-                  <SelectItem value="dpl_outright">DPL Outright</SelectItem>
-                  <SelectItem value="dpl_partnership">DPL Partnership</SelectItem>
-                  <SelectItem value="direct_marketing">Direct Marketing</SelectItem>
-                  <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Enter project description" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="startDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Start Date</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="website_development">Website Development</SelectItem>
+                      <SelectItem value="dpl_outright">DPL Outright</SelectItem>
+                      <SelectItem value="dpl_partnership">DPL Partnership</SelectItem>
+                      <SelectItem value="direct_marketing">Direct Marketing</SelectItem>
+                      <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="endDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>End Date</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <FormField
-          control={form.control}
-          name="clientId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Client</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a client" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">No client selected</SelectItem>
-                  {clients?.map((client: any) => (
-                    <SelectItem key={client.id} value={client.id.toString()}>
-                      {client.name} ({client.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-        <FormField
-          control={form.control}
-          name="teamMembers"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Team Members</FormLabel>
-              <div className="space-y-2">
-                {staff?.map((member: any) => (
-                  <div key={member.id} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={`member-${member.id}`}
-                      checked={field.value?.includes(member.id.toString()) || false}
-                      onChange={(e) => {
-                        const currentValue = field.value || [];
-                        if (e.target.checked) {
-                          field.onChange([...currentValue, member.id.toString()]);
-                        } else {
-                          field.onChange(currentValue.filter((id: string) => id !== member.id.toString()));
-                        }
-                      }}
-                      className="rounded border-gray-300"
-                    />
-                    <label htmlFor={`member-${member.id}`} className="text-sm">
-                      {member.name} ({member.specialization})
-                    </label>
+            <FormField
+              control={form.control}
+              name="clientId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Client</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a client" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">No client selected</SelectItem>
+                      {clients?.map((client: any) => (
+                        <SelectItem key={client.id} value={client.id.toString()}>
+                          {client.name} ({client.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="teamMembers"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Team Members</FormLabel>
+                  <div className="space-y-2">
+                    {staff?.map((member: any) => (
+                      <div key={member.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`member-${member.id}`}
+                          checked={field.value?.includes(member.id.toString()) || false}
+                          onChange={(e) => {
+                            const currentValue = field.value || [];
+                            if (e.target.checked) {
+                              field.onChange([...currentValue, member.id.toString()]);
+                            } else {
+                              field.onChange(currentValue.filter((id: string) => id !== member.id.toString()));
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <label htmlFor={`member-${member.id}`} className="text-sm">
+                          {member.name} ({member.specialization})
+                        </label>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <Button type="submit" className="w-full mt-4" disabled={saveProject.isPending}>
-          {saveProject.isPending ? (project ? "Updating..." : "Creating...") : (project ? "Update Project" : "Create Project")}
-        </Button>
+            <div className="flex justify-end">
+              <Button 
+                type="button" 
+                onClick={() => setActiveTab("plan")}
+                disabled={!detailsCompleted}
+              >
+                Next: Project Plan
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="plan" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="planName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Plan Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter plan name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <FormField
+                  control={form.control}
+                  name="planStartDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Plan Start Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="planEndDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Plan End Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="planDescription"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Plan Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Enter plan description" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Deliverables</h3>
+                <Button type="button" onClick={addDeliverable} variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Deliverable
+                </Button>
+              </div>
+
+              {fields.map((field, index) => (
+                <Card key={field.id}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <h4 className="text-sm font-medium">Deliverable {index + 1}</h4>
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name={`deliverables.${index}.name`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Deliverable Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter deliverable name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`deliverables.${index}.description`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description (Optional)</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Enter deliverable description" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`deliverables.${index}.startDate`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Start Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`deliverables.${index}.endDate`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>End Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name={`deliverables.${index}.assigneeId`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Assignee (Optional)</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select assignee" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">No assignee</SelectItem>
+                              {staff?.map((member: any) => (
+                                <SelectItem key={member.id} value={member.id.toString()}>
+                                  {member.name} ({member.specialization})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="flex justify-between">
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => setActiveTab("details")}
+              >
+                Back to Details
+              </Button>
+              
+              <Button 
+                type="submit" 
+                disabled={!canCreateProject || saveProject.isPending}
+              >
+                {saveProject.isPending ? "Creating..." : "Create Project & Plan"}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {project && (
+          <Button type="submit" className="w-full mt-4" disabled={saveProject.isPending}>
+            {saveProject.isPending ? "Updating..." : "Update Project"}
+          </Button>
+        )}
       </form>
     </Form>
   );
