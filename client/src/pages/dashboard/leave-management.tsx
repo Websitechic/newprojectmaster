@@ -429,7 +429,7 @@ export default function LeaveManagement() {
 
         {/* Detail Dialog */}
         <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Leave Application Details</DialogTitle>
               <DialogDescription>
@@ -503,7 +503,7 @@ export default function LeaveManagement() {
                       <img
                         src={selectedApplication.proofImageUrl}
                         alt="Leave proof document"
-                        className="max-w-full h-auto max-h-96 object-contain rounded"
+                        className="max-w-full h-auto max-h-64 sm:max-h-96 object-contain rounded"
                       />
                     </div>
                   </div>
@@ -529,10 +529,10 @@ export default function LeaveManagement() {
 
                 {/* Action Buttons */}
                 {selectedApplication.status === "pending" && (
-                  <div className="flex gap-2 pt-4 border-t">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
                     <Button
                       variant="outline"
-                      className="text-green-600 hover:text-green-700"
+                      className="text-green-600 hover:text-green-700 w-full sm:w-auto"
                       onClick={() => {
                         setIsDetailDialogOpen(false);
                         handleReview(selectedApplication, "approved");
@@ -543,7 +543,7 @@ export default function LeaveManagement() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="text-red-600 hover:text-red-700"
+                      className="text-red-600 hover:text-red-700 w-full sm:w-auto"
                       onClick={() => {
                         setIsDetailDialogOpen(false);
                         handleReview(selectedApplication, "rejected");
@@ -557,8 +557,8 @@ export default function LeaveManagement() {
               </div>
             )}
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)} className="w-full sm:w-auto">
                 Close
               </Button>
             </DialogFooter>
