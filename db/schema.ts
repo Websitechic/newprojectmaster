@@ -397,3 +397,28 @@ export type ProjectPlan = typeof projectPlans.$inferSelect;
 export type Deliverable = typeof deliverables.$inferSelect;
 export type LeaveApplication = typeof leaveApplications.$inferSelect;
 export type DirectMessage = typeof directMessages.$inferSelect;
+
+// Legacy messages table for backward compatibility
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  content: text("content").notNull(),
+  type: text("type").notNull(),
+  projectId: integer("project_id").references(() => projects.id),
+  userId: integer("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Resources table for file uploads
+export const resources = pgTable("resources", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  size: integer("size"),
+  path: text("path").notNull(),
+  projectId: integer("project_id").references(() => projects.id),
+  uploadedBy: integer("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Message = typeof messages.$inferSelect;
+export type Resource = typeof resources.$inferSelect;

@@ -69,29 +69,41 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
 
   // Listen for real-time message updates
   useEffect(() => {
-    const eventSource = new EventSource("/api/notifications/stream");
+    let eventSource: EventSource | null = null;
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "direct_message") {
-          const message = data.data;
-          // Only increment if message is not from current user
-          if (message.senderId !== user?.id) {
-            setUnreadDirectMessages(prev => prev + 1);
+    try {
+      eventSource = new EventSource('/api/notifications/stream');
+
+      eventSource.onopen = () => {
+        console.log('SSE connection opened');
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('SSE message received:', data);
+
+          if (data.type === 'direct_message') {
+            fetchUnreadCount();
           }
+        } catch (err) {
+          console.error('Error parsing SSE message:', err);
         }
-      } catch (error) {
-        console.error("Error parsing SSE message:", error);
-      }
-    };
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error);
+      };
+    } catch (error) {
+      console.error('Error creating SSE connection:', error);
+    }
 
     return () => {
-      if (eventSource && typeof eventSource.close === 'function') {
+      if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
         eventSource.close();
       }
     };
-  }, [user?.id]);
+  }, []);
 
   // Reset unread count when visiting direct messages page
   useEffect(() => {

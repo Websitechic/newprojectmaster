@@ -25,6 +25,8 @@ import {
   leaveApplications,
   directMessages,
   projectMessages,
+  messages,
+  resources,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql } from "drizzle-orm";
 
@@ -68,6 +70,39 @@ const upload = multer({
     }
   }
 });
+
+// Function to broadcast messages to project members
+async function broadcastToProject(projectId: number, message: any) {
+  try {
+    // Get project members
+    const projectMembersData = await db
+      .select({
+        userId: projectMembers.userId
+      })
+      .from(projectMembers)
+      .where(and(
+        eq(projectMembers.projectId, projectId),
+        eq(projectMembers.invitationStatus, "accepted")
+      ));
+
+    // Send to all project members via SSE
+    for (const member of projectMembersData) {
+      if (member.userId) {
+        const clientResponse = global.sseClients?.get(member.userId);
+        if (clientResponse && !clientResponse.writableEnded) {
+          try {
+            clientResponse.write(`data: ${JSON.stringify(message)}\n\n`);
+          } catch (error) {
+            console.error(`Error broadcasting to user ${member.userId}:`, error);
+            global.sseClients?.delete(member.userId);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error broadcasting to project:", error);
+  }
+}
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -942,8 +977,8 @@ export function registerRoutes(app: Express): Server {
 
       const [invitation] = await db
         .update(projectMembers)
-        ```text
-        .set({          invitationStatus: accept ? "accepted" : "declined",
+        .set({
+          invitationStatus: accept ? "accepted" : "declined",
           joinedAt: accept ? new Date() : null
         })
         .where(and(
@@ -2778,6 +2813,10 @@ export function registerRoutes(app: Express): Server {
 
   // Get team messages for a project
   app.get("/api/projects/:projectId/team-messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
     try {
       const projectId = parseInt(req.params.projectId);
 
@@ -2785,8 +2824,48 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Invalid project ID" });
       }
 
-      // Check if teamMessages table exists in schema
-      const messages = await db
+      // Verify user has access to this project
+      const userRole = req.user!.role;
+      let hasAccess = false;
+
+      if (userRole === "project_manager") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(and(
+            eq(projects.id, projectId),
+            eq(projects.managerId, req.user!.id)
+          ))
+          .limit(1);
+        hasAccess = !!project;
+      } else if (userRole === "staff") {
+        const [membership] = await db
+          .select()
+          .from(projectMembers)
+          .where(and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.userId, req.user!.id),
+            eq(projectMembers.invitationStatus, "accepted")
+          ))
+          .limit(1);
+        hasAccess = !!membership;
+      } else if (userRole === "client") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(and(
+            eq(projects.id, projectId),
+            eq(projects.clientId, req.user!.id)
+          ))
+          .limit(1);
+        hasAccess = !!project;
+      }
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied to this project" });
+      }
+
+      const teamMessages = await db
         .select({
           id: projectMessages.id,
           content: projectMessages.content,
@@ -2804,10 +2883,13 @@ export function registerRoutes(app: Express): Server {
         .orderBy(desc(projectMessages.createdAt))
         .limit(50);
 
-      res.json(messages.reverse());
+      res.json(teamMessages.reverse());
     } catch (error) {
       console.error("Error fetching team messages:", error);
-      res.status(500).json({ error: "Failed to fetch team messages" });
+      res.status(500).json({ 
+        error: "Failed to fetch team messages",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
