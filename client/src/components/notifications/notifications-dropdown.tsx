@@ -109,11 +109,11 @@ export function NotificationsDropdown() {
   useEffect(() => {
     const eventSource = setupEventSource();
     return () => {
-      if (eventSource) {
+      if (eventSource && typeof eventSource.close === 'function') {
         eventSource.close();
       }
     };
-  }, [setupEventSource]);
+  }, [eventSource]);
 
   if (!user) return null;
 
@@ -148,7 +148,7 @@ export function NotificationsDropdown() {
                 if (!notification.read) {
                   markAsReadMutation.mutate(notification.id);
                 }
-                
+
                 // Navigate to tasks if it's a task notification
                 if (notification.type === "task_assigned") {
                   // For staff, the task will already be on their dashboard

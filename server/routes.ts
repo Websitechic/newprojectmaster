@@ -9,22 +9,22 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import {
+  users,
   projects,
   tasks,
-  messages,
   projectMembers,
+  projectPlans,
+  deliverables,
   performance,
-  users,
   UserRole,
   WorkStatus,
   AbsenceReason,
   UserStatus,
   clientInvitations,
   notifications,
-  projectPlans,
-  deliverables,
   leaveApplications,
-  directMessages
+  directMessages,
+  projectMessages,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql } from "drizzle-orm";
 
@@ -942,6 +942,7 @@ export function registerRoutes(app: Express): Server {
 
       const [invitation] = await db
         .update(projectMembers)
+        ```text
         .set({          invitationStatus: accept ? "accepted" : "declined",
           joinedAt: accept ? new Date() : null
         })
@@ -1661,7 +1662,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       console.log(`Sending message to project ${projectId}, type: ${type}, from user: ${req.user!.id}`);
-      
+
       const [message] = await db
         .insert(messages)
         .values({
@@ -2772,6 +2773,98 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching unread messages count:", error);
       res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
+  // Get team messages for a project
+  app.get("/api/projects/:projectId/team-messages", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+
+      // Check if teamMessages table exists in schema
+      const messages = await db
+        .select({
+          id: projectMessages.id,
+          content: projectMessages.content,
+          createdAt: projectMessages.createdAt,
+          senderId: projectMessages.senderId,
+          sender: {
+            id: users.id,
+            name: users.name,
+            email: users.email,
+          },
+        })
+        .from(projectMessages)
+        .leftJoin(users, eq(projectMessages.senderId, users.id))
+        .where(eq(projectMessages.projectId, projectId))
+        .orderBy(desc(projectMessages.createdAt))
+        .limit(50);
+
+      res.json(messages.reverse());
+    } catch (error) {
+      console.error("Error fetching team messages:", error);
+      res.status(500).json({ error: "Failed to fetch team messages" });
+    }
+  });
+
+  // Send team message
+  app.post("/api/projects/:projectId/team-messages", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { content } = req.body;
+      const userId = req.user!.id;
+
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+
+      if (!content || content.trim().length === 0) {
+        return res.status(400).json({ error: "Message content is required" });
+      }
+
+      const [message] = await db
+        .insert(projectMessages)
+        .values({
+          projectId,
+          senderId: userId,
+          content: content.trim(),
+        })
+        .returning();
+
+      // Get the message with sender info
+      const messageWithSender = await db
+        .select({
+          id: projectMessages.id,
+          content: projectMessages.content,
+          createdAt: projectMessages.createdAt,
+          senderId: projectMessages.senderId,
+          sender: {
+            id: users.id,
+            name: users.name,
+            email: users.email,
+          },
+        })
+        .from(projectMessages)
+        .leftJoin(users, eq(projectMessages.senderId, users.id))
+        .where(eq(projectMessages.id, message.id))
+        .limit(1);
+
+      const messageData = messageWithSender[0];
+
+      // Broadcast to team members via SSE
+      broadcastToProject(projectId, {
+        type: "team_message",
+        data: messageData,
+      });
+
+      res.status(201).json(messageData);
+    } catch (error) {
+      console.error("Error sending team message:", error);
+      res.status(500).json({ error: "Failed to send message" });
     }
   });
 

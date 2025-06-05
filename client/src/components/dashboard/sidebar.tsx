@@ -87,7 +87,9 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     };
 
     return () => {
-      eventSource.close();
+      if (eventSource && typeof eventSource.close === 'function') {
+        eventSource.close();
+      }
     };
   }, [user?.id]);
 
