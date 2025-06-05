@@ -67,6 +67,7 @@ function Router() {
       <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />
       <Route path="/dashboard/leave-application" component={() => <PrivateRoute component={LeaveApplication} />} />
       <Route path="/dashboard/leave-management" component={() => <PrivateRoute component={LeaveManagement} />} />
+      <Route path="/dashboard/direct-messages" component={() => <PrivateRoute component={() => import("@/pages/dashboard/direct-messages")} />} />
       <Route component={NotFound} />
     </Switch>
   );

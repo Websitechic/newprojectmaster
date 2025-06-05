@@ -340,6 +340,27 @@ export const leaveApplicationsRelations = relations(leaveApplications, ({ one })
   }),
 }));
 
+export const directMessages = pgTable("direct_messages", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").references(() => users.id).notNull(),
+  receiverId: integer("receiver_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  read: boolean("read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const directMessagesRelations = relations(directMessages, ({ one }) => ({
+  sender: one(users, {
+    fields: [directMessages.senderId],
+    references: [users.id],
+  }),
+  receiver: one(users, {
+    fields: [directMessages.receiverId],
+    references: [users.id],
+  }),
+}));
+
 // Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -359,6 +380,8 @@ export const insertDeliverableSchema = createInsertSchema(deliverables);
 export const selectDeliverableSchema = createSelectSchema(deliverables);
 export const insertLeaveApplicationSchema = createInsertSchema(leaveApplications);
 export const selectLeaveApplicationSchema = createSelectSchema(leaveApplications);
+export const insertDirectMessageSchema = createInsertSchema(directMessages);
+export const selectDirectMessageSchema = createSelectSchema(directMessages);
 
 
 // Types
@@ -373,3 +396,4 @@ export type Notification = typeof notifications.$inferSelect;
 export type ProjectPlan = typeof projectPlans.$inferSelect;
 export type Deliverable = typeof deliverables.$inferSelect;
 export type LeaveApplication = typeof leaveApplications.$inferSelect;
+export type DirectMessage = typeof directMessages.$inferSelect;

@@ -23,9 +23,10 @@ import {
   notifications,
   projectPlans,
   deliverables,
-  leaveApplications
+  leaveApplications,
+  directMessages
 } from "@db/schema";
-import { eq, and, desc, inArray, asc, isNotNull } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull, or } from "drizzle-orm";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
@@ -2404,6 +2405,283 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error reviewing leave application:", error);
       res.status(500).json({ error: "Failed to review leave application" });
+    }
+  });
+
+  // Direct Messages API Routes
+
+  // Get all users for direct messaging (excluding current user)
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          status: users.status,
+          lastActive: users.lastActive,
+        })
+        .from(users);
+
+      // Filter out current user
+      const otherUsers = allUsers.filter(user => user.id !== req.user!.id);
+
+      res.json(otherUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Get conversations (list of users the current user has messaged with)
+  app.get("/api/direct-messages/conversations", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const userId = req.user!.id;
+
+      // Get all messages involving the current user
+      const allMessages = await db
+        .select()
+        .from(directMessages)
+        .where(
+          or(
+            eq(directMessages.senderId, userId),
+            eq(directMessages.receiverId, userId)
+          )
+        )
+        .orderBy(desc(directMessages.createdAt));
+
+      // Get unique conversations with latest message and unread count
+      const uniqueConversations = new Map();
+
+      // Process messages to create conversation list
+      for (const message of allMessages) {
+        const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
+        
+        if (!uniqueConversations.has(otherUserId)) {
+          // Get other user details
+          const [otherUser] = await db
+            .select({
+              id: users.id,
+              name: users.name,
+              email: users.email,
+              role: users.role,
+              status: users.status,
+              lastActive: users.lastActive,
+            })
+            .from(users)
+            .where(eq(users.id, otherUserId))
+            .limit(1);
+
+          if (otherUser) {
+            // Count unread messages from this user
+            const unreadMessages = await db
+              .select()
+              .from(directMessages)
+              .where(
+                and(
+                  eq(directMessages.senderId, otherUserId),
+                  eq(directMessages.receiverId, userId),
+                  eq(directMessages.read, false)
+                )
+              );
+
+            const unreadCount = unreadMessages.length;
+
+            uniqueConversations.set(otherUserId, {
+              user: otherUser,
+              lastMessage: {
+                content: message.content,
+                createdAt: message.createdAt,
+                senderId: message.senderId,
+              },
+              unreadCount,
+            });
+          }
+        }
+      }
+
+      const conversationList = Array.from(uniqueConversations.values());
+      res.json(conversationList);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  // Get messages with a specific user
+  app.get("/api/direct-messages/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const currentUserId = req.user!.id;
+      const otherUserId = parseInt(req.params.userId);
+
+      // Get all messages between these two users
+      const messages = await db
+        .select({
+          id: directMessages.id,
+          content: directMessages.content,
+          senderId: directMessages.senderId,
+          receiverId: directMessages.receiverId,
+          read: directMessages.read,
+          createdAt: directMessages.createdAt,
+          senderName: users.name,
+        })
+        .from(directMessages)
+        .innerJoin(users, eq(directMessages.senderId, users.id))
+        .where(
+          or(
+            and(
+              eq(directMessages.senderId, currentUserId),
+              eq(directMessages.receiverId, otherUserId)
+            ),
+            and(
+              eq(directMessages.senderId, otherUserId),
+              eq(directMessages.receiverId, currentUserId)
+            )
+          )
+        )
+        .orderBy(asc(directMessages.createdAt));
+
+      // Mark messages from the other user as read
+      await db
+        .update(directMessages)
+        .set({ read: true })
+        .where(
+          and(
+            eq(directMessages.senderId, otherUserId),
+            eq(directMessages.receiverId, currentUserId),
+            eq(directMessages.read, false)
+          )
+        );
+
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching direct messages:", error);
+      res.status(500).json({ error: "Failed to fetch direct messages" });
+    }
+  });
+
+  // Send a direct message
+  app.post("/api/direct-messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const { receiverId, content } = req.body;
+      const senderId = req.user!.id;
+
+      if (!receiverId || !content?.trim()) {
+        return res.status(400).json({ error: "Receiver ID and content are required" });
+      }
+
+      if (receiverId === senderId) {
+        return res.status(400).json({ error: "Cannot send message to yourself" });
+      }
+
+      // Verify receiver exists
+      const [receiver] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, receiverId))
+        .limit(1);
+
+      if (!receiver) {
+        return res.status(404).json({ error: "Receiver not found" });
+      }
+
+      // Create the message
+      const [newMessage] = await db
+        .insert(directMessages)
+        .values({
+          senderId,
+          receiverId,
+          content: content.trim(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      // Send real-time notification to receiver if connected
+      const clientResponse = global.sseClients?.get(receiverId);
+      if (clientResponse && !clientResponse.writableEnded) {
+        try {
+          clientResponse.write(`data: ${JSON.stringify({
+            type: "direct_message",
+            data: {
+              ...newMessage,
+              senderName: req.user!.name,
+            }
+          })}\n\n`);
+        } catch (error) {
+          console.error(`Error sending SSE notification to user ${receiverId}:`, error);
+          global.sseClients.delete(receiverId);
+        }
+      }
+
+      // Also send through WebSocket if connected
+      const ws = global.connectedClients?.get(receiverId);
+      if (ws && ws.readyState === 1) {
+        try {
+          ws.send(JSON.stringify({
+            type: "direct_message",
+            data: {
+              ...newMessage,
+              senderName: req.user!.name,
+            }
+          }));
+        } catch (error) {
+          console.error(`Error sending WebSocket message to user ${receiverId}:`, error);
+        }
+      }
+
+      res.json({
+        ...newMessage,
+        senderName: req.user!.name,
+      });
+    } catch (error) {
+      console.error("Error sending direct message:", error);
+      res.status(500).json({ error: "Failed to send direct message" });
+    }
+  });
+
+  // Mark messages as read
+  app.put("/api/direct-messages/:userId/read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const currentUserId = req.user!.id;
+      const otherUserId = parseInt(req.params.userId);
+
+      await db
+        .update(directMessages)
+        .set({ read: true })
+        .where(
+          and(
+            eq(directMessages.senderId, otherUserId),
+            eq(directMessages.receiverId, currentUserId),
+            eq(directMessages.read, false)
+          )
+        );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ error: "Failed to mark messages as read" });
     }
   });
 

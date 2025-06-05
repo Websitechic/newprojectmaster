@@ -59,6 +59,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/messages",
     },
     {
+      icon: <MessageSquare size={20} />,
+      label: "Direct Messages",
+      href: "/dashboard/direct-messages",
+    },
+    {
       icon: <Settings size={20} />,
       label: "Settings",
       href: "/dashboard/settings",
