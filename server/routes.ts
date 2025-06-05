@@ -1624,20 +1624,61 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const projectId = parseInt(req.params.id);
-    const { type } = req.query;
+    try {
+      const projectId = parseInt(req.params.id);
+      const { type } = req.query;
 
-    let query = db
-      .select()
-      .from(messages)
-      .where(eq(messages.projectId, projectId));
+      // Verify user has access to this project
+      const [member] = await db
+        .select()
+        .from(projectMembers)
+        .where(and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.userId, req.user!.id),
+          eq(projectMembers.invitationStatus, "accepted")
+        ))
+        .limit(1);
 
-    if (type) {
-      query = query.where(eq(messages.type, type as string));
+      // Also check if user is the project manager
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!member && (!project || project.managerId !== req.user!.id)) {
+        return res.status(403).json({ error: "Access denied to this project" });
+      }
+
+      // Get messages with user information
+      let query = db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          type: messages.type,
+          projectId: messages.projectId,
+          userId: messages.userId,
+          createdAt: messages.createdAt,
+          user: {
+            id: users.id,
+            name: users.name,
+            role: users.role,
+          }
+        })
+        .from(messages)
+        .innerJoin(users, eq(messages.userId, users.id))
+        .where(eq(messages.projectId, projectId));
+
+      if (type) {
+        query = query.where(eq(messages.type, type as string));
+      }
+
+      const projectMessages = await query.orderBy(asc(messages.createdAt));
+      res.json(projectMessages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
     }
-
-    const projectMessages = await query.orderBy(desc(messages.createdAt));
-    res.json(projectMessages);
   });
 
   // Send a message
@@ -1646,21 +1687,94 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const projectId = parseInt(req.params.id);
-    const { content, type } = req.body;
+    try {
+      const projectId = parseInt(req.params.id);
+      const { content, type } = req.body;
 
-    const [message] = await db
-      .insert(messages)
-      .values({
-        content,
-        type,
-        projectId,
-        userId: req.user!.id,
-        createdAt: new Date()
-      })
-      .returning();
+      if (!content?.trim()) {
+        return res.status(400).json({ error: "Message content is required" });
+      }
 
-    res.json(message);
+      // Verify user has access to this project
+      const [member] = await db
+        .select()
+        .from(projectMembers)
+        .where(and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.userId, req.user!.id),
+          eq(projectMembers.invitationStatus, "accepted")
+        ))
+        .limit(1);
+
+      // Also check if user is the project manager
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!member && (!project || project.managerId !== req.user!.id)) {
+        return res.status(403).json({ error: "Access denied to this project" });
+      }
+
+      const [message] = await db
+        .insert(messages)
+        .values({
+          content: content.trim(),
+          type: type || "team",
+          projectId,
+          userId: req.user!.id,
+          createdAt: new Date()
+        })
+        .returning();
+
+      // Get all project members to notify
+      const projectMembers_list = await db
+        .select()
+        .from(projectMembers)
+        .where(and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.invitationStatus, "accepted")
+        ));
+
+      // Add project manager to the list if not already included
+      const memberUserIds = projectMembers_list.map(pm => pm.userId);
+      if (project && !memberUserIds.includes(project.managerId)) {
+        memberUserIds.push(project.managerId);
+      }
+
+      // Send real-time notifications to all project members except sender
+      const messageWithUser = {
+        ...message,
+        user: {
+          id: req.user!.id,
+          name: req.user!.name,
+          role: req.user!.role,
+        }
+      };
+
+      for (const userId of memberUserIds) {
+        if (userId !== req.user!.id) {
+          const clientResponse = global.sseClients?.get(userId);
+          if (clientResponse && !clientResponse.writableEnded) {
+            try {
+              clientResponse.write(`data: ${JSON.stringify({
+                type: "project_message",
+                data: messageWithUser
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error sending message notification to user ${userId}:`, error);
+              global.sseClients.delete(userId);
+            }
+          }
+        }
+      }
+
+      res.json(messageWithUser);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
   });
 
   // Upload resource
