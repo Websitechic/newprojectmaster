@@ -49,9 +49,6 @@ const projectSchema = z.object({
   
   // Project plan details
   planName: z.string().min(1, "Plan name is required"),
-  planDescription: z.string().optional(),
-  planStartDate: z.string().min(1, "Plan start date is required"),
-  planEndDate: z.string().min(1, "Plan end date is required"),
   deliverables: z.array(deliverableSchema).min(1, "At least one deliverable is required"),
 });
 
@@ -80,9 +77,6 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       startDate: "",
       endDate: "",
       planName: "",
-      planDescription: "",
-      planStartDate: "",
-      planEndDate: "",
       deliverables: [
         {
           name: "",
@@ -117,12 +111,10 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   useEffect(() => {
     const isPlanComplete = 
       watchedValues.planName &&
-      watchedValues.planStartDate &&
-      watchedValues.planEndDate &&
       watchedValues.deliverables?.length > 0 &&
       watchedValues.deliverables.every(d => d.name && d.startDate && d.endDate);
     setPlanCompleted(!!isPlanComplete);
-  }, [watchedValues.planName, watchedValues.planStartDate, watchedValues.planEndDate, watchedValues.deliverables]);
+  }, [watchedValues.planName, watchedValues.deliverables]);
 
   // Fetch clients for the dropdown
   const { data: clients } = useQuery({
@@ -178,13 +170,13 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       // Now create the project plan
       const planData = {
         name: data.planName,
-        description: data.planDescription || "",
-        startDate: data.planStartDate,
-        endDate: data.planEndDate,
+        description: "",
+        startDate: data.startDate,
+        endDate: data.endDate,
         status: "draft",
         deliverables: data.deliverables.map(d => ({
           name: d.name,
-          description: d.description || "",
+          description: "",
           startDate: d.startDate,
           endDate: d.endDate,
           assigneeId: d.assigneeId && d.assigneeId !== "none" ? parseInt(d.assigneeId) : null,
@@ -416,60 +408,14 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
           </TabsContent>
 
           <TabsContent value="plan" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="planName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Plan Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter plan name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-2">
-                <FormField
-                  control={form.control}
-                  name="planStartDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Plan Start Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="planEndDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Plan End Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
             <FormField
               control={form.control}
-              name="planDescription"
+              name="planName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Plan Description</FormLabel>
+                  <FormLabel>Plan Name</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Enter plan description" {...field} />
+                    <Input placeholder="Enter plan name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -515,19 +461,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name={`deliverables.${index}.description`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description (Optional)</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="Enter deliverable description" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    
 
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
