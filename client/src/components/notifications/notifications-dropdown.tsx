@@ -55,15 +55,10 @@ export function NotificationsDropdown() {
   const setupEventSource = useCallback(() => {
     if (!user?.id) return null;
 
-    // Don't create new connection if already attempting to connect
-    if (retryCount > 0 && retryCount < 3) {
-      return null;
-    }
-
     console.log("Setting up SSE connection for notifications...");
     
     // Add delay to ensure authentication
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       if (!user?.id) return;
 
       const eventSource = new EventSource("/api/notifications/stream", {
@@ -106,7 +101,7 @@ export function NotificationsDropdown() {
         // Limit retries to prevent flooding
         const maxRetries = 3;
         if (retryCount < maxRetries && user?.id) {
-          const timeout = Math.min(1000 * Math.pow(2, retryCount), 15000);
+          const timeout = Math.min(2000 * Math.pow(2, retryCount), 15000);
           setTimeout(() => {
             setRetryCount(prev => prev + 1);
             setupEventSource();
@@ -115,7 +110,9 @@ export function NotificationsDropdown() {
       };
 
       return eventSource;
-    }, 500);
+    }, 1000);
+
+    return () => clearTimeout(timer);
 
     return null;
   }, [user?.id, queryClient, toast, retryCount]);

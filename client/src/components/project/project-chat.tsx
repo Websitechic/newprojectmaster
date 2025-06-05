@@ -100,36 +100,45 @@ export function ProjectChat({ projectId, chatType }: ProjectChatProps) {
 
     console.log(`Setting up SSE for project ${projectId}, chat type ${chatType}`);
     
-    const eventSource = new EventSource("/api/notifications/stream", {
-      withCredentials: true
-    });
+    // Add delay to ensure authentication is established
+    const timer = setTimeout(() => {
+      const eventSource = new EventSource("/api/notifications/stream", {
+        withCredentials: true
+      });
 
-    eventSource.onopen = () => {
-      console.log("SSE connection opened for project chat");
-    };
+      eventSource.onopen = () => {
+        console.log("SSE connection opened for project chat");
+      };
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log("SSE message received in project chat:", data);
-        if (data.type === "project_message" && data.data.projectId === projectId) {
-          console.log("Project message received, invalidating queries");
-          queryClient.invalidateQueries({ 
-            queryKey: ["/api/projects", projectId, "messages", chatType] 
-          });
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("SSE message received in project chat:", data);
+          if (data.type === "project_message" && data.data.projectId === projectId) {
+            console.log("Project message received, invalidating queries");
+            queryClient.invalidateQueries({ 
+              queryKey: ["/api/projects", projectId, "messages", chatType] 
+            });
+          }
+        } catch (error) {
+          console.error("Error parsing SSE message:", error);
         }
-      } catch (error) {
-        console.error("Error parsing SSE message:", error);
-      }
-    };
+      };
 
-    eventSource.onerror = (error) => {
-      console.error("SSE error in project chat:", error);
-    };
+      eventSource.onerror = (error) => {
+        console.error("SSE error in project chat:", error);
+        eventSource.close();
+      };
+
+      // Store reference for cleanup
+      return () => {
+        console.log("Closing SSE connection for project chat");
+        eventSource.close();
+      };
+    }, 500);
 
     return () => {
-      console.log("Closing SSE connection for project chat");
-      eventSource.close();
+      clearTimeout(timer);
     };
   }, [user?.id, projectId, chatType, queryClient]);
 

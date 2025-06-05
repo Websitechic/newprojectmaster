@@ -206,45 +206,50 @@ export const useNotifications = () => {
     
     const connect = () => {
       try {
-        eventSource = new EventSource('/api/notifications/stream', {
-          withCredentials: true
-        });
+        // Add delay to ensure authentication is established
+        setTimeout(() => {
+          if (!user) return;
 
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'notification') {
-              queryClient.setQueryData(['/api/notifications'], (old: any[] = []) => {
-                return [data.data, ...old];
-              });
+          eventSource = new EventSource('/api/notifications/stream', {
+            withCredentials: true
+          });
 
-              // Show toast notification
-              toast({
-                title: "New Notification",
-                description: data.data.content,
-              });
+          eventSource.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === 'notification') {
+                queryClient.setQueryData(['/api/notifications'], (old: any[] = []) => {
+                  return [data.data, ...old];
+                });
+
+                // Show toast notification
+                toast({
+                  title: "New Notification",
+                  description: data.data.content,
+                });
+              }
+            } catch (error) {
+              console.error('Failed to parse notification:', error);
             }
-          } catch (error) {
-            console.error('Failed to parse notification:', error);
-          }
-        };
+          };
 
-        eventSource.onerror = (error) => {
-          console.error('Notification stream error:', error);
-          if (eventSource) {
-            eventSource.close();
-            eventSource = null;
-          }
-          
-          // Reconnect after 5 seconds if user is still authenticated
-          if (user) {
-            reconnectTimeout = setTimeout(connect, 5000);
-          }
-        };
+          eventSource.onerror = (error) => {
+            console.error('Notification stream error:', error);
+            if (eventSource) {
+              eventSource.close();
+              eventSource = null;
+            }
+            
+            // Reconnect after 10 seconds if user is still authenticated
+            if (user) {
+              reconnectTimeout = setTimeout(connect, 10000);
+            }
+          };
 
-        eventSource.onopen = () => {
-          console.log('Notification stream connected');
-        };
+          eventSource.onopen = () => {
+            console.log('Notification stream connected');
+          };
+        }, 1500);
       } catch (error) {
         console.error('Failed to create SSE connection:', error);
       }

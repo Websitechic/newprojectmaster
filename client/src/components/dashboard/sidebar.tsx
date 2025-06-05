@@ -123,10 +123,10 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
           retryCount++;
           // Only retry if user is still authenticated and we haven't exceeded max retries
           if (user?.id && retryCount < maxRetries) {
-            retryTimeout = setTimeout(setupSSE, 10000); // Longer delay between retries
+            retryTimeout = setTimeout(setupSSE, 15000); // Longer delay between retries
           }
         };
-      }, 1000); // Initial delay
+      }, 2000); // Longer initial delay
     };
 
     setupSSE();
