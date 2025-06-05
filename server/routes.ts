@@ -220,6 +220,45 @@ export function registerRoutes(app: Express): Server {
   // Get staff with their assigned tasks
   app.get("/api/staff-report", isProjectManager, async (req, res) => {
     try {
+      // First update staff status based on approved leave applications
+      const now = new Date();
+      
+      // Get all approved leave applications
+      const approvedLeaves = await db
+        .select()
+        .from(leaveApplications)
+        .where(eq(leaveApplications.status, "approved"));
+
+      // Update staff status based on current leave applications
+      for (const leave of approvedLeaves) {
+        const leaveStart = new Date(leave.startDate);
+        const leaveEnd = new Date(leave.endDate);
+        
+        if (now >= leaveStart && now <= leaveEnd) {
+          // Staff should be on leave
+          await db
+            .update(users)
+            .set({
+              workStatus: WorkStatus.ABSENT,
+              absenceReason: leave.leaveType === 'sick_leave' ? 'leave' : 'leave',
+              absenceEndDate: leaveEnd,
+              lastActive: now
+            })
+            .where(eq(users.id, leave.userId));
+        } else if (now > leaveEnd) {
+          // Leave has ended, staff should be active
+          await db
+            .update(users)
+            .set({
+              workStatus: WorkStatus.ACTIVE,
+              absenceReason: null,
+              absenceEndDate: null,
+              lastActive: now
+            })
+            .where(eq(users.id, leave.userId));
+        }
+      }
+
       // Get all staff members with their current task details
       const staffMembers = await db
         .select({
@@ -2292,6 +2331,26 @@ export function registerRoutes(app: Express): Server {
 
       if (!updatedApplication) {
         return res.status(404).json({ error: "Leave application not found" });
+      }
+
+      // If approved, update user status immediately if the leave is starting today
+      if (status === "approved") {
+        const now = new Date();
+        const leaveStart = new Date(updatedApplication.startDate);
+        const leaveEnd = new Date(updatedApplication.endDate);
+        
+        if (now >= leaveStart && now <= leaveEnd) {
+          // Staff should be on leave now
+          await db
+            .update(users)
+            .set({
+              workStatus: WorkStatus.ABSENT,
+              absenceReason: 'leave',
+              absenceEndDate: leaveEnd,
+              lastActive: now
+            })
+            .where(eq(users.id, updatedApplication.userId));
+        }
       }
 
       // Create notification for the applicant

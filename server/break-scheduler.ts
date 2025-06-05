@@ -38,23 +38,25 @@ class BreakScheduler {
       const now = new Date();
       const currentTime = now.toTimeString().slice(0, 5); // HH:mm format
 
-      // Get all non-client users with break times set
-      const usersWithBreaks = await db
+      // Get all staff members
+      const allStaff = await db
         .select()
         .from(users)
-        .where(and(
-          eq(users.role, 'staff') // Only check staff members
-        ));
+        .where(eq(users.role, 'staff'));
 
-      for (const user of usersWithBreaks) {
-        if (!user.breakOneTime || !user.breakTwoTime) continue;
+      for (const user of allStaff) {
+        // First check if user should return from leave
+        await this.checkLeaveStatus(user);
 
-        // Check if user is already on break
-        if (this.activeBreaks.has(user.id)) {
-          await this.checkBreakEnd(user);
-        } else {
-          // Check if it's time for a break
-          await this.checkBreakStart(user, currentTime);
+        // Only check breaks for users not on leave
+        if (user.workStatus !== WorkStatus.ABSENT && user.breakOneTime && user.breakTwoTime) {
+          // Check if user is already on break
+          if (this.activeBreaks.has(user.id)) {
+            await this.checkBreakEnd(user);
+          } else {
+            // Check if it's time for a break
+            await this.checkBreakStart(user, currentTime);
+          }
         }
       }
     } catch (error) {
@@ -155,7 +157,8 @@ class BreakScheduler {
         .set({
           workStatus: WorkStatus.ON_BREAK,
           breakStartTime: now,
-          breakCount: user.breakCount + 1
+          breakCount: user.breakCount + 1,
+          lastActive: now
         })
         .where(eq(users.id, user.id));
 
@@ -188,7 +191,8 @@ class BreakScheduler {
         .update(users)
         .set({
           workStatus: WorkStatus.ACTIVE,
-          breakStartTime: null
+          breakStartTime: null,
+          lastActive: new Date()
         })
         .where(eq(users.id, userId));
 
@@ -213,6 +217,36 @@ class BreakScheduler {
 
     } catch (error) {
       console.error(`Error ending break for user ${userId}:`, error);
+    }
+  }
+
+  private async checkLeaveStatus(user: any) {
+    try {
+      // Check if user is on leave and their leave has ended
+      if (user.workStatus === WorkStatus.ABSENT && user.absenceEndDate) {
+        const now = new Date();
+        const leaveEndDate = new Date(user.absenceEndDate);
+        
+        // If leave has ended (current date is after leave end date)
+        if (now > leaveEndDate) {
+          console.log(`User ${user.name} returning from leave`);
+          
+          // Update user status back to active
+          await db
+            .update(users)
+            .set({
+              workStatus: WorkStatus.ACTIVE,
+              absenceReason: null,
+              absenceEndDate: null,
+              lastActive: now
+            })
+            .where(eq(users.id, user.id));
+            
+          console.log(`User ${user.name} has returned from leave and is now active`);
+        }
+      }
+    } catch (error) {
+      console.error(`Error checking leave status for user ${user.id}:`, error);
     }
   }
 
