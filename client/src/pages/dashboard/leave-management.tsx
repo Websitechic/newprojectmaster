@@ -191,18 +191,13 @@ export default function LeaveManagement() {
       <div className="flex-1 flex flex-col">
         <Header />
         <div className="flex-1 overflow-auto p-6">
-          <div className="flex flex-col space-y-6"></div>
-        </div>
-      </div>
-    </div>
-  );
-}
-        <div>
-          <h1 className="text-2xl font-bold">Leave Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Review and manage staff leave applications
-          </p>
-        </div>
+          <div className="flex flex-col space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold">Leave Management</h1>
+              <p className="text-muted-foreground mt-1">
+                Review and manage staff leave applications
+              </p>
+            </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
