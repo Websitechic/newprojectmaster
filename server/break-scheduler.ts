@@ -1,4 +1,3 @@
-
 import { db } from "@db";
 import { users, tasks, UserStatus, WorkStatus } from "@db/schema";
 import { eq, and } from "drizzle-orm";
@@ -99,7 +98,7 @@ class BreakScheduler {
     if (!breakSession) return;
 
     const now = new Date();
-    
+
     // Break ends after 1 hour
     if (now >= breakSession.endTime) {
       await this.endBreak(user.id);
@@ -110,7 +109,7 @@ class BreakScheduler {
     // Check if current time is within 1 minute of break time
     const current = this.timeToMinutes(currentTime);
     const scheduled = this.timeToMinutes(breakTime);
-    
+
     // Allow 1-minute window for break to start
     return Math.abs(current - scheduled) <= 1;
   }
@@ -123,18 +122,18 @@ class BreakScheduler {
   private isBusinessTime(date: Date): boolean {
     // Get day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
     const dayOfWeek = date.getDay();
-    
+
     // Check if it's a weekend (Saturday = 6, Sunday = 0)
     if (dayOfWeek === 0 || dayOfWeek === 6) {
       return false;
     }
-    
+
     // Check if it's within business hours (9 AM to 6 PM on weekdays)
     const hours = date.getHours();
     if (hours < 9 || hours >= 18) {
       return false;
     }
-    
+
     return true;
   }
 
@@ -262,11 +261,11 @@ class BreakScheduler {
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const leaveEndDate = new Date(user.absenceEndDate);
         const leaveEndDay = new Date(leaveEndDate.getFullYear(), leaveEndDate.getMonth(), leaveEndDate.getDate());
-        
+
         // If leave has ended (current date is after leave end date)
         if (today > leaveEndDay) {
           console.log(`User ${user.name} returning from leave`);
-          
+
           // Update user status back to active
           await db
             .update(users)
@@ -277,7 +276,7 @@ class BreakScheduler {
               lastActive: now
             })
             .where(eq(users.id, user.id));
-            
+
           console.log(`User ${user.name} has returned from leave and is now active`);
         }
       }
