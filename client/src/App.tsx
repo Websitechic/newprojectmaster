@@ -17,6 +17,7 @@ import ProjectPlanDetails from "@/pages/dashboard/project-plan-details";
 import StaffProjectDetails from "@/pages/dashboard/staff-project-details";
 import LeaveApplication from "@/pages/dashboard/leave-application";
 import LeaveManagement from "@/pages/dashboard/leave-management";
+import DirectMessages from "@/pages/dashboard/direct-messages";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -67,7 +68,7 @@ function Router() {
       <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />
       <Route path="/dashboard/leave-application" component={() => <PrivateRoute component={LeaveApplication} />} />
       <Route path="/dashboard/leave-management" component={() => <PrivateRoute component={LeaveManagement} />} />
-      <Route path="/dashboard/direct-messages" component={() => <PrivateRoute component={() => import("@/pages/dashboard/direct-messages")} />} />
+      <Route path="/dashboard/direct-messages" component={() => <PrivateRoute component={DirectMessages} />} />
       <Route component={NotFound} />
     </Switch>
   );
