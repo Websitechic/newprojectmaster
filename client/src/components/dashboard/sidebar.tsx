@@ -166,11 +166,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     },
     {
       icon: <MessageSquare size={20} />,
-      label: "Messages",
-      href: "/dashboard/messages",
-    },
-    {
-      icon: <MessageSquare size={20} />,
       label: "Direct Messages",
       href: "/dashboard/direct-messages",
       badge: unreadDirectMessages,
