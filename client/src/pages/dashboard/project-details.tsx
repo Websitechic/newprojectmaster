@@ -12,11 +12,9 @@ import { ClipboardList, MessageSquare, Users, FileText, Calendar, Plus, Edit } f
 import { ProjectPlanForm } from "@/components/project/project-plan-form";
 import type { Project, ProjectPlan } from "@db/schema";
 import { useAuth } from "@/hooks/use-auth";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ProjectChat } from "@/components/project/project-chat";
 
 export default function ProjectDetails() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
@@ -39,18 +37,18 @@ export default function ProjectDetails() {
     return <div>Loading...</div>;
   }
 
-  const formatDate = (date: Date | string | null) => {
-    if (!date) return "N/A";
-    return new Date(date).toLocaleDateString();
-  };
-
-
   const cards = [
     {
       title: "Tasks",
       icon: ClipboardList,
       description: "Manage and track project tasks in Kanban view",
       path: `/dashboard/projects/${id}/tasks`
+    },
+    {
+      title: "Team Chat",
+      icon: MessageSquare,
+      description: "Internal communication between team members",
+      path: `/dashboard/projects/${id}/team-chat`
     },
     {
       title: "Client Communication",
@@ -145,11 +143,11 @@ export default function ProjectDetails() {
                             </Button>
                           )}
                         </div>
-
+                        
                         {plan.description && (
                           <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
                         )}
-
+                        
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                           <div>
                             <span className="font-medium">Timeline:</span>
@@ -174,7 +172,7 @@ export default function ProjectDetails() {
                             </p>
                           </div>
                         </div>
-
+                        
                         <Button
                           variant="link"
                           className="mt-3 p-0 h-auto"
@@ -207,46 +205,28 @@ export default function ProjectDetails() {
             </Card>
           </div>
 
-          <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="team-chat">Team Chat</TabsTrigger>
-              <TabsTrigger value="client-chat">Client Chat</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {cards.map((card) => {
-                  const Icon = card.icon;
-                  return (
-                    <Card 
-                      key={card.title}
-                      className="cursor-pointer hover:shadow-lg transition-shadow"
-                      onClick={() => setLocation(card.path)}
-                    >
-                      <CardHeader className="flex flex-row items-center gap-4">
-                        <Icon className="h-6 w-6" />
-                        <div>
-                          <h3 className="text-lg font-semibold">{card.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {card.description}
-                          </p>
-                        </div>
-                      </CardHeader>
-                    </Card>
-                  );
-                })}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="team-chat">
-              <ProjectChat projectId={parseInt(id!)} chatType="team" />
-            </TabsContent>
-
-            <TabsContent value="client-chat">
-              <ProjectChat projectId={parseInt(id!)} chatType="client" />
-            </TabsContent>
-          </Tabs>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {cards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <Card 
+                  key={card.title}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => setLocation(card.path)}
+                >
+                  <CardHeader className="flex flex-row items-center gap-4">
+                    <Icon className="h-6 w-6" />
+                    <div>
+                      <h3 className="text-lg font-semibold">{card.title}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {card.description}
+                      </p>
+                    </div>
+                  </CardHeader>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

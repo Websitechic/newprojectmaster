@@ -26,7 +26,7 @@ import {
   leaveApplications,
   directMessages
 } from "@db/schema";
-import { eq, and, desc, inArray, asc, isNotNull, or, count } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull, or } from "drizzle-orm";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
@@ -942,8 +942,7 @@ export function registerRoutes(app: Express): Server {
 
       const [invitation] = await db
         .update(projectMembers)
-        .set({
-          invitationStatus: accept ? "accepted" : "declined",
+        .set({          invitationStatus: accept ? "accepted" : "declined",
           joinedAt: accept ? new Date() : null
         })
         .where(and(
@@ -1473,26 +1472,14 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Add new endpoints for notifications
-  // Add SSE endpoint with proper error handling and rate limiting
+  // Add SSE endpoint with proper error handling
   app.get("/api/notifications/stream", (req: Request, res: Response) => {
-    // Check authentication for SSE using both session and user object
-    if (!req.isAuthenticated() || !req.user?.id) {
+    if (!req.isAuthenticated() || !req.user) {
       console.log("SSE connection attempted without authentication");
       return res.status(401).json({ error: "Not authenticated" });
     }
 
     const userId = req.user!.id;
-    
-    // Check if user already has an active SSE connection
-    if (global.sseClients?.has(userId)) {
-      console.log(`User ${userId} already has an active SSE connection, closing old one`);
-      const existingConnection = global.sseClients.get(userId);
-      if (existingConnection && !existingConnection.writableEnded) {
-        existingConnection.end();
-      }
-      global.sseClients.delete(userId);
-    }
-
     console.log(`SSE connection established for user ${userId}`);
 
     // Set headers for SSE
@@ -1625,61 +1612,20 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    try {
-      const projectId = parseInt(req.params.id);
-      const { type } = req.query;
+    const projectId = parseInt(req.params.id);
+    const { type } = req.query;
 
-      // Verify user has access to this project
-      const [member] = await db
-        .select()
-        .from(projectMembers)
-        .where(and(
-          eq(projectMembers.projectId, projectId),
-          eq(projectMembers.userId, req.user!.id),
-          eq(projectMembers.invitationStatus, "accepted")
-        ))
-        .limit(1);
+    let query = db
+      .select()
+      .from(messages)
+      .where(eq(messages.projectId, projectId));
 
-      // Also check if user is the project manager
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, projectId))
-        .limit(1);
-
-      if (!member && (!project || project.managerId !== req.user!.id)) {
-        return res.status(403).json({ error: "Access denied to this project" });
-      }
-
-      // Get messages with user information
-      let query = db
-        .select({
-          id: messages.id,
-          content: messages.content,
-          type: messages.type,
-          projectId: messages.projectId,
-          userId: messages.userId,
-          createdAt: messages.createdAt,
-          user: {
-            id: users.id,
-            name: users.name,
-            role: users.role,
-          }
-        })
-        .from(messages)
-        .innerJoin(users, eq(messages.userId, users.id))
-        .where(eq(messages.projectId, projectId));
-
-      if (type) {
-        query = query.where(eq(messages.type, type as string));
-      }
-
-      const projectMessages = await query.orderBy(asc(messages.createdAt));
-      res.json(projectMessages);
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-      res.status(500).json({ error: "Failed to fetch messages" });
+    if (type) {
+      query = query.where(eq(messages.type, type as string));
     }
+
+    const projectMessages = await query.orderBy(desc(messages.createdAt));
+    res.json(projectMessages);
   });
 
   // Send a message
@@ -1688,94 +1634,21 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    try {
-      const projectId = parseInt(req.params.id);
-      const { content, type } = req.body;
+    const projectId = parseInt(req.params.id);
+    const { content, type } = req.body;
 
-      if (!content?.trim()) {
-        return res.status(400).json({ error: "Message content is required" });
-      }
+    const [message] = await db
+      .insert(messages)
+      .values({
+        content,
+        type,
+        projectId,
+        userId: req.user!.id,
+        createdAt: new Date()
+      })
+      .returning();
 
-      // Verify user has access to this project
-      const [member] = await db
-        .select()
-        .from(projectMembers)
-        .where(and(
-          eq(projectMembers.projectId, projectId),
-          eq(projectMembers.userId, req.user!.id),
-          eq(projectMembers.invitationStatus, "accepted")
-        ))
-        .limit(1);
-
-      // Also check if user is the project manager
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, projectId))
-        .limit(1);
-
-      if (!member && (!project || project.managerId !== req.user!.id)) {
-        return res.status(403).json({ error: "Access denied to this project" });
-      }
-
-      const [message] = await db
-        .insert(messages)
-        .values({
-          content: content.trim(),
-          type: type || "team",
-          projectId,
-          userId: req.user!.id,
-          createdAt: new Date()
-        })
-        .returning();
-
-      // Get all project members to notify
-      const projectMembers_list = await db
-        .select()
-        .from(projectMembers)
-        .where(and(
-          eq(projectMembers.projectId, projectId),
-          eq(projectMembers.invitationStatus, "accepted")
-        ));
-
-      // Add project manager to the list if not already included
-      const memberUserIds = projectMembers_list.map(pm => pm.userId);
-      if (project && !memberUserIds.includes(project.managerId)) {
-        memberUserIds.push(project.managerId);
-      }
-
-      // Send real-time notifications to all project members except sender
-      const messageWithUser = {
-        ...message,
-        user: {
-          id: req.user!.id,
-          name: req.user!.name,
-          role: req.user!.role,
-        }
-      };
-
-      for (const userId of memberUserIds) {
-        if (userId !== req.user!.id) {
-          const clientResponse = global.sseClients?.get(userId);
-          if (clientResponse && !clientResponse.writableEnded) {
-            try {
-              clientResponse.write(`data: ${JSON.stringify({
-                type: "project_message",
-                data: messageWithUser
-              })}\n\n`);
-            } catch (error) {
-              console.error(`Error sending message notification to user ${userId}:`, error);
-              global.sseClients.delete(userId);
-            }
-          }
-        }
-      }
-
-      res.json(messageWithUser);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      res.status(500).json({ error: "Failed to send message" });
-    }
+    res.json(message);
   });
 
   // Upload resource
@@ -2037,7 +1910,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       if (endDate) {
-        parsedDate = new Date(endDate);
+        parsedEndDate = new Date(endDate);
         if (isNaN(parsedEndDate.getTime())) {
           return res.status(400).json({ error: "Invalid end date format" });
         }
@@ -2813,32 +2686,25 @@ export function registerRoutes(app: Express): Server {
 
   // Get unread direct messages count
   app.get("/api/direct-messages/unread-count", async (req, res) => {
-    if (!req.isAuthenticated() || !req.user?.id) {
+    if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
     try {
-      const userId = req.user!.id;
-      
-      // Validate userId is a valid integer
-      if (isNaN(userId) || !Number.isInteger(userId)) {
-        return res.status(400).json({ error: "Invalid user ID" });
-      }
-
       const result = await db
         .select({ count: sql<number>`count(*)` })
         .from(directMessages)
         .where(
           and(
-            eq(directMessages.receiverId, userId),
+            eq(directMessages.receiverId, req.user!.id),
             eq(directMessages.read, false)
           )
         );
 
-      const countValue = result[0]?.count || 0;
-      res.json({ count: Number(countValue) });
+      const count = result[0]?.count || 0;
+      res.json({ count });
     } catch (error) {
-      console.error("Error fetching unread count:", error);
+      console.error("Error fetching unread messages count:", error);
       res.status(500).json({ error: "Failed to fetch unread count" });
     }
   });

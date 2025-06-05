@@ -53,80 +53,67 @@ export function NotificationsDropdown() {
   });
 
   const setupEventSource = useCallback(() => {
-    if (!user?.id) return null;
+    if (!user) return null;
 
-    console.log("Setting up SSE connection for notifications...");
-    
-    // Add delay to ensure authentication
-    const timer = setTimeout(() => {
-      if (!user?.id) return;
+    const eventSource = new EventSource("/api/notifications/stream", {
+      withCredentials: true
+    });
 
-      const eventSource = new EventSource("/api/notifications/stream", {
-        withCredentials: true
-      });
+    eventSource.onopen = () => {
+      console.log("SSE connection opened");
+      setIsConnected(true);
+      setRetryCount(0); // Reset retry count on successful connection
+    };
 
-      eventSource.onopen = () => {
-        console.log("SSE connection opened for notifications");
-        setIsConnected(true);
-        setRetryCount(0);
-      };
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('SSE message received:', data);
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('SSE message received:', data);
+        if (data.type === "notification") {
+          // Add new notification to the cache
+          queryClient.setQueryData<Notification[]>(["/api/notifications"], (old = []) => {
+            return [data.data, ...old];
+          });
 
-          if (data.type === "notification") {
-            // Add new notification to the cache
-            queryClient.setQueryData<Notification[]>(["/api/notifications"], (old = []) => {
-              return [data.data, ...old];
-            });
-
-            // Show toast notification
-            toast({
-              title: "New Notification",
-              description: data.data.content,
-            });
-          }
-        } catch (error) {
-          console.error("Error processing SSE message:", error);
+          // Show toast notification
+          toast({
+            title: "New Notification",
+            description: data.data.content,
+          });
         }
-      };
+      } catch (error) {
+        console.error("Error processing SSE message:", error);
+      }
+    };
 
-      eventSource.onerror = (error) => {
-        console.error("SSE connection error:", error);
-        setIsConnected(false);
-        eventSource.close();
+    eventSource.onerror = (error) => {
+      console.error("SSE connection error:", error);
+      setIsConnected(false);
+      eventSource.close();
 
-        // Limit retries to prevent flooding
-        const maxRetries = 3;
-        if (retryCount < maxRetries && user?.id) {
-          const timeout = Math.min(2000 * Math.pow(2, retryCount), 15000);
-          setTimeout(() => {
-            setRetryCount(prev => prev + 1);
-            setupEventSource();
-          }, timeout);
-        }
-      };
+      // Implement exponential backoff for retries
+      const maxRetries = 5;
+      if (retryCount < maxRetries) {
+        const timeout = Math.min(1000 * Math.pow(2, retryCount), 30000);
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          setupEventSource();
+        }, timeout);
+      }
+    };
 
-      return eventSource;
-    }, 1000);
-
-    return () => clearTimeout(timer);
-
-    return null;
-  }, [user?.id, queryClient, toast, retryCount]);
+    return eventSource;
+  }, [user, queryClient, toast, retryCount]);
 
   useEffect(() => {
-    if (!user?.id) return;
-    
     const eventSource = setupEventSource();
     return () => {
       if (eventSource) {
         eventSource.close();
       }
     };
-  }, [user?.id]); // Remove setupEventSource from deps to prevent recreation
+  }, [setupEventSource]);
 
   if (!user) return null;
 
@@ -136,7 +123,12 @@ export function NotificationsDropdown() {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+            <Badge
+              variant="destructive"
+              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+            >
+              {unreadCount}
+            </Badge>
           )}
         </Button>
       </DropdownMenuTrigger>

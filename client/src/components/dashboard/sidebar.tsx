@@ -53,17 +53,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   // Fetch initial unread count
   useEffect(() => {
     const fetchUnreadCount = async () => {
-      if (!user) return;
-      
       try {
-        const response = await fetch("/api/direct-messages/unread-count", {
-          credentials: "include"
-        });
+        const response = await fetch("/api/direct-messages/unread-count");
         if (response.ok) {
           const data = await response.json();
           setUnreadDirectMessages(data.count || 0);
-        } else if (response.status === 401) {
-          console.log("Not authenticated for unread count");
         }
       } catch (error) {
         console.error("Error fetching unread count:", error);
@@ -71,71 +65,29 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     };
 
     fetchUnreadCount();
-  }, [user]);
+  }, []);
 
   // Listen for real-time message updates
   useEffect(() => {
-    if (!user?.id) return;
+    const eventSource = new EventSource("/api/notifications/stream");
 
-    let eventSource: EventSource | null = null;
-    let retryTimeout: NodeJS.Timeout | null = null;
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    const setupSSE = () => {
-      if (retryCount >= maxRetries) {
-        console.log("Max SSE retry attempts reached for sidebar");
-        return;
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "direct_message") {
+          const message = data.data;
+          // Only increment if message is not from current user
+          if (message.senderId !== user?.id) {
+            setUnreadDirectMessages(prev => prev + 1);
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing SSE message:", error);
       }
-
-      // Add delay to ensure authentication is established
-      setTimeout(() => {
-        if (!user?.id) return;
-
-        eventSource = new EventSource("/api/notifications/stream", {
-          withCredentials: true
-        });
-
-        eventSource.onopen = () => {
-          console.log("SSE connection opened for sidebar");
-          retryCount = 0; // Reset on successful connection
-        };
-
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === "direct_message") {
-              const message = data.data;
-              // Only increment if message is not from current user
-              if (message.senderId !== user?.id) {
-                setUnreadDirectMessages(prev => prev + 1);
-              }
-            }
-          } catch (error) {
-            console.error("Error parsing SSE message:", error);
-          }
-        };
-
-        eventSource.onerror = (error) => {
-          console.log("SSE error in sidebar:", error);
-          eventSource?.close();
-          
-          retryCount++;
-          // Only retry if user is still authenticated and we haven't exceeded max retries
-          if (user?.id && retryCount < maxRetries) {
-            retryTimeout = setTimeout(setupSSE, 15000); // Longer delay between retries
-          }
-        };
-      }, 2000); // Longer initial delay
     };
 
-    setupSSE();
-
     return () => {
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
-      }
-      eventSource?.close();
+      eventSource.close();
     };
   }, [user?.id]);
 
