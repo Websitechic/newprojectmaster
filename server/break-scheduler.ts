@@ -302,6 +302,7 @@ class BreakScheduler {
       }
 
       const breakStartTime = new Date(user.breakStartTime);
+      const now = new Date();
       const breakDuration = Math.floor((now.getTime() - breakStartTime.getTime()) / 60000); // minutes
 
       // If it's outside business hours or weekend, end the break immediately
