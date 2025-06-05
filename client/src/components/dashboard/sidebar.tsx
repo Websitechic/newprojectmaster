@@ -71,6 +71,20 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Users size={20} />,
       label: "Staff Report",
       href: "/dashboard/staff-report",
+    },
+    {
+      icon: <Calendar size={20} />,
+      label: "Leave Management",
+      href: "/dashboard/leave-management",
+    }
+  ] : [];
+
+  // Staff specific menu items
+  const staffMenuItems = user?.role === "staff" ? [
+    {
+      icon: <Calendar size={20} />,
+      label: "Leave Application",
+      href: "/dashboard/leave-application",
     }
   ] : [];
 
@@ -78,6 +92,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   const menuItems = [
     ...baseMenuItems.slice(0, 2), // Dashboard, Projects
     ...pmMenuItems,               // Project manager specific items
+    ...staffMenuItems,            // Staff specific items
     ...baseMenuItems.slice(2)     // Messages, Settings
   ];
 
