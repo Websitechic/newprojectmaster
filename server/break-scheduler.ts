@@ -53,6 +53,9 @@ class BreakScheduler {
           // Check if user is already on break
           if (this.activeBreaks.has(user.id)) {
             await this.checkBreakEnd(user);
+          } else if (user.workStatus === WorkStatus.ON_BREAK) {
+            // Handle users who are on break but not in activeBreaks (e.g., after server restart)
+            await this.handleOrphanedBreak(user);
           } else {
             // Check if it's time for a break
             await this.checkBreakStart(user, currentTime);
@@ -225,10 +228,12 @@ class BreakScheduler {
       // Check if user is on leave and their leave has ended
       if (user.workStatus === WorkStatus.ABSENT && user.absenceEndDate) {
         const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const leaveEndDate = new Date(user.absenceEndDate);
+        const leaveEndDay = new Date(leaveEndDate.getFullYear(), leaveEndDate.getMonth(), leaveEndDate.getDate());
         
         // If leave has ended (current date is after leave end date)
-        if (now > leaveEndDate) {
+        if (today > leaveEndDay) {
           console.log(`User ${user.name} returning from leave`);
           
           // Update user status back to active
@@ -247,6 +252,68 @@ class BreakScheduler {
       }
     } catch (error) {
       console.error(`Error checking leave status for user ${user.id}:`, error);
+    }
+  }
+
+  private async handleOrphanedBreak(user: any) {
+    try {
+      if (!user.breakStartTime) {
+        // If no break start time, reset to active
+        await db
+          .update(users)
+          .set({
+            workStatus: WorkStatus.ACTIVE,
+            breakStartTime: null,
+            lastActive: new Date()
+          })
+          .where(eq(users.id, user.id));
+        return;
+      }
+
+      const breakStartTime = new Date(user.breakStartTime);
+      const now = new Date();
+      const breakDuration = Math.floor((now.getTime() - breakStartTime.getTime()) / 60000); // minutes
+
+      // If break has exceeded 1 hour, end it
+      if (breakDuration >= 60) {
+        console.log(`Ending orphaned break for user ${user.name} (${breakDuration} minutes)`);
+        await this.endBreakDirectly(user.id);
+      } else {
+        // Recreate the break session
+        const endTime = new Date(breakStartTime.getTime() + 60 * 60 * 1000); // 1 hour from start
+        this.activeBreaks.set(user.id, {
+          userId: user.id,
+          breakType: 'first', // Default type
+          startTime: breakStartTime,
+          endTime: endTime
+        });
+        console.log(`Recreated break session for user ${user.name}`);
+      }
+    } catch (error) {
+      console.error(`Error handling orphaned break for user ${user.id}:`, error);
+    }
+  }
+
+  private async endBreakDirectly(userId: number) {
+    try {
+      console.log(`Ending break directly for user ${userId}`);
+
+      // Update user status back to active
+      await db
+        .update(users)
+        .set({
+          workStatus: WorkStatus.ACTIVE,
+          breakStartTime: null,
+          lastActive: new Date()
+        })
+        .where(eq(users.id, userId));
+
+      // Remove from active breaks if exists
+      this.activeBreaks.delete(userId);
+
+      console.log(`Break ended directly for user ${userId}`);
+    } catch (error) {
+      console.error(`Error ending break directly for user ${userId}:`, error);
     }
   }
 

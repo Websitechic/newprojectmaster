@@ -222,6 +222,7 @@ export function registerRoutes(app: Express): Server {
     try {
       // First update staff status based on approved leave applications
       const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
       // Get all approved leave applications
       const approvedLeaves = await db
@@ -233,19 +234,23 @@ export function registerRoutes(app: Express): Server {
       for (const leave of approvedLeaves) {
         const leaveStart = new Date(leave.startDate);
         const leaveEnd = new Date(leave.endDate);
+        const leaveStartDate = new Date(leaveStart.getFullYear(), leaveStart.getMonth(), leaveStart.getDate());
+        const leaveEndDate = new Date(leaveEnd.getFullYear(), leaveEnd.getMonth(), leaveEnd.getDate());
         
-        if (now >= leaveStart && now <= leaveEnd) {
+        if (today >= leaveStartDate && today <= leaveEndDate) {
           // Staff should be on leave
           await db
             .update(users)
             .set({
               workStatus: WorkStatus.ABSENT,
-              absenceReason: leave.leaveType === 'sick_leave' ? 'leave' : 'leave',
+              absenceReason: 'leave',
               absenceEndDate: leaveEnd,
               lastActive: now
             })
             .where(eq(users.id, leave.userId));
-        } else if (now > leaveEnd) {
+          
+          console.log(`Updated user ${leave.userId} to absent status for approved leave`);
+        } else if (today > leaveEndDate) {
           // Leave has ended, staff should be active
           await db
             .update(users)
@@ -256,6 +261,8 @@ export function registerRoutes(app: Express): Server {
               lastActive: now
             })
             .where(eq(users.id, leave.userId));
+          
+          console.log(`Updated user ${leave.userId} back to active status - leave ended`);
         }
       }
 
@@ -340,10 +347,13 @@ export function registerRoutes(app: Express): Server {
             ? Math.round((new Date().getTime() - new Date(staff.breakStartTime).getTime()) / 60000)
             : 0;
 
+          // Limit display duration to maximum 60 minutes for UI purposes
+          const displayDuration = Math.min(breakDuration, 60);
+
           return {
             staffId: staff.id,
             breakStartTime: staff.breakStartTime,
-            breakDuration: breakDuration,
+            breakDuration: displayDuration,
             breakCount: staff.breakCount,
             // Check if break is exceeding one hour (60 minutes)
             breakOvertime: breakDuration > 60
