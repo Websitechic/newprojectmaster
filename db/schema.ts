@@ -350,6 +350,15 @@ export const directMessages = pgTable("direct_messages", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const projectMessages = pgTable("project_messages", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").references(() => projects.id).notNull(),
+  senderId: integer("sender_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const directMessagesRelations = relations(directMessages, ({ one }) => ({
   sender: one(users, {
     fields: [directMessages.senderId],
@@ -357,6 +366,17 @@ export const directMessagesRelations = relations(directMessages, ({ one }) => ({
   }),
   receiver: one(users, {
     fields: [directMessages.receiverId],
+    references: [users.id],
+  }),
+}));
+
+export const projectMessagesRelations = relations(projectMessages, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectMessages.projectId],
+    references: [projects.id],
+  }),
+  sender: one(users, {
+    fields: [projectMessages.senderId],
     references: [users.id],
   }),
 }));
@@ -397,6 +417,7 @@ export type ProjectPlan = typeof projectPlans.$inferSelect;
 export type Deliverable = typeof deliverables.$inferSelect;
 export type LeaveApplication = typeof leaveApplications.$inferSelect;
 export type DirectMessage = typeof directMessages.$inferSelect;
+export type ProjectMessage = typeof projectMessages.$inferSelect;
 
 // Resources table for file uploads
 export const resources = pgTable("resources", {
