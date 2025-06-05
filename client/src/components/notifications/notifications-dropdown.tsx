@@ -53,68 +53,83 @@ export function NotificationsDropdown() {
   });
 
   const setupEventSource = useCallback(() => {
-    if (!user) return null;
+    if (!user?.id) return null;
+
+    // Don't create new connection if already attempting to connect
+    if (retryCount > 0 && retryCount < 3) {
+      return null;
+    }
 
     console.log("Setting up SSE connection for notifications...");
-    const eventSource = new EventSource("/api/notifications/stream", {
-      withCredentials: true
-    });
+    
+    // Add delay to ensure authentication
+    setTimeout(() => {
+      if (!user?.id) return;
 
-    eventSource.onopen = () => {
-      console.log("SSE connection opened for notifications");
-      setIsConnected(true);
-      setRetryCount(0);
-    };
+      const eventSource = new EventSource("/api/notifications/stream", {
+        withCredentials: true
+      });
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('SSE message received:', data);
+      eventSource.onopen = () => {
+        console.log("SSE connection opened for notifications");
+        setIsConnected(true);
+        setRetryCount(0);
+      };
 
-        if (data.type === "notification") {
-          // Add new notification to the cache
-          queryClient.setQueryData<Notification[]>(["/api/notifications"], (old = []) => {
-            return [data.data, ...old];
-          });
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('SSE message received:', data);
 
-          // Show toast notification
-          toast({
-            title: "New Notification",
-            description: data.data.content,
-          });
+          if (data.type === "notification") {
+            // Add new notification to the cache
+            queryClient.setQueryData<Notification[]>(["/api/notifications"], (old = []) => {
+              return [data.data, ...old];
+            });
+
+            // Show toast notification
+            toast({
+              title: "New Notification",
+              description: data.data.content,
+            });
+          }
+        } catch (error) {
+          console.error("Error processing SSE message:", error);
         }
-      } catch (error) {
-        console.error("Error processing SSE message:", error);
-      }
-    };
+      };
 
-    eventSource.onerror = (error) => {
-      console.error("SSE connection error:", error);
-      setIsConnected(false);
-      eventSource.close();
+      eventSource.onerror = (error) => {
+        console.error("SSE connection error:", error);
+        setIsConnected(false);
+        eventSource.close();
 
-      // Implement exponential backoff for retries
-      const maxRetries = 5;
-      if (retryCount < maxRetries) {
-        const timeout = Math.min(1000 * Math.pow(2, retryCount), 30000);
-        setTimeout(() => {
-          setRetryCount(prev => prev + 1);
-          setupEventSource();
-        }, timeout);
-      }
-    };
+        // Limit retries to prevent flooding
+        const maxRetries = 3;
+        if (retryCount < maxRetries && user?.id) {
+          const timeout = Math.min(1000 * Math.pow(2, retryCount), 15000);
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+            setupEventSource();
+          }, timeout);
+        }
+      };
 
-    return eventSource;
-  }, [user, queryClient, toast, retryCount]);
+      return eventSource;
+    }, 500);
+
+    return null;
+  }, [user?.id, queryClient, toast, retryCount]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    
     const eventSource = setupEventSource();
     return () => {
       if (eventSource) {
         eventSource.close();
       }
     };
-  }, [setupEventSource]);
+  }, [user?.id]); // Remove setupEventSource from deps to prevent recreation
 
   if (!user) return null;
 

@@ -1473,14 +1473,25 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Add new endpoints for notifications
-  // Add SSE endpoint with proper error handling
+  // Add SSE endpoint with proper error handling and rate limiting
   app.get("/api/notifications/stream", (req: Request, res: Response) => {
-    if (!req.isAuthenticated() || !req.user) {
+    if (!req.isAuthenticated() || !req.user?.id) {
       console.log("SSE connection attempted without authentication");
       return res.status(401).json({ error: "Not authenticated" });
     }
 
     const userId = req.user!.id;
+    
+    // Check if user already has an active SSE connection
+    if (global.sseClients?.has(userId)) {
+      console.log(`User ${userId} already has an active SSE connection, closing old one`);
+      const existingConnection = global.sseClients.get(userId);
+      if (existingConnection && !existingConnection.writableEnded) {
+        existingConnection.end();
+      }
+      global.sseClients.delete(userId);
+    }
+
     console.log(`SSE connection established for user ${userId}`);
 
     // Set headers for SSE
@@ -2687,12 +2698,18 @@ export function registerRoutes(app: Express): Server {
 
   // Get unread direct messages count
   app.get("/api/direct-messages/unread-count", async (req, res) => {
-    if (!req.isAuthenticated()) {
+    if (!req.isAuthenticated() || !req.user?.id) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
     try {
       const userId = req.user!.id;
+      
+      // Validate userId is a valid integer
+      if (isNaN(userId) || !Number.isInteger(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
       const unreadCount = await db
         .select({ count: count() })
         .from(directMessages)
@@ -2703,7 +2720,8 @@ export function registerRoutes(app: Express): Server {
           )
         );
 
-      res.json({ count: unreadCount[0]?.count || 0 });
+      const countValue = unreadCount[0]?.count || 0;
+      res.json({ count: Number(countValue) });
     } catch (error) {
       console.error("Error fetching unread count:", error);
       res.status(500).json({ error: "Failed to fetch unread count" });
