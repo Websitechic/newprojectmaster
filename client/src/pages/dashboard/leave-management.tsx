@@ -40,6 +40,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { Header } from "@/components/dashboard/header";
+import { Sidebar } from "@/components/dashboard/sidebar";
 
 interface LeaveApplicationWithUser {
   id: number;
@@ -92,9 +94,15 @@ export default function LeaveManagement() {
   // Check if user is project manager
   if (!user || user.role !== "project_manager") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-        <p className="text-sm text-destructive">Only project managers can access leave management</p>
+      <div className="flex h-screen">
+        <Sidebar currentPath="/dashboard/leave-management" />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <div className="flex flex-col items-center justify-center min-h-[400px]">
+            <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+            <p className="text-sm text-destructive">Only project managers can access leave management</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -178,8 +186,17 @@ export default function LeaveManagement() {
   const reviewedApplications = leaveApplications?.filter(app => app.status !== "pending") || [];
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col space-y-6">
+    <div className="flex h-screen">
+      <Sidebar currentPath="/dashboard/leave-management" />
+      <div className="flex-1 flex flex-col">
+        <Header />
+        <div className="flex-1 overflow-auto p-6">
+          <div className="flex flex-col space-y-6"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
         <div>
           <h1 className="text-2xl font-bold">Leave Management</h1>
           <p className="text-muted-foreground mt-1">
@@ -650,6 +667,8 @@ export default function LeaveManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+          </div>
+        </div>
       </div>
     </div>
   );

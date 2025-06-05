@@ -245,15 +245,15 @@ export default function StaffReport() {
   const engagedStaff = filteredStaff?.filter(staff => staff.isCurrentlyEngaged) || [];
   const onBreakStaff = filteredStaff?.filter(staff => staff.workStatus === 'on_break') || [];
   const absentStaff = filteredStaff?.filter(staff => staff.workStatus === 'absent') || [];
-  
+
   // Available staff: those not absent, not on break, and not currently engaged with running timers
   const availableStaff = filteredStaff?.filter(staff => {
     // Exclude absent and on break staff
     if (staff.workStatus === 'absent' || staff.workStatus === 'on_break') return false;
-    
+
     // Exclude currently engaged staff (those with running timers)
     if (staff.isCurrentlyEngaged) return false;
-    
+
     return true;
   }) || [];
 
@@ -314,7 +314,7 @@ export default function StaffReport() {
                   <p className="mt-1 text-2xl font-bold text-green-800">{engagedStaff.length}</p>
                   <p className="text-xs text-green-700">Staff with active task timers</p>
                 </div>
-                
+
                 <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
                   <div className="flex items-center gap-2">
                     <Coffee className="h-4 w-4 text-amber-700" />
@@ -325,7 +325,7 @@ export default function StaffReport() {
                     Automatic 1-hour scheduled breaks
                   </p>
                 </div>
-                
+
                 <div className="rounded-md border border-red-300 bg-red-50 p-3">
                   <div className="flex items-center gap-2">
                     <CalendarDays className="h-4 w-4 text-red-700" />
@@ -337,7 +337,7 @@ export default function StaffReport() {
                     {absentStaff.filter(s => s.absenceReason === 'off_day').length} off day
                   </p>
                 </div>
-                
+
                 <div className="rounded-md border border-blue-300 bg-blue-50 p-3">
                   <div className="flex items-center gap-2">
                     <UserCheck className="h-4 w-4 text-blue-700" />
