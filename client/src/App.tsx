@@ -13,8 +13,10 @@ import Tasks from "@/pages/dashboard/tasks";
 import StaffReport from "@/pages/dashboard/staff-report";
 import StaffProjectTasks from "@/pages/dashboard/staff-project-tasks";
 import ProjectResources from "@/pages/dashboard/project-resources";
-import ProjectPlanDetails from "@/pages/dashboard/project-plan-details";
-import StaffProjectDetails from "@/pages/dashboard/staff-project-details";
+import ProjectPlanDetails from "./pages/dashboard/project-plan-details";
+import StaffProjectDetails from "./pages/dashboard/staff-project-details";
+import TeamChat from "./pages/dashboard/team-chat";
+import ClientChat from "./pages/dashboard/client-chat";
 import LeaveApplication from "@/pages/dashboard/leave-application";
 import LeaveManagement from "@/pages/dashboard/leave-management";
 import DirectMessages from "@/pages/dashboard/direct-messages";
@@ -63,6 +65,8 @@ function Router() {
       <Route path="/dashboard/projects/:id/staff-tasks" component={StaffProjectTasks} />
       <Route path="/dashboard/projects/:id/staff" component={StaffProjectDetails} />
       <Route path="/dashboard/projects/:id/resources" component={ProjectResources} />
+      <Route path="/dashboard/projects/:id/team-chat" component={TeamChat} />
+      <Route path="/dashboard/projects/:id/client-chat" component={ClientChat} />
       <Route path="/dashboard/projects/:id/plan/:planId" component={ProjectPlanDetails} />
       <Route path="/dashboard/staff-report" component={() => <PrivateRoute component={StaffReport} />} />
       <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />

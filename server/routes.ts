@@ -26,7 +26,7 @@ import {
   leaveApplications,
   directMessages
 } from "@db/schema";
-import { eq, and, desc, inArray, asc, isNotNull, or } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull, or, sql } from "drizzle-orm";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
@@ -1474,8 +1474,9 @@ export function registerRoutes(app: Express): Server {
   // Add new endpoints for notifications
   // Add SSE endpoint with proper error handling
   app.get("/api/notifications/stream", (req: Request, res: Response) => {
-    if (!req.isAuthenticated() || !req.user) {
-      console.log("SSE connection attempted without authentication");
+    // Check if user exists in session
+    if (!req.user || !req.user.id) {
+      console.log("SSE connection attempted without valid user session");
       return res.status(401).json({ error: "Not authenticated" });
     }
 
@@ -1615,17 +1616,38 @@ export function registerRoutes(app: Express): Server {
     const projectId = parseInt(req.params.id);
     const { type } = req.query;
 
-    let query = db
-      .select()
-      .from(messages)
-      .where(eq(messages.projectId, projectId));
+    try {
+      // Get messages with user information
+      let query = db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          type: messages.type,
+          projectId: messages.projectId,
+          userId: messages.userId,
+          createdAt: messages.createdAt,
+          user: {
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            role: users.role,
+          }
+        })
+        .from(messages)
+        .innerJoin(users, eq(messages.userId, users.id))
+        .where(eq(messages.projectId, projectId));
 
-    if (type) {
-      query = query.where(eq(messages.type, type as string));
+      if (type) {
+        query = query.where(eq(messages.type, type as string));
+      }
+
+      const projectMessages = await query.orderBy(asc(messages.createdAt));
+      console.log(`Returning ${projectMessages.length} messages for project ${projectId}, type: ${type}`);
+      res.json(projectMessages);
+    } catch (error) {
+      console.error("Error fetching project messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
     }
-
-    const projectMessages = await query.orderBy(desc(messages.createdAt));
-    res.json(projectMessages);
   });
 
   // Send a message
@@ -1637,18 +1659,62 @@ export function registerRoutes(app: Express): Server {
     const projectId = parseInt(req.params.id);
     const { content, type } = req.body;
 
-    const [message] = await db
-      .insert(messages)
-      .values({
-        content,
-        type,
-        projectId,
-        userId: req.user!.id,
-        createdAt: new Date()
-      })
-      .returning();
+    try {
+      console.log(`Sending message to project ${projectId}, type: ${type}, from user: ${req.user!.id}`);
+      
+      const [message] = await db
+        .insert(messages)
+        .values({
+          content,
+          type,
+          projectId,
+          userId: req.user!.id,
+          createdAt: new Date()
+        })
+        .returning();
 
-    res.json(message);
+      console.log("Message saved to database:", message);
+
+      // Get project members to notify
+      const projectMembersData = await db
+        .select({
+          userId: projectMembers.userId
+        })
+        .from(projectMembers)
+        .where(and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.invitationStatus, "accepted")
+        ));
+
+      // Send real-time notifications to all project members via SSE
+      for (const member of projectMembersData) {
+        if (member.userId && member.userId !== req.user!.id) {
+          const clientResponse = global.sseClients?.get(member.userId);
+          if (clientResponse && !clientResponse.writableEnded) {
+            try {
+              clientResponse.write(`data: ${JSON.stringify({
+                type: "project_message",
+                data: {
+                  ...message,
+                  projectId,
+                  type,
+                  senderName: req.user!.name
+                }
+              })}\n\n`);
+              console.log(`Project message notification sent to user ${member.userId} via SSE`);
+            } catch (error) {
+              console.error(`Error sending SSE notification to user ${member.userId}:`, error);
+              global.sseClients?.delete(member.userId);
+            }
+          }
+        }
+      }
+
+      res.json(message);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
   });
 
   // Upload resource
