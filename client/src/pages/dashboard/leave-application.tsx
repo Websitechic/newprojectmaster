@@ -253,20 +253,15 @@ export default function LeaveApplication() {
       <div className="flex-1 flex flex-col">
         <Header />
         <div className="flex-1 overflow-auto p-6">
-          <div className="flex flex-col space-y-6"></div>
-        </div>
-      </div>
-    </div>
-  );
-}
-        <div>
-          <h1 className="text-2xl font-bold">Leave Application</h1>
-          <p className="text-muted-foreground mt-1">
-            Apply for day off or leave of absence
-          </p>
-        </div>
+          <div className="flex flex-col space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold">Leave Application</h1>
+              <p className="text-muted-foreground mt-1">
+                Apply for day off or leave of absence
+              </p>
+            </div>
 
-        <Tabs defaultValue="apply" className="w-full">
+            <Tabs defaultValue="apply" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="apply" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
