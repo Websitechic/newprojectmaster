@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Settings,
   LogOut,
+  Calendar,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
