@@ -224,7 +224,7 @@ export function registerRoutes(app: Express): Server {
       // First update staff status based on approved leave applications
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
+
       // Get all approved leave applications
       const approvedLeaves = await db
         .select()
@@ -237,7 +237,7 @@ export function registerRoutes(app: Express): Server {
         const leaveEnd = new Date(leave.endDate);
         const leaveStartDate = new Date(leaveStart.getFullYear(), leaveStart.getMonth(), leaveStart.getDate());
         const leaveEndDate = new Date(leaveEnd.getFullYear(), leaveEnd.getMonth(), leaveEnd.getDate());
-        
+
         if (today >= leaveStartDate && today <= leaveEndDate) {
           // Staff should be on leave
           await db
@@ -249,7 +249,7 @@ export function registerRoutes(app: Express): Server {
               lastActive: now
             })
             .where(eq(users.id, leave.userId));
-          
+
           console.log(`Updated user ${leave.userId} to absent status for approved leave`);
         } else if (today > leaveEndDate) {
           // Leave has ended, staff should be active
@@ -262,7 +262,7 @@ export function registerRoutes(app: Express): Server {
               lastActive: now
             })
             .where(eq(users.id, leave.userId));
-          
+
           console.log(`Updated user ${leave.userId} back to active status - leave ended`);
         }
       }
@@ -942,8 +942,7 @@ export function registerRoutes(app: Express): Server {
 
       const [invitation] = await db
         .update(projectMembers)
-        .set({
-          invitationStatus: accept ? "accepted" : "declined",
+        .set({          invitationStatus: accept ? "accepted" : "declined",
           joinedAt: accept ? new Date() : null
         })
         .where(and(
@@ -2207,7 +2206,7 @@ export function registerRoutes(app: Express): Server {
       // Check leave of absence limit (14 days per year)
       if (leaveType === "leave_of_absence") {
         const currentYear = new Date().getFullYear();
-        
+
         // Get approved leave of absence applications for current year
         const existingApplications = await db
           .select()
@@ -2359,7 +2358,7 @@ export function registerRoutes(app: Express): Server {
         const now = new Date();
         const leaveStart = new Date(updatedApplication.startDate);
         const leaveEnd = new Date(updatedApplication.endDate);
-        
+
         if (now >= leaveStart && now <= leaveEnd) {
           // Staff should be on leave now
           await db
@@ -2465,7 +2464,7 @@ export function registerRoutes(app: Express): Server {
       // Process messages to create conversation list
       for (const message of allMessages) {
         const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
-        
+
         if (!uniqueConversations.has(otherUserId)) {
           // Get other user details
           const [otherUser] = await db
@@ -2682,6 +2681,31 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error marking messages as read:", error);
       res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
+  // Get unread direct messages count
+  app.get("/api/direct-messages/unread-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(directMessages)
+        .where(
+          and(
+            eq(directMessages.receiverId, req.user!.id),
+            eq(directMessages.read, false)
+          )
+        );
+
+      const count = result[0]?.count || 0;
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread messages count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
     }
   });
 

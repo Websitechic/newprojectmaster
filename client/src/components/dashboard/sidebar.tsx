@@ -12,26 +12,34 @@ import {
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
   label: string;
   href: string;
   active?: boolean;
+  badge?: number;
 }
 
-function SidebarItem({ icon, label, href, active }: SidebarItemProps) {
+function SidebarItem({ icon, label, href, active, badge }: SidebarItemProps) {
   return (
     <Link href={href}>
       <Button
         variant={active ? "default" : "ghost"}
         className={cn(
-          "w-full justify-start gap-3",
+          "w-full justify-start gap-3 relative",
           active && "bg-primary text-primary-foreground"
         )}
       >
         {icon}
         <span>{label}</span>
+        {badge && badge > 0 && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="w-2 h-2 bg-red-500 rounded-full" />
+          </div>
+        )}
       </Button>
     </Link>
   );
@@ -40,6 +48,55 @@ function SidebarItem({ icon, label, href, active }: SidebarItemProps) {
 export function Sidebar({ currentPath }: { currentPath: string }) {
   const { logout, user } = useUser();
   const [, setLocation] = useLocation();
+  const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
+
+  // Fetch initial unread count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await fetch("/api/direct-messages/unread-count");
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadDirectMessages(data.count || 0);
+        }
+      } catch (error) {
+        console.error("Error fetching unread count:", error);
+      }
+    };
+
+    fetchUnreadCount();
+  }, []);
+
+  // Listen for real-time message updates
+  useEffect(() => {
+    const eventSource = new EventSource("/api/notifications/stream");
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "direct_message") {
+          const message = data.data;
+          // Only increment if message is not from current user
+          if (message.senderId !== user?.id) {
+            setUnreadDirectMessages(prev => prev + 1);
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing SSE message:", error);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [user?.id]);
+
+  // Reset unread count when visiting direct messages page
+  useEffect(() => {
+    if (currentPath === "/dashboard/direct-messages") {
+      setUnreadDirectMessages(0);
+    }
+  }, [currentPath]);
 
   // Base menu items for all users
   const baseMenuItems = [
@@ -62,6 +119,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <MessageSquare size={20} />,
       label: "Direct Messages",
       href: "/dashboard/direct-messages",
+      badge: unreadDirectMessages,
     },
     {
       icon: <Settings size={20} />,
