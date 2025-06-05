@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -447,7 +446,7 @@ export default function LeaveManagement() {
                 {/* Applicant Information */}
                 <div className="bg-gray-50 p-4 rounded-md">
                   <h4 className="font-medium mb-3">Applicant Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium">Name:</span> {selectedApplication.userName}
                     </div>
@@ -469,7 +468,7 @@ export default function LeaveManagement() {
                 {/* Leave Details */}
                 <div className="bg-blue-50 p-4 rounded-md">
                   <h4 className="font-medium mb-3">Leave Details</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium">Type:</span>
                       <Badge variant="outline" className={`ml-2 ${selectedApplication.leaveType === 'day_off' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-purple-100 text-purple-800 border-purple-300'}`}>
@@ -588,7 +587,7 @@ export default function LeaveManagement() {
               <div className="space-y-4">
                 <div className="bg-gray-50 p-4 rounded-md">
                   <h4 className="font-medium mb-2">Application Details</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className="font-medium">Period:</span>{" "}
                       {formatDate(selectedApplication.startDate, "MMM d")} - {formatDate(selectedApplication.endDate, "MMM d, yyyy")}
