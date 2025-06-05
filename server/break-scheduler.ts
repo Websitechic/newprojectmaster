@@ -38,6 +38,12 @@ class BreakScheduler {
       const now = new Date();
       const currentTime = now.toTimeString().slice(0, 5); // HH:mm format
 
+      // Check if it's a business day and within business hours
+      if (!this.isBusinessTime(now)) {
+        console.log('Outside business hours or weekend - skipping break checks');
+        return;
+      }
+
       // Get all staff members
       const allStaff = await db
         .select()
@@ -114,8 +120,33 @@ class BreakScheduler {
     return hours * 60 + minutes;
   }
 
+  private isBusinessTime(date: Date): boolean {
+    // Get day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+    const dayOfWeek = date.getDay();
+    
+    // Check if it's a weekend (Saturday = 6, Sunday = 0)
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return false;
+    }
+    
+    // Check if it's within business hours (9 AM to 6 PM on weekdays)
+    const hours = date.getHours();
+    if (hours < 9 || hours >= 18) {
+      return false;
+    }
+    
+    return true;
+  }
+
   private async startBreak(user: any, breakType: 'first' | 'second') {
     try {
+      // Double-check business hours before starting break
+      const now = new Date();
+      if (!this.isBusinessTime(now)) {
+        console.log(`Skipping break for ${user.name} - outside business hours`);
+        return;
+      }
+
       console.log(`Starting ${breakType} break for user ${user.name}`);
 
       // Check if user has a running task timer
@@ -273,6 +304,13 @@ class BreakScheduler {
       const breakStartTime = new Date(user.breakStartTime);
       const now = new Date();
       const breakDuration = Math.floor((now.getTime() - breakStartTime.getTime()) / 60000); // minutes
+
+      // If it's outside business hours or weekend, end the break immediately
+      if (!this.isBusinessTime(now)) {
+        console.log(`Ending orphaned break for user ${user.name} - outside business hours`);
+        await this.endBreakDirectly(user.id);
+        return;
+      }
 
       // If break has exceeded 1 hour, end it
       if (breakDuration >= 60) {
