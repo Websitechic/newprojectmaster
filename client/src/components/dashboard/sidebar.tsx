@@ -69,41 +69,81 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
 
   // Listen for real-time message updates
   useEffect(() => {
+    if (!user) return;
+
     let eventSource: EventSource | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let isConnecting = false;
 
-    try {
-      eventSource = new EventSource('/api/notifications/stream');
+    const connectSSE = () => {
+      if (isConnecting || !user) return;
 
-      eventSource.onopen = () => {
-        console.log('SSE connection opened');
-      };
+      isConnecting = true;
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('SSE message received:', data);
+      try {
+        eventSource = new EventSource('/api/notifications/stream', {
+          withCredentials: true
+        });
 
-          if (data.type === 'direct_message') {
-            fetchUnreadCount();
+        eventSource.onopen = () => {
+          console.log("SSE connection opened");
+          isConnecting = false;
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log("SSE message received:", data);
+
+            if (data.type === 'direct_message') {
+              setUnreadDirectMessages(prev => prev + 1);
+            }
+          } catch (error) {
+            console.error('Failed to parse SSE data:', error);
           }
-        } catch (err) {
-          console.error('Error parsing SSE message:', err);
-        }
-      };
+        };
 
-      eventSource.onerror = (error) => {
-        console.error('SSE connection error:', error);
-      };
-    } catch (error) {
-      console.error('Error creating SSE connection:', error);
-    }
+        eventSource.onerror = (error) => {
+          console.error("SSE connection error:", error);
+          isConnecting = false;
+
+          if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+            eventSource.close();
+          }
+          eventSource = null;
+
+          // Only reconnect if user is still authenticated and no pending reconnection
+          if (user && !reconnectTimeout) {
+            reconnectTimeout = setTimeout(() => {
+              reconnectTimeout = null;
+              connectSSE();
+            }, 5000);
+          }
+        };
+      } catch (error) {
+        console.error("Failed to create SSE connection:", error);
+        isConnecting = false;
+      }
+    };
+
+    // Delay connection to ensure authentication is complete
+    const connectionDelay = setTimeout(() => {
+      connectSSE();
+    }, 1500);
 
     return () => {
+      clearTimeout(connectionDelay);
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
       if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
         eventSource.close();
       }
+      eventSource = null;
+      isConnecting = false;
     };
-  }, []);
+  }, [user]);
 
   // Reset unread count when visiting direct messages page
   useEffect(() => {

@@ -203,17 +203,27 @@ export const useNotifications = () => {
 
     let eventSource: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout | null = null;
+    let isConnecting = false;
     
     const connect = () => {
+      if (isConnecting || !user) return;
+      
+      isConnecting = true;
+      
       try {
         eventSource = new EventSource('/api/notifications/stream', {
           withCredentials: true
         });
 
+        eventSource.onopen = () => {
+          console.log('Notification stream connected');
+          isConnecting = false;
+        };
+
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            if (data.type === 'notification') {
+            if (data.type === 'notification' && data.data) {
               queryClient.setQueryData(['/api/notifications'], (old: any[] = []) => {
                 return [data.data, ...old];
               });
@@ -231,34 +241,43 @@ export const useNotifications = () => {
 
         eventSource.onerror = (error) => {
           console.error('Notification stream error:', error);
-          if (eventSource) {
-            eventSource.close();
-            eventSource = null;
-          }
+          isConnecting = false;
           
-          // Reconnect after 5 seconds if user is still authenticated
-          if (user) {
-            reconnectTimeout = setTimeout(connect, 5000);
+          if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+            eventSource.close();
           }
-        };
-
-        eventSource.onopen = () => {
-          console.log('Notification stream connected');
+          eventSource = null;
+          
+          // Only reconnect if user is still authenticated and no pending reconnection
+          if (user && !reconnectTimeout) {
+            reconnectTimeout = setTimeout(() => {
+              reconnectTimeout = null;
+              connect();
+            }, 5000);
+          }
         };
       } catch (error) {
         console.error('Failed to create SSE connection:', error);
+        isConnecting = false;
       }
     };
 
-    connect();
+    // Delay connection to ensure authentication is complete
+    const connectionDelay = setTimeout(() => {
+      connect();
+    }, 2000);
 
     return () => {
+      clearTimeout(connectionDelay);
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
       }
-      if (eventSource) {
+      if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
         eventSource.close();
       }
+      eventSource = null;
+      isConnecting = false;
     };
   }, [user, toast]);
 };
