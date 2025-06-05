@@ -941,9 +941,9 @@ export function registerRoutes(app: Express): Server {
       const { accept } = req.body;
 
       const [invitation] = await db
-        .update(```text
-projectMembers)
-        .set({          invitationStatus: accept ? "accepted" : "declined",
+        .update(projectMembers)
+        .set({
+          invitationStatus: accept ? "accepted" : "declined",
           joinedAt: accept ? new Date() : null
         })
         .where(and(
