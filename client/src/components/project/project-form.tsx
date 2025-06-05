@@ -112,7 +112,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
     const isPlanComplete = 
       watchedValues.planName &&
       watchedValues.deliverables?.length > 0 &&
-      watchedValues.deliverables.every(d => d.name && d.startDate && d.endDate);
+      watchedValues.deliverables.every(d => d.name?.trim() && d.startDate && d.endDate);
     setPlanCompleted(!!isPlanComplete);
   }, [watchedValues.planName, watchedValues.deliverables]);
 
