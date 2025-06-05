@@ -941,7 +941,8 @@ export function registerRoutes(app: Express): Server {
       const { accept } = req.body;
 
       const [invitation] = await db
-        .update(projectMembers)
+        .update(```text
+projectMembers)
         .set({          invitationStatus: accept ? "accepted" : "declined",
           joinedAt: accept ? new Date() : null
         })
@@ -1910,7 +1911,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       if (endDate) {
-        parsedEndDate = new Date(endDate);
+        parsedDate = new Date(endDate);
         if (isNaN(parsedEndDate.getTime())) {
           return res.status(400).json({ error: "Invalid end date format" });
         }
@@ -2691,20 +2692,20 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const result = await db
-        .select({ count: sql<number>`count(*)` })
+      const userId = req.user!.id;
+      const unreadCount = await db
+        .select({ count: count() })
         .from(directMessages)
         .where(
           and(
-            eq(directMessages.receiverId, req.user!.id),
+            eq(directMessages.receiverId, userId),
             eq(directMessages.read, false)
           )
         );
 
-      const count = result[0]?.count || 0;
-      res.json({ count });
+      res.json({ count: unreadCount[0]?.count || 0 });
     } catch (error) {
-      console.error("Error fetching unread messages count:", error);
+      console.error("Error fetching unread count:", error);
       res.status(500).json({ error: "Failed to fetch unread count" });
     }
   });
