@@ -55,14 +55,15 @@ export function NotificationsDropdown() {
   const setupEventSource = useCallback(() => {
     if (!user) return null;
 
+    console.log("Setting up SSE connection for notifications...");
     const eventSource = new EventSource("/api/notifications/stream", {
       withCredentials: true
     });
 
     eventSource.onopen = () => {
-      console.log("SSE connection opened");
+      console.log("SSE connection opened for notifications");
       setIsConnected(true);
-      setRetryCount(0); // Reset retry count on successful connection
+      setRetryCount(0);
     };
 
     eventSource.onmessage = (event) => {

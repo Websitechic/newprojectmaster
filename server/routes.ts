@@ -26,7 +26,7 @@ import {
   leaveApplications,
   directMessages
 } from "@db/schema";
-import { eq, and, desc, inArray, asc, isNotNull, or } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull, or, count } from "drizzle-orm";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {

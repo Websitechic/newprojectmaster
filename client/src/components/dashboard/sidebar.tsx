@@ -53,11 +53,17 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   // Fetch initial unread count
   useEffect(() => {
     const fetchUnreadCount = async () => {
+      if (!user) return;
+      
       try {
-        const response = await fetch("/api/direct-messages/unread-count");
+        const response = await fetch("/api/direct-messages/unread-count", {
+          credentials: "include"
+        });
         if (response.ok) {
           const data = await response.json();
           setUnreadDirectMessages(data.count || 0);
+        } else if (response.status === 401) {
+          console.log("Not authenticated for unread count");
         }
       } catch (error) {
         console.error("Error fetching unread count:", error);
@@ -65,29 +71,57 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     };
 
     fetchUnreadCount();
-  }, []);
+  }, [user]);
 
   // Listen for real-time message updates
   useEffect(() => {
-    const eventSource = new EventSource("/api/notifications/stream");
+    if (!user) return;
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "direct_message") {
-          const message = data.data;
-          // Only increment if message is not from current user
-          if (message.senderId !== user?.id) {
-            setUnreadDirectMessages(prev => prev + 1);
+    let eventSource: EventSource | null = null;
+    let retryTimeout: NodeJS.Timeout | null = null;
+
+    const setupSSE = () => {
+      eventSource = new EventSource("/api/notifications/stream", {
+        withCredentials: true
+      });
+
+      eventSource.onopen = () => {
+        console.log("SSE connection opened for sidebar");
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "direct_message") {
+            const message = data.data;
+            // Only increment if message is not from current user
+            if (message.senderId !== user?.id) {
+              setUnreadDirectMessages(prev => prev + 1);
+            }
           }
+        } catch (error) {
+          console.error("Error parsing SSE message:", error);
         }
-      } catch (error) {
-        console.error("Error parsing SSE message:", error);
-      }
+      };
+
+      eventSource.onerror = (error) => {
+        console.log("SSE error in sidebar:", error);
+        eventSource?.close();
+        
+        // Retry after 5 seconds if user is still authenticated
+        if (user) {
+          retryTimeout = setTimeout(setupSSE, 5000);
+        }
+      };
     };
 
+    setupSSE();
+
     return () => {
-      eventSource.close();
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+      eventSource?.close();
     };
   }, [user?.id]);
 
