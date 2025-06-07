@@ -14,6 +14,7 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"client" | "project_manager" | "staff">("staff");
+  const [specialization, setSpecialization] = useState("");
   const [breakOneTime, setBreakOneTime] = useState("");
   const [breakTwoTime, setBreakTwoTime] = useState("");
   const [resetMode, setResetMode] = useState(false);
@@ -27,6 +28,16 @@ export default function AuthPage() {
       if (isLogin) {
         await loginMutation.mutateAsync({ username, password });
       } else {
+        // Validate specialization for staff users
+        if (role === "staff" && !specialization) {
+          toast({
+            title: "Error",
+            description: "Please select a specialization",
+            variant: "destructive",
+          });
+          return;
+        }
+
         // Validate break times for non-client users
         if (role !== "client") {
           if (!breakOneTime || !breakTwoTime) {
@@ -59,6 +70,7 @@ export default function AuthPage() {
           name,
           email,
           role,
+          specialization: role === "staff" ? specialization : undefined,
           breakOneTime: role !== "client" ? breakOneTime : undefined,
           breakTwoTime: role !== "client" ? breakTwoTime : undefined
         });
@@ -183,6 +195,28 @@ export default function AuthPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {role === "staff" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="specialization">Specialization</Label>
+                    <Select value={specialization} onValueChange={setSpecialization}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your specialization" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="product_owner">Product Owner</SelectItem>
+                        <SelectItem value="product_manager">Product Manager</SelectItem>
+                        <SelectItem value="automation">Automation</SelectItem>
+                        <SelectItem value="copywriting">Copy Writing</SelectItem>
+                        <SelectItem value="design">Design</SelectItem>
+                        <SelectItem value="media_buying">Media Buying</SelectItem>
+                        <SelectItem value="development">Development</SelectItem>
+                        <SelectItem value="community_manager">Community Manager</SelectItem>
+                        <SelectItem value="operations_manager">Operations Manager</SelectItem>
+                        <SelectItem value="technical_support">Technical Support</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {role !== "client" && (
                   <>
                     <div className="space-y-2">

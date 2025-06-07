@@ -10,12 +10,16 @@ export const UserRole = {
 } as const;
 
 export const UserSpecialization = {
-  DEVELOPER: "developer",
-  DESIGNER: "designer",
-  COPYWRITER: "copywriter",
-  MEDIA_BUYER: "media_buyer",
-  AUTOMATION_EXPERT: "automation_expert",
-  MARKETING_SPECIALIST: "marketing_specialist",
+  PRODUCT_OWNER: "product_owner",
+  PRODUCT_MANAGER: "product_manager",
+  AUTOMATION: "automation",
+  COPYWRITING: "copywriting",
+  DESIGN: "design",
+  MEDIA_BUYING: "media_buying",
+  DEVELOPMENT: "development",
+  COMMUNITY_MANAGER: "community_manager",
+  OPERATIONS_MANAGER: "operations_manager",
+  TECHNICAL_SUPPORT: "technical_support",
 } as const;
 
 export const WorkStatus = {
