@@ -100,10 +100,10 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   // Check if project details tab is completed
   useEffect(() => {
     const isDetailsComplete = 
-      watchedValues.name &&
-      watchedValues.category &&
-      watchedValues.startDate &&
-      watchedValues.endDate;
+      watchedValues.name?.trim() &&
+      watchedValues.category?.trim() &&
+      watchedValues.startDate?.trim() &&
+      watchedValues.endDate?.trim();
     setDetailsCompleted(!!isDetailsComplete);
   }, [watchedValues.name, watchedValues.category, watchedValues.startDate, watchedValues.endDate]);
 
@@ -246,15 +246,31 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
     detailsCompleted,
     planCompleted,
     canCreateProject,
-    planName: watchedValues.planName,
-    deliverables: watchedValues.deliverables?.map(d => ({
-      name: d.name,
-      startDate: d.startDate,
-      endDate: d.endDate,
-      hasName: !!d.name?.trim(),
-      hasStartDate: !!d.startDate?.trim(),
-      hasEndDate: !!d.endDate?.trim()
-    }))
+    projectDetails: {
+      name: watchedValues.name,
+      category: watchedValues.category,
+      startDate: watchedValues.startDate,
+      endDate: watchedValues.endDate,
+      hasName: !!watchedValues.name?.trim(),
+      hasCategory: !!watchedValues.category?.trim(),
+      hasStartDate: !!watchedValues.startDate?.trim(),
+      hasEndDate: !!watchedValues.endDate?.trim()
+    },
+    projectPlan: {
+      planName: watchedValues.planName,
+      hasPlanName: !!watchedValues.planName?.trim(),
+      deliverableCount: watchedValues.deliverables?.length || 0,
+      deliverables: watchedValues.deliverables?.map((d, i) => ({
+        index: i,
+        name: d.name,
+        startDate: d.startDate,
+        endDate: d.endDate,
+        hasName: !!d.name?.trim(),
+        hasStartDate: !!d.startDate?.trim(),
+        hasEndDate: !!d.endDate?.trim(),
+        isValid: !!(d.name?.trim() && d.startDate?.trim() && d.endDate?.trim())
+      }))
+    }
   });
 
   return (
