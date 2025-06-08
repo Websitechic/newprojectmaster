@@ -361,15 +361,20 @@ export function registerRoutes(app: Express): Server {
           // Calculate total hours spent (including previous sessions)
           const totalHoursSpent = ((task.timeSpent || 0) + (currentSessionHours * 3600)) / 3600;
 
+          // Calculate remaining hours
+          const remainingHours = (task.workingHours || 0) - totalHoursSpent;
+          const remainingHoursRounded = Math.ceil(remainingHours);
+
           return {
             staffId: staff.id,
             taskId: task.id,
             taskTitle: task.title,
             projectId: task.projectId,
             projectName: task.projectName,
-            assignedHours: task.workingHours || 0,
+            assignedHours: task.workingHours,
             totalHoursSpent: Math.round(totalHoursSpent * 100) / 100,
             currentSessionHours: Math.round(currentSessionHours * 100) / 100,
+            remainingHours: remainingHoursRounded,
             timerStartTime: task.timerStartTime,
             isTimerRunning: task.isTimerRunning
           };
@@ -938,7 +943,7 @@ export function registerRoutes(app: Express): Server {
           referenceId: projectId,
           referenceType: "project",
           createdAt: new Date(),
-        })
+                })
         .returning();
 
       // Send notification through SSE if user is connected
@@ -1902,7 +1907,8 @@ export function registerRoutes(app: Express): Server {
       }
 
       const [updatedUser] = await db.update(users)
-        .set({ 
+        .set```tool_code
+({ 
           status,
           lastActive: new Date() 
         })

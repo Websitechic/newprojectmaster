@@ -77,6 +77,7 @@ interface StaffMember {
     assignedHours: number;
     totalHoursSpent: number;
     currentSessionHours: number;
+    remainingHours: number;
     timerStartTime: string;
     isTimerRunning: boolean;
   } | null;
@@ -377,7 +378,7 @@ export default function StaffReport() {
                       <TableHead>Current Task</TableHead>
                       <TableHead className="text-center">Assigned Hours</TableHead>
                       <TableHead className="text-center">Total Hours Spent</TableHead>
-                      <TableHead className="text-center">Current Session</TableHead>
+                      <TableHead className="text-center">Remaining Time</TableHead>
                       <TableHead className="text-right">Timer Started</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -429,8 +430,8 @@ export default function StaffReport() {
                         </TableCell>
                         <TableCell className="text-center">
                           {staff.engagedTask ? (
-                            <div className="font-medium text-green-700">
-                              {staff.engagedTask.currentSessionHours.toFixed(2)} hrs
+                            <div className={`font-medium ${staff.engagedTask.remainingHours <= 1 ? 'text-red-700' : 'text-blue-700'}`}>
+                              {staff.engagedTask.remainingHours} hrs
                             </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">N/A</span>
