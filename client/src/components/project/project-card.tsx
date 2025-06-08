@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Video, Trash2, Edit } from "lucide-react";
+import { Video, Trash2, Edit, Calendar, User, Users } from "lucide-react";
 import type { Project } from "@db/schema";
 import { VideoCall } from "@/components/video/video-call";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -28,12 +28,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 interface ProjectCardProps {
   project: Project;
+  handleClick: () => void;
 }
 
-export function ProjectCard({ project }: ProjectCardProps) {
+export function ProjectCard({ project, handleClick }: ProjectCardProps) {
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -42,7 +44,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const queryClient = useQueryClient();
 
   const isProjectManager = user?.role === 'project_manager';
-  
+
   // Debug logging
   console.log('User role:', user?.role, 'Is PM:', isProjectManager);
 
@@ -113,132 +115,70 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <>
-      <Card onClick={handleCardClick} className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col min-h-[160px]">
-        <CardHeader className="pb-0 pt-2 px-3 flex-shrink-0">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 mr-1.5 min-w-0">
-              <h3 className="font-semibold text-base truncate" title={project.name}>{project.name}</h3>
-              <p className="text-xs text-muted-foreground whitespace-nowrap text-ellipsis overflow-hidden">
-                {formatDate(project.startDate)} - {formatDate(project.endDate)}
-              </p>
-            </div>
-            <div className="flex items-center gap-0.5 flex-shrink-0">
-              {isProjectManager && (
-                <>
-                  <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleEditClick}
-                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 h-6 w-6 p-0"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>Edit Project</DialogTitle>
-                      </DialogHeader>
-                      <ProjectForm 
-                        project={project} 
-                        onSuccess={() => setIsEditDialogOpen(false)} 
-                      />
-                    </DialogContent>
-                  </Dialog>
-                  
-                  <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleDeleteClick}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 h-6 w-6 p-0"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </AlertDialogTrigger>
-                  <AlertDialogContent className="max-w-md">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="text-red-600">Delete Project</AlertDialogTitle>
-                      <AlertDialogDescription className="space-y-2">
-                        <p className="font-medium">
-                          Are you sure you want to delete the project "{project.name}"?
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          This action cannot be undone. This will permanently delete:
-                        </p>
-                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                          <li>All project tasks and their progress</li>
-                          <li>All messages and communications</li>
-                          <li>Team member assignments</li>
-                          <li>Project resources and files</li>
-                        </ul>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="gap-2">
-                      <AlertDialogCancel className="bg-gray-100 hover:bg-gray-200">
-                        Cancel
-                      </AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={() => deleteProject.mutate()}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                        disabled={deleteProject.isPending}
-                      >
-                        {deleteProject.isPending ? (
-                          <>
-                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                            Deleting...
-                          </>
-                        ) : (
-                          "Delete Project"
-                        )}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                  </AlertDialog>
-                </>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleVideoClick}
-                className="h-6 w-6 p-0"
-              >
-                <Video className="h-3 w-3" />
-              </Button>
-              <Badge
-                variant="secondary"
-                className={`${statusColors[project.status as keyof typeof statusColors] || "bg-gray-500"} text-[0.65rem] px-1 py-0 h-4`}
-              >
-                {project.status}
-              </Badge>
-            </div>
+    <Card className="h-full hover:shadow-lg transition-all duration-200 cursor-pointer border border-gray-200 rounded-xl bg-white" onClick={handleClick}>
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">{project.name}</CardTitle>
+            <p className="text-sm text-gray-500 mt-1 capitalize">
+              {project.category?.replace(/_/g, ' ')}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="px-3 py-2 flex-grow flex flex-col justify-center">
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-[0.65rem]">
-              <span>Progress</span>
-              <span>{project.progress || 0}%</span>
-            </div>
-            <Progress value={project.progress || 0} className="h-1" />
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between p-2 pt-0 pb-2 flex-shrink-0 items-center">
-          <div className="flex -space-x-1 items-center">
-            <Avatar className="h-5 w-5 border border-background">
-              <AvatarFallback className="text-[0.65rem]">JD</AvatarFallback>
-            </Avatar>
-            <Avatar className="h-5 w-5 border border-background">
-              <AvatarFallback className="text-[0.65rem]">AB</AvatarFallback>
-            </Avatar>
-          </div>
-          <Badge variant="outline" className="ml-auto text-[0.65rem] px-1 py-0 h-4">
-            {formatDate(project.updatedAt)}
+          <Badge 
+            variant={project.status === "completed" ? "default" : "secondary"}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-medium",
+              project.status === "completed" 
+                ? "bg-green-100 text-green-700"
+                : project.status === "in_progress"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-gray-100 text-gray-700"
+            )}
+          >
+            {project.status === "in_progress" ? "Active" : project.status}
           </Badge>
-        </CardFooter>
-      </Card>
+        </div>
+      </CardHeader>
+
+      <CardContent className="pt-0">
+        {project.description && (
+          <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+            {project.description}
+          </p>
+        )}
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm">
+            <div className="w-5 h-5 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-gray-400" />
+            </div>
+            <span className="text-gray-600">
+              {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+            </span>
+          </div>
+
+          {project.client && (
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-5 h-5 flex items-center justify-center">
+                <User className="h-4 w-4 text-gray-400" />
+              </div>
+              <span className="text-gray-600">{project.client.name}</span>
+            </div>
+          )}
+
+          {project.teamMembers && project.teamMembers.length > 0 && (
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-5 h-5 flex items-center justify-center">
+                <Users className="h-4 w-4 text-gray-400" />
+              </div>
+              <span className="text-gray-600">
+                {project.teamMembers.length} team member{project.teamMembers.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
 
       {showVideoCall && (
         <VideoCall

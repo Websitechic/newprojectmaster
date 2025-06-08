@@ -9,6 +9,11 @@ import {
   Settings,
   LogOut,
   Calendar,
+  Package,
+  BarChart3,
+  CreditCard,
+  HelpCircle,
+  Shield,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -26,21 +31,22 @@ interface SidebarItemProps {
 function SidebarItem({ icon, label, href, active, badge }: SidebarItemProps) {
   return (
     <Link href={href}>
-      <Button
-        variant={active ? "default" : "ghost"}
+      <div
         className={cn(
-          "w-full justify-start gap-3 relative",
-          active && "bg-primary text-primary-foreground"
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative cursor-pointer",
+          active 
+            ? "bg-purple-100 text-purple-700 shadow-sm" 
+            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
         )}
       >
-        {icon}
-        <span>{label}</span>
+        <div className={cn("w-5 h-5", active ? "text-purple-700" : "text-gray-500")}>
+          {icon}
+        </div>
+        <span className="flex-1">{label}</span>
         {badge && badge > 0 && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <div className="w-2 h-2 bg-red-500 rounded-full" />
-          </div>
+          <div className="w-2 h-2 bg-red-500 rounded-full" />
         )}
-      </Button>
+      </div>
     </Link>
   );
 }
@@ -209,42 +215,114 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   ];
 
   return (
-    <div className="h-screen w-64 bg-sidebar border-r px-3 py-6 flex flex-col">
-      <div className="mb-6 px-3">
-        <h1 className="text-xl font-bold">ProjectHub</h1>
+    <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col">
+      {/* Logo Section */}
+      <div className="px-6 py-6 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-lg">W</span>
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">Websitechic</h1>
+            <p className="text-xs text-gray-500 uppercase tracking-wide">Digital Agency</p>
+          </div>
+        </div>
       </div>
 
-      <nav className="space-y-1 flex-1">
-        {menuItems.map((item) => (
-          <SidebarItem
-            key={item.href}
-            {...item}
-            active={currentPath === item.href}
-          />
-        ))}
+      {/* Navigation */}
+      <nav className="flex-1 px-4 py-6">
+        <div className="space-y-1">
+          {menuItems.map((item) => (
+            <SidebarItem
+              key={item.href}
+              {...item}
+              active={currentPath === item.href}
+            />
+          ))}
+        </div>
+
+        {/* Tools Section */}
+        <div className="mt-8">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-3">
+            TOOLS
+          </p>
+          <div className="space-y-1">
+            <SidebarItem
+              icon={<Package size={20} />}
+              label="Analytics"
+              href="/dashboard/analytics"
+              active={currentPath === "/dashboard/analytics"}
+            />
+            <SidebarItem
+              icon={<BarChart3 size={20} />}
+              label="Invoice"
+              href="/dashboard/invoice"
+              active={currentPath === "/dashboard/invoice"}
+            />
+            <SidebarItem
+              icon={<CreditCard size={20} />}
+              label="Discount"
+              href="/dashboard/discount"
+              active={currentPath === "/dashboard/discount"}
+            />
+          </div>
+        </div>
+
+        {/* Settings Section */}
+        <div className="mt-8">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-3">
+            SETTINGS
+          </p>
+          <div className="space-y-1">
+            <SidebarItem
+              icon={<Settings size={20} />}
+              label="Settings"
+              href="/dashboard/settings"
+              active={currentPath === "/dashboard/settings"}
+            />
+            <SidebarItem
+              icon={<Shield size={20} />}
+              label="Security"
+              href="/dashboard/security"
+              active={currentPath === "/dashboard/security"}
+            />
+            <SidebarItem
+              icon={<HelpCircle size={20} />}
+              label="Help"
+              href="/dashboard/help"
+              active={currentPath === "/dashboard/help"}
+            />
+          </div>
+        </div>
       </nav>
 
-      <div className="border-t pt-4">
-        <div className="px-3 mb-2">
-          <p className="text-sm text-muted-foreground">{user?.name}</p>
-          <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+      {/* User Profile */}
+      <div className="px-4 py-4 border-t border-gray-100">
+        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
+          <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+            <span className="text-white text-sm font-medium">
+              {user?.name?.charAt(0) || 'U'}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
+            <p className="text-xs text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</p>
+          </div>
         </div>
         <Button
           variant="ghost"
-          className="w-full justify-start"
+          className="w-full justify-start mt-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50"
           onClick={async () => {
             try {
               await logout();
-              // Use direct window location for more reliable redirection
               window.location.href = '/auth';
             } catch (error) {
               console.error("Logout failed:", error);
-              // Still try to redirect even if logout API call fails
               window.location.href = '/auth';
             }
           }}
         >
-          <LogOut size={20} className="mr-3" />
+          <LogOut size={16} className="mr-3" />
           Logout
         </Button>
       </div>

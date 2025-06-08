@@ -135,44 +135,44 @@ export default function Projects() {
     },
   });
 
+    const handleCreateSuccess = () => {
+        setIsDialogOpen(false);
+        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+        toast({
+            title: "Success",
+            description: "Project created successfully.",
+        });
+    };
+
   return (
     <div className="flex h-screen">
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <div className="flex-1 overflow-auto p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Projects</h1>
-            <div className="flex gap-4">
-              <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
+                <p className="text-gray-600 mt-1">Manage and track your digital agency projects</p>
+              </div>
               {user?.role === "project_manager" && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" />
-                      New Project
+                    <Button className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-4 py-2 font-medium">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Project
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Create New Project</DialogTitle>
                     </DialogHeader>
-                    <ProjectForm onSuccess={() => setIsDialogOpen(false)} />
+                    <ProjectForm onSuccess={handleCreateSuccess} />
                   </DialogContent>
                 </Dialog>
               )}
             </div>
-          </div>
 
           {Object.entries(projectsByCategory).length > 0 ? (
             <div className="space-y-6">
@@ -201,7 +201,7 @@ export default function Projects() {
                           <div 
                             key={project.id} 
                             className="flex items-center justify-between p-3 bg-card hover:bg-muted/50 border rounded-lg cursor-pointer transition-colors"
-                            
+
                           >
                             <div className="flex items-center space-x-4 flex-1 min-w-0" onClick={() => window.location.href = `/dashboard/projects/${project.id}`}>
                               <div className="flex-1 min-w-0">
