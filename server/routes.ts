@@ -1907,8 +1907,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       const [updatedUser] = await db.update(users)
-        .set```tool_code
-({ 
+        .set({ 
           status,
           lastActive: new Date() 
         })
