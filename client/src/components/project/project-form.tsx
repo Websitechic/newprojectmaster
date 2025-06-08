@@ -32,8 +32,8 @@ import type { Project } from "@db/schema";
 const deliverableSchema = z.object({
   name: z.string().min(1, "Deliverable name is required"),
   description: z.string().optional(),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
+  startDate: z.string().nonempty("Start date is required"),
+  endDate: z.string().nonempty("End date is required"),
   assigneeId: z.string().optional(),
 });
 
@@ -44,8 +44,8 @@ const projectSchema = z.object({
   category: z.string().min(1, "Category is required"),
   clientId: z.string().optional(),
   teamMembers: z.array(z.string()).optional(),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
+  startDate: z.string().nonempty("Start date is required"),
+  endDate: z.string().nonempty("End date is required"),
   
   // Project plan details
   planName: z.string().min(1, "Plan name is required"),
@@ -68,6 +68,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
+    mode: "onChange",
     defaultValues: {
       name: "",
       description: "",
@@ -101,9 +102,9 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   useEffect(() => {
     const isDetailsComplete = 
       watchedValues.name?.trim() &&
-      watchedValues.category?.trim() &&
-      watchedValues.startDate?.trim() &&
-      watchedValues.endDate?.trim();
+      watchedValues.category &&
+      watchedValues.startDate &&
+      watchedValues.endDate;
     setDetailsCompleted(!!isDetailsComplete);
   }, [watchedValues.name, watchedValues.category, watchedValues.startDate, watchedValues.endDate]);
 
@@ -114,8 +115,8 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       watchedValues.deliverables?.length > 0 &&
       watchedValues.deliverables.every(d => 
         d.name?.trim() && 
-        d.startDate?.trim() && 
-        d.endDate?.trim()
+        d.startDate && 
+        d.endDate
       );
     setPlanCompleted(!!isPlanComplete);
   }, [watchedValues.planName, watchedValues.deliverables]);
@@ -139,7 +140,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         name: data.name,
         description: data.description || "",
         category: data.category,
-        clientId: data.clientId && data.clientId !== "" && data.clientId !== "none" ? parseInt(data.clientId) : null,
+        clientId: data.clientId && data.clientId !== "" && data.clientId !== "none" ? parseInt(data.clientId) : 1, // Use a default client ID if none selected
         teamMembers: data.teamMembers?.map(id => parseInt(id)) || [],
         startDate: data.startDate,
         endDate: data.endDate,
@@ -241,36 +242,11 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
   const canCreateProject = detailsCompleted && planCompleted && !project;
 
-  // Debug logging
-  console.log('Form validation status:', {
+  // Debug logging (simplified)
+  console.log('Form validation:', {
     detailsCompleted,
     planCompleted,
-    canCreateProject,
-    projectDetails: {
-      name: watchedValues.name,
-      category: watchedValues.category,
-      startDate: watchedValues.startDate,
-      endDate: watchedValues.endDate,
-      hasName: !!watchedValues.name?.trim(),
-      hasCategory: !!watchedValues.category?.trim(),
-      hasStartDate: !!watchedValues.startDate?.trim(),
-      hasEndDate: !!watchedValues.endDate?.trim()
-    },
-    projectPlan: {
-      planName: watchedValues.planName,
-      hasPlanName: !!watchedValues.planName?.trim(),
-      deliverableCount: watchedValues.deliverables?.length || 0,
-      deliverables: watchedValues.deliverables?.map((d, i) => ({
-        index: i,
-        name: d.name,
-        startDate: d.startDate,
-        endDate: d.endDate,
-        hasName: !!d.name?.trim(),
-        hasStartDate: !!d.startDate?.trim(),
-        hasEndDate: !!d.endDate?.trim(),
-        isValid: !!(d.name?.trim() && d.startDate?.trim() && d.endDate?.trim())
-      }))
-    }
+    canCreateProject
   });
 
   return (

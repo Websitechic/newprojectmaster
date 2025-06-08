@@ -803,28 +803,23 @@ export function registerRoutes(app: Express): Server {
 
       let newProject;
 
-      if (clientId) {
-        // Create project with existing client
-        [newProject] = await db
-          .insert(projects)
-          .values({
-            name,
-            description,
-            type,
-            category,
-            clientId,
-            managerId: req.user!.id,
-            status: "pending",
-            startDate: parsedStartDate,
-            endDate: parsedEndDate,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning();
-      } else {
-        // If the client ID is not present, return an error.
-        return res.status(400).json({ error: "Client ID is required" });
-      }
+      // Create project with or without client
+      [newProject] = await db
+        .insert(projects)
+        .values({
+          name,
+          description,
+          type,
+          category,
+          clientId: clientId || null,
+          managerId: req.user!.id,
+          status: "pending",
+          startDate: parsedStartDate,
+          endDate: parsedEndDate,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
 
       // If team members were specified in the request, invite them and send notifications
       if (teamMembers && Array.isArray(teamMembers)) {
