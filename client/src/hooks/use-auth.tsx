@@ -31,7 +31,7 @@ type LoginData = {
 type RegisterData = LoginData & {
   name: string;
   email: string;
-  role: "client" | "project_manager" | "staff";
+  role: "client" | "project_manager" | "staff" | "intern";
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);

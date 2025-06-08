@@ -47,7 +47,7 @@ const registerSchema = z.object({
   password: z.string().min(6),
   name: z.string(),
   email: z.string().email(),
-  role: z.enum(["client", "project_manager", "staff"]),
+  role: z.enum(["client", "project_manager", "staff", "intern"]),
   breakOneTime: z.string().optional(),
   breakTwoTime: z.string().optional(),
 });

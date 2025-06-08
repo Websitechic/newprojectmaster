@@ -13,7 +13,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"client" | "project_manager" | "staff">("staff");
+  const [role, setRole] = useState<"client" | "project_manager" | "staff" | "intern">("staff");
   const [specialization, setSpecialization] = useState("");
   const [breakOneTime, setBreakOneTime] = useState("");
   const [breakTwoTime, setBreakTwoTime] = useState("");
@@ -28,8 +28,8 @@ export default function AuthPage() {
       if (isLogin) {
         await loginMutation.mutateAsync({ username, password });
       } else {
-        // Validate specialization for staff users
-        if (role === "staff" && !specialization) {
+        // Validate specialization for staff and intern users
+        if ((role === "staff" || role === "intern") && !specialization) {
           toast({
             title: "Error",
             description: "Please select a specialization",
@@ -70,7 +70,7 @@ export default function AuthPage() {
           name,
           email,
           role,
-          specialization: role === "staff" ? specialization : undefined,
+          specialization: (role === "staff" || role === "intern") ? specialization : undefined,
           breakOneTime: role !== "client" ? breakOneTime : undefined,
           breakTwoTime: role !== "client" ? breakTwoTime : undefined
         });
@@ -184,18 +184,19 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={(value: "client" | "project_manager" | "staff") => setRole(value)}>
+                  <Select value={role} onValueChange={(value: "client" | "project_manager" | "staff" | "intern") => setRole(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="intern">Intern</SelectItem>
                       <SelectItem value="project_manager">Project Manager</SelectItem>
                       <SelectItem value="client">Client</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {role === "staff" && (
+                {(role === "staff" || role === "intern") && (
                   <div className="space-y-2">
                     <Label htmlFor="specialization">Specialization</Label>
                     <Select value={specialization} onValueChange={setSpecialization}>
