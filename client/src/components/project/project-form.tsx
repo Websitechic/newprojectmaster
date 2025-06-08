@@ -32,8 +32,8 @@ import type { Project } from "@db/schema";
 const deliverableSchema = z.object({
   name: z.string().min(1, "Deliverable name is required"),
   description: z.string().optional(),
-  startDate: z.string().nonempty("Start date is required"),
-  endDate: z.string().nonempty("End date is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
   assigneeId: z.string().optional(),
 });
 
@@ -110,20 +110,40 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
   // Check if project plan tab is completed
   useEffect(() => {
-    const hasPlanName = watchedValues.planName && watchedValues.planName.trim().length > 0;
-    const hasDeliverables = watchedValues.deliverables && watchedValues.deliverables.length > 0;
+    const hasPlanName = watchedValues.planName && typeof watchedValues.planName === 'string' && watchedValues.planName.trim().length > 0;
+    const hasDeliverables = Array.isArray(watchedValues.deliverables) && watchedValues.deliverables.length > 0;
     
     let deliverablesValid = false;
     if (hasDeliverables) {
-      deliverablesValid = watchedValues.deliverables.every(d => 
-        d.name && d.name.trim().length > 0 && 
-        d.startDate && d.startDate.trim().length > 0 && 
-        d.endDate && d.endDate.trim().length > 0
-      );
+      deliverablesValid = watchedValues.deliverables.every(d => {
+        const hasName = d.name && typeof d.name === 'string' && d.name.trim().length > 0;
+        const hasStartDate = d.startDate && typeof d.startDate === 'string' && d.startDate.trim().length > 0;
+        const hasEndDate = d.endDate && typeof d.endDate === 'string' && d.endDate.trim().length > 0;
+        return hasName && hasStartDate && hasEndDate;
+      });
     }
     
     const isPlanComplete = hasPlanName && hasDeliverables && deliverablesValid;
     setPlanCompleted(isPlanComplete);
+    
+    // Enhanced debug logging
+    console.log('Plan validation debug:', {
+      hasPlanName,
+      planNameValue: watchedValues.planName,
+      hasDeliverables,
+      deliverablesCount: watchedValues.deliverables?.length || 0,
+      deliverablesValid,
+      isPlanComplete,
+      deliverableDetails: watchedValues.deliverables?.map((d, i) => ({
+        index: i,
+        name: d.name,
+        nameValid: !!(d.name && typeof d.name === 'string' && d.name.trim().length > 0),
+        startDate: d.startDate,
+        startDateValid: !!(d.startDate && typeof d.startDate === 'string' && d.startDate.trim().length > 0),
+        endDate: d.endDate,
+        endDateValid: !!(d.endDate && typeof d.endDate === 'string' && d.endDate.trim().length > 0),
+      }))
+    });
   }, [watchedValues.planName, watchedValues.deliverables]);
 
   // Fetch clients for the dropdown
@@ -247,25 +267,21 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
   const canCreateProject = detailsCompleted && planCompleted && !project;
 
-  // Debug logging - detailed
-  console.log('Form validation detailed:', {
+  // Debug logging - comprehensive
+  console.log('Form validation comprehensive:', {
     detailsCompleted,
     planCompleted,
     canCreateProject,
-    planName: watchedValues.planName,
-    planNameTrimmed: watchedValues.planName?.trim(),
-    deliverableCount: watchedValues.deliverables?.length || 0,
-    deliverables: watchedValues.deliverables?.map((d, i) => ({
-      index: i,
-      name: d.name,
-      startDate: d.startDate,
-      endDate: d.endDate,
-      nameTrimmed: d.name?.trim(),
-      hasName: !!d.name?.trim(),
-      hasStartDate: !!d.startDate,
-      hasEndDate: !!d.endDate,
-      isValid: !!(d.name?.trim() && d.startDate && d.endDate)
-    }))
+    projectDetails: {
+      name: watchedValues.name,
+      category: watchedValues.category,
+      startDate: watchedValues.startDate,
+      endDate: watchedValues.endDate,
+    },
+    planDetails: {
+      planName: watchedValues.planName,
+      deliverableCount: watchedValues.deliverables?.length || 0,
+    }
   });
 
   return (
