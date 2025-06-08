@@ -110,15 +110,20 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
   // Check if project plan tab is completed
   useEffect(() => {
-    const isPlanComplete = 
-      watchedValues.planName?.trim() &&
-      watchedValues.deliverables?.length > 0 &&
-      watchedValues.deliverables.every(d => 
-        d.name?.trim() && 
-        d.startDate && 
-        d.endDate
+    const hasPlanName = watchedValues.planName && watchedValues.planName.trim().length > 0;
+    const hasDeliverables = watchedValues.deliverables && watchedValues.deliverables.length > 0;
+    
+    let deliverablesValid = false;
+    if (hasDeliverables) {
+      deliverablesValid = watchedValues.deliverables.every(d => 
+        d.name && d.name.trim().length > 0 && 
+        d.startDate && d.startDate.trim().length > 0 && 
+        d.endDate && d.endDate.trim().length > 0
       );
-    setPlanCompleted(!!isPlanComplete);
+    }
+    
+    const isPlanComplete = hasPlanName && hasDeliverables && deliverablesValid;
+    setPlanCompleted(isPlanComplete);
   }, [watchedValues.planName, watchedValues.deliverables]);
 
   // Fetch clients for the dropdown
@@ -242,11 +247,25 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
   const canCreateProject = detailsCompleted && planCompleted && !project;
 
-  // Debug logging (simplified)
-  console.log('Form validation:', {
+  // Debug logging - detailed
+  console.log('Form validation detailed:', {
     detailsCompleted,
     planCompleted,
-    canCreateProject
+    canCreateProject,
+    planName: watchedValues.planName,
+    planNameTrimmed: watchedValues.planName?.trim(),
+    deliverableCount: watchedValues.deliverables?.length || 0,
+    deliverables: watchedValues.deliverables?.map((d, i) => ({
+      index: i,
+      name: d.name,
+      startDate: d.startDate,
+      endDate: d.endDate,
+      nameTrimmed: d.name?.trim(),
+      hasName: !!d.name?.trim(),
+      hasStartDate: !!d.startDate,
+      hasEndDate: !!d.endDate,
+      isValid: !!(d.name?.trim() && d.startDate && d.endDate)
+    }))
   });
 
   return (
