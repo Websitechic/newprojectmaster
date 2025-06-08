@@ -110,9 +110,13 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   // Check if project plan tab is completed
   useEffect(() => {
     const isPlanComplete = 
-      watchedValues.planName &&
+      watchedValues.planName?.trim() &&
       watchedValues.deliverables?.length > 0 &&
-      watchedValues.deliverables.every(d => d.name?.trim() && d.startDate && d.endDate);
+      watchedValues.deliverables.every(d => 
+        d.name?.trim() && 
+        d.startDate?.trim() && 
+        d.endDate?.trim()
+      );
     setPlanCompleted(!!isPlanComplete);
   }, [watchedValues.planName, watchedValues.deliverables]);
 
@@ -236,6 +240,22 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   };
 
   const canCreateProject = detailsCompleted && planCompleted && !project;
+
+  // Debug logging
+  console.log('Form validation status:', {
+    detailsCompleted,
+    planCompleted,
+    canCreateProject,
+    planName: watchedValues.planName,
+    deliverables: watchedValues.deliverables?.map(d => ({
+      name: d.name,
+      startDate: d.startDate,
+      endDate: d.endDate,
+      hasName: !!d.name?.trim(),
+      hasStartDate: !!d.startDate?.trim(),
+      hasEndDate: !!d.endDate?.trim()
+    }))
+  });
 
   return (
     <Form {...form}>
