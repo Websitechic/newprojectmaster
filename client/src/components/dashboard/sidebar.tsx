@@ -9,11 +9,6 @@ import {
   Settings,
   LogOut,
   Calendar,
-  Package,
-  BarChart3,
-  CreditCard,
-  HelpCircle,
-  Shield,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -241,59 +236,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
           ))}
         </div>
 
-        {/* Tools Section */}
-        <div className="mt-8">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-3">
-            TOOLS
-          </p>
-          <div className="space-y-1">
-            <SidebarItem
-              icon={<Package size={20} />}
-              label="Analytics"
-              href="/dashboard/analytics"
-              active={currentPath === "/dashboard/analytics"}
-            />
-            <SidebarItem
-              icon={<BarChart3 size={20} />}
-              label="Invoice"
-              href="/dashboard/invoice"
-              active={currentPath === "/dashboard/invoice"}
-            />
-            <SidebarItem
-              icon={<CreditCard size={20} />}
-              label="Discount"
-              href="/dashboard/discount"
-              active={currentPath === "/dashboard/discount"}
-            />
-          </div>
-        </div>
-
-        {/* Settings Section */}
-        <div className="mt-8">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-3">
-            SETTINGS
-          </p>
-          <div className="space-y-1">
-            <SidebarItem
-              icon={<Settings size={20} />}
-              label="Settings"
-              href="/dashboard/settings"
-              active={currentPath === "/dashboard/settings"}
-            />
-            <SidebarItem
-              icon={<Shield size={20} />}
-              label="Security"
-              href="/dashboard/security"
-              active={currentPath === "/dashboard/security"}
-            />
-            <SidebarItem
-              icon={<HelpCircle size={20} />}
-              label="Help"
-              href="/dashboard/help"
-              active={currentPath === "/dashboard/help"}
-            />
-          </div>
-        </div>
+        
       </nav>
 
       {/* User Profile */}
