@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -31,7 +30,6 @@ import type { Project } from "@db/schema";
 
 const deliverableSchema = z.object({
   name: z.string().min(1, "Deliverable name is required"),
-  description: z.string().optional(),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
   assigneeId: z.string().optional(),
@@ -46,7 +44,7 @@ const projectSchema = z.object({
   teamMembers: z.array(z.string()).optional(),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
-  
+
   // Project plan details
   planName: z.string().min(1, "Plan name is required"),
   deliverables: z.array(deliverableSchema).min(1, "At least one deliverable is required"),
@@ -81,7 +79,6 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       deliverables: [
         {
           name: "",
-          description: "",
           startDate: "",
           endDate: "",
           assigneeId: "",
@@ -106,7 +103,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       !!(watchedValues.startDate && watchedValues.startDate.trim()) &&
       !!(watchedValues.endDate && watchedValues.endDate.trim());
     setDetailsCompleted(isDetailsComplete);
-    
+
     console.log('Details validation debug:', {
       name: `"${watchedValues.name}"`,
       nameValid: !!(watchedValues.name && watchedValues.name.trim()),
@@ -124,7 +121,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   useEffect(() => {
     const hasPlanName = !!(watchedValues.planName && watchedValues.planName.trim());
     const hasDeliverables = Array.isArray(watchedValues.deliverables) && watchedValues.deliverables.length > 0;
-    
+
     let deliverablesValid = false;
     if (hasDeliverables) {
       deliverablesValid = watchedValues.deliverables.every(d => {
@@ -134,10 +131,10 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         return hasName && hasStartDate && hasEndDate;
       });
     }
-    
+
     const isPlanComplete = hasPlanName && hasDeliverables && deliverablesValid;
     setPlanCompleted(isPlanComplete);
-    
+
     // Enhanced debug logging
     console.log('Plan validation debug:', {
       hasPlanName,
@@ -270,7 +267,6 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   const addDeliverable = () => {
     append({
       name: "",
-      description: "",
       startDate: "",
       endDate: "",
       assigneeId: "",
@@ -520,8 +516,6 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                       )}
                     />
 
-                    
-
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -590,7 +584,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
               >
                 Back to Details
               </Button>
-              
+
               <Button 
                 type="submit" 
                 disabled={!canCreateProject || saveProject.isPending}
