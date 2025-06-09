@@ -84,7 +84,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
           description: "",
           startDate: "",
           endDate: "",
-          assigneeId: "none",
+          assigneeId: "",
         },
       ],
     },
@@ -101,24 +101,36 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   // Check if project details tab is completed
   useEffect(() => {
     const isDetailsComplete = 
-      watchedValues.name?.trim() &&
-      watchedValues.category &&
-      watchedValues.startDate &&
-      watchedValues.endDate;
-    setDetailsCompleted(!!isDetailsComplete);
+      !!(watchedValues.name && watchedValues.name.trim()) &&
+      !!watchedValues.category &&
+      !!(watchedValues.startDate && watchedValues.startDate.trim()) &&
+      !!(watchedValues.endDate && watchedValues.endDate.trim());
+    setDetailsCompleted(isDetailsComplete);
+    
+    console.log('Details validation debug:', {
+      name: `"${watchedValues.name}"`,
+      nameValid: !!(watchedValues.name && watchedValues.name.trim()),
+      category: `"${watchedValues.category}"`,
+      categoryValid: !!watchedValues.category,
+      startDate: `"${watchedValues.startDate}"`,
+      startDateValid: !!(watchedValues.startDate && watchedValues.startDate.trim()),
+      endDate: `"${watchedValues.endDate}"`,
+      endDateValid: !!(watchedValues.endDate && watchedValues.endDate.trim()),
+      isDetailsComplete
+    });
   }, [watchedValues.name, watchedValues.category, watchedValues.startDate, watchedValues.endDate]);
 
   // Check if project plan tab is completed
   useEffect(() => {
-    const hasPlanName = watchedValues.planName && typeof watchedValues.planName === 'string' && watchedValues.planName.trim().length > 0;
+    const hasPlanName = !!(watchedValues.planName && watchedValues.planName.trim());
     const hasDeliverables = Array.isArray(watchedValues.deliverables) && watchedValues.deliverables.length > 0;
     
     let deliverablesValid = false;
     if (hasDeliverables) {
       deliverablesValid = watchedValues.deliverables.every(d => {
-        const hasName = d.name && typeof d.name === 'string' && d.name.trim().length > 0;
-        const hasStartDate = d.startDate && typeof d.startDate === 'string' && d.startDate.trim().length > 0;
-        const hasEndDate = d.endDate && typeof d.endDate === 'string' && d.endDate.trim().length > 0;
+        const hasName = !!(d.name && d.name.trim());
+        const hasStartDate = !!(d.startDate && d.startDate.trim());
+        const hasEndDate = !!(d.endDate && d.endDate.trim());
         return hasName && hasStartDate && hasEndDate;
       });
     }
@@ -129,19 +141,19 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
     // Enhanced debug logging
     console.log('Plan validation debug:', {
       hasPlanName,
-      planNameValue: watchedValues.planName,
+      planNameValue: `"${watchedValues.planName}"`,
       hasDeliverables,
       deliverablesCount: watchedValues.deliverables?.length || 0,
       deliverablesValid,
       isPlanComplete,
       deliverableDetails: watchedValues.deliverables?.map((d, i) => ({
         index: i,
-        name: d.name,
-        nameValid: !!(d.name && typeof d.name === 'string' && d.name.trim().length > 0),
-        startDate: d.startDate,
-        startDateValid: !!(d.startDate && typeof d.startDate === 'string' && d.startDate.trim().length > 0),
-        endDate: d.endDate,
-        endDateValid: !!(d.endDate && typeof d.endDate === 'string' && d.endDate.trim().length > 0),
+        name: `"${d.name}"`,
+        nameValid: !!(d.name && d.name.trim()),
+        startDate: `"${d.startDate}"`,
+        startDateValid: !!(d.startDate && d.startDate.trim()),
+        endDate: `"${d.endDate}"`,
+        endDateValid: !!(d.endDate && d.endDate.trim()),
       }))
     });
   }, [watchedValues.planName, watchedValues.deliverables]);
@@ -209,7 +221,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
           description: "",
           startDate: d.startDate,
           endDate: d.endDate,
-          assigneeId: d.assigneeId && d.assigneeId !== "none" ? parseInt(d.assigneeId) : null,
+          assigneeId: d.assigneeId && d.assigneeId.trim() && d.assigneeId !== "none" ? parseInt(d.assigneeId) : null,
         })),
       };
 
@@ -261,7 +273,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       description: "",
       startDate: "",
       endDate: "",
-      assigneeId: "none",
+      assigneeId: "",
     });
   };
 
