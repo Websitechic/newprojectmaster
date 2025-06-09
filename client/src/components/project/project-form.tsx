@@ -44,8 +44,8 @@ const projectSchema = z.object({
   category: z.string().min(1, "Category is required"),
   clientId: z.string().optional(),
   teamMembers: z.array(z.string()).optional(),
-  startDate: z.string().nonempty("Start date is required"),
-  endDate: z.string().nonempty("End date is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
   
   // Project plan details
   planName: z.string().min(1, "Plan name is required"),
