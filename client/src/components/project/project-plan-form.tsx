@@ -15,7 +15,6 @@ import type { ProjectPlan } from "@db/schema";
 
 const deliverableSchema = z.object({
   name: z.string().min(1, "Deliverable name is required"),
-  description: z.string().optional(),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
   assigneeId: z.string().optional(),
@@ -23,7 +22,6 @@ const deliverableSchema = z.object({
 
 const projectPlanSchema = z.object({
   name: z.string().min(1, "Plan name is required"),
-  description: z.string().optional(),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
   status: z.string().optional(),
@@ -46,14 +44,12 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
     resolver: zodResolver(projectPlanSchema),
     defaultValues: {
       name: "",
-      description: "",
       startDate: "",
       endDate: "",
       status: "draft",
       deliverables: [
         {
           name: "",
-          description: "",
           startDate: "",
           endDate: "",
           assigneeId: "none",
@@ -78,21 +74,18 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
     if (plan) {
       form.reset({
         name: plan.name || "",
-        description: plan.description || "",
         startDate: plan.startDate ? new Date(plan.startDate).toISOString().split('T')[0] : "",
         endDate: plan.endDate ? new Date(plan.endDate).toISOString().split('T')[0] : "",
         status: plan.status || "draft",
         deliverables: plan.deliverables && plan.deliverables.length > 0 
           ? plan.deliverables.map((d: any) => ({
               name: d.name || "",
-              description: d.description || "",
               startDate: d.startDate ? new Date(d.startDate).toISOString().split('T')[0] : "",
               endDate: d.endDate ? new Date(d.endDate).toISOString().split('T')[0] : "",
               assigneeId: d.assigneeId?.toString() || "none",
             }))
           : [{
               name: "",
-              description: "",
               startDate: "",
               endDate: "",
               assigneeId: "none",
@@ -105,13 +98,12 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
     mutationFn: async (data: ProjectPlanFormData) => {
       const formData = {
         name: data.name,
-        description: data.description || "",
         startDate: data.startDate,
         endDate: data.endDate,
         status: data.status || "draft",
-        deliverables: data.deliverables.map((d) => ({
+        deliverables: data.deliverables.map(d => ({
           name: d.name,
-          description: d.description || "",
+          description: "",
           startDate: d.startDate,
           endDate: d.endDate,
           assigneeId: d.assigneeId && d.assigneeId !== "none" ? parseInt(d.assigneeId) : null,
@@ -184,7 +176,6 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
   const addDeliverable = () => {
     append({
       name: "",
-      description: "",
       startDate: "",
       endDate: "",
       assigneeId: "none",
@@ -233,20 +224,6 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
             )}
           />
         </div>
-
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Enter plan description" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         <div className="grid grid-cols-2 gap-4">
           <FormField
@@ -313,20 +290,6 @@ export function ProjectPlanForm({ projectId, plan, onSuccess }: ProjectPlanFormP
                       <FormLabel>Deliverable Name</FormLabel>
                       <FormControl>
                         <Input placeholder="Enter deliverable name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name={`deliverables.${index}.description`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Enter deliverable description" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
