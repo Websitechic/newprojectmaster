@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -137,10 +136,16 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
           deliverables: data.deliverables,
         };
 
-        const planResponse = await fetch("/api/project-plans", {
+        const planResponse = await fetch(`/api/projects/${savedProject.id}/plans`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(planData),
+          body: JSON.stringify({
+            name: data.planName,
+            description: data.planDescription,
+            startDate: data.planStartDate,
+            endDate: data.planEndDate,
+            deliverables: data.deliverables,
+          }),
         });
 
         if (!planResponse.ok) {
@@ -452,7 +457,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                                 </Button>
                               )}
                             </div>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div>
                                 <FormLabel>Name</FormLabel>
@@ -466,7 +471,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                                   }}
                                 />
                               </div>
-                              
+
                               <div>
                                 <FormLabel>Start Date</FormLabel>
                                 <Input
@@ -479,7 +484,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                                   }}
                                 />
                               </div>
-                              
+
                               <div>
                                 <FormLabel>End Date</FormLabel>
                                 <Input
