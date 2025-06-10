@@ -124,12 +124,26 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
     let deliverablesValid = false;
     if (hasDeliverables) {
-      deliverablesValid = watchedValues.deliverables.every(d => {
-        const hasName = !!(d.name && d.name.trim());
-        const hasStartDate = !!(d.startDate && d.startDate.trim());
-        const hasEndDate = !!(d.endDate && d.endDate.trim());
-        return hasName && hasStartDate && hasEndDate;
+      // Filter out empty deliverables (ones where all fields are empty)
+      const nonEmptyDeliverables = watchedValues.deliverables.filter(d => {
+        const hasAnyContent = !!(d.name && d.name.trim()) || 
+                             !!(d.startDate && d.startDate.trim()) || 
+                             !!(d.endDate && d.endDate.trim());
+        return hasAnyContent;
       });
+
+      // If we have non-empty deliverables, validate they are complete
+      if (nonEmptyDeliverables.length > 0) {
+        deliverablesValid = nonEmptyDeliverables.every(d => {
+          const hasName = !!(d.name && d.name.trim());
+          const hasStartDate = !!(d.startDate && d.startDate.trim());
+          const hasEndDate = !!(d.endDate && d.endDate.trim());
+          return hasName && hasStartDate && hasEndDate;
+        });
+      } else {
+        // If no deliverables have any content, we need at least one complete deliverable
+        deliverablesValid = false;
+      }
     }
 
     const isPlanComplete = hasPlanName && hasDeliverables && deliverablesValid;
