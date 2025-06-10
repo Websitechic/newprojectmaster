@@ -63,13 +63,23 @@ export default function ProjectDetails() {
 
   const { data: projectPlans, isLoading: plansLoading } = useQuery({
     queryKey: [`/api/projects/${id}/plans`],
-    queryFn: () => fetch(`/api/projects/${id}/plans`).then(res => res.json()),
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${id}/plans`);
+      const data = await response.json();
+      console.log("Project plans response:", data);
+      return data;
+    },
     enabled: !!id,
   });
 
   const { data: projectPlan, isLoading: planLoading } = useQuery({
     queryKey: [`/api/project-plans/${projectPlans?.[0]?.id}`],
-    queryFn: () => fetch(`/api/project-plans/${projectPlans[0].id}`).then(res => res.json()),
+    queryFn: async () => {
+      const response = await fetch(`/api/project-plans/${projectPlans[0].id}`);
+      const data = await response.json();
+      console.log("Project plan details response:", data);
+      return data;
+    },
     enabled: !!projectPlans?.[0]?.id,
   });
 
@@ -564,49 +574,53 @@ export default function ProjectDetails() {
               <CardContent>
                 {planLoading || plansLoading ? (
                   <div>Loading project plan...</div>
-                ) : projectPlan ? (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="font-medium mb-2">{projectPlan.name}</h3>
-                      {projectPlan.description && (
-                        <p className="text-sm text-muted-foreground mb-4">{projectPlan.description}</p>
-                      )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="font-medium">Start Date:</span> {projectPlan.startDate ? new Date(projectPlan.startDate).toLocaleDateString() : 'Not set'}
-                        </div>
-                        <div>
-                          <span className="font-medium">End Date:</span> {projectPlan.endDate ? new Date(projectPlan.endDate).toLocaleDateString() : 'Not set'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {projectPlan.deliverables && projectPlan.deliverables.length > 0 && (
+                ) : projectPlans && projectPlans.length > 0 ? (
+                  projectPlan ? (
+                    <div className="space-y-6">
                       <div>
-                        <h4 className="font-medium mb-3">Deliverables</h4>
-                        <div className="space-y-3">
-                          {projectPlan.deliverables.map((deliverable: any, index: number) => (
-                            <div key={index} className="border rounded-lg p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <h5 className="font-medium">{deliverable.name}</h5>
-                                <Badge variant="outline">
-                                  {deliverable.status || 'Pending'}
-                                </Badge>
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-                                <div>
-                                  <span className="font-medium">Start:</span> {deliverable.startDate ? new Date(deliverable.startDate).toLocaleDateString() : 'Not set'}
-                                </div>
-                                <div>
-                                  <span className="font-medium">End:</span> {deliverable.endDate ? new Date(deliverable.endDate).toLocaleDateString() : 'Not set'}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                        <h3 className="font-medium mb-2">{projectPlan.name}</h3>
+                        {projectPlan.description && (
+                          <p className="text-sm text-muted-foreground mb-4">{projectPlan.description}</p>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="font-medium">Start Date:</span> {projectPlan.startDate ? new Date(projectPlan.startDate).toLocaleDateString() : 'Not set'}
+                          </div>
+                          <div>
+                            <span className="font-medium">End Date:</span> {projectPlan.endDate ? new Date(projectPlan.endDate).toLocaleDateString() : 'Not set'}
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </div>
+
+                      {projectPlan.deliverables && projectPlan.deliverables.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-3">Deliverables</h4>
+                          <div className="space-y-3">
+                            {projectPlan.deliverables.map((deliverable: any, index: number) => (
+                              <div key={index} className="border rounded-lg p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h5 className="font-medium">{deliverable.name}</h5>
+                                  <Badge variant="outline">
+                                    {deliverable.status || 'Pending'}
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                                  <div>
+                                    <span className="font-medium">Start:</span> {deliverable.startDate ? new Date(deliverable.startDate).toLocaleDateString() : 'Not set'}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">End:</span> {deliverable.endDate ? new Date(deliverable.endDate).toLocaleDateString() : 'Not set'}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>Loading project plan details...</div>
+                  )
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">No project plan created yet.</p>

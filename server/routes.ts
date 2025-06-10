@@ -2041,7 +2041,7 @@ export function registerRoutes(app: Express): Server {
         .where(eq(deliverables.projectPlanId, planId));
 
       // Create new deliverables
-      if (planDeliverables && Array.isArray(planDeliverables) && planDeliverables.length > 0) {
+      if (createPlanDeliverables && Array.isArray(createPlanDeliverables) && createPlanDeliverables.length > 0) {
         const deliverableValues = createPlanDeliverables.map((deliverable: any, index: number) => {
           const deliverableStartDate = new Date(deliverable.startDate);
           const deliverableEndDate = new Date(deliverable.endDate);
