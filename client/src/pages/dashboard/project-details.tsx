@@ -1,4 +1,5 @@
 
+import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
@@ -8,10 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Calendar, Clock, User, Users, Edit, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { ArrowLeft, Calendar, Clock, User, Users, Edit, Trash2, Plus } from "lucide-react";
 import { ProjectForm } from "@/components/project/project-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +30,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+const deliverableSchema = z.object({
+  name: z.string().min(1, "Deliverable name is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
+});
+
+const projectPlanSchema = z.object({
+  name: z.string().min(1, "Plan name is required"),
+  description: z.string().optional(),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
+  deliverables: z.array(deliverableSchema).min(1, "At least one deliverable is required"),
+});
+
+type ProjectPlanFormData = z.infer<typeof projectPlanSchema>;
 
 export default function ProjectDetails() {
   const { id } = useParams();
@@ -37,6 +60,46 @@ export default function ProjectDetails() {
     queryKey: [`/api/projects/${id}`],
     queryFn: () => fetch(`/api/projects/${id}`).then(res => res.json()),
   });
+
+  const { data: projectPlans, isLoading: plansLoading } = useQuery({
+    queryKey: [`/api/projects/${id}/plans`],
+    queryFn: () => fetch(`/api/projects/${id}/plans`).then(res => res.json()),
+    enabled: !!id,
+  });
+
+  const { data: projectPlan, isLoading: planLoading } = useQuery({
+    queryKey: [`/api/project-plans/${projectPlans?.[0]?.id}`],
+    queryFn: () => fetch(`/api/project-plans/${projectPlans[0].id}`).then(res => res.json()),
+    enabled: !!projectPlans?.[0]?.id,
+  });
+
+  const form = useForm<ProjectPlanFormData>({
+    resolver: zodResolver(projectPlanSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      startDate: "",
+      endDate: "",
+      deliverables: [{ name: "", startDate: "", endDate: "" }],
+    },
+  });
+
+  // Update form when project plan data loads
+  React.useEffect(() => {
+    if (projectPlan) {
+      form.reset({
+        name: projectPlan.name || "",
+        description: projectPlan.description || "",
+        startDate: projectPlan.startDate ? new Date(projectPlan.startDate).toISOString().split('T')[0] : "",
+        endDate: projectPlan.endDate ? new Date(projectPlan.endDate).toISOString().split('T')[0] : "",
+        deliverables: projectPlan.deliverables?.length > 0 ? projectPlan.deliverables.map((d: any) => ({
+          name: d.name || "",
+          startDate: d.startDate ? new Date(d.startDate).toISOString().split('T')[0] : "",
+          endDate: d.endDate ? new Date(d.endDate).toISOString().split('T')[0] : "",
+        })) : [{ name: "", startDate: "", endDate: "" }],
+      });
+    }
+  }, [projectPlan, form]);
 
   const deleteProject = useMutation({
     mutationFn: async () => {
@@ -66,6 +129,70 @@ export default function ProjectDetails() {
       });
     },
   });
+
+  const updateProjectPlan = useMutation({
+    mutationFn: async (data: ProjectPlanFormData) => {
+      if (!projectPlan?.id) {
+        // Create new project plan if none exists
+        const response = await fetch(`/api/projects/${id}/plans`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.text();
+          throw new Error(errorData || "Failed to create project plan");
+        }
+
+        return response.json();
+      } else {
+        // Update existing project plan
+        const response = await fetch(`/api/project-plans/${projectPlan.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.text();
+          throw new Error(errorData || "Failed to update project plan");
+        }
+
+        return response.json();
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}/plans`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/project-plans/${projectPlan?.id}`] });
+      toast({
+        title: "Success",
+        description: projectPlan?.id ? "Project plan updated successfully!" : "Project plan created successfully!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addDeliverable = () => {
+    const currentDeliverables = form.getValues("deliverables");
+    form.setValue("deliverables", [
+      ...currentDeliverables,
+      { name: "", startDate: "", endDate: "" }
+    ]);
+  };
+
+  const removeDeliverable = (index: number) => {
+    const currentDeliverables = form.getValues("deliverables");
+    if (currentDeliverables.length > 1) {
+      form.setValue("deliverables", currentDeliverables.filter((_, i) => i !== index));
+    }
+  };
 
   if (isLoading || !project) {
     return <div>Loading...</div>;
@@ -247,6 +374,413 @@ export default function ProjectDetails() {
                   <div className="mt-6 pt-4 border-t">
                     <h3 className="font-medium mb-2">Description</h3>
                     <p className="text-sm text-muted-foreground">{project.description}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Project Plan Section */}
+          <div className="mb-8">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Project Plan</h2>
+                  {isProjectManager && (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline">
+                          <Edit className="h-4 w-4 mr-2" />
+                          {projectPlan ? "Edit Plan" : "Create Plan"}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>{projectPlan ? "Edit Project Plan" : "Create Project Plan"}</DialogTitle>
+                        </DialogHeader>
+                        <Form {...form}>
+                          <form onSubmit={form.handleSubmit((data) => updateProjectPlan.mutate(data))} className="space-y-6">
+                            <FormField
+                              control={form.control}
+                              name="name"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Plan Name</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Enter plan name" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="description"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Plan Description (Optional)</FormLabel>
+                                  <FormControl>
+                                    <Textarea 
+                                      placeholder="Enter plan description" 
+                                      className="min-h-[80px]"
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="startDate"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Plan Start Date</FormLabel>
+                                    <FormControl>
+                                      <Input type="date" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="endDate"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Plan End Date</FormLabel>
+                                    <FormControl>
+                                      <Input type="date" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            {/* Deliverables Section */}
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <FormLabel>Deliverables</FormLabel>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={addDeliverable}
+                                >
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Add Deliverable
+                                </Button>
+                              </div>
+
+                              <FormField
+                                control={form.control}
+                                name="deliverables"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <div className="space-y-4">
+                                      {field.value.map((deliverable, index) => (
+                                        <Card key={index} className="p-4">
+                                          <div className="flex items-center justify-between mb-3">
+                                            <h4 className="text-sm font-medium">Deliverable {index + 1}</h4>
+                                            {field.value.length > 1 && (
+                                              <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => removeDeliverable(index)}
+                                              >
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            )}
+                                          </div>
+                                          
+                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div>
+                                              <FormLabel>Name</FormLabel>
+                                              <Input
+                                                placeholder="Deliverable name"
+                                                value={deliverable.name}
+                                                onChange={(e) => {
+                                                  const newDeliverables = [...field.value];
+                                                  newDeliverables[index].name = e.target.value;
+                                                  field.onChange(newDeliverables);
+                                                }}
+                                              />
+                                            </div>
+                                            
+                                            <div>
+                                              <FormLabel>Start Date</FormLabel>
+                                              <Input
+                                                type="date"
+                                                value={deliverable.startDate}
+                                                onChange={(e) => {
+                                                  const newDeliverables = [...field.value];
+                                                  newDeliverables[index].startDate = e.target.value;
+                                                  field.onChange(newDeliverables);
+                                                }}
+                                              />
+                                            </div>
+                                            
+                                            <div>
+                                              <FormLabel>End Date</FormLabel>
+                                              <Input
+                                                type="date"
+                                                value={deliverable.endDate}
+                                                onChange={(e) => {
+                                                  const newDeliverables = [...field.value];
+                                                  newDeliverables[index].endDate = e.target.value;
+                                                  field.onChange(newDeliverables);
+                                                }}
+                                              />
+                                            </div>
+                                          </div>
+                                        </Card>
+                                      ))}
+                                    </div>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            <Button type="submit" className="w-full" disabled={updateProjectPlan.isPending}>
+                              {updateProjectPlan.isPending 
+                                ? (projectPlan ? "Updating..." : "Creating...") 
+                                : (projectPlan ? "Update Project Plan" : "Create Project Plan")
+                              }
+                            </Button>
+                          </form>
+                        </Form>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {planLoading || plansLoading ? (
+                  <div>Loading project plan...</div>
+                ) : projectPlan ? (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="font-medium mb-2">{projectPlan.name}</h3>
+                      {projectPlan.description && (
+                        <p className="text-sm text-muted-foreground mb-4">{projectPlan.description}</p>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium">Start Date:</span> {projectPlan.startDate ? new Date(projectPlan.startDate).toLocaleDateString() : 'Not set'}
+                        </div>
+                        <div>
+                          <span className="font-medium">End Date:</span> {projectPlan.endDate ? new Date(projectPlan.endDate).toLocaleDateString() : 'Not set'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {projectPlan.deliverables && projectPlan.deliverables.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-3">Deliverables</h4>
+                        <div className="space-y-3">
+                          {projectPlan.deliverables.map((deliverable: any, index: number) => (
+                            <div key={index} className="border rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-medium">{deliverable.name}</h5>
+                                <Badge variant="outline">
+                                  {deliverable.status || 'Pending'}
+                                </Badge>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                                <div>
+                                  <span className="font-medium">Start:</span> {deliverable.startDate ? new Date(deliverable.startDate).toLocaleDateString() : 'Not set'}
+                                </div>
+                                <div>
+                                  <span className="font-medium">End:</span> {deliverable.endDate ? new Date(deliverable.endDate).toLocaleDateString() : 'Not set'}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">No project plan created yet.</p>
+                    {isProjectManager && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Project Plan
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Create Project Plan</DialogTitle>
+                          </DialogHeader>
+                          <Form {...form}>
+                            <form onSubmit={form.handleSubmit((data) => updateProjectPlan.mutate(data))} className="space-y-6">
+                              {/* Same form content as above */}
+                              <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Plan Name</FormLabel>
+                                    <FormControl>
+                                      <Input placeholder="Enter plan name" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="description"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Plan Description (Optional)</FormLabel>
+                                    <FormControl>
+                                      <Textarea 
+                                        placeholder="Enter plan description" 
+                                        className="min-h-[80px]"
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <div className="grid grid-cols-2 gap-4">
+                                <FormField
+                                  control={form.control}
+                                  name="startDate"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Plan Start Date</FormLabel>
+                                      <FormControl>
+                                        <Input type="date" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name="endDate"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Plan End Date</FormLabel>
+                                      <FormControl>
+                                        <Input type="date" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              {/* Deliverables Section */}
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <FormLabel>Deliverables</FormLabel>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={addDeliverable}
+                                  >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add Deliverable
+                                  </Button>
+                                </div>
+
+                                <FormField
+                                  control={form.control}
+                                  name="deliverables"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <div className="space-y-4">
+                                        {field.value.map((deliverable, index) => (
+                                          <Card key={index} className="p-4">
+                                            <div className="flex items-center justify-between mb-3">
+                                              <h4 className="text-sm font-medium">Deliverable {index + 1}</h4>
+                                              {field.value.length > 1 && (
+                                                <Button
+                                                  type="button"
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={() => removeDeliverable(index)}
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                              )}
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                              <div>
+                                                <FormLabel>Name</FormLabel>
+                                                <Input
+                                                  placeholder="Deliverable name"
+                                                  value={deliverable.name}
+                                                  onChange={(e) => {
+                                                    const newDeliverables = [...field.value];
+                                                    newDeliverables[index].name = e.target.value;
+                                                    field.onChange(newDeliverables);
+                                                  }}
+                                                />
+                                              </div>
+                                              
+                                              <div>
+                                                <FormLabel>Start Date</FormLabel>
+                                                <Input
+                                                  type="date"
+                                                  value={deliverable.startDate}
+                                                  onChange={(e) => {
+                                                    const newDeliverables = [...field.value];
+                                                    newDeliverables[index].startDate = e.target.value;
+                                                    field.onChange(newDeliverables);
+                                                  }}
+                                                />
+                                              </div>
+                                              
+                                              <div>
+                                                <FormLabel>End Date</FormLabel>
+                                                <Input
+                                                  type="date"
+                                                  value={deliverable.endDate}
+                                                  onChange={(e) => {
+                                                    const newDeliverables = [...field.value];
+                                                    newDeliverables[index].endDate = e.target.value;
+                                                    field.onChange(newDeliverables);
+                                                  }}
+                                                />
+                                              </div>
+                                            </div>
+                                          </Card>
+                                        ))}
+                                      </div>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              <Button type="submit" className="w-full" disabled={updateProjectPlan.isPending}>
+                                {updateProjectPlan.isPending ? "Creating..." : "Create Project Plan"}
+                              </Button>
+                            </form>
+                          </Form>
+                        </DialogContent>
+                      </Dialog>
+                    )}
                   </div>
                 )}
               </CardContent>
