@@ -386,6 +386,33 @@ export const projectMessagesRelations = relations(projectMessages, ({ one }) => 
   }),
 }));
 
+export const bookings = pgTable("bookings", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: text("type", { 
+    enum: ["one_on_one", "team_booking", "marketing_meeting", "general_booking"] 
+  }).notNull(),
+  scheduledBy: integer("scheduled_by").references(() => users.id).notNull(),
+  participants: jsonb("participants").notNull(), // Array of user IDs
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  status: text("status", { 
+    enum: ["scheduled", "completed", "cancelled"] 
+  }).default("scheduled"),
+  meetingLink: text("meeting_link"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const bookingsRelations = relations(bookings, ({ one }) => ({
+  scheduler: one(users, {
+    fields: [bookings.scheduledBy],
+    references: [users.id],
+  }),
+}));
+
 // Zod Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -423,6 +450,10 @@ export type Deliverable = typeof deliverables.$inferSelect;
 export type LeaveApplication = typeof leaveApplications.$inferSelect;
 export type DirectMessage = typeof directMessages.$inferSelect;
 export type ProjectMessage = typeof projectMessages.$inferSelect;
+export type Booking = typeof bookings.$inferSelect;
+
+export const insertBookingSchema = createInsertSchema(bookings);
+export const selectBookingSchema = createSelectSchema(bookings);
 
 // Resources table for file uploads
 export const resources = pgTable("resources", {

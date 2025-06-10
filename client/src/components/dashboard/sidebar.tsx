@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   Calendar,
+  CalendarDays,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -184,6 +185,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Users size={20} />,
       label: "Staff Report",
       href: "/dashboard/staff-report",
+    },
+    {
+      icon: <CalendarDays size={20} />,
+      label: "Bookings",
+      href: "/dashboard/bookings",
     },
     {
       icon: <Calendar size={20} />,

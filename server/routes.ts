@@ -27,6 +27,7 @@ import {
   projectMessages,
   messages,
   resources,
+  bookings,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql } from "drizzle-orm";
 
@@ -3089,6 +3090,231 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error sending team message:", error);
       res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Bookings API Routes
+
+  // Get all bookings (Project Manager only)
+  app.get("/api/bookings", isProjectManager, async (req, res) => {
+    try {
+      const allBookings = await db
+        .select({
+          id: bookings.id,
+          title: bookings.title,
+          description: bookings.description,
+          type: bookings.type,
+          scheduledBy: bookings.scheduledBy,
+          participants: bookings.participants,
+          startTime: bookings.startTime,
+          endTime: bookings.endTime,
+          status: bookings.status,
+          meetingLink: bookings.meetingLink,
+          notes: bookings.notes,
+          createdAt: bookings.createdAt,
+          schedulerName: users.name,
+        })
+        .from(bookings)
+        .innerJoin(users, eq(bookings.scheduledBy, users.id))
+        .orderBy(desc(bookings.startTime));
+
+      res.json(allBookings);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      res.status(500).json({ error: "Failed to fetch bookings" });
+    }
+  });
+
+  // Create a new booking (Project Manager only)
+  app.post("/api/bookings", isProjectManager, async (req, res) => {
+    try {
+      const { 
+        title, 
+        description, 
+        type, 
+        participants, 
+        startTime, 
+        endTime, 
+        meetingLink, 
+        notes 
+      } = req.body;
+
+      if (!title || !type || !startTime || !endTime || !participants) {
+        return res.status(400).json({ 
+          error: "Title, type, start time, end time, and participants are required" 
+        });
+      }
+
+      // Parse dates
+      const parsedStartTime = new Date(startTime);
+      const parsedEndTime = new Date(endTime);
+
+      if (isNaN(parsedStartTime.getTime()) || isNaN(parsedEndTime.getTime())) {
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+
+      if (parsedStartTime >= parsedEndTime) {
+        return res.status(400).json({ error: "End time must be after start time" });
+      }
+
+      // Check for time conflicts with existing bookings
+      const conflictingBookings = await db
+        .select()
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.status, "scheduled"),
+            or(
+              and(
+                sql`${bookings.startTime} < ${parsedEndTime}`,
+                sql`${bookings.endTime} > ${parsedStartTime}`
+              )
+            )
+          )
+        );
+
+      // Check if any participants have conflicting bookings
+      const participantConflicts = conflictingBookings.filter(booking => {
+        const bookingParticipants = booking.participants as number[];
+        const newParticipants = participants as number[];
+        return bookingParticipants.some(p => newParticipants.includes(p));
+      });
+
+      if (participantConflicts.length > 0) {
+        return res.status(400).json({ 
+          error: "One or more participants have conflicting meetings at this time" 
+        });
+      }
+
+      // Check for task conflicts
+      const conflictingTasks = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          assigneeId: tasks.assigneeId,
+        })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.isTimerRunning, true),
+            inArray(tasks.assigneeId, participants)
+          )
+        );
+
+      let warningMessage = null;
+      if (conflictingTasks.length > 0) {
+        const conflictingUsers = conflictingTasks.map(task => task.assigneeId);
+        warningMessage = `Warning: ${conflictingUsers.length} participant(s) have running tasks during this meeting time.`;
+      }
+
+      // Create the booking
+      const [newBooking] = await db
+        .insert(bookings)
+        .values({
+          title,
+          description: description || null,
+          type,
+          scheduledBy: req.user!.id,
+          participants,
+          startTime: parsedStartTime,
+          endTime: parsedEndTime,
+          meetingLink: meetingLink || null,
+          notes: notes || null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      // Create notifications for participants
+      for (const participantId of participants) {
+        if (participantId !== req.user!.id) {
+          try {
+            const [notification] = await db
+              .insert(notifications)
+              .values({
+                userId: participantId,
+                type: "task_assigned", // Using existing type
+                content: `You have been invited to a meeting: ${title}`,
+                referenceId: newBooking.id,
+                referenceType: "project", // Using existing type
+                createdAt: new Date(),
+              })
+              .returning();
+
+            // Send notification through SSE if user is connected
+            const clientResponse = global.sseClients?.get(participantId);
+            if (clientResponse && !clientResponse.writableEnded) {
+              try {
+                clientResponse.write(`data: ${JSON.stringify({
+                  type: "notification",
+                  data: notification
+                })}\n\n`);
+              } catch (error) {
+                console.error(`Error sending SSE notification to user ${participantId}:`, error);
+                global.sseClients.delete(participantId);
+              }
+            }
+          } catch (error) {
+            console.error(`Error creating notification for participant ${participantId}:`, error);
+          }
+        }
+      }
+
+      res.json({ 
+        booking: newBooking, 
+        warning: warningMessage 
+      });
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      res.status(500).json({ error: "Failed to create booking" });
+    }
+  });
+
+  // Update booking status (Project Manager only)
+  app.put("/api/bookings/:id", isProjectManager, async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.id);
+      const { status, notes } = req.body;
+
+      const validStatuses = ["scheduled", "completed", "cancelled"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+
+      const [updatedBooking] = await db
+        .update(bookings)
+        .set({
+          status,
+          notes: notes || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, bookingId))
+        .returning();
+
+      if (!updatedBooking) {
+        return res.status(404).json({ error: "Booking not found" });
+      }
+
+      res.json(updatedBooking);
+    } catch (error) {
+      console.error("Error updating booking:", error);
+      res.status(500).json({ error: "Failed to update booking" });
+    }
+  });
+
+  // Delete booking (Project Manager only)
+  app.delete("/api/bookings/:id", isProjectManager, async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.id);
+
+      await db
+        .delete(bookings)
+        .where(eq(bookings.id, bookingId));
+
+      res.json({ message: "Booking deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+      res.status(500).json({ error: "Failed to delete booking" });
     }
   });
 
