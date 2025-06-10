@@ -2045,7 +2045,7 @@ export function registerRoutes(app: Express): Server {
         const deliverableValues = planDeliverables.map((deliverable: any, index: number) => {
           const deliverableStartDate = new Date(deliverable.startDate);
           const deliverableEndDate = new Date(deliverable.endDate);
-          
+
           if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableEndDate.getTime())) {
             throw new Error(`Invalid date format in deliverable ${index + 1}`);
           }
@@ -2082,16 +2082,16 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/projects/:id/plans", isProjectManager, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
-      const { name, description, startDate, endDate, deliverables: planDeliverables } = req.body;
+      const { name, description, startDate, endDate, deliverables: createPlanDeliverables } = req.body;
 
       console.log("Creating project plan for project:", projectId);
-      console.log("Plan data:", { name, description, startDate, endDate, deliverables: planDeliverables });
+      console.log("Plan data:", { name, description, startDate, endDate, deliverables: createPlanDeliverables });
 
       if (!name) {
         return res.status(400).json({ error: "Plan name is required" });
       }
 
-      if (!planDeliverables || !Array.isArray(planDeliverables) || planDeliverables.length === 0) {
+      if (!createPlanDeliverables || !Array.isArray(createPlanDeliverables) || createPlanDeliverables.length === 0) {
         return res.status(400).json({ error: "At least one deliverable is required" });
       }
 
@@ -2144,8 +2144,8 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       // Create deliverables if provided
-      if (planDeliverables && Array.isArray(planDeliverables) && planDeliverables.length > 0) {
-        const deliverableValues = planDeliverables.map((deliverable: any, index: number) => {
+      if (createPlanDeliverables && Array.isArray(createPlanDeliverables) && createPlanDeliverables.length > 0) {
+        const deliverableValues = createPlanDeliverables.map((deliverable: any, index: number) => {
           const deliverableStartDate = new Date(deliverable.startDate);
           const deliverableEndDate = new Date(deliverable.endDate);
 
@@ -2928,7 +2928,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const userId = req.user!.id;
-      
+
       // Validate user ID is a valid number
       if (!userId || isNaN(userId) || !Number.isInteger(userId)) {
         console.error("Invalid user ID for unread count:", userId);
