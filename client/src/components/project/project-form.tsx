@@ -15,7 +15,6 @@ import type { Project } from "@db/schema";
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
   description: z.string().optional(),
-  type: z.string().min(1, "Project type is required"),
   category: z.string().min(1, "Category is required"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
@@ -39,7 +38,6 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
     defaultValues: {
       name: project?.name || "",
       description: project?.description || "",
-      type: project?.type || "",
       category: project?.category || "",
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
@@ -65,7 +63,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       const projectData = {
         name: data.name,
         description: data.description || "",
-        type: data.type,
+        type: "one_time", // Default type since it's still required in the backend
         category: data.category,
         startDate: data.startDate,
         endDate: data.endDate,
@@ -126,44 +124,19 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((data) => saveProject.mutate(data))} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Project Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter project name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="type"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Project Type</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select project type" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="one_time">One-time</SelectItem>
-                    <SelectItem value="recurring">Recurring</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Project Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter project name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
