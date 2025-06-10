@@ -198,6 +198,16 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Calendar size={20} />,
       label: "Leave Application",
       href: "/dashboard/leave-application",
+    },
+    {
+      icon: <Settings size={20} />,
+      label: "Technical Support",
+      href: "/dashboard/technical-support",
+    },
+    {
+      icon: <CheckSquare size={20} />,
+      label: "Productivity Tracking",
+      href: "/dashboard/productivity-tracking",
     }
   ] : [];
 
