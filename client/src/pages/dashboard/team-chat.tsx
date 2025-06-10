@@ -36,10 +36,10 @@ export default function TeamChat() {
   });
 
   const { data: messages = [] } = useQuery<MessageWithUser[]>({
-    queryKey: [`/api/projects/${projectId}/messages`, "team"],
+    queryKey: [`/api/projects/${projectId}/team-messages`],
     queryFn: async () => {
       console.log(`Fetching team messages for project ${projectId}`);
-      const response = await fetch(`/api/projects/${projectId}/messages?type=team`);
+      const response = await fetch(`/api/projects/${projectId}/team-messages`);
       if (!response.ok) {
         console.error(`Failed to fetch messages: ${response.status} ${response.statusText}`);
         throw new Error("Failed to fetch messages");
@@ -61,10 +61,10 @@ export default function TeamChat() {
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       console.log(`Sending team message to project ${projectId}:`, content);
-      const response = await fetch(`/api/projects/${projectId}/messages`, {
+      const response = await fetch(`/api/projects/${projectId}/team-messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, type: "team" }),
+        body: JSON.stringify({ content }),
       });
       if (!response.ok) {
         const errorText = await response.text();
@@ -78,7 +78,7 @@ export default function TeamChat() {
     onSuccess: () => {
       console.log("Team message sent, invalidating queries");
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/projects/${projectId}/messages`, "team"] 
+        queryKey: [`/api/projects/${projectId}/team-messages`] 
       });
       setMessage("");
     },
@@ -110,10 +110,10 @@ export default function TeamChat() {
       try {
         const data = JSON.parse(event.data);
         console.log("SSE message received in team chat:", data);
-        if (data.type === "project_message" && data.data.projectId === projectId && data.data.type === "team") {
+        if (data.type === "team_message" && data.data.projectId === projectId) {
           console.log("Team message received via SSE, invalidating queries");
           queryClient.invalidateQueries({ 
-            queryKey: [`/api/projects/${projectId}/messages`, "team"] 
+            queryKey: [`/api/projects/${projectId}/team-messages`] 
           });
         }
       } catch (error) {
@@ -214,13 +214,13 @@ export default function TeamChat() {
                     <div key={msg.id} className="flex gap-3">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">
-                          {getUserInitials(msg.user?.name || "Unknown")}
+                          {getUserInitials(msg.sender?.name || "Unknown")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm">
-                            {msg.user?.name || "Unknown User"}
+                            {msg.sender?.name || "Unknown User"}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {formatMessageTime(msg.createdAt)}

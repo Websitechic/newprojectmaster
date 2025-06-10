@@ -283,6 +283,20 @@ export default function ProjectDetails() {
               </CardContent>
             </Card>
 
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation(`/dashboard/projects/${id}/team-chat`)}>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Users className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Team Chat</h3>
+                    <p className="text-sm text-muted-foreground">Internal team communication</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {project.client && (
               <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation(`/dashboard/client-chat/${project.clientId}`)}>
                 <CardContent className="p-6">
