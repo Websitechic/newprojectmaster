@@ -7,7 +7,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowLeft, Calendar, Clock, User, Users, Edit, Trash2 } from "lucide-react";
 import { ProjectForm } from "@/components/project/project-form";
 import { useAuth } from "@/hooks/use-auth";
