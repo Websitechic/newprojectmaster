@@ -246,7 +246,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
           ))}
         </div>
 
-        
+
       </nav>
 
       {/* User Profile */}
