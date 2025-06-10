@@ -61,11 +61,11 @@ function Router() {
       <Route path="/dashboard/projects" component={() => <PrivateRoute component={Projects} />} />
       <Route path="/dashboard/projects/:id" component={() => <PrivateRoute component={ProjectDetails} />} />
       <Route path="/dashboard/projects/:id/tasks" component={() => <PrivateRoute component={ProjectTasks} />} />
+      <Route path="/dashboard/projects/:id/team-chat" component={TeamChat} />
+      <Route path="/dashboard/projects/:id/client-chat" component={ClientChat} />
       <Route path="/dashboard/projects/:id/staff-tasks" component={StaffProjectTasks} />
       <Route path="/dashboard/projects/:id/staff" component={StaffProjectDetails} />
       <Route path="/dashboard/projects/:id/resources" component={ProjectResources} />
-      <Route path="/dashboard/projects/:id/team-chat" component={TeamChat} />
-      <Route path="/dashboard/projects/:id/client-chat" component={ClientChat} />
       <Route path="/dashboard/staff-report" component={() => <PrivateRoute component={StaffReport} />} />
       <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />
       <Route path="/dashboard/leave-application" component={() => <PrivateRoute component={LeaveApplication} />} />
