@@ -2548,6 +2548,12 @@ export function registerRoutes(app: Express): Server {
     try {
       const userId = req.user!.id;
 
+      // Validate user ID is a valid number
+      if (!userId || isNaN(userId) || !Number.isInteger(userId)) {
+        console.error("Invalid user ID for conversations:", userId);
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
       // Get all messages involving the current user
       const allMessages = await db
         .select()
@@ -2627,6 +2633,17 @@ export function registerRoutes(app: Express): Server {
     try {
       const currentUserId = req.user!.id;
       const otherUserId = parseInt(req.params.userId);
+
+      // Validate user IDs
+      if (!currentUserId || isNaN(currentUserId) || !Number.isInteger(currentUserId)) {
+        console.error("Invalid current user ID:", currentUserId);
+        return res.status(400).json({ error: "Invalid current user ID" });
+      }
+
+      if (isNaN(otherUserId) || !Number.isInteger(otherUserId)) {
+        console.error("Invalid other user ID:", req.params.userId);
+        return res.status(400).json({ error: "Invalid user ID parameter" });
+      }
 
       // Get all messages between these two users
       const messages = await db
@@ -2768,6 +2785,17 @@ export function registerRoutes(app: Express): Server {
       const currentUserId = req.user!.id;
       const otherUserId = parseInt(req.params.userId);
 
+      // Validate user IDs
+      if (!currentUserId || isNaN(currentUserId) || !Number.isInteger(currentUserId)) {
+        console.error("Invalid current user ID:", currentUserId);
+        return res.status(400).json({ error: "Invalid current user ID" });
+      }
+
+      if (isNaN(otherUserId) || !Number.isInteger(otherUserId)) {
+        console.error("Invalid other user ID:", req.params.userId);
+        return res.status(400).json({ error: "Invalid user ID parameter" });
+      }
+
       await db
         .update(directMessages)
         .set({ read: true })
@@ -2793,12 +2821,20 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
+      const userId = req.user!.id;
+      
+      // Validate user ID is a valid number
+      if (!userId || isNaN(userId) || !Number.isInteger(userId)) {
+        console.error("Invalid user ID for unread count:", userId);
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
       const result = await db
         .select({ count: sql<number>`count(*)` })
         .from(directMessages)
         .where(
           and(
-            eq(directMessages.receiverId, req.user!.id),
+            eq(directMessages.receiverId, userId),
             eq(directMessages.read, false)
           )
         );
