@@ -2186,7 +2186,7 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/project-plans/:id", isProjectManager, async (req, res) => {
     try {
       const planId = parseInt(req.params.id);
-      const { name, description, startDate, endDate, status, deliverables: planDeliverables } = req.body;
+      const { name, description, startDate, endDate, status, deliverables: updatePlanDeliverables } = req.body;
 
       if (!name) {
         return res.status(400).json({ error: "Plan name is required" });
@@ -2240,15 +2240,15 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       // Update deliverables if provided
-      if (planDeliverables && Array.isArray(planDeliverables)) {
+      if (updatePlanDeliverables && Array.isArray(updatePlanDeliverables)) {
         // Delete existing deliverables
         await db
           .delete(deliverables)
           .where(eq(deliverables.projectPlanId, planId));
 
         // Create new deliverables
-        if (planDeliverables.length > 0) {
-          const deliverableValues = planDeliverables.map((deliverable: any, index: number) => {
+        if (updatePlanDeliverables.length > 0) {
+          const deliverableValues = updatePlanDeliverables.map((deliverable: any, index: number) => {
             const deliverableStartDate = new Date(deliverable.startDate);
             const deliverableEndDate = new Date(deliverable.endDate);
 
