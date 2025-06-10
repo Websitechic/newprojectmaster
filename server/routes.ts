@@ -2042,7 +2042,7 @@ export function registerRoutes(app: Express): Server {
 
       // Create new deliverables
       if (planDeliverables && Array.isArray(planDeliverables) && planDeliverables.length > 0) {
-        const deliverableValues = planDeliverables.map((deliverable: any, index: number) => {
+        const deliverableValues = createPlanDeliverables.map((deliverable: any, index: number) => {
           const deliverableStartDate = new Date(deliverable.startDate);
           const deliverableEndDate = new Date(deliverable.endDate);
 
@@ -2065,13 +2065,13 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Fetch updated plan with deliverables
-      const planDeliverables = await db
+      const updatedDeliverables = await db
         .select()
         .from(deliverables)
         .where(eq(deliverables.projectPlanId, planId))
         .orderBy(asc(deliverables.order));
 
-      res.json({ ...updatedPlan, deliverables: planDeliverables });
+      res.json({ ...updatedPlan, deliverables: updatedDeliverables });
     } catch (error) {
       console.error("Error updating project plan:", error);
       res.status(500).json({ error: "Failed to update project plan" });
