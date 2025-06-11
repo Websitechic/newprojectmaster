@@ -55,6 +55,8 @@ export default function ProjectDetails() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const projectId = parseInt(id!);
+  const unreadCount = useProjectUnreadCount(projectId);
 
   const isProjectManager = user?.role === "project_manager";
 
@@ -836,14 +838,21 @@ export default function ProjectDetails() {
 
             <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation(`/dashboard/projects/${id}/team-chat`)}>
               <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Users className="h-5 w-5 text-blue-600" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Users className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium">Team Chat</h3>
+                      <p className="text-sm text-muted-foreground">Internal team communication</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium">Team Chat</h3>
-                    <p className="text-sm text-muted-foreground">Internal team communication</p>
-                  </div>
+                  {unreadCount > 0 && (
+                    <Badge className="bg-red-500 text-white px-2 py-1 text-xs rounded-full">
+                      {unreadCount}
+                    </Badge>
+                  )}
                 </div>
               </CardContent>
             </Card>
