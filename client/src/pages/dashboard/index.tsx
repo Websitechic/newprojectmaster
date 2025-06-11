@@ -14,8 +14,9 @@ import { useUser } from "@/hooks/use-user";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Clock, Play, AlertCircle, CheckCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock, Play, AlertCircle, CheckCircle, HelpCircle } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Project, Task } from "@db/schema";
 
 export default function Dashboard() {
@@ -45,22 +46,26 @@ export default function Dashboard() {
     };
   }, [updateStatus]);
 
-  // Filter tasks for staff user
+  // Filter tasks for staff user or all tasks for managers
   const staffTasks = user?.role === "staff" 
     ? tasks?.filter(task => task.assigneeId === user?.id) || []
     : tasks || [];
 
+  // Use appropriate task set based on user role
+  const userTasks = user?.role === "staff" ? staffTasks : tasks || [];
+
   // Categorize tasks
   const activeTask = staffTasks.find(task => task.isTimerRunning);
-  const tasksInProgress = staffTasks.filter(task => 
+  const tasksInProgress = userTasks.filter(task => 
     task.status === "in_progress" && !task.isTimerRunning
   );
-  const pendingTasks = staffTasks.filter(task => task.status === "todo");
-  const tasksInReview = staffTasks.filter(task => task.status === "review");
+  const pendingTasks = userTasks.filter(task => task.status === "todo");
+  const tasksInReview = userTasks.filter(task => task.status === "review");
+  const technicalSupportTasks = userTasks.filter(task => task.status === "technical_support");
 
   // Calculate overall progress
-  const totalTasks = staffTasks.length;
-  const completedTasks = staffTasks.filter(task => task.status === "completed").length;
+  const totalTasks = userTasks.length;
+  const completedTasks = userTasks.filter(task => task.status === "completed").length;
   const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const toggleSection = (section: string) => {
