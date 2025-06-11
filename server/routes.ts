@@ -2691,6 +2691,39 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get unread direct messages count
+  app.get("/api/direct-messages/unread-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const userId = req.user!.id;
+
+      // Validate user ID is a valid number
+      if (!userId || isNaN(userId) || !Number.isInteger(userId)) {
+        console.error("Invalid user ID for unread count:", userId);
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(directMessages)
+        .where(
+          and(
+            eq(directMessages.receiverId, userId),
+            eq(directMessages.read, false)
+          )
+        );
+
+      const count = result[0]?.count || 0;
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread messages count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
   // Get conversations (list of users the current user has messaged with)
   app.get("/api/direct-messages/conversations", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -2963,39 +2996,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error marking messages as read:", error);
       res.status(500).json({ error: "Failed to mark messages as read" });
-    }
-  });
-
-  // Get unread direct messages count
-  app.get("/api/direct-messages/unread-count", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    try {
-      const userId = req.user!.id;
-
-      // Validate user ID is a valid number
-      if (!userId || isNaN(userId) || !Number.isInteger(userId)) {
-        console.error("Invalid user ID for unread count:", userId);
-        return res.status(400).json({ error: "Invalid user ID" });
-      }
-
-      const result = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(directMessages)
-        .where(
-          and(
-            eq(directMessages.receiverId, userId),
-            eq(directMessages.read, false)
-          )
-        );
-
-      const count = result[0]?.count || 0;
-      res.json({ count });
-    } catch (error) {
-      console.error("Error fetching unread messages count:", error);
-      res.status(500).json({ error: "Failed to fetch unread count" });
     }
   });
 
