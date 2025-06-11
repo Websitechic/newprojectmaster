@@ -1935,6 +1935,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const projectId = parseInt(req.params.id);
+      console.log(`Fetching project plans for project ${projectId}`);
 
       const plans = await db
         .select()
@@ -1942,6 +1943,7 @@ export function registerRoutes(app: Express): Server {
         .where(eq(projectPlans.projectId, projectId))
         .orderBy(desc(projectPlans.updatedAt));
 
+      console.log(`Found ${plans.length} project plans:`, plans);
       res.json(plans);
     } catch (error) {
       console.error("Error fetching project plans:", error);

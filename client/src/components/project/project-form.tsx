@@ -126,31 +126,24 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
         savedProject = await response.json();
 
-        // Create project plan for new projects
-        const planData = {
-          projectId: savedProject.id,
-          name: data.planName,
-          description: data.planDescription || "",
-          startDate: data.planStartDate,
-          endDate: data.planEndDate,
-          deliverables: data.deliverables,
-        };
+        // Create project plan for new projects only if plan name is provided
+        if (data.planName && data.planName.trim()) {
+          const planResponse = await fetch(`/api/projects/${savedProject.id}/plans`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: data.planName,
+              description: data.planDescription || "",
+              startDate: data.planStartDate,
+              endDate: data.planEndDate,
+              deliverables: data.deliverables,
+            }),
+          });
 
-        const planResponse = await fetch(`/api/projects/${savedProject.id}/plans`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: data.planName,
-            description: data.planDescription,
-            startDate: data.planStartDate,
-            endDate: data.planEndDate,
-            deliverables: data.deliverables,
-          }),
-        });
-
-        if (!planResponse.ok) {
-          const planError = await planResponse.text();
-          throw new Error(`Failed to create project plan: ${planError}`);
+          if (!planResponse.ok) {
+            const planError = await planResponse.text();
+            throw new Error(`Failed to create project plan: ${planError}`);
+          }
         }
       }
 
