@@ -3152,7 +3152,7 @@ export function registerRoutes(app: Express): Server {
           )
         );
 
-      const projectIds = userProjects.map(p => p.projectId);
+      const projectIds = Array.from(new Set(userProjects.map(p => p.projectId).filter(id => id != null)));
       
       if (projectIds.length === 0) {
         return res.json({});
@@ -3162,23 +3162,30 @@ export function registerRoutes(app: Express): Server {
       const unreadCounts: Record<number, number> = {};
       
       for (const projectId of projectIds) {
-        // Count messages created after user's last visit (or all if never visited)
-        // For now, we'll consider messages from the last 24 hours as potentially unread
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
+        if (!projectId || isNaN(Number(projectId))) continue;
+        
+        try {
+          // Count messages created after user's last visit (or all if never visited)
+          // For now, we'll consider messages from the last 24 hours as potentially unread
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
 
-        const [result] = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(projectMessages)
-          .where(
-            and(
-              eq(projectMessages.projectId, projectId),
-              ne(projectMessages.senderId, userId), // Don't count user's own messages
-              gte(projectMessages.createdAt, yesterday)
-            )
-          );
+          const [result] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(projectMessages)
+            .where(
+              and(
+                eq(projectMessages.projectId, Number(projectId)),
+                ne(projectMessages.senderId, userId), // Don't count user's own messages
+                gte(projectMessages.createdAt, yesterday)
+              )
+            );
 
-        unreadCounts[projectId] = Number(result.count) || 0;
+          unreadCounts[Number(projectId)] = Number(result.count) || 0;
+        } catch (error) {
+          console.error(`Error counting messages for project ${projectId}:`, error);
+          unreadCounts[Number(projectId)] = 0;
+        }
       }
 
       res.json(unreadCounts);

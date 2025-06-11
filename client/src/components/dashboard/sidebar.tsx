@@ -52,6 +52,10 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   const { logout, user } = useUser();
   const [, setLocation] = useLocation();
   const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
+  const { data: unreadCounts = {} } = useUnreadMessageCounts();
+
+  // Calculate total unread project messages
+  const totalUnreadProjectMessages = Object.values(unreadCounts).reduce((total, count) => total + count, 0);
 
   // Fetch initial unread count
   useEffect(() => {
@@ -166,6 +170,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <FileText size={20} />,
       label: "Projects",
       href: "/dashboard/projects",
+      badge: totalUnreadProjectMessages,
     },
     {
       icon: <MessageSquare size={20} />,

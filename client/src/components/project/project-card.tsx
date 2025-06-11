@@ -10,6 +10,7 @@ import { VideoCall } from "@/components/video/video-call";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useProjectUnreadCount } from "@/hooks/use-unread-messages";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,7 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const unreadCount = useProjectUnreadCount(project.id);
 
   const isProjectManager = user?.role === 'project_manager';
 
