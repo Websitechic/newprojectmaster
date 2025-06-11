@@ -28,6 +28,7 @@ import {
   messages,
   resources,
   bookings,
+  messageReadReceipts,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte } from "drizzle-orm";
 
@@ -3215,6 +3216,92 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching unread counts:", error);
       res.status(500).json({ error: "Failed to fetch unread counts" });
+    }
+  });
+
+  // Mark messages as read for a user
+  app.post("/api/projects/:projectId/messages/mark-read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const userId = req.user!.id;
+      const { messageIds } = req.body;
+
+      if (!Array.isArray(messageIds) || messageIds.length === 0) {
+        return res.status(400).json({ error: "Message IDs are required" });
+      }
+
+      // Insert read receipts for each message (ignore duplicates)
+      const readReceiptsToInsert = messageIds.map(messageId => ({
+        messageId: parseInt(messageId),
+        userId: userId
+      }));
+
+      await db.insert(messageReadReceipts)
+        .values(readReceiptsToInsert)
+        .onConflictDoNothing();
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
+  // Mark all project messages as read for current user
+  app.post("/api/projects/:projectId/messages/mark-all-read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const userId = req.user!.id;
+
+      // Get all message IDs for this project that are not from current user
+      const projectMessagesList = await db
+        .select({ id: projectMessages.id })
+        .from(projectMessages)
+        .where(
+          and(
+            eq(projectMessages.projectId, projectId),
+            ne(projectMessages.senderId, userId)
+          )
+        );
+
+      if (projectMessagesList.length === 0) {
+        return res.json({ success: true });
+      }
+
+      // Get message IDs that user hasn't read yet
+      const readMessageIds = await db
+        .select({ messageId: messageReadReceipts.messageId })
+        .from(messageReadReceipts)
+        .where(eq(messageReadReceipts.userId, userId));
+
+      const readIds = new Set(readMessageIds.map(r => r.messageId));
+      const unreadMessageIds = projectMessagesList
+        .filter(msg => !readIds.has(msg.id))
+        .map(msg => msg.id);
+
+      if (unreadMessageIds.length > 0) {
+        const readReceiptsToInsert = unreadMessageIds.map(messageId => ({
+          messageId: messageId,
+          userId: userId
+        }));
+
+        await db.insert(messageReadReceipts)
+          .values(readReceiptsToInsert)
+          .onConflictDoNothing();
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all messages as read:", error);
+      res.status(500).json({ error: "Failed to mark all messages as read" });
     }
   });
 

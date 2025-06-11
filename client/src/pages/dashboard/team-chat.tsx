@@ -154,6 +154,40 @@ export default function TeamChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Mark messages as read when user views them
+  useEffect(() => {
+    if (!user?.id || !messages.length || !projectId) return;
+
+    const markMessagesAsRead = async () => {
+      // Get message IDs that are not from current user
+      const messageIdsToMarkRead = messages
+        .filter(msg => msg.senderId !== user.id)
+        .map(msg => msg.id);
+
+      if (messageIdsToMarkRead.length === 0) return;
+
+      try {
+        await fetch(`/api/projects/${projectId}/messages/mark-read`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ messageIds: messageIdsToMarkRead }),
+        });
+
+        // Invalidate unread counts after marking as read
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/projects/unread-counts"] 
+        });
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
+      }
+    };
+
+    // Mark messages as read after a short delay to ensure user actually viewed them
+    const timeoutId = setTimeout(markMessagesAsRead, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [messages, user?.id, projectId, queryClient]);
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
