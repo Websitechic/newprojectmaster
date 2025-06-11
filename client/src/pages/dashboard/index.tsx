@@ -61,7 +61,13 @@ export default function Dashboard() {
   );
   const pendingTasks = userTasks.filter(task => task.status === "todo");
   const tasksInReview = userTasks.filter(task => task.status === "review");
-  const technicalSupportTasks = userTasks.filter(task => task.status === "technical_support");
+  const technicalSupportTasks = userTasks.filter(task => 
+    task.description?.toLowerCase().includes("technical support") || 
+    task.title?.toLowerCase().includes("technical support") ||
+    task.description?.toLowerCase().includes("bug") ||
+    task.description?.toLowerCase().includes("issue") ||
+    task.description?.toLowerCase().includes("error")
+  );
 
   // Calculate overall progress
   const totalTasks = userTasks.length;
@@ -286,7 +292,192 @@ export default function Dashboard() {
           ) : (
             <>
               {/* Manager/Admin Dashboard */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                {/* Tasks in Progress */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-blue-700">
+                        <AlertCircle className="h-5 w-5" />
+                        Tasks in Progress
+                      </div>
+                      <Badge variant="secondary">{tasksInProgress.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {tasksInProgress.length > 0 ? (
+                      <Collapsible open={openSections.inProgress} onOpenChange={() => toggleSection('inProgress')}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between">
+                            View Tasks
+                            {openSections.inProgress ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-2 mt-3">
+                          {tasksInProgress.map(task => (
+                            <TaskCard key={task.id} task={task} />
+                          ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ) : (
+                      <div className="text-center text-gray-500 py-4">
+                        <p className="text-sm">No tasks in progress</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Pending Tasks */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-orange-700">
+                        <Clock className="h-5 w-5" />
+                        Pending Tasks
+                      </div>
+                      <Badge variant="secondary">{pendingTasks.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {pendingTasks.length > 0 ? (
+                      <Collapsible open={openSections.pending} onOpenChange={() => toggleSection('pending')}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between">
+                            View Tasks
+                            {openSections.pending ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-2 mt-3">
+                          {pendingTasks.map(task => (
+                            <TaskCard key={task.id} task={task} />
+                          ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ) : (
+                      <div className="text-center text-gray-500 py-4">
+                        <p className="text-sm">No pending tasks</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Tasks in Review */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-purple-700">
+                        <CheckCircle className="h-5 w-5" />
+                        Tasks in Review
+                      </div>
+                      <Badge variant="secondary">{tasksInReview.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {tasksInReview.length > 0 ? (
+                      <Collapsible open={openSections.review} onOpenChange={() => toggleSection('review')}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between">
+                            View Tasks
+                            {openSections.review ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-2 mt-3">
+                          {tasksInReview.map(task => (
+                            <TaskCard key={task.id} task={task} />
+                          ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ) : (
+                      <div className="text-center text-gray-500 py-4">
+                        <p className="text-sm">No tasks in review</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Technical Support */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-red-700">
+                        <HelpCircle className="h-5 w-5" />
+                        Technical Support
+                      </div>
+                      <Badge variant="secondary">{technicalSupportTasks.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {technicalSupportTasks.length > 0 ? (
+                      <div className="space-y-3">
+                        <Select>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a support task..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {technicalSupportTasks.map(task => (
+                              <SelectItem key={task.id} value={task.id.toString()}>
+                                <div className="flex flex-col items-start">
+                                  <span className="font-medium text-sm">{task.title}</span>
+                                  <span className="text-xs text-gray-500 truncate">
+                                    {task.description?.substring(0, 50)}...
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Collapsible open={openSections.technical} onOpenChange={() => toggleSection('technical')}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="outline" className="w-full justify-between">
+                              View All
+                              {openSections.technical ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="space-y-2 mt-3">
+                            {technicalSupportTasks.map(task => (
+                              <TaskCard key={task.id} task={task} />
+                            ))}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-500 py-4">
+                        <p className="text-sm">No technical support tasks</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Overall Progress */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                <Card className="col-span-1">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                      <CheckCircle className="h-5 w-5" />
+                      Overall Progress
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-blue-600 mb-2">
+                          {overallProgress}%
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                          <div 
+                            className="bg-blue-600 h-3 rounded-full transition-all duration-300" 
+                            style={{ width: `${overallProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {completedTasks} of {totalTasks} tasks completed
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle>Active Projects</CardTitle>
@@ -297,19 +488,10 @@ export default function Dashboard() {
                     </div>
                   </CardContent>
                 </Card>
+
                 <Card>
                   <CardHeader>
-                    <CardTitle>Pending Tasks</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold">
-                      {tasks?.filter(t => t.status === "todo").length || 0}
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Progress</CardTitle>
+                    <CardTitle>Project Progress</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold">
