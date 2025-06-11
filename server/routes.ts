@@ -3357,16 +3357,41 @@ export function registerRoutes(app: Express): Server {
         )
         .orderBy(bookings.startTime);
 
+      console.log(`Retrieved ${allBookings.length} total scheduled bookings`);
+      
       // Filter bookings where user is a participant
       const upcomingBookings = allBookings.filter(booking => {
-        const participants = Array.isArray(booking.participants) 
-          ? booking.participants 
-          : JSON.parse(booking.participants as string);
-        return participants.includes(userId);
+        try {
+          if (!booking.participants) {
+            console.log(`Booking ${booking.id} has no participants`);
+            return false;
+          }
+          
+          let participants;
+          if (Array.isArray(booking.participants)) {
+            participants = booking.participants;
+          } else if (typeof booking.participants === 'string') {
+            participants = JSON.parse(booking.participants);
+          } else {
+            console.log(`Booking ${booking.id} has invalid participants format:`, typeof booking.participants);
+            return false;
+          }
+          
+          if (!Array.isArray(participants)) {
+            console.log(`Booking ${booking.id} participants is not an array:`, participants);
+            return false;
+          }
+          
+          console.log(`Booking ${booking.id} participants:`, participants, `User ${userId} included:`, participants.includes(userId));
+          return participants.includes(userId);
+        } catch (error) {
+          console.error(`Error parsing participants for booking ${booking.id}:`, error);
+          return false;
+        }
       });
 
-      console.log(`Found ${upcomingBookings.rows.length} upcoming bookings for user ${userId}`);
-      res.json(upcomingBookings.rows);
+      console.log(`Found ${upcomingBookings.length} upcoming bookings for user ${userId}`);
+      res.json(upcomingBookings);
     } catch (error) {
       console.error("Error fetching upcoming bookings:", error);
       res.status(500).json({ error: "Failed to fetch upcoming bookings" });
