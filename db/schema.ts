@@ -375,13 +375,32 @@ export const directMessagesRelations = relations(directMessages, ({ one }) => ({
   }),
 }));
 
-export const projectMessagesRelations = relations(projectMessages, ({ one }) => ({
+export const projectMessagesRelations = relations(projectMessages, ({ one, many }) => ({
   project: one(projects, {
     fields: [projectMessages.projectId],
     references: [projects.id],
   }),
   sender: one(users, {
     fields: [projectMessages.senderId],
+    references: [users.id],
+  }),
+  readReceipts: many(messageReadReceipts),
+}));
+
+export const messageReadReceipts = pgTable("message_read_receipts", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").references(() => projectMessages.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  readAt: timestamp("read_at").defaultNow(),
+});
+
+export const messageReadReceiptsRelations = relations(messageReadReceipts, ({ one }) => ({
+  message: one(projectMessages, {
+    fields: [messageReadReceipts.messageId],
+    references: [projectMessages.id],
+  }),
+  user: one(users, {
+    fields: [messageReadReceipts.userId],
     references: [users.id],
   }),
 }));
@@ -454,6 +473,9 @@ export type Booking = typeof bookings.$inferSelect;
 
 export const insertBookingSchema = createInsertSchema(bookings);
 export const selectBookingSchema = createSelectSchema(bookings);
+
+export const insertMessageReadReceiptSchema = createInsertSchema(messageReadReceipts);
+export const selectMessageReadReceiptSchema = createSelectSchema(messageReadReceipts);
 
 // Resources table for file uploads
 export const resources = pgTable("resources", {

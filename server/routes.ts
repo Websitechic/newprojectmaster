@@ -3143,7 +3143,6 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const userId = req.user!.id;
-      console.log("Fetching unread counts for user:", userId);
 
       // Get user's managed projects
       const managedProjects = await db
@@ -3169,40 +3168,49 @@ export function registerRoutes(app: Express): Server {
       
       // Remove duplicates
       const uniqueProjectIds = Array.from(new Set(allProjectIds.filter(id => id !== null)));
-      
-      console.log("User projects found:", uniqueProjectIds.length);
 
       if (uniqueProjectIds.length === 0) {
         return res.json({});
       }
 
-      // Count recent messages for each project
+      // Get unread counts for each project using read receipts
       const unreadCounts: Record<number, number> = {};
-      const twentyFourHoursAgo = new Date();
-      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
       
       for (const projectId of uniqueProjectIds) {
         try {
-          // Simple count query for messages in the last 24 hours not from current user
-          const messages = await db
-            .select()
+          // Get all messages for this project that are not from current user
+          const projectMessagesList = await db
+            .select({ id: projectMessages.id })
             .from(projectMessages)
             .where(
               and(
                 eq(projectMessages.projectId, projectId),
-                ne(projectMessages.senderId, userId),
-                gte(projectMessages.createdAt, twentyFourHoursAgo)
+                ne(projectMessages.senderId, userId)
               )
             );
 
-          unreadCounts[projectId] = messages.length;
+          if (projectMessagesList.length === 0) {
+            unreadCounts[projectId] = 0;
+            continue;
+          }
+
+          // Get message IDs that the user has already read
+          const readMessageIds = await db
+            .select({ messageId: messageReadReceipts.messageId })
+            .from(messageReadReceipts)
+            .where(eq(messageReadReceipts.userId, userId));
+
+          const readIds = new Set(readMessageIds.map(r => r.messageId));
+          
+          // Count unread messages
+          const unreadCount = projectMessagesList.filter(msg => !readIds.has(msg.id)).length;
+          unreadCounts[projectId] = unreadCount;
         } catch (error) {
           console.error(`Error counting messages for project ${projectId}:`, error);
           unreadCounts[projectId] = 0;
         }
       }
 
-      console.log("Unread counts:", unreadCounts);
       res.json(unreadCounts);
     } catch (error) {
       console.error("Error fetching unread counts:", error);
