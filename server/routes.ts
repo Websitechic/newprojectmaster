@@ -3330,7 +3330,8 @@ export function registerRoutes(app: Express): Server {
 
       console.log(`Fetching upcoming bookings for user ${userId} after ${now.toISOString()}`);
 
-      const upcomingBookings = await db
+      // First get all scheduled future bookings, then filter in JavaScript
+      const allBookings = await db
         .select({
           id: bookings.id,
           title: bookings.title,
@@ -3351,14 +3352,21 @@ export function registerRoutes(app: Express): Server {
         .where(
           and(
             eq(bookings.status, "scheduled"),
-            sql`${bookings.startTime} >= ${now.toISOString()}`,
-            sql`${bookings.participants}::jsonb @> '[${userId}]'`
+            sql`${bookings.startTime} >= ${now.toISOString()}`
           )
         )
         .orderBy(bookings.startTime);
 
-      console.log(`Found ${upcomingBookings.length} upcoming bookings for user ${userId}`);
-      res.json(upcomingBookings);
+      // Filter bookings where user is a participant
+      const upcomingBookings = allBookings.filter(booking => {
+        const participants = Array.isArray(booking.participants) 
+          ? booking.participants 
+          : JSON.parse(booking.participants as string);
+        return participants.includes(userId);
+      });
+
+      console.log(`Found ${upcomingBookings.rows.length} upcoming bookings for user ${userId}`);
+      res.json(upcomingBookings.rows);
     } catch (error) {
       console.error("Error fetching upcoming bookings:", error);
       res.status(500).json({ error: "Failed to fetch upcoming bookings" });
