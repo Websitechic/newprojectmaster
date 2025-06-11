@@ -3146,13 +3146,19 @@ export function registerRoutes(app: Express): Server {
 
       // Get all projects the user is a member of or manages
       const userProjects = await db
-        .select({ projectId: projects.id })
+        .select({ 
+          projectId: projects.id,
+          managerId: projects.managerId 
+        })
         .from(projects)
         .leftJoin(projectMembers, eq(projectMembers.projectId, projects.id))
         .where(
           or(
             eq(projects.managerId, userId),
-            eq(projectMembers.userId, userId)
+            and(
+              eq(projectMembers.userId, userId),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
           )
         );
 
@@ -3169,23 +3175,22 @@ export function registerRoutes(app: Express): Server {
         if (!projectId || isNaN(Number(projectId))) continue;
         
         try {
-          // Count messages created after user's last visit (or all if never visited)
-          // For now, we'll consider messages from the last 24 hours as potentially unread
+          // Count messages from the last 24 hours that are not from the current user
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
 
-          const [result] = await db
+          const result = await db
             .select({ count: sql<number>`count(*)` })
             .from(projectMessages)
             .where(
               and(
                 eq(projectMessages.projectId, Number(projectId)),
-                ne(projectMessages.senderId, userId), // Don't count user's own messages
+                ne(projectMessages.senderId, userId),
                 gte(projectMessages.createdAt, yesterday)
               )
             );
 
-          unreadCounts[Number(projectId)] = Number(result.count) || 0;
+          unreadCounts[Number(projectId)] = Number(result[0]?.count) || 0;
         } catch (error) {
           console.error(`Error counting messages for project ${projectId}:`, error);
           unreadCounts[Number(projectId)] = 0;
@@ -3195,7 +3200,7 @@ export function registerRoutes(app: Express): Server {
       res.json(unreadCounts);
     } catch (error) {
       console.error("Error fetching unread counts:", error);
-      res.status(500).json({ error: "Failed to fetch unread counts" });
+      res.status(500).json({ error: "Failed to fetch unread counts", details: (error as Error).message });
     }
   });
 
