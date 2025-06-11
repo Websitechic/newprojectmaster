@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { MeetingAlert } from "@/components/dashboard/meeting-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectCard } from "@/components/project/project-card";
 import { TaskList } from "@/components/task/task-list";
@@ -108,6 +109,7 @@ export default function Dashboard() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
+        <MeetingAlert />
         <div className="flex-1 overflow-auto p-6">
           {user?.role === "staff" ? (
             <>

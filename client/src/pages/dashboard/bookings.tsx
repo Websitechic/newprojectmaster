@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -197,7 +196,7 @@ export default function Bookings() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title || !formData.type || !formData.startTime || !formData.endTime || formData.participants.length === 0) {
       toast({
         title: "Error",
@@ -277,7 +276,7 @@ export default function Bookings() {
           <h1 className="text-3xl font-bold text-gray-900">Bookings Management</h1>
           <p className="text-gray-600 mt-1">Schedule and manage team meetings</p>
         </div>
-        
+
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
@@ -292,7 +291,7 @@ export default function Bookings() {
                 Create a new meeting booking and invite participants
               </DialogDescription>
             </DialogHeader>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -305,7 +304,7 @@ export default function Bookings() {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="type">Meeting Type *</Label>
                   <Select 
@@ -346,7 +345,7 @@ export default function Bookings() {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="endTime">End Time *</Label>
                   <Input
@@ -451,7 +450,7 @@ export default function Bookings() {
                       {getStatusBadge(booking.status)}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     {isBookingUpcoming(booking.startTime) && booking.status === "scheduled" && (
                       <Button
@@ -462,7 +461,7 @@ export default function Bookings() {
                         Cancel
                       </Button>
                     )}
-                    
+
                     <Button
                       size="sm"
                       variant="outline"
@@ -473,12 +472,12 @@ export default function Bookings() {
                   </div>
                 </div>
               </CardHeader>
-              
+
               <CardContent className="space-y-4">
                 {booking.description && (
                   <p className="text-gray-600">{booking.description}</p>
                 )}
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-gray-400" />
@@ -491,12 +490,12 @@ export default function Bookings() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-gray-400" />
                     <p>{booking.participants.length} participant(s)</p>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-gray-400" />
                     <p>By {booking.schedulerName}</p>
