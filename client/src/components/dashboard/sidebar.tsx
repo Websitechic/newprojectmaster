@@ -212,15 +212,26 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/leave-application",
     },
     {
-      icon: <Settings size={20} />,
-      label: "Technical Support",
-      href: "/dashboard/technical-support",
-    },
-    {
       icon: <CheckSquare size={20} />,
       label: "Productivity Tracking",
       href: "/dashboard/productivity-tracking",
     }
+  ] : [];
+
+  // Technical support menu items - conditional based on specialization
+  const technicalSupportMenuItems = user?.role === "staff" ? [
+    // For technical support staff, show Technical Management
+    ...(user?.specialization === "technical_support" ? [{
+      icon: <Settings size={20} />,
+      label: "Technical Management",
+      href: "/dashboard/technical-management",
+    }] : []),
+    // For non-technical support staff, show Technical Support
+    ...(user?.specialization !== "technical_support" ? [{
+      icon: <Settings size={20} />,
+      label: "Technical Support",
+      href: "/dashboard/technical-support",
+    }] : [])
   ] : [];
 
   // Combine menu items based on user role
@@ -228,6 +239,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     ...baseMenuItems.slice(0, 2), // Dashboard, Projects
     ...pmMenuItems,               // Project manager specific items
     ...staffMenuItems,            // Staff specific items
+    ...technicalSupportMenuItems, // Technical support menu items
     ...baseMenuItems.slice(2)     // Messages, Settings
   ];
 

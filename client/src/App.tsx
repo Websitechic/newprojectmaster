@@ -20,6 +20,8 @@ import LeaveApplication from "@/pages/dashboard/leave-application";
 import LeaveManagement from "@/pages/dashboard/leave-management";
 import DirectMessages from "@/pages/dashboard/direct-messages";
 import Bookings from "@/pages/dashboard/bookings";
+import TechnicalSupport from "@/pages/technical-support";
+import TechnicalManagement from "@/pages/technical-management";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -73,6 +75,8 @@ function Router() {
       <Route path="/dashboard/leave-management" component={() => <PrivateRoute component={LeaveManagement} />} />
       <Route path="/dashboard/bookings" component={() => <PrivateRoute component={Bookings} />} />
       <Route path="/dashboard/direct-messages" component={() => <PrivateRoute component={DirectMessages} />} />
+      <Route path="/dashboard/technical-support" component={() => <PrivateRoute component={TechnicalSupport} />} />
+      <Route path="/dashboard/technical-management" component={() => <PrivateRoute component={TechnicalManagement} />} />
       <Route component={NotFound} />
     </Switch>
   );
