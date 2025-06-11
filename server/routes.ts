@@ -1495,8 +1495,8 @@ export function registerRoutes(app: Express): Server {
         updatedAt: new Date()
       };
 
-      // If setting to completed or review, stop the timer
-      if (status === "completed" || status === "review") {
+      // If setting to completed, review, or technical_support, stop the timer
+      if (status === "completed" || status === "review" || status === "technical_support") {
         updateData.isTimerRunning = false;
         updateData.timerStartTime = null;
 
