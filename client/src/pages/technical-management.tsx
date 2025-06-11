@@ -142,19 +142,7 @@ export default function TechnicalManagementPage() {
     setIsUpdateDialogOpen(true);
   };
 
-  if (user?.specialization !== 'technical_support') {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-12">
-          <AlertCircle className="h-16 w-16 mx-auto text-red-500 mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-          <p className="text-gray-600">
-            This page is only accessible to technical support staff.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Access control removed - handled by sidebar navigation
 
   const getStatusIcon = (status: string) => {
     switch (status) {

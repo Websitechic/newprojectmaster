@@ -28,8 +28,8 @@ import {
   messages,
   resources,
   bookings,
-  messageReadReceipts,
   technicalSupportRequests,
+  messageReadReceipts,
   insertTechnicalSupportRequestSchema,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
@@ -3307,14 +3307,28 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Technical Support API Routes (simplified)
+  // Technical Support API Routes
   app.get("/api/technical-support/requests", async (req: Request, res: Response) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
     try {
-      // Return empty array for now - functionality can be expanded later
-      res.json([]);
+      const user = req.user as Express.User;
+      
+      // Get all technical support requests based on user role
+      let requests;
+      
+      if (user.specialization === 'technical_support') {
+        // Technical support staff see all requests
+        requests = await db.select().from(technicalSupportRequests)
+          .orderBy(desc(technicalSupportRequests.createdAt));
+      } else {
+        // Non-technical support staff see only their own requests
+        requests = await db.select().from(technicalSupportRequests)
+          .where(eq(technicalSupportRequests.requesterId, user.id))
+          .orderBy(desc(technicalSupportRequests.createdAt));
+      }
+      res.json(requests);
     } catch (error) {
       console.error("Error fetching technical support requests:", error);
       res.status(500).json({ error: "Failed to fetch requests" });
@@ -3326,8 +3340,42 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
     try {
-      // Return success for now - functionality can be expanded later
-      res.status(201).json({ message: "Request submitted successfully" });
+      const user = req.user as Express.User;
+      
+      // Only non-technical support staff can create requests
+      if (user.specialization === 'technical_support') {
+        return res.status(403).json({ error: "Technical support staff cannot create requests" });
+      }
+
+      const { title, description, taskId, priority } = req.body;
+
+      if (!title || !description) {
+        return res.status(400).json({ error: "Title and description are required" });
+      }
+
+      // Create the technical support request
+      const [newRequest] = await db.insert(technicalSupportRequests)
+        .values({
+          title,
+          description,
+          taskId: taskId || null,
+          requesterId: user.id,
+          priority: priority || 'medium',
+          status: 'pending',
+        })
+        .returning();
+
+      // Update task status to "technical_support" if taskId is provided
+      if (taskId) {
+        await db.update(tasks)
+          .set({ status: 'technical_support' })
+          .where(eq(tasks.id, taskId));
+      }
+
+      res.status(201).json({ 
+        message: "Request submitted successfully",
+        request: newRequest 
+      });
     } catch (error) {
       console.error("Error creating technical support request:", error);
       res.status(500).json({ error: "Failed to create request" });
