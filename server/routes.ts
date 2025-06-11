@@ -3318,5 +3318,49 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get user's upcoming bookings (for persistent alerts)
+  app.get("/api/bookings/my-upcoming", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const userId = req.user!.id;
+      const now = new Date();
+
+      const upcomingBookings = await db
+        .select({
+          id: bookings.id,
+          title: bookings.title,
+          description: bookings.description,
+          type: bookings.type,
+          scheduledBy: bookings.scheduledBy,
+          participants: bookings.participants,
+          startTime: bookings.startTime,
+          endTime: bookings.endTime,
+          status: bookings.status,
+          meetingLink: bookings.meetingLink,
+          notes: bookings.notes,
+          createdAt: bookings.createdAt,
+          schedulerName: users.name,
+        })
+        .from(bookings)
+        .innerJoin(users, eq(bookings.scheduledBy, users.id))
+        .where(
+          and(
+            eq(bookings.status, "scheduled"),
+            sql`${bookings.startTime} >= ${now}`,
+            sql`${bookings.participants}::jsonb ? ${userId.toString()}`
+          )
+        )
+        .orderBy(bookings.startTime);
+
+      res.json(upcomingBookings);
+    } catch (error) {
+      console.error("Error fetching upcoming bookings:", error);
+      res.status(500).json({ error: "Failed to fetch upcoming bookings" });
+    }
+  });
+
   return server;
 }
