@@ -3328,6 +3328,8 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user!.id;
       const now = new Date();
 
+      console.log(`Fetching upcoming bookings for user ${userId} after ${now.toISOString()}`);
+
       const upcomingBookings = await db
         .select({
           id: bookings.id,
@@ -3349,12 +3351,13 @@ export function registerRoutes(app: Express): Server {
         .where(
           and(
             eq(bookings.status, "scheduled"),
-            sql`${bookings.startTime} >= ${now}`,
-            sql`${bookings.participants}::jsonb ? ${userId.toString()}`
+            sql`${bookings.startTime} >= ${now.toISOString()}`,
+            sql`${bookings.participants}::jsonb @> '[${userId}]'`
           )
         )
         .orderBy(bookings.startTime);
 
+      console.log(`Found ${upcomingBookings.length} upcoming bookings for user ${userId}`);
       res.json(upcomingBookings);
     } catch (error) {
       console.error("Error fetching upcoming bookings:", error);
