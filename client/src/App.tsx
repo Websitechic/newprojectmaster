@@ -21,7 +21,7 @@ import LeaveManagement from "@/pages/dashboard/leave-management";
 import DirectMessages from "@/pages/dashboard/direct-messages";
 import Bookings from "@/pages/dashboard/bookings";
 import TechnicalSupport from "@/pages/technical-support";
-import TechnicalManagement from "@/pages/technical-management";
+import TechnicalManagement from "@/pages/technical-management-fixed";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();

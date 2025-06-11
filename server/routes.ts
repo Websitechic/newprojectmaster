@@ -3382,6 +3382,79 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.post("/api/technical-support/requests/:id/assign", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    try {
+      const user = req.user as Express.User;
+      const requestId = parseInt(req.params.id);
+
+      // Only technical support staff can assign requests
+      if (user.specialization !== 'technical_support') {
+        return res.status(403).json({ error: "Only technical support staff can assign requests" });
+      }
+
+      const [updatedRequest] = await db.update(technicalSupportRequests)
+        .set({ 
+          assignedToId: user.id,
+          status: 'in_progress',
+          updatedAt: new Date()
+        })
+        .where(eq(technicalSupportRequests.id, requestId))
+        .returning();
+
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error("Error assigning technical support request:", error);
+      res.status(500).json({ error: "Failed to assign request" });
+    }
+  });
+
+  app.put("/api/technical-support/requests/:id", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    try {
+      const user = req.user as Express.User;
+      const requestId = parseInt(req.params.id);
+
+      // Check if user has permission to update this request
+      const existingRequest = await db.select().from(technicalSupportRequests)
+        .where(eq(technicalSupportRequests.id, requestId))
+        .limit(1);
+
+      if (existingRequest.length === 0) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      const request = existingRequest[0];
+      const canUpdate = user.specialization === 'technical_support' && 
+                       (request.assignedToId === user.id || !request.assignedToId) ||
+                       request.requesterId === user.id;
+
+      if (!canUpdate) {
+        return res.status(403).json({ error: "Not authorized to update this request" });
+      }
+
+      const updateData: any = { ...req.body, updatedAt: new Date() };
+      
+      if (req.body.status === 'resolved') {
+        updateData.resolvedAt = new Date();
+      }
+
+      const [updatedRequest] = await db.update(technicalSupportRequests)
+        .set(updateData)
+        .where(eq(technicalSupportRequests.id, requestId))
+        .returning();
+
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error("Error updating technical support request:", error);
+      res.status(500).json({ error: "Failed to update request" });
+    }
+  });
+
   // Bookings API Routes
 
   // Get all bookings (Project Manager only)
