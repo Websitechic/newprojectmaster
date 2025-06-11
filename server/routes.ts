@@ -1470,7 +1470,7 @@ export function registerRoutes(app: Express): Server {
       const { status } = req.body;
 
       // Validate status
-      const validStatuses = ["todo", "in_progress", "review", "completed"];
+      const validStatuses = ["todo", "in_progress", "review", "completed", "technical_support"];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ error: "Invalid status value" });
       }
