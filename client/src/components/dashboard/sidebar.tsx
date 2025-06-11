@@ -15,6 +15,7 @@ import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
+import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 
 interface SidebarItemProps {
   icon: React.ReactNode;

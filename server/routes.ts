@@ -29,7 +29,7 @@ import {
   resources,
   bookings,
 } from "@db/schema";
-import { eq, and, desc, inArray, asc, isNotNull, or, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte } from "drizzle-orm";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
@@ -3128,6 +3128,63 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error sending team message:", error);
       res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Get unread team message counts for all user's projects
+  app.get("/api/projects/unread-counts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const userId = req.user!.id;
+
+      // Get all projects the user is a member of or manages
+      const userProjects = await db
+        .select({ projectId: projects.id })
+        .from(projects)
+        .leftJoin(projectMembers, eq(projectMembers.projectId, projects.id))
+        .where(
+          or(
+            eq(projects.managerId, userId),
+            eq(projectMembers.userId, userId)
+          )
+        );
+
+      const projectIds = userProjects.map(p => p.projectId);
+      
+      if (projectIds.length === 0) {
+        return res.json({});
+      }
+
+      // Get unread counts for each project
+      const unreadCounts: Record<number, number> = {};
+      
+      for (const projectId of projectIds) {
+        // Count messages created after user's last visit (or all if never visited)
+        // For now, we'll consider messages from the last 24 hours as potentially unread
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const [result] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(projectMessages)
+          .where(
+            and(
+              eq(projectMessages.projectId, projectId),
+              ne(projectMessages.senderId, userId), // Don't count user's own messages
+              gte(projectMessages.createdAt, yesterday)
+            )
+          );
+
+        unreadCounts[projectId] = Number(result.count) || 0;
+      }
+
+      res.json(unreadCounts);
+    } catch (error) {
+      console.error("Error fetching unread counts:", error);
+      res.status(500).json({ error: "Failed to fetch unread counts" });
     }
   });
 
