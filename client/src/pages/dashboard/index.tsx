@@ -62,11 +62,7 @@ export default function Dashboard() {
   const pendingTasks = userTasks.filter(task => task.status === "todo");
   const tasksInReview = userTasks.filter(task => task.status === "review");
   const technicalSupportTasks = userTasks.filter(task => 
-    task.description?.toLowerCase().includes("technical support") || 
-    task.title?.toLowerCase().includes("technical support") ||
-    task.description?.toLowerCase().includes("bug") ||
-    task.description?.toLowerCase().includes("issue") ||
-    task.description?.toLowerCase().includes("error")
+    task.status === "technical_support"
   );
 
   // Calculate overall progress
