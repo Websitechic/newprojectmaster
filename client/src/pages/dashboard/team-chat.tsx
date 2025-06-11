@@ -203,12 +203,15 @@ export default function TeamChat() {
 
   // Filter members for mentions
   const filteredMembers = projectMembers.filter((member: any) =>
+    member?.name && 
     member.name.toLowerCase().includes(mentionQuery.toLowerCase()) &&
     member.id !== user?.id
   );
 
   // Render message content with highlighted mentions
   const renderMessageContent = (content: string) => {
+    if (!content) return content;
+    
     const mentionRegex = /@([a-zA-Z0-9_\s]+)/g;
     const parts = content.split(mentionRegex);
     
@@ -216,7 +219,7 @@ export default function TeamChat() {
       if (index % 2 === 1) {
         // This is a mention
         const mentionedMember = projectMembers.find((member: any) => 
-          member.name.toLowerCase() === part.toLowerCase()
+          member?.name && member.name.toLowerCase() === part.toLowerCase()
         );
         if (mentionedMember) {
           return (
@@ -274,12 +277,14 @@ export default function TeamChat() {
                       <div className="flex flex-wrap gap-1">
                         <span className="font-medium">{projectMembers.length} member{projectMembers.length !== 1 ? 's' : ''}:</span>
                         {projectMembers.slice(0, 4).map((member: any, index: number) => (
-                          <span key={member.id} className="inline-flex items-center">
-                            <span className="bg-muted px-2 py-0.5 rounded-full text-xs font-medium">
-                              {member.name}
+                          member?.name && (
+                            <span key={member.id || index} className="inline-flex items-center">
+                              <span className="bg-muted px-2 py-0.5 rounded-full text-xs font-medium">
+                                {member.name}
+                              </span>
+                              {index < Math.min(projectMembers.length - 1, 3) && <span className="mx-1">•</span>}
                             </span>
-                            {index < Math.min(projectMembers.length - 1, 3) && <span className="mx-1">•</span>}
-                          </span>
+                          )
                         ))}
                         {projectMembers.length > 4 && (
                           <span className="text-xs">+{projectMembers.length - 4} more</span>
@@ -337,22 +342,24 @@ export default function TeamChat() {
                 {showMentionSuggestions && filteredMembers.length > 0 && (
                   <div className="absolute bottom-full left-4 right-4 mb-2 bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto z-10">
                     {filteredMembers.map((member: any) => (
-                      <button
-                        key={member.id}
-                        type="button"
-                        onClick={() => selectMention(member)}
-                        className="w-full px-3 py-2 text-left hover:bg-muted flex items-center gap-2 border-b last:border-b-0"
-                      >
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs">
-                            {getUserInitials(member.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium text-sm">{member.name}</div>
-                          <div className="text-xs text-muted-foreground">{member.role}</div>
-                        </div>
-                      </button>
+                      member?.name && (
+                        <button
+                          key={member.id || member.name}
+                          type="button"
+                          onClick={() => selectMention(member)}
+                          className="w-full px-3 py-2 text-left hover:bg-muted flex items-center gap-2 border-b last:border-b-0"
+                        >
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className="text-xs">
+                              {getUserInitials(member.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium text-sm">{member.name}</div>
+                            <div className="text-xs text-muted-foreground">{member.role || 'Team Member'}</div>
+                          </div>
+                        </button>
+                      )
                     ))}
                   </div>
                 )}
