@@ -226,7 +226,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Technical Management",
       href: "/dashboard/technical-management",
     }] : []),
-    // For non-technical support staff, show Technical Support
+    // For non-technical support staff (including null specialization), show Technical Support
     ...(user?.specialization !== "technical_support" ? [{
       icon: <Settings size={20} />,
       label: "Technical Support",
