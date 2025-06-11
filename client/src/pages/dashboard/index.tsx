@@ -127,26 +127,7 @@ export default function Dashboard() {
           {user?.role === "staff" ? (
             <>
               {/* Staff Dashboard */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                {/* Active Task */}
-                <Card className="border-2 border-green-200 bg-green-50">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-green-700">
-                      <Play className="h-5 w-5" />
-                      Active Task
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {activeTask ? (
-                      <TaskCard task={activeTask} showTimer={true} />
-                    ) : (
-                      <div className="text-center text-gray-500 py-4">
-                        <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm">No active task</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
 
                 {/* Tasks in Progress */}
                 <Card>
@@ -250,26 +231,56 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Progress */}
-                <Card className="md:col-span-2 lg:col-span-1">
+                {/* Technical Support */}
+                <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-gray-700">Overall Progress</CardTitle>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-red-700">
+                        <HelpCircle className="h-5 w-5" />
+                        Technical Support
+                      </div>
+                      <Badge variant="secondary">{technicalSupportTasks.length}</Badge>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-blue-600 mb-2">
-                        {overallProgress}%
+                    {technicalSupportTasks.length > 0 ? (
+                      <div className="space-y-3">
+                        <Select>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a support task..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {technicalSupportTasks.map(task => (
+                              <SelectItem key={task.id} value={task.id.toString()}>
+                                <div className="flex flex-col items-start">
+                                  <span className="font-medium text-sm">{task.title}</span>
+                                  <span className="text-xs text-gray-500 truncate">
+                                    {task.description?.substring(0, 50)}...
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Collapsible open={openSections.technical} onOpenChange={() => toggleSection('technical')}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="outline" className="w-full justify-between">
+                              View All
+                              {openSections.technical ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="space-y-2 mt-3">
+                            {technicalSupportTasks.map(task => (
+                              <TaskCard key={task.id} task={task} />
+                            ))}
+                          </CollapsibleContent>
+                        </Collapsible>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                        <div 
-                          className="bg-blue-600 h-3 rounded-full transition-all duration-300" 
-                          style={{ width: `${overallProgress}%` }}
-                        />
+                    ) : (
+                      <div className="text-center text-gray-500 py-4">
+                        <p className="text-sm">No technical support tasks</p>
                       </div>
-                      <p className="text-sm text-gray-500">
-                        {completedTasks} of {totalTasks} tasks completed
-                      </p>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -450,8 +461,8 @@ export default function Dashboard() {
               </div>
 
               {/* Overall Progress */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                <Card className="col-span-1">
+              <div className="grid grid-cols-1 gap-6 mb-6">
+                <Card className="max-w-md">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-blue-700">
                       <CheckCircle className="h-5 w-5" />
@@ -474,34 +485,6 @@ export default function Dashboard() {
                           {completedTasks} of {totalTasks} tasks completed
                         </p>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Active Projects</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold">
-                      {projects?.filter(p => p.status === "active").length || 0}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Project Progress</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold">
-                      {projects && projects.length > 0
-                        ? Math.round(
-                            projects.reduce((acc, p) => acc + (p.progress || 0), 0) /
-                              projects.length
-                          )
-                        : 0}
-                      %
                     </div>
                   </CardContent>
                 </Card>
