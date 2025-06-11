@@ -3143,64 +3143,70 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const userId = req.user!.id;
+      console.log("Fetching unread counts for user:", userId);
 
-      // Get all projects the user is a member of or manages
-      const userProjects = await db
-        .select({ 
-          projectId: projects.id,
-          managerId: projects.managerId 
-        })
+      // Get user's managed projects
+      const managedProjects = await db
+        .select({ id: projects.id })
         .from(projects)
-        .leftJoin(projectMembers, eq(projectMembers.projectId, projects.id))
+        .where(eq(projects.managerId, userId));
+
+      // Get user's member projects
+      const memberProjects = await db
+        .select({ projectId: projectMembers.projectId })
+        .from(projectMembers)
         .where(
-          or(
-            eq(projects.managerId, userId),
-            and(
-              eq(projectMembers.userId, userId),
-              eq(projectMembers.invitationStatus, "accepted")
-            )
+          and(
+            eq(projectMembers.userId, userId),
+            eq(projectMembers.invitationStatus, "accepted")
           )
         );
 
-      const projectIds = Array.from(new Set(userProjects.map(p => p.projectId).filter(id => id != null)));
+      const allProjectIds = [
+        ...managedProjects.map(p => p.id),
+        ...memberProjects.map(p => p.projectId).filter(id => id !== null)
+      ];
       
-      if (projectIds.length === 0) {
+      // Remove duplicates
+      const uniqueProjectIds = Array.from(new Set(allProjectIds.filter(id => id !== null)));
+      
+      console.log("User projects found:", uniqueProjectIds.length);
+
+      if (uniqueProjectIds.length === 0) {
         return res.json({});
       }
 
-      // Get unread counts for each project
+      // Count recent messages for each project
       const unreadCounts: Record<number, number> = {};
+      const twentyFourHoursAgo = new Date();
+      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
       
-      for (const projectId of projectIds) {
-        if (!projectId || isNaN(Number(projectId))) continue;
-        
+      for (const projectId of uniqueProjectIds) {
         try {
-          // Count messages from the last 24 hours that are not from the current user
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-
-          const result = await db
-            .select({ count: sql<number>`count(*)` })
+          // Simple count query for messages in the last 24 hours not from current user
+          const messages = await db
+            .select()
             .from(projectMessages)
             .where(
               and(
-                eq(projectMessages.projectId, Number(projectId)),
+                eq(projectMessages.projectId, projectId),
                 ne(projectMessages.senderId, userId),
-                gte(projectMessages.createdAt, yesterday)
+                gte(projectMessages.createdAt, twentyFourHoursAgo)
               )
             );
 
-          unreadCounts[Number(projectId)] = Number(result[0]?.count) || 0;
+          unreadCounts[projectId] = messages.length;
         } catch (error) {
           console.error(`Error counting messages for project ${projectId}:`, error);
-          unreadCounts[Number(projectId)] = 0;
+          unreadCounts[projectId] = 0;
         }
       }
 
+      console.log("Unread counts:", unreadCounts);
       res.json(unreadCounts);
     } catch (error) {
       console.error("Error fetching unread counts:", error);
-      res.status(500).json({ error: "Failed to fetch unread counts", details: (error as Error).message });
+      res.status(500).json({ error: "Failed to fetch unread counts" });
     }
   });
 

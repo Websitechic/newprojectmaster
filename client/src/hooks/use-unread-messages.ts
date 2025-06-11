@@ -7,7 +7,9 @@ export function useUnreadMessageCounts() {
   return useQuery<Record<number, number>>({
     queryKey: ["/api/projects/unread-counts"],
     queryFn: async () => {
-      const response = await fetch("/api/projects/unread-counts");
+      const response = await fetch("/api/projects/unread-counts", {
+        credentials: 'include'
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch unread counts");
       }

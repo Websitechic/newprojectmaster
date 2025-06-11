@@ -207,12 +207,15 @@ export default function TeamChat() {
     setShowMentionSuggestions(false);
     setMentionQuery("");
     
-    // Focus back to input
-    setTimeout(() => {
-      inputRef.current?.focus();
-      const newPosition = beforeMention.length + member.name.length + 2;
-      inputRef.current?.setSelectionRange(newPosition, newPosition);
-    }, 0);
+    // Focus back to input and set cursor position
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const newPosition = beforeMention.length + member.name.length + 2;
+        setCursorPosition(newPosition);
+        inputRef.current.setSelectionRange(newPosition, newPosition);
+      }
+    });
   };
 
   // Filter members for mentions
