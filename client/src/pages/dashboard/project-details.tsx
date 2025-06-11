@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { ArrowLeft, Calendar, Clock, User, Users, Edit, Trash2, Plus } from "lucide-react";
 import { ProjectForm } from "@/components/project/project-form";
 import { useAuth } from "@/hooks/use-auth";
+import { useProjectUnreadCount } from "@/hooks/use-unread-messages";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

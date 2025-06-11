@@ -121,7 +121,14 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">{project.name}</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">{project.name}</CardTitle>
+              {unreadCount > 0 && (
+                <Badge className="bg-red-500 text-white px-2 py-0.5 text-xs rounded-full">
+                  {unreadCount}
+                </Badge>
+              )}
+            </div>
             <p className="text-sm text-gray-500 mt-1 capitalize">
               {project.category?.replace(/_/g, ' ')}
             </p>

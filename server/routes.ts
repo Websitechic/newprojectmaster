@@ -456,6 +456,10 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const projectId = parseInt(req.params.id);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
       const [project] = await db
         .select()
         .from(projects)
