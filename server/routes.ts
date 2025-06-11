@@ -604,6 +604,24 @@ export function registerRoutes(app: Express): Server {
       }
 
       // First delete related records to avoid foreign key constraint errors
+      
+      // Delete deliverables from project plans
+      const projectPlansList = await db
+        .select()
+        .from(projectPlans)
+        .where(eq(projectPlans.projectId, projectId));
+
+      for (const plan of projectPlansList) {
+        await db
+          .delete(deliverables)
+          .where(eq(deliverables.projectPlanId, plan.id));
+      }
+
+      // Delete project plans
+      await db
+        .delete(projectPlans)
+        .where(eq(projectPlans.projectId, projectId));
+
       // Delete project members
       await db
         .delete(projectMembers)
@@ -619,10 +637,20 @@ export function registerRoutes(app: Express): Server {
         .delete(messages)
         .where(eq(messages.projectId, projectId));
 
+      // Delete project team messages
+      await db
+        .delete(projectMessages)
+        .where(eq(projectMessages.projectId, projectId));
+
       // Delete client invitations
       await db
         .delete(clientInvitations)
         .where(eq(clientInvitations.projectId, projectId));
+
+      // Delete notifications related to this project
+      await db
+        .delete(notifications)
+        .where(eq(notifications.referenceId, projectId));
 
       // Finally delete the project
       await db
@@ -2052,8 +2080,8 @@ export function registerRoutes(app: Express): Server {
         .where(eq(deliverables.projectPlanId, planId));
 
       // Create new deliverables
-      if (createPlanDeliverables && Array.isArray(createPlanDeliverables) && createPlanDeliverables.length > 0) {
-        const deliverableValues = createPlanDeliverables.map((deliverable: any, index: number) => {
+      if (planDeliverables && Array.isArray(planDeliverables) && planDeliverables.length > 0) {
+        const deliverableValues = planDeliverables.map((deliverable: any, index: number) => {
           const deliverableStartDate = new Date(deliverable.startDate);
           const deliverableEndDate = new Date(deliverable.endDate);
 
