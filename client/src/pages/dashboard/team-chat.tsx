@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, ArrowLeft } from "lucide-react";
+import { Send, ArrowLeft, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -26,7 +26,11 @@ export default function TeamChat() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [cursorPosition, setCursorPosition] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const projectId = parseInt(id!);
 
   const { data: project } = useQuery<Project>({
@@ -158,6 +162,77 @@ export default function TeamChat() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  // Handle mention detection in input
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const position = e.target.selectionStart || 0;
+    
+    setMessage(value);
+    setCursorPosition(position);
+    
+    // Check for @ mentions
+    const beforeCursor = value.substring(0, position);
+    const mentionMatch = beforeCursor.match(/@([a-zA-Z0-9_]*)$/);
+    
+    if (mentionMatch) {
+      setMentionQuery(mentionMatch[1]);
+      setShowMentionSuggestions(true);
+    } else {
+      setShowMentionSuggestions(false);
+      setMentionQuery("");
+    }
+  };
+
+  // Handle mention selection
+  const selectMention = (member: any) => {
+    const beforeMention = message.substring(0, cursorPosition - mentionQuery.length - 1);
+    const afterCursor = message.substring(cursorPosition);
+    const newMessage = `${beforeMention}@${member.name} ${afterCursor}`;
+    
+    setMessage(newMessage);
+    setShowMentionSuggestions(false);
+    setMentionQuery("");
+    
+    // Focus back to input
+    setTimeout(() => {
+      inputRef.current?.focus();
+      const newPosition = beforeMention.length + member.name.length + 2;
+      inputRef.current?.setSelectionRange(newPosition, newPosition);
+    }, 0);
+  };
+
+  // Filter members for mentions
+  const filteredMembers = projectMembers.filter((member: any) =>
+    member.name.toLowerCase().includes(mentionQuery.toLowerCase()) &&
+    member.id !== user?.id
+  );
+
+  // Render message content with highlighted mentions
+  const renderMessageContent = (content: string) => {
+    const mentionRegex = /@([a-zA-Z0-9_\s]+)/g;
+    const parts = content.split(mentionRegex);
+    
+    return parts.map((part, index) => {
+      if (index % 2 === 1) {
+        // This is a mention
+        const mentionedMember = projectMembers.find((member: any) => 
+          member.name.toLowerCase() === part.toLowerCase()
+        );
+        if (mentionedMember) {
+          return (
+            <span 
+              key={index} 
+              className="bg-blue-100 text-blue-800 px-1 rounded font-medium"
+            >
+              @{part}
+            </span>
+          );
+        }
+      }
+      return part;
+    });
+  };
+
   return (
     <div className="flex h-screen">
       <Sidebar currentPath={`/dashboard/projects/${projectId}/team-chat`} />
@@ -187,11 +262,31 @@ export default function TeamChat() {
           <Card className="flex-1 flex flex-col">
             <CardHeader className="flex-shrink-0">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">Team Discussion</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {projectMembers.length} team member{projectMembers.length !== 1 ? 's' : ''} in this project
-                  </p>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Team Discussion
+                  </h3>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {projectMembers.length === 0 ? (
+                      <span>Loading team members...</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        <span className="font-medium">{projectMembers.length} member{projectMembers.length !== 1 ? 's' : ''}:</span>
+                        {projectMembers.slice(0, 4).map((member: any, index: number) => (
+                          <span key={member.id} className="inline-flex items-center">
+                            <span className="bg-muted px-2 py-0.5 rounded-full text-xs font-medium">
+                              {member.name}
+                            </span>
+                            {index < Math.min(projectMembers.length - 1, 3) && <span className="mx-1">•</span>}
+                          </span>
+                        ))}
+                        {projectMembers.length > 4 && (
+                          <span className="text-xs">+{projectMembers.length - 4} more</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <Badge variant="outline" className="text-xs">
                   {messages.length} message{messages.length !== 1 ? 's' : ''}
@@ -214,20 +309,20 @@ export default function TeamChat() {
                     <div key={msg.id} className="flex gap-3">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">
-                          {getUserInitials(msg.sender?.name || "Unknown")}
+                          {getUserInitials(msg.user?.name || "Unknown")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm">
-                            {msg.sender?.name || "Unknown User"}
+                            {msg.user?.name || "Unknown User"}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {formatMessageTime(msg.createdAt)}
+                            {formatMessageTime(msg.createdAt || new Date())}
                           </span>
                         </div>
                         <div className="text-sm bg-muted/50 rounded-lg p-3">
-                          {msg.content}
+                          {renderMessageContent(msg.content)}
                         </div>
                       </div>
                     </div>
@@ -237,14 +332,44 @@ export default function TeamChat() {
               </div>
 
               {/* Message Input */}
-              <div className="border-t p-4">
+              <div className="border-t p-4 relative">
+                {/* Mention Suggestions Dropdown */}
+                {showMentionSuggestions && filteredMembers.length > 0 && (
+                  <div className="absolute bottom-full left-4 right-4 mb-2 bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto z-10">
+                    {filteredMembers.map((member: any) => (
+                      <button
+                        key={member.id}
+                        type="button"
+                        onClick={() => selectMention(member)}
+                        className="w-full px-3 py-2 text-left hover:bg-muted flex items-center gap-2 border-b last:border-b-0"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-xs">
+                            {getUserInitials(member.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium text-sm">{member.name}</div>
+                          <div className="text-xs text-muted-foreground">{member.role}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
                 <form onSubmit={handleSendMessage} className="flex gap-2">
                   <Input
+                    ref={inputRef}
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type your message..."
+                    onChange={handleInputChange}
+                    placeholder="Type your message... (use @ to mention teammates)"
                     className="flex-1"
                     disabled={sendMessageMutation.isPending}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setShowMentionSuggestions(false);
+                      }
+                    }}
                   />
                   <Button 
                     type="submit" 
@@ -258,6 +383,11 @@ export default function TeamChat() {
                     )}
                   </Button>
                 </form>
+                
+                {/* Typing hint */}
+                <div className="text-xs text-muted-foreground mt-2">
+                  Type @ to mention team members
+                </div>
               </div>
             </CardContent>
           </Card>
