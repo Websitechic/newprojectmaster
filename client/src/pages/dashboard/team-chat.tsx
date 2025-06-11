@@ -15,8 +15,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import type { Message, Project, User } from "@db/schema";
 
-interface MessageWithUser extends Message {
-  user?: User;
+interface MessageWithSender {
+  id: number;
+  content: string;
+  createdAt: string;
+  senderId: number;
+  sender?: {
+    id: number;
+    name: string;
+    email: string;
+  };
 }
 
 export default function TeamChat() {
@@ -39,7 +47,7 @@ export default function TeamChat() {
     enabled: !!projectId,
   });
 
-  const { data: messages = [] } = useQuery<MessageWithUser[]>({
+  const { data: messages = [] } = useQuery<MessageWithSender[]>({
     queryKey: [`/api/projects/${projectId}/team-messages`],
     queryFn: async () => {
       console.log(`Fetching team messages for project ${projectId}`);
@@ -58,7 +66,13 @@ export default function TeamChat() {
 
   const { data: projectMembers = [] } = useQuery({
     queryKey: [`/api/projects/${projectId}/members`],
-    queryFn: () => fetch(`/api/projects/${projectId}/members`).then(res => res.json()),
+    queryFn: async () => {
+      console.log(`Fetching project members for project ${projectId}`);
+      const response = await fetch(`/api/projects/${projectId}/members`);
+      const data = await response.json();
+      console.log(`Fetched project members:`, data);
+      return data;
+    },
     enabled: !!projectId,
   });
 
@@ -314,13 +328,13 @@ export default function TeamChat() {
                     <div key={msg.id} className="flex gap-3">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">
-                          {getUserInitials(msg.user?.name || "Unknown")}
+                          {getUserInitials(msg.sender?.name || "Unknown")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm">
-                            {msg.user?.name || "Unknown User"}
+                            {msg.sender?.name || "Unknown User"}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {formatMessageTime(msg.createdAt || new Date())}

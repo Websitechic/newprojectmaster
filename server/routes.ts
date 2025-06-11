@@ -666,8 +666,16 @@ export function registerRoutes(app: Express): Server {
     try {
       const projectId = parseInt(req.params.id);
       const members = await db
-        .select()
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          membershipRole: projectMembers.role,
+          joinedAt: projectMembers.joinedAt
+        })
         .from(projectMembers)
+        .innerJoin(users, eq(projectMembers.userId, users.id))
         .where(and(
           eq(projectMembers.projectId, projectId),
           eq(projectMembers.invitationStatus, "accepted")
