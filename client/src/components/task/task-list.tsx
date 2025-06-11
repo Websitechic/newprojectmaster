@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 interface TaskFormData {
   title: string;
   description: string;
-  status: 'todo' | 'in_progress' | 'completed' | 'review';
+  status: 'todo' | 'in_progress' | 'completed' | 'review' | 'technical_support';
   assigneeId: string;
   startDate: string;
   deadline: string;
@@ -230,6 +230,17 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     ? tasks.filter((task) => task.assigneeId === user?.staffId)
     : tasks;
 
+    const getStatusColor = (status: string) => {
+        switch (status) {
+          case 'todo': return 'bg-gray-100 text-gray-800';
+          case 'in_progress': return 'bg-blue-100 text-blue-800';
+          case 'completed': return 'bg-green-100 text-green-800';
+          case 'review': return 'bg-yellow-100 text-yellow-800';
+          case 'technical_support': return 'bg-red-100 text-red-800';
+          default: return 'bg-gray-100 text-gray-800';
+        }
+      };
+
   return (
     <div>
       <div className="flex justify-end mb-4">
@@ -261,7 +272,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 <TableCell className="font-medium">{task.title}</TableCell>
                 <TableCell className="max-w-xs truncate">{task.description}</TableCell>
                 <TableCell>
-                  <Badge className={`bg-${task.status === 'completed' ? 'green' : task.status === 'in_progress' ? 'blue' : task.status === 'review' ? 'yellow' : 'gray'}-500`}>
+                  <Badge className={getStatusColor(task.status)}>
                     {task.status?.replace('_', ' ') || 'todo'}
                   </Badge>
                 </TableCell>
@@ -356,8 +367,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <SelectContent>
                     <SelectItem value="todo">To Do</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="review">Review</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="technical_support">Technical Support</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -224,6 +224,17 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     return task.isTimerRunning ? "text-blue-600 font-medium" : "text-gray-600";
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'todo': return 'bg-gray-100 text-gray-800';
+      case 'in_progress': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'review': return 'bg-yellow-100 text-yellow-800';
+      case 'technical_support': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
@@ -277,6 +288,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         <SelectItem value="in_progress">In Progress</SelectItem>
                         <SelectItem value="review">Review</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="technical_support">Technical Support</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
