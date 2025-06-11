@@ -35,7 +35,7 @@ interface TechnicalSupportRequest {
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
-  requester: {
+  requester?: {
     id: number;
     name: string;
     email: string;
