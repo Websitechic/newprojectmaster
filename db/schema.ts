@@ -489,4 +489,41 @@ export const resources = pgTable("resources", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const technicalSupportRequests = pgTable("technical_support_requests", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  taskId: integer("task_id").references(() => tasks.id),
+  requesterId: integer("requester_id").references(() => users.id).notNull(),
+  assignedToId: integer("assigned_to_id").references(() => users.id),
+  status: text("status", { 
+    enum: ["pending", "in_progress", "resolved", "closed"] 
+  }).default("pending"),
+  priority: text("priority", { 
+    enum: ["low", "medium", "high", "urgent"] 
+  }).default("medium"),
+  resolution: text("resolution"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export const technicalSupportRequestsRelations = relations(technicalSupportRequests, ({ one }) => ({
+  requester: one(users, {
+    fields: [technicalSupportRequests.requesterId],
+    references: [users.id],
+  }),
+  assignedTo: one(users, {
+    fields: [technicalSupportRequests.assignedToId],
+    references: [users.id],
+  }),
+  task: one(tasks, {
+    fields: [technicalSupportRequests.taskId],
+    references: [tasks.id],
+  }),
+}));
+
 export type Resource = typeof resources.$inferSelect;
+export type TechnicalSupportRequest = typeof technicalSupportRequests.$inferSelect;
+export const insertTechnicalSupportRequestSchema = createInsertSchema(technicalSupportRequests);
+export const selectTechnicalSupportRequestSchema = createSelectSchema(technicalSupportRequests);
