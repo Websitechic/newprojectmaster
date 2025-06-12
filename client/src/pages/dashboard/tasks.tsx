@@ -44,6 +44,9 @@ export default function Tasks() {
     return task.status === filter && task.projectId === parseInt(selectedProject);
   });
 
+  // Mock definition of canCreateTasks for demonstration since it's missing
+  const canCreateTasks = user?.role === "project_manager" || (user?.role === "staff" && user?.specialization === "technical_support");
+
   if (!user) {
     return null; // Let the auth redirect handle this
   }

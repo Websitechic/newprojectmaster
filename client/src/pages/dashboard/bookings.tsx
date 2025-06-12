@@ -309,7 +309,17 @@ export default function Bookings() {
                   <Label htmlFor="type">Meeting Type *</Label>
                   <Select 
                     value={formData.type} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, type: value, participants: [] }))}
+                    onValueChange={(value) => {
+                      if (value === "general_booking") {
+                        // Auto-select all staff members for general meetings
+                        const allStaffIds = users
+                          .filter(user => user.role === "staff" || user.role === "project_manager")
+                          .map(user => user.id);
+                        setFormData(prev => ({ ...prev, type: value, participants: allStaffIds }));
+                      } else {
+                        setFormData(prev => ({ ...prev, type: value, participants: [] }));
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select meeting type" />

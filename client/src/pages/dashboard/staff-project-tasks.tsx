@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Header } from "@/components/dashboard/header";
@@ -31,6 +30,8 @@ export default function StaffProjectTasks() {
     }
   }, [user?.id, refetch]);
 
+  const canManageTasks = user?.role === "project_manager" || (user?.role === "staff" && user?.specialization === "technical_support");
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -52,7 +53,7 @@ export default function StaffProjectTasks() {
               </p>
             )}
           </div>
-          
+
           {myTasks.length > 0 ? (
             <StaffTaskList tasks={myTasks} projectId={projectId} />
           ) : (

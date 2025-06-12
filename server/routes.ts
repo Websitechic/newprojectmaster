@@ -47,6 +47,23 @@ const isProjectManager = (req: Express.Request, res: Response, next: NextFunctio
   next();
 };
 
+// Middleware to check if user can manage tasks (project managers or technical support staff)
+const canManageTasks = (req: Express.Request, res: Response, next: NextFunction) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const user = req.user!;
+  const isProjectManager = user.role === UserRole.PROJECT_MANAGER;
+  const isTechnicalSupport = user.role === UserRole.STAFF && user.specialization === 'technical_support';
+
+  if (!isProjectManager && !isTechnicalSupport) {
+    return res.status(403).json({ error: "Only project managers and technical support staff can perform this action" });
+  }
+
+  next();
+};
+
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), 'uploads', 'leave-proof');
 if (!fs.existsSync(uploadDir)) {
@@ -1082,8 +1099,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Create Task (Project Manager only)
-  app.post("/api/tasks", isProjectManager, async (req, res) => {
+  // Create Task (Project Manager and Technical Support only)
+  app.post("/api/tasks", canManageTasks, async (req, res) => {
     try {
       const { title, description, status, assigneeId, deadline, projectId, startDate, workingHours } = req.body;
 
@@ -1199,8 +1216,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Update task (Project Manager only)
-  app.put("/api/tasks/:id", isProjectManager, async (req, res) => {
+  // Update task (Project Manager and Technical Support only)
+  app.put("/api/tasks/:id", canManageTasks, async (req, res) => {
     try {
       const taskId = parseInt(req.params.id);
       const { title, description, status, assigneeId, deadline, startDate, workingHours } = req.body;
@@ -1523,8 +1540,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Delete task (Project Manager only)
-  app.delete("/api/tasks/:id", isProjectManager, async (req, res) => {
+  // Delete task (Project Manager and Technical Support only)
+  app.delete("/api/tasks/:id", canManageTasks, async (req, res) => {
     try {
       const taskId = parseInt(req.params.id);
 

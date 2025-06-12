@@ -5,6 +5,12 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { TaskList } from "@/components/task/task-list";
 import type { Task } from "@db/schema";
 
+// Placeholder for user context, replace with actual implementation
+const user = {
+  role: "staff",
+  specialization: "technical_support",
+};
+
 export default function ProjectTasks() {
   const { id } = useParams();
   const projectId = parseInt(id!);
@@ -14,6 +20,8 @@ export default function ProjectTasks() {
     queryFn: () => fetch(`/api/projects/${projectId}/tasks`).then(res => res.json()),
     enabled: !!id,
   });
+
+  const canManageTasks = user?.role === "project_manager" || (user?.role === "staff" && user?.specialization === "technical_support");
 
   if (isLoading) {
     return <div>Loading...</div>;
