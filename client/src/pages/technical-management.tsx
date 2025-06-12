@@ -35,7 +35,7 @@ interface TechnicalSupportRequest {
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
-  requester?: {
+  requester: {
     id: number;
     name: string;
     email: string;
@@ -230,14 +230,25 @@ export default function TechnicalManagementPage() {
                         )}
                       </div>
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => assignRequestMutation.mutate(request.id)}
-                          disabled={assignRequestMutation.isPending}
-                        >
-                          <UserCheck className="h-4 w-4 mr-1" />
-                          Assign to Me
-                        </Button>
+                        {!request.assignedToId ? (
+                          <Button
+                            size="sm"
+                            onClick={() => assignRequestMutation.mutate(request.id)}
+                            disabled={assignRequestMutation.isPending}
+                          >
+                            <UserCheck className="h-4 w-4 mr-1" />
+                            Assign to Me
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            disabled
+                            className="bg-gray-300 text-black cursor-not-allowed"
+                          >
+                            <UserCheck className="h-4 w-4 mr-1" />
+                            Assigned
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"

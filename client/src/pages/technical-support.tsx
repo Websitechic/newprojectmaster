@@ -148,6 +148,24 @@ export default function TechnicalSupportPage() {
     },
   });
 
+  const deleteRequest = useMutation({
+    mutationFn: async (requestId: number) => {
+      const res = await fetch(`/api/technical-support/requests/${requestId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete request");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/technical-support/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({ title: "Success", description: "Request deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete request", variant: "destructive" });
+    },
+  });
+
   const form = useForm<RequestFormData>({
     resolver: zodResolver(requestSchema),
     defaultValues: {
@@ -351,6 +369,18 @@ export default function TechnicalSupportPage() {
                   <div className="bg-green-50 p-3 rounded-lg">
                     <span className="text-sm font-medium text-green-800">Resolution: </span>
                     <span className="text-sm text-green-700">{request.resolution}</span>
+                  </div>
+                )}
+                {!request.assignedToId && (
+                  <div className="mt-3 pt-3 border-t">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteRequest.mutate(request.id)}
+                      disabled={deleteRequest.isPending}
+                    >
+                      {deleteRequest.isPending ? "Deleting..." : "Delete Request"}
+                    </Button>
                   </div>
                 )}
               </CardContent>
