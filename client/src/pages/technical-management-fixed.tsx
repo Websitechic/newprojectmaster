@@ -60,6 +60,25 @@ interface TechnicalSupportRequest {
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
+  requester: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  assignedTo?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  task?: {
+    id: number;
+    title: string;
+    projectId: number;
+  };
+  project?: {
+    id: number;
+    name: string;
+  };
 }
 
 const priorityColors = {
@@ -231,27 +250,47 @@ export default function TechnicalManagementPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-700 mb-3">{request.description}</p>
-                <div className="flex items-center gap-4 mb-3">
+                <div className="space-y-2 mb-3">
                   <div className="flex items-center gap-1">
                     <User className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm">User {request.requesterId}</span>
+                    <span className="text-sm">Requested by: {request.requester.name}</span>
                   </div>
-                  {request.taskId && (
+                  {request.task && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-blue-600">Task {request.taskId}</span>
+                      <span className="text-sm text-blue-600">
+                        Task: {request.task.title}
+                        {request.project && ` (${request.project.name})`}
+                      </span>
+                    </div>
+                  )}
+                  {request.assignedTo && (
+                    <div className="flex items-center gap-1">
+                      <UserCheck className="h-4 w-4 text-green-500" />
+                      <span className="text-sm text-green-700">Assigned to: {request.assignedTo.name}</span>
                     </div>
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => assignRequestMutation.mutate(request.id)}
-                    disabled={assignRequestMutation.isPending}
-                  >
-                    <UserCheck className="h-4 w-4 mr-1" />
-                    Assign to Me
-                  </Button>
+                  {request.assignedToId ? (
+                    <Button
+                      size="sm"
+                      disabled
+                      className="bg-gray-200 text-black cursor-not-allowed"
+                    >
+                      <UserCheck className="h-4 w-4 mr-1" />
+                      {request.assignedTo?.id === user?.id ? "Assigned to You" : "Already Assigned"}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => assignRequestMutation.mutate(request.id)}
+                      disabled={assignRequestMutation.isPending}
+                    >
+                      <UserCheck className="h-4 w-4 mr-1" />
+                      {assignRequestMutation.isPending ? "Assigning..." : "Assign to Me"}
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"

@@ -32,7 +32,7 @@ import {
   messageReadReceipts,
   insertTechnicalSupportRequestSchema,
 } from "@db/schema";
-import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull, alias } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
@@ -3489,6 +3489,16 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ error: "Only technical support staff can assign requests" });
       }
 
+      // Get the request details to check for related task and project
+      const [requestDetails] = await db.select()
+        .from(technicalSupportRequests)
+        .where(eq(technicalSupportRequests.id, requestId))
+        .limit(1);
+
+      if (!requestDetails) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
       const [updatedRequest] = await db.update(technicalSupportRequests)
         .set({ 
           assignedToId: user.id,
@@ -3497,6 +3507,44 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(technicalSupportRequests.id, requestId))
         .returning();
+
+      // If there's a related task, grant project access to the technical support staff
+      if (requestDetails.taskId) {
+        try {
+          // Get task details to find project
+          const [taskDetails] = await db.select({ id: tasks.id, projectId: tasks.projectId })
+            .from(tasks)
+            .where(eq(tasks.id, requestDetails.taskId))
+            .limit(1);
+
+          if (taskDetails?.projectId) {
+            // Check if user is already a member of the project
+            const existingMembership = await db.select({ id: projectMembers.id })
+              .from(projectMembers)
+              .where(and(
+                eq(projectMembers.projectId, taskDetails.projectId),
+                eq(projectMembers.userId, user.id)
+              ))
+              .limit(1);
+
+            // If not already a member, add them with technical_support role
+            if (existingMembership.length === 0) {
+              await db.insert(projectMembers).values({
+                projectId: taskDetails.projectId,
+                userId: user.id,
+                role: 'technical_support',
+                invitationStatus: 'accepted',
+                invitedBy: user.id,
+                invitedAt: new Date(),
+                joinedAt: new Date()
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error granting project access to technical support staff:", error);
+          // Continue execution even if project access fails
+        }
+      }
 
       res.json(updatedRequest);
     } catch (error) {
