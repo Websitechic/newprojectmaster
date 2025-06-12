@@ -32,7 +32,7 @@ import {
   messageReadReceipts,
   insertTechnicalSupportRequestSchema,
 } from "@db/schema";
-import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull, alias } from "drizzle-orm";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
@@ -3315,19 +3315,67 @@ export function registerRoutes(app: Express): Server {
     try {
       const user = req.user as Express.User;
       
-      // Get all technical support requests based on user role
-      let requests;
-      
+      // Get basic technical support requests first
+      let basicRequests;
       if (user.specialization === 'technical_support') {
         // Technical support staff see all requests
-        requests = await db.select().from(technicalSupportRequests)
+        basicRequests = await db.select()
+          .from(technicalSupportRequests)
           .orderBy(desc(technicalSupportRequests.createdAt));
       } else {
         // Non-technical support staff see only their own requests
-        requests = await db.select().from(technicalSupportRequests)
+        basicRequests = await db.select()
+          .from(technicalSupportRequests)
           .where(eq(technicalSupportRequests.requesterId, user.id))
           .orderBy(desc(technicalSupportRequests.createdAt));
       }
+
+      // Enrich requests with additional data
+      const requests = await Promise.all(basicRequests.map(async (request) => {
+        // Get requester info
+        const [requester] = await db.select({ id: users.id, name: users.name, email: users.email })
+          .from(users)
+          .where(eq(users.id, request.requesterId))
+          .limit(1);
+
+        // Get assigned user info if assigned
+        let assignedTo = null;
+        if (request.assignedToId) {
+          const [assigned] = await db.select({ id: users.id, name: users.name, email: users.email })
+            .from(users)
+            .where(eq(users.id, request.assignedToId))
+            .limit(1);
+          assignedTo = assigned || null;
+        }
+
+        // Get task info if related
+        let task = null;
+        let project = null;
+        if (request.taskId) {
+          const [taskInfo] = await db.select({ id: tasks.id, title: tasks.title, projectId: tasks.projectId })
+            .from(tasks)
+            .where(eq(tasks.id, request.taskId))
+            .limit(1);
+          task = taskInfo || null;
+
+          if (task?.projectId) {
+            const [projectInfo] = await db.select({ id: projects.id, name: projects.name })
+              .from(projects)
+              .where(eq(projects.id, task.projectId))
+              .limit(1);
+            project = projectInfo || null;
+          }
+        }
+
+        return {
+          ...request,
+          requester,
+          assignedTo,
+          task,
+          project
+        };
+      }));
+      
       res.json(requests);
     } catch (error) {
       console.error("Error fetching technical support requests:", error);
@@ -3498,6 +3546,55 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating technical support request:", error);
       res.status(500).json({ error: "Failed to update request" });
+    }
+  });
+
+  app.delete("/api/technical-support/requests/:id", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    try {
+      const user = req.user as Express.User;
+      const requestId = parseInt(req.params.id);
+
+      // Check if request exists and get details
+      const existingRequest = await db.select()
+        .from(technicalSupportRequests)
+        .where(eq(technicalSupportRequests.id, requestId))
+        .limit(1);
+
+      if (existingRequest.length === 0) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      const request = existingRequest[0];
+
+      // Only allow deletion if:
+      // 1. User is the requester AND
+      // 2. Request is not assigned to anyone (assignedToId is null)
+      if (request.requesterId !== user.id) {
+        return res.status(403).json({ error: "You can only delete your own requests" });
+      }
+
+      if (request.assignedToId !== null) {
+        return res.status(403).json({ error: "Cannot delete request that has been assigned to technical support staff" });
+      }
+
+      // Delete the request
+      await db.delete(technicalSupportRequests)
+        .where(eq(technicalSupportRequests.id, requestId));
+
+      // If there was a related task, update its status back to the previous status
+      if (request.taskId) {
+        await db.update(tasks)
+          .set({ status: 'in_progress' }) // Reset to in_progress or another appropriate status
+          .where(eq(tasks.id, request.taskId));
+      }
+
+      res.json({ message: "Request deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting technical support request:", error);
+      res.status(500).json({ error: "Failed to delete request" });
     }
   });
 
