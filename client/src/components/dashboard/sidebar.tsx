@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
+import { Wrench } from "lucide-react";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -201,6 +202,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Calendar size={20} />,
       label: "Leave Management",
       href: "/dashboard/leave-management",
+    },
+    {
+      icon: <Wrench size={20} />,
+      label: "Technical Management",
+      href: "/dashboard/technical-management",
     }
   ] : [];
 

@@ -71,6 +71,10 @@ export default function TechnicalManagementPage() {
   const queryClient = useQueryClient();
   const [selectedRequest, setSelectedRequest] = useState<TechnicalSupportRequest | null>(null);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  
+  // Check if user is project manager (read-only mode)
+  const isProjectManager = user?.role === "project_manager";
+  const isTechnicalSupport = user?.specialization === "technical_support";
 
   const { data: requests = [], isLoading } = useQuery<TechnicalSupportRequest[]>({
     queryKey: ["/api/technical-support/requests"],
@@ -163,14 +167,21 @@ export default function TechnicalManagementPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Technical Management</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Technical Management</h1>
+          {isProjectManager && (
+            <p className="text-gray-600 mt-1">View technical support requests (Read-only)</p>
+          )}
+        </div>
         <div className="flex gap-2">
           <Badge variant="outline">
             {pendingRequests.length} Pending
           </Badge>
-          <Badge variant="outline">
-            {myRequests.length} Assigned to Me
-          </Badge>
+          {!isProjectManager && (
+            <Badge variant="outline">
+              {myRequests.length} Assigned to Me
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -229,34 +240,41 @@ export default function TechnicalManagementPage() {
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-2">
-                        {!request.assignedToId ? (
+                      {!isProjectManager && (
+                        <div className="flex gap-2">
+                          {!request.assignedToId ? (
+                            <Button
+                              size="sm"
+                              onClick={() => assignRequestMutation.mutate(request.id)}
+                              disabled={assignRequestMutation.isPending}
+                            >
+                              <UserCheck className="h-4 w-4 mr-1" />
+                              Assign to Me
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              disabled
+                              className="bg-gray-300 text-black cursor-not-allowed"
+                            >
+                              <UserCheck className="h-4 w-4 mr-1" />
+                              Assigned
+                            </Button>
+                          )}
                           <Button
                             size="sm"
-                            onClick={() => assignRequestMutation.mutate(request.id)}
-                            disabled={assignRequestMutation.isPending}
+                            variant="outline"
+                            onClick={() => handleUpdateRequest(request)}
                           >
-                            <UserCheck className="h-4 w-4 mr-1" />
-                            Assign to Me
+                            Update Status
                           </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            disabled
-                            className="bg-gray-300 text-black cursor-not-allowed"
-                          >
-                            <UserCheck className="h-4 w-4 mr-1" />
-                            Assigned
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUpdateRequest(request)}
-                        >
-                          Update Status
-                        </Button>
-                      </div>
+                        </div>
+                      )}
+                      {isProjectManager && request.assignedToId && (
+                        <div className="text-sm text-gray-600">
+                          <span className="font-medium">Assigned to:</span> {request.assignedTo?.name || 'Unknown'}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -264,8 +282,8 @@ export default function TechnicalManagementPage() {
             </div>
           )}
 
-          {/* My Assigned Requests Section */}
-          {myRequests.length > 0 && (
+          {/* My Assigned Requests Section - Only for Technical Support Staff */}
+          {!isProjectManager && myRequests.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <UserCheck className="h-5 w-5" />
@@ -315,13 +333,15 @@ export default function TechnicalManagementPage() {
                           <span className="text-sm text-green-700">{request.resolution}</span>
                         </div>
                       )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleUpdateRequest(request)}
-                      >
-                        Update Status
-                      </Button>
+                      {!isProjectManager && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUpdateRequest(request)}
+                        >
+                          Update Status
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ))}

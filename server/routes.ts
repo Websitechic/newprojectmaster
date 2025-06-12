@@ -3317,8 +3317,8 @@ export function registerRoutes(app: Express): Server {
       
       // Get basic technical support requests first
       let basicRequests;
-      if (user.specialization === 'technical_support') {
-        // Technical support staff see all requests
+      if (user.specialization === 'technical_support' || user.role === 'project_manager') {
+        // Technical support staff and project managers see all requests
         basicRequests = await db.select()
           .from(technicalSupportRequests)
           .orderBy(desc(technicalSupportRequests.createdAt));
