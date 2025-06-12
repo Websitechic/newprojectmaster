@@ -123,7 +123,7 @@ export const projectMembers = pgTable("project_members", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").references(() => projects.id),
   userId: integer("user_id").references(() => users.id),
-  role: text("role", { enum: ["viewer", "member", "admin"] }).default("member"),
+  role: text("role", { enum: ["viewer", "member", "admin", "technical_support"] }).default("member"),
   invitationStatus: text("invitation_status", { 
     enum: ["pending", "accepted", "declined"] 
   }).default("pending"),
@@ -172,12 +172,12 @@ export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
   type: text("type", { 
-    enum: ["task_assigned", "task_updated", "task_completed", "mention"] 
+    enum: ["task_assigned", "task_updated", "task_completed", "mention", "technical_support_request"] 
   }).notNull(),
   content: text("content").notNull(),
   referenceId: integer("reference_id"),
   referenceType: text("reference_type", { 
-    enum: ["task", "project", "message"] 
+    enum: ["task", "project", "message", "technical_support_request"] 
   }),
   read: boolean("read").default(false),
   createdAt: timestamp("created_at").defaultNow(),

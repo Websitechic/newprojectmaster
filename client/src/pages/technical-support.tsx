@@ -236,17 +236,17 @@ export default function TechnicalSupportPage() {
                   name="taskId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Related Task (Optional)</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}>
+                      <FormLabel>Related Task *</FormLabel>
+                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a task if applicable" />
+                            <SelectValue placeholder="Select a task" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {tasks.map((task) => (
+                          {userTasks.map((task) => (
                             <SelectItem key={task.id} value={task.id.toString()}>
-                              {task.title}
+                              {task.title} ({projectMap[task.projectId] || `Project ${task.projectId}`})
                             </SelectItem>
                           ))}
                         </SelectContent>

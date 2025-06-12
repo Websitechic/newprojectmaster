@@ -3365,11 +3365,98 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Update task status to "technical_support" if taskId is provided
+      // Get task and project information for notifications and access control
+      let task = null;
+      let project = null;
+      
       if (taskId) {
+        // Update task status to "technical_support"
         await db.update(tasks)
           .set({ status: 'technical_support' })
           .where(eq(tasks.id, taskId));
+
+        // Get task details
+        const taskResult = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+        task = taskResult[0] || null;
+        
+        if (task) {
+          // Get project details
+          const projectResult = await db.select().from(projects).where(eq(projects.id, task.projectId)).limit(1);
+          project = projectResult[0] || null;
+        }
+      }
+
+      // Get all technical support staff to notify
+      const techSupportStaff = await db.select({
+        id: users.id,
+        name: users.name,
+        email: users.email
+      })
+      .from(users)
+      .where(eq(users.specialization, 'technical_support'));
+
+      // Create notifications for all technical support staff
+      if (techSupportStaff.length > 0) {
+        const notifications = techSupportStaff.map(staff => ({
+          userId: staff.id,
+          type: 'technical_support_request' as const,
+          content: `New technical support request: ${title}`,
+          referenceId: newRequest.id,
+          referenceType: 'technical_support_request' as const,
+          createdAt: new Date()
+        }));
+
+        await db.insert(notifications).values(notifications);
+
+        // Send real-time notifications via SSE
+        techSupportStaff.forEach(staff => {
+          const clientResponse = global.sseClients?.get(staff.id);
+          if (clientResponse && !clientResponse.writableEnded) {
+            try {
+              clientResponse.write(`data: ${JSON.stringify({
+                type: "notification",
+                data: {
+                  type: 'technical_support_request',
+                  content: `New technical support request: ${title}`,
+                  referenceId: newRequest.id,
+                  referenceType: 'technical_support_request',
+                  createdAt: new Date().toISOString()
+                }
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error sending SSE notification to user ${staff.id}:`, error);
+              global.sseClients.delete(staff.id);
+            }
+          }
+        });
+
+        // If there's a related project, grant access to technical support staff
+        if (project) {
+          const existingMembers = await db.select({
+            userId: projectMembers.userId
+          })
+          .from(projectMembers)
+          .where(eq(projectMembers.projectId, project.id));
+
+          const existingMemberIds = existingMembers.map(m => m.userId);
+
+          // Add technical support staff who aren't already members
+          const newMembers = techSupportStaff
+            .filter(staff => !existingMemberIds.includes(staff.id))
+            .map(staff => ({
+              projectId: project.id,
+              userId: staff.id,
+              role: 'technical_support' as const,
+              invitationStatus: 'accepted' as const,
+              invitedBy: user.id,
+              invitedAt: new Date(),
+              joinedAt: new Date()
+            }));
+
+          if (newMembers.length > 0) {
+            await db.insert(projectMembers).values(newMembers);
+          }
+        }
       }
 
       res.status(201).json({ 
