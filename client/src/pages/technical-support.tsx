@@ -19,7 +19,7 @@ import { formatDate } from "@/lib/utils";
 const requestSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
-  taskId: z.number().optional(),
+  taskId: z.number({ required_error: "Please select a related task" }),
   priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
 });
 
@@ -57,6 +57,16 @@ interface TechnicalSupportRequest {
 interface Task {
   id: number;
   title: string;
+  description: string;
+  projectId: number;
+  assigneeId: number;
+  status: string;
+}
+
+interface Project {
+  id: number;
+  name: string;
+  description: string;
   status: string;
 }
 
@@ -98,6 +108,24 @@ export default function TechnicalSupportPage() {
     },
   });
 
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    queryFn: async () => {
+      const res = await fetch("/api/projects");
+      if (!res.ok) throw new Error("Failed to fetch projects");
+      return res.json();
+    },
+  });
+
+  // Create a map of project IDs to project names
+  const projectMap = projects.reduce((acc, project) => {
+    acc[project.id] = project.name;
+    return acc;
+  }, {} as Record<number, string>);
+
+  // Filter tasks assigned to current user
+  const userTasks = tasks.filter(task => task.assigneeId === user?.id);
+
   const createRequestMutation = useMutation({
     mutationFn: async (data: RequestFormData) => {
       const res = await fetch("/api/technical-support/requests", {
@@ -110,7 +138,9 @@ export default function TechnicalSupportPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/technical-support/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       setIsCreateDialogOpen(false);
+      form.reset();
       toast({ title: "Success", description: "Technical support request created successfully" });
     },
     onError: () => {
