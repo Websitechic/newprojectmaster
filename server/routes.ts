@@ -3663,6 +3663,135 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Productivity tracking endpoint
+  app.get("/api/productivity", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    
+    try {
+      const user = req.user as Express.User;
+      const dateParam = req.query.date as string;
+      const targetDate = dateParam ? new Date(dateParam) : new Date();
+      
+      // Set target date to start of day
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Get yesterday's date for comparison
+      const yesterday = new Date(targetDate);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const startOfYesterday = new Date(yesterday);
+      startOfYesterday.setHours(0, 0, 0, 0);
+      const endOfYesterday = new Date(yesterday);
+      endOfYesterday.setHours(23, 59, 59, 999);
+
+      // Get start of week (Monday)
+      const startOfWeek = new Date(targetDate);
+      const dayOfWeek = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      // Get all tasks for the user
+      const userTasks = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          status: tasks.status,
+          projectId: tasks.projectId,
+          timeSpent: tasks.timeSpent,
+          updatedAt: tasks.updatedAt,
+          projectName: projects.name
+        })
+        .from(tasks)
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(eq(tasks.assigneeId, user.id));
+
+      // Filter tasks that were worked on today (have time spent and updated today)
+      const todayTasks = userTasks.filter(task => {
+        const taskUpdated = new Date(task.updatedAt);
+        return taskUpdated >= startOfDay && taskUpdated <= endOfDay && (task.timeSpent || 0) > 0;
+      });
+
+      // Filter tasks worked on yesterday
+      const yesterdayTasks = userTasks.filter(task => {
+        const taskUpdated = new Date(task.updatedAt);
+        return taskUpdated >= startOfYesterday && taskUpdated <= endOfYesterday && (task.timeSpent || 0) > 0;
+      });
+
+      // Filter tasks for this week
+      const weekTasks = userTasks.filter(task => {
+        const taskUpdated = new Date(task.updatedAt);
+        return taskUpdated >= startOfWeek && (task.timeSpent || 0) > 0;
+      });
+
+      // Calculate today's data
+      const todayData = {
+        totalTasksWorkedOn: todayTasks.length,
+        totalTasksCompleted: todayTasks.filter(task => task.status === 'completed').length,
+        totalTimeWorked: todayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0),
+        taskBreakdown: todayTasks.map(task => ({
+          taskId: task.id,
+          title: task.title,
+          projectName: task.projectName || 'Unknown Project',
+          timeSpent: task.timeSpent || 0,
+          status: task.status,
+          isCompleted: task.status === 'completed'
+        })),
+        hourlyBreakdown: [] // For now, simplified implementation
+      };
+
+      // Generate hourly breakdown (simplified - assumes even distribution)
+      if (todayData.totalTimeWorked > 0) {
+        const businessHours = [9, 10, 11, 12, 13, 14, 15, 16, 17];
+        const timePerHour = todayData.totalTimeWorked / businessHours.length;
+        
+        todayData.hourlyBreakdown = businessHours.map(hour => ({
+          hour,
+          timeSpent: Math.floor(timePerHour)
+        }));
+      }
+
+      // Calculate yesterday's data
+      const yesterdayData = {
+        totalTasksWorkedOn: yesterdayTasks.length,
+        totalTasksCompleted: yesterdayTasks.filter(task => task.status === 'completed').length,
+        totalTimeWorked: yesterdayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0),
+        taskBreakdown: yesterdayTasks.map(task => ({
+          taskId: task.id,
+          title: task.title,
+          projectName: task.projectName || 'Unknown Project',
+          timeSpent: task.timeSpent || 0,
+          status: task.status,
+          isCompleted: task.status === 'completed'
+        })),
+        hourlyBreakdown: []
+      };
+
+      // Calculate week data
+      const weekData = {
+        totalTasks: weekTasks.length,
+        completedTasks: weekTasks.filter(task => task.status === 'completed').length,
+        totalTime: weekTasks.reduce((total, task) => total + (task.timeSpent || 0), 0)
+      };
+
+      const response = {
+        today: todayData,
+        yesterday: yesterdayData,
+        thisWeek: weekData
+      };
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error fetching productivity data:", error);
+      res.status(500).json({ error: "Failed to fetch productivity data" });
+    }
+  });
+
   // Bookings API Routes
 
   // Get all bookings (Project Manager only)

@@ -20,6 +20,7 @@ import LeaveApplication from "@/pages/dashboard/leave-application";
 import LeaveManagement from "@/pages/dashboard/leave-management";
 import DirectMessages from "@/pages/dashboard/direct-messages";
 import Bookings from "@/pages/dashboard/bookings";
+import Productivity from "@/pages/dashboard/productivity";
 import TechnicalSupport from "@/pages/technical-support";
 import TechnicalManagement from "@/pages/technical-management-fixed";
 
@@ -74,6 +75,7 @@ function Router() {
       <Route path="/dashboard/leave-application" component={() => <PrivateRoute component={LeaveApplication} />} />
       <Route path="/dashboard/leave-management" component={() => <PrivateRoute component={LeaveManagement} />} />
       <Route path="/dashboard/bookings" component={() => <PrivateRoute component={Bookings} />} />
+      <Route path="/dashboard/productivity" component={() => <PrivateRoute component={Productivity} />} />
       <Route path="/dashboard/direct-messages" component={() => <PrivateRoute component={DirectMessages} />} />
       <Route path="/dashboard/technical-support" component={() => <PrivateRoute component={TechnicalSupport} />} />
       <Route path="/dashboard/technical-management" component={() => <PrivateRoute component={TechnicalManagement} />} />

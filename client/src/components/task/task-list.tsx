@@ -77,7 +77,11 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   const handleNewTask = () => {
     setEditTask(null);
-    setFormData(defaultTask);
+    // If technical support staff, default to assigning to themselves
+    const initialFormData = user?.role === "staff" && user?.specialization === "technical_support"
+      ? { ...defaultTask, assigneeId: user.id.toString() }
+      : defaultTask;
+    setFormData(initialFormData);
     setIsDialogOpen(true);
   };
 
@@ -384,12 +388,22 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {staff?.map((member) => (
-                      <SelectItem key={member.id} value={member.id.toString()}>
-                        {member.name}
+                    {user?.role === "staff" && user?.specialization === "technical_support" ? (
+                      // Technical support staff can only assign to themselves
+                      <SelectItem value={user.id.toString()}>
+                        {user.name} (Me)
                       </SelectItem>
-                    ))}
+                    ) : (
+                      // Project managers can assign to anyone
+                      <>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {staff?.map((member) => (
+                          <SelectItem key={member.id} value={member.id.toString()}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
