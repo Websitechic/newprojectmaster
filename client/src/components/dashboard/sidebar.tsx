@@ -220,7 +220,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     {
       icon: <CheckSquare size={20} />,
       label: "Productivity Tracking",
-      href: "/dashboard/productivity-tracking",
+      href: "/dashboard/productivity",
     }
   ] : [];
 

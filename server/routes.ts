@@ -3713,18 +3713,21 @@ export function registerRoutes(app: Express): Server {
 
       // Filter tasks that were worked on today (have time spent and updated today)
       const todayTasks = userTasks.filter(task => {
+        if (!task.updatedAt) return false;
         const taskUpdated = new Date(task.updatedAt);
         return taskUpdated >= startOfDay && taskUpdated <= endOfDay && (task.timeSpent || 0) > 0;
       });
 
       // Filter tasks worked on yesterday
       const yesterdayTasks = userTasks.filter(task => {
+        if (!task.updatedAt) return false;
         const taskUpdated = new Date(task.updatedAt);
         return taskUpdated >= startOfYesterday && taskUpdated <= endOfYesterday && (task.timeSpent || 0) > 0;
       });
 
       // Filter tasks for this week
       const weekTasks = userTasks.filter(task => {
+        if (!task.updatedAt) return false;
         const taskUpdated = new Date(task.updatedAt);
         return taskUpdated >= startOfWeek && (task.timeSpent || 0) > 0;
       });
@@ -3742,7 +3745,7 @@ export function registerRoutes(app: Express): Server {
           status: task.status,
           isCompleted: task.status === 'completed'
         })),
-        hourlyBreakdown: [] // For now, simplified implementation
+        hourlyBreakdown: [] as { hour: number; timeSpent: number; }[]
       };
 
       // Generate hourly breakdown (simplified - assumes even distribution)
