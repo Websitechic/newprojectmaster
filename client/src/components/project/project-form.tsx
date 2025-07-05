@@ -15,9 +15,9 @@ import { Plus, Trash2 } from "lucide-react";
 import type { Project } from "@db/schema";
 
 const deliverableSchema = z.object({
-  name: z.string().min(1, "Deliverable name is required"),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
+  name: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
 });
 
 const projectSchema = z.object({
@@ -58,11 +58,10 @@ const projectSchema = z.object({
         path: ["planEndDate"]
       });
     }
-    if (!data.deliverables || data.deliverables.length === 0 || 
-        data.deliverables.some(d => !d.name || !d.startDate || !d.endDate)) {
+    if (!data.deliverables || data.deliverables.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "At least one complete deliverable is required when creating a plan",
+        message: "At least one deliverable is required when creating a plan",
         path: ["deliverables"]
       });
     }
@@ -168,7 +167,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             description: data.planDescription || "",
             startDate: data.planStartDate,
             endDate: data.planEndDate,
-            deliverables: data.deliverables?.filter(d => d.name && d.startDate && d.endDate) || [],
+            deliverables: data.deliverables || [],
           };
 
           const planResponse = await fetch(`/api/projects/${savedProject.id}/plans`, {
