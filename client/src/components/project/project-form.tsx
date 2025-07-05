@@ -35,16 +35,38 @@ const projectSchema = z.object({
   planStartDate: z.string().optional(),
   planEndDate: z.string().optional(),
   deliverables: z.array(deliverableSchema).optional().default([]),
-}).refine((data) => {
+}).superRefine((data, ctx) => {
   if (data.createPlan) {
-    return data.planName && data.planName.trim().length > 0 &&
-           data.planStartDate && data.planEndDate &&
-           data.deliverables && data.deliverables.length > 0;
+    if (!data.planName || data.planName.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Plan name is required when creating a plan",
+        path: ["planName"]
+      });
+    }
+    if (!data.planStartDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Plan start date is required when creating a plan",
+        path: ["planStartDate"]
+      });
+    }
+    if (!data.planEndDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Plan end date is required when creating a plan",
+        path: ["planEndDate"]
+      });
+    }
+    if (!data.deliverables || data.deliverables.length === 0 || 
+        data.deliverables.some(d => !d.name || !d.startDate || !d.endDate)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one complete deliverable is required when creating a plan",
+        path: ["deliverables"]
+      });
+    }
   }
-  return true;
-}, {
-  message: "When creating a plan, plan name, dates, and at least one deliverable are required",
-  path: ["planName"]
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -162,14 +184,15 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
       return savedProject;
     },
-    onSuccess: () => {
+    onSuccess: (savedProject) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       queryClient.invalidateQueries({ queryKey: ["/api/project-plans"] });
+      const formData = form.getValues();
       toast({
         title: "Success",
         description: project 
           ? "Project updated successfully!" 
-          : data.createPlan 
+          : formData.createPlan 
             ? "Project and plan created successfully!" 
             : "Project created successfully!",
       });
