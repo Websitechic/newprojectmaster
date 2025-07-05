@@ -154,7 +154,7 @@ export default function TeamChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Mark messages as read when user views them
+  // Mark team messages as read when user views them
   useEffect(() => {
     if (!user?.id || !messages.length || !projectId) return;
 
@@ -165,6 +165,10 @@ export default function TeamChat() {
         .map(msg => msg.id);
 
       if (messageIdsToMarkRead.length === 0) return;
+
+      // Delay marking as read to ensure user has time to see the messages
+    const timeoutId = setTimeout(markMessagesAsRead, 1000);
+    return () => clearTimeout(timeoutId);
 
       try {
         await fetch(`/api/projects/${projectId}/messages/mark-read`, {

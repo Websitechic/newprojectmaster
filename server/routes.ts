@@ -3193,13 +3193,13 @@ export function registerRoutes(app: Express): Server {
         return res.json({});
       }
 
-      // Get unread counts for each project using read receipts
+      // Get unread counts for each project using read receipts for team chat (projectMessages)
       const unreadCounts: Record<number, number> = {};
       
       for (const projectId of uniqueProjectIds) {
         try {
-          // Get all messages for this project that are not from current user
-          const projectMessagesList = await db
+          // Get all team messages for this project that are not from current user
+          const teamMessagesList = await db
             .select({ id: projectMessages.id })
             .from(projectMessages)
             .where(
@@ -3209,12 +3209,12 @@ export function registerRoutes(app: Express): Server {
               )
             );
 
-          if (projectMessagesList.length === 0) {
+          if (teamMessagesList.length === 0) {
             unreadCounts[projectId] = 0;
             continue;
           }
 
-          // Get message IDs that the user has already read
+          // Get message IDs that the user has already read (for team messages)
           const readMessageIds = await db
             .select({ messageId: messageReadReceipts.messageId })
             .from(messageReadReceipts)
@@ -3222,8 +3222,8 @@ export function registerRoutes(app: Express): Server {
 
           const readIds = new Set(readMessageIds.map(r => r.messageId));
           
-          // Count unread messages
-          const unreadCount = projectMessagesList.filter(msg => !readIds.has(msg.id)).length;
+          // Count unread team messages
+          const unreadCount = teamMessagesList.filter(msg => !readIds.has(msg.id)).length;
           unreadCounts[projectId] = unreadCount;
         } catch (error) {
           console.error(`Error counting messages for project ${projectId}:`, error);
@@ -3235,6 +3235,36 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching unread counts:", error);
       res.status(500).json({ error: "Failed to fetch unread counts" });
+    }
+  });
+
+  // Mark team messages as read for a user
+  app.post("/api/projects/:projectId/team-messages/mark-read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const userId = req.user!.id;
+      const { messageIds } = req.body;
+
+      if (!Array.isArray(messageIds) || messageIds.length === 0) {
+        return res.status(400).json({ error: "Message IDs are required" });
+      }
+
+      // Insert read receipts for team messages
+      const readReceipts = messageIds.map(messageId => ({
+        messageId: parseInt(messageId),
+        userId: userId,
+      }));
+
+      await db.insert(messageReadReceipts).values(readReceipts).onConflictDoNothing();
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking team messages as read:", error);
+      res.status(500).json({ error: "Failed to mark messages as read" });
     }
   });
 
