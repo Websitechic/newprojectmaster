@@ -30,6 +30,7 @@ import {
   bookings,
   technicalSupportRequests,
   messageReadReceipts,
+  deadlineExtensionRequests,
   insertTechnicalSupportRequestSchema,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
@@ -3690,6 +3691,327 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error deleting technical support request:", error);
       res.status(500).json({ error: "Failed to delete request" });
+    }
+  });
+
+  // Deadline Extension Requests API Routes
+
+  // Get deadline extension requests
+  app.get("/api/deadline-extension-requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const user = req.user!;
+      let requests;
+
+      if (user.role === "project_manager") {
+        // Project managers see all requests for their projects
+        requests = await db
+          .select({
+            id: deadlineExtensionRequests.id,
+            taskId: deadlineExtensionRequests.taskId,
+            requesterId: deadlineExtensionRequests.requesterId,
+            projectManagerId: deadlineExtensionRequests.projectManagerId,
+            reason: deadlineExtensionRequests.reason,
+            requestedDeadline: deadlineExtensionRequests.requestedDeadline,
+            status: deadlineExtensionRequests.status,
+            decisionReason: deadlineExtensionRequests.decisionReason,
+            decidedBy: deadlineExtensionRequests.decidedBy,
+            decidedAt: deadlineExtensionRequests.decidedAt,
+            approvedDeadline: deadlineExtensionRequests.approvedDeadline,
+            approvedWorkingHours: deadlineExtensionRequests.approvedWorkingHours,
+            createdAt: deadlineExtensionRequests.createdAt,
+            updatedAt: deadlineExtensionRequests.updatedAt,
+            requesterName: users.name,
+            requesterEmail: users.email,
+            taskTitle: tasks.title,
+            taskDeadline: tasks.deadline,
+            taskWorkingHours: tasks.workingHours,
+            projectName: projects.name,
+            projectId: projects.id,
+          })
+          .from(deadlineExtensionRequests)
+          .leftJoin(users, eq(deadlineExtensionRequests.requesterId, users.id))
+          .leftJoin(tasks, eq(deadlineExtensionRequests.taskId, tasks.id))
+          .leftJoin(projects, eq(tasks.projectId, projects.id))
+          .where(eq(deadlineExtensionRequests.projectManagerId, user.id))
+          .orderBy(desc(deadlineExtensionRequests.createdAt));
+      } else {
+        // Staff see only their own requests
+        requests = await db
+          .select({
+            id: deadlineExtensionRequests.id,
+            taskId: deadlineExtensionRequests.taskId,
+            requesterId: deadlineExtensionRequests.requesterId,
+            projectManagerId: deadlineExtensionRequests.projectManagerId,
+            reason: deadlineExtensionRequests.reason,
+            requestedDeadline: deadlineExtensionRequests.requestedDeadline,
+            status: deadlineExtensionRequests.status,
+            decisionReason: deadlineExtensionRequests.decisionReason,
+            decidedBy: deadlineExtensionRequests.decidedBy,
+            decidedAt: deadlineExtensionRequests.decidedAt,
+            approvedDeadline: deadlineExtensionRequests.approvedDeadline,
+            approvedWorkingHours: deadlineExtensionRequests.approvedWorkingHours,
+            createdAt: deadlineExtensionRequests.createdAt,
+            updatedAt: deadlineExtensionRequests.updatedAt,
+            requesterName: users.name,
+            requesterEmail: users.email,
+            taskTitle: tasks.title,
+            taskDeadline: tasks.deadline,
+            taskWorkingHours: tasks.workingHours,
+            projectName: projects.name,
+            projectId: projects.id,
+          })
+          .from(deadlineExtensionRequests)
+          .leftJoin(users, eq(deadlineExtensionRequests.requesterId, users.id))
+          .leftJoin(tasks, eq(deadlineExtensionRequests.taskId, tasks.id))
+          .leftJoin(projects, eq(tasks.projectId, projects.id))
+          .where(eq(deadlineExtensionRequests.requesterId, user.id))
+          .orderBy(desc(deadlineExtensionRequests.createdAt));
+      }
+
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching deadline extension requests:", error);
+      res.status(500).json({ error: "Failed to fetch deadline extension requests" });
+    }
+  });
+
+  // Create deadline extension request (Staff only)
+  app.post("/api/deadline-extension-requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    
+    // Only non-project manager staff can create requests
+    if (user.role === "project_manager") {
+      return res.status(403).json({ error: "Project managers cannot create deadline extension requests" });
+    }
+
+    try {
+      const { taskId, reason, requestedDeadline } = req.body;
+
+      if (!taskId || !reason) {
+        return res.status(400).json({ error: "Task ID and reason are required" });
+      }
+
+      // Get task details to find the project manager
+      const [task] = await db
+        .select({
+          id: tasks.id,
+          projectId: tasks.projectId,
+          assigneeId: tasks.assigneeId,
+          deadline: tasks.deadline,
+        })
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Verify the user is assigned to this task
+      if (task.assigneeId !== user.id) {
+        return res.status(403).json({ error: "You can only request extensions for tasks assigned to you" });
+      }
+
+      // Get project manager
+      const [project] = await db
+        .select({
+          managerId: projects.managerId,
+        })
+        .from(projects)
+        .where(eq(projects.id, task.projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check if there's already a pending request for this task
+      const [existingRequest] = await db
+        .select()
+        .from(deadlineExtensionRequests)
+        .where(and(
+          eq(deadlineExtensionRequests.taskId, taskId),
+          eq(deadlineExtensionRequests.status, "pending")
+        ))
+        .limit(1);
+
+      if (existingRequest) {
+        return res.status(400).json({ error: "There is already a pending extension request for this task" });
+      }
+
+      // Create the request
+      const [newRequest] = await db
+        .insert(deadlineExtensionRequests)
+        .values({
+          taskId,
+          requesterId: user.id,
+          projectManagerId: project.managerId,
+          reason,
+          requestedDeadline: requestedDeadline ? new Date(requestedDeadline) : null,
+          status: "pending",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      // Create notification for project manager
+      const [taskDetails] = await db
+        .select({
+          title: tasks.title,
+          projectName: projects.name,
+        })
+        .from(tasks)
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+
+      const [notification] = await db
+        .insert(notifications)
+        .values({
+          userId: project.managerId,
+          type: "task_updated",
+          content: `${user.name} has requested a deadline extension for task: ${taskDetails?.title || 'Unknown Task'}`,
+          referenceId: newRequest.id,
+          referenceType: "task",
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Send notification through SSE if PM is connected
+      const clientResponse = global.sseClients?.get(project.managerId);
+      if (clientResponse && !clientResponse.writableEnded) {
+        try {
+          clientResponse.write(`data: ${JSON.stringify({
+            type: "notification",
+            data: notification
+          })}\n\n`);
+        } catch (error) {
+          console.error(`Error sending SSE notification to PM ${project.managerId}:`, error);
+          global.sseClients?.delete(project.managerId);
+        }
+      }
+
+      res.json(newRequest);
+    } catch (error) {
+      console.error("Error creating deadline extension request:", error);
+      res.status(500).json({ error: "Failed to create deadline extension request" });
+    }
+  });
+
+  // Approve/Decline deadline extension request (Project Manager only)
+  app.put("/api/deadline-extension-requests/:id", isProjectManager, async (req, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const { status, decisionReason, approvedDeadline, approvedWorkingHours } = req.body;
+
+      if (!["approved", "declined"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be 'approved' or 'declined'" });
+      }
+
+      if (!decisionReason) {
+        return res.status(400).json({ error: "Decision reason is required" });
+      }
+
+      // Get the request details
+      const [request] = await db
+        .select()
+        .from(deadlineExtensionRequests)
+        .where(and(
+          eq(deadlineExtensionRequests.id, requestId),
+          eq(deadlineExtensionRequests.projectManagerId, req.user!.id),
+          eq(deadlineExtensionRequests.status, "pending")
+        ))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found or already processed" });
+      }
+
+      // Update the request
+      const updateData: any = {
+        status,
+        decisionReason,
+        decidedBy: req.user!.id,
+        decidedAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      if (status === "approved") {
+        if (approvedDeadline) {
+          updateData.approvedDeadline = new Date(approvedDeadline);
+        }
+        if (approvedWorkingHours) {
+          updateData.approvedWorkingHours = parseInt(approvedWorkingHours);
+        }
+      }
+
+      const [updatedRequest] = await db
+        .update(deadlineExtensionRequests)
+        .set(updateData)
+        .where(eq(deadlineExtensionRequests.id, requestId))
+        .returning();
+
+      // If approved, update the task
+      if (status === "approved") {
+        const taskUpdateData: any = {};
+        
+        if (approvedDeadline) {
+          taskUpdateData.deadline = new Date(approvedDeadline);
+        }
+        
+        if (approvedWorkingHours) {
+          taskUpdateData.workingHours = parseInt(approvedWorkingHours);
+        }
+
+        if (Object.keys(taskUpdateData).length > 0) {
+          taskUpdateData.updatedAt = new Date();
+          
+          await db
+            .update(tasks)
+            .set(taskUpdateData)
+            .where(eq(tasks.id, request.taskId));
+        }
+      }
+
+      // Create notification for the requester
+      const [notification] = await db
+        .insert(notifications)
+        .values({
+          userId: request.requesterId,
+          type: "task_updated",
+          content: `Your deadline extension request has been ${status}. ${decisionReason}`,
+          referenceId: request.taskId,
+          referenceType: "task",
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Send notification through SSE if user is connected
+      const clientResponse = global.sseClients?.get(request.requesterId);
+      if (clientResponse && !clientResponse.writableEnded) {
+        try {
+          clientResponse.write(`data: ${JSON.stringify({
+            type: "notification",
+            data: notification
+          })}\n\n`);
+        } catch (error) {
+          console.error(`Error sending SSE notification to user ${request.requesterId}:`, error);
+          global.sseClients?.delete(request.requesterId);
+        }
+      }
+
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error("Error processing deadline extension request:", error);
+      res.status(500).json({ error: "Failed to process deadline extension request" });
     }
   });
 

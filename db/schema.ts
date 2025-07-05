@@ -525,5 +525,47 @@ export const technicalSupportRequestsRelations = relations(technicalSupportReque
 
 export type Resource = typeof resources.$inferSelect;
 export type TechnicalSupportRequest = typeof technicalSupportRequests.$inferSelect;
+export const deadlineExtensionRequests = pgTable("deadline_extension_requests", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").references(() => tasks.id).notNull(),
+  requesterId: integer("requester_id").references(() => users.id).notNull(),
+  projectManagerId: integer("project_manager_id").references(() => users.id).notNull(),
+  reason: text("reason").notNull(),
+  requestedDeadline: timestamp("requested_deadline"),
+  status: text("status", { 
+    enum: ["pending", "approved", "declined"] 
+  }).default("pending"),
+  decisionReason: text("decision_reason"),
+  decidedBy: integer("decided_by").references(() => users.id),
+  decidedAt: timestamp("decided_at"),
+  approvedDeadline: timestamp("approved_deadline"),
+  approvedWorkingHours: integer("approved_working_hours"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const deadlineExtensionRequestsRelations = relations(deadlineExtensionRequests, ({ one }) => ({
+  task: one(tasks, {
+    fields: [deadlineExtensionRequests.taskId],
+    references: [tasks.id],
+  }),
+  requester: one(users, {
+    fields: [deadlineExtensionRequests.requesterId],
+    references: [users.id],
+  }),
+  projectManager: one(users, {
+    fields: [deadlineExtensionRequests.projectManagerId],
+    references: [users.id],
+  }),
+  decidedByUser: one(users, {
+    fields: [deadlineExtensionRequests.decidedBy],
+    references: [users.id],
+  }),
+}));
+
+export type DeadlineExtensionRequest = typeof deadlineExtensionRequests.$inferSelect;
+export const insertDeadlineExtensionRequestSchema = createInsertSchema(deadlineExtensionRequests);
+export const selectDeadlineExtensionRequestSchema = createSelectSchema(deadlineExtensionRequests);
+
 export const insertTechnicalSupportRequestSchema = createInsertSchema(technicalSupportRequests);
 export const selectTechnicalSupportRequestSchema = createSelectSchema(technicalSupportRequests);

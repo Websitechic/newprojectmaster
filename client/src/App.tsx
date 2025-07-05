@@ -23,6 +23,8 @@ import Bookings from "@/pages/dashboard/bookings";
 import Productivity from "@/pages/dashboard/productivity";
 import TechnicalSupport from "@/pages/technical-support";
 import TechnicalManagement from "@/pages/technical-management-fixed";
+import ExtensionRequestsPage from "./pages/extension-requests";
+import DeadlineExtensionRequestsPage from "./pages/deadline-extension-requests";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -79,6 +81,8 @@ function Router() {
       <Route path="/dashboard/direct-messages" component={() => <PrivateRoute component={DirectMessages} />} />
       <Route path="/dashboard/technical-support" component={() => <PrivateRoute component={TechnicalSupport} />} />
       <Route path="/dashboard/technical-management" component={() => <PrivateRoute component={TechnicalManagement} />} />
+      <Route path="/extension-requests" component={() => <PrivateRoute component={ExtensionRequestsPage} />} />
+      <Route path="/deadline-extension-requests" component={() => <PrivateRoute component={DeadlineExtensionRequestsPage} />} />
       <Route component={NotFound} />
     </Switch>
   );

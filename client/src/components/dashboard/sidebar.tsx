@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 import { Wrench } from "lucide-react";
+import { Clock } from "lucide-react";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
