@@ -241,12 +241,24 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     }] : [])
   ] : [];
 
+  // Extension requests menu items
+  const extensionMenuItems = user?.role === "project_manager" ? [{
+    icon: <Clock size={20} />,
+    label: "Deadline Extension Requests",
+    href: "/dashboard/deadline-extension-requests",
+  }] : user?.role === "staff" ? [{
+    icon: <Clock size={20} />,
+    label: "Extension Requests",
+    href: "/dashboard/extension-requests",
+  }] : [];
+
   // Combine menu items based on user role
   const menuItems = [
     ...baseMenuItems.slice(0, 2), // Dashboard, Projects
     ...pmMenuItems,               // Project manager specific items
     ...staffMenuItems,            // Staff specific items
     ...technicalSupportMenuItems, // Technical support menu items
+    ...extensionMenuItems,        // Extension requests menu items
     ...baseMenuItems.slice(2)     // Messages, Settings
   ];
 

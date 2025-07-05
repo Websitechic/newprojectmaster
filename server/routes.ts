@@ -3194,10 +3194,19 @@ export function registerRoutes(app: Express): Server {
         return res.json({});
       }
 
+      // Validate project IDs are valid numbers
+      const validProjectIds = uniqueProjectIds.filter(id => 
+        typeof id === 'number' && !isNaN(id) && Number.isInteger(id)
+      );
+
+      if (validProjectIds.length === 0) {
+        return res.json({});
+      }
+
       // Get unread counts for each project using read receipts for team chat (projectMessages)
       const unreadCounts: Record<number, number> = {};
       
-      for (const projectId of uniqueProjectIds) {
+      for (const projectId of validProjectIds) {
         try {
           // Get all team messages for this project that are not from current user
           const teamMessagesList = await db
