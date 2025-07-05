@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
@@ -32,6 +31,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox"; // Added import for Checkbox
+import { useState } from "react"; //Import useState
 
 const deliverableSchema = z.object({
   name: z.string().min(1, "Deliverable name is required"),
@@ -57,6 +58,7 @@ export default function ProjectDetails() {
   const queryClient = useQueryClient();
   const projectId = parseInt(id!);
   const unreadCount = useProjectUnreadCount(projectId);
+  const [showPlanForm, setShowPlanForm] = useState(false); // State to control plan form visibility
 
   const isProjectManager = user?.role === "project_manager";
 
@@ -79,7 +81,7 @@ export default function ProjectDetails() {
   const { data: projectPlan, isLoading: planLoading } = useQuery({
     queryKey: [`/api/project-plans/${projectPlans?.[0]?.id}`],
     queryFn: async () => {
-      const response = await fetch(`/api/project-plans/${projectPlans[0].id}`);
+      const response = await fetch(`/api/project-plans/${projectPlans?.[0]?.id}`);
       const data = await response.json();
       console.log("Project plan details response:", data);
       return data;
@@ -272,7 +274,7 @@ export default function ProjectDetails() {
                       />
                     </DialogContent>
                   </Dialog>
-                  
+
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive">
@@ -326,7 +328,7 @@ export default function ProjectDetails() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
                       <Clock className="h-5 w-5 text-muted-foreground" />
                       <div>
@@ -402,177 +404,12 @@ export default function ProjectDetails() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-semibold">Project Plan</h2>
                   {isProjectManager && (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline">
-                          <Edit className="h-4 w-4 mr-2" />
-                          {projectPlan ? "Edit Plan" : "Create Plan"}
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>{projectPlan ? "Edit Project Plan" : "Create Project Plan"}</DialogTitle>
-                        </DialogHeader>
-                        <Form {...form}>
-                          <form onSubmit={form.handleSubmit((data) => updateProjectPlan.mutate(data))} className="space-y-6">
-                            <FormField
-                              control={form.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Plan Name</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Enter plan name" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={form.control}
-                              name="description"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Plan Description (Optional)</FormLabel>
-                                  <FormControl>
-                                    <Textarea 
-                                      placeholder="Enter plan description" 
-                                      className="min-h-[80px]"
-                                      {...field} 
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <FormField
-                                control={form.control}
-                                name="startDate"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Plan Start Date</FormLabel>
-                                    <FormControl>
-                                      <Input type="date" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name="endDate"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Plan End Date</FormLabel>
-                                    <FormControl>
-                                      <Input type="date" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-
-                            {/* Deliverables Section */}
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <FormLabel>Deliverables</FormLabel>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={addDeliverable}
-                                >
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Add Deliverable
-                                </Button>
-                              </div>
-
-                              <FormField
-                                control={form.control}
-                                name="deliverables"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <div className="space-y-4">
-                                      {field.value.map((deliverable, index) => (
-                                        <Card key={index} className="p-4">
-                                          <div className="flex items-center justify-between mb-3">
-                                            <h4 className="text-sm font-medium">Deliverable {index + 1}</h4>
-                                            {field.value.length > 1 && (
-                                              <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => removeDeliverable(index)}
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            )}
-                                          </div>
-                                          
-                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div>
-                                              <FormLabel>Name</FormLabel>
-                                              <Input
-                                                placeholder="Deliverable name"
-                                                value={deliverable.name}
-                                                onChange={(e) => {
-                                                  const newDeliverables = [...field.value];
-                                                  newDeliverables[index].name = e.target.value;
-                                                  field.onChange(newDeliverables);
-                                                }}
-                                              />
-                                            </div>
-                                            
-                                            <div>
-                                              <FormLabel>Start Date</FormLabel>
-                                              <Input
-                                                type="date"
-                                                value={deliverable.startDate}
-                                                onChange={(e) => {
-                                                  const newDeliverables = [...field.value];
-                                                  newDeliverables[index].startDate = e.target.value;
-                                                  field.onChange(newDeliverables);
-                                                }}
-                                              />
-                                            </div>
-                                            
-                                            <div>
-                                              <FormLabel>End Date</FormLabel>
-                                              <Input
-                                                type="date"
-                                                value={deliverable.endDate}
-                                                onChange={(e) => {
-                                                  const newDeliverables = [...field.value];
-                                                  newDeliverables[index].endDate = e.target.value;
-                                                  field.onChange(newDeliverables);
-                                                }}
-                                              />
-                                            </div>
-                                          </div>
-                                        </Card>
-                                      ))}
-                                    </div>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-
-                            <Button type="submit" className="w-full" disabled={updateProjectPlan.isPending}>
-                              {updateProjectPlan.isPending 
-                                ? (projectPlan ? "Updating..." : "Creating...") 
-                                : (projectPlan ? "Update Project Plan" : "Create Project Plan")
-                              }
-                            </Button>
-                          </form>
-                        </Form>
-                      </DialogContent>
-                    </Dialog>
+                    <>
+                      <Button variant="outline" onClick={() => setShowPlanForm(!showPlanForm)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        {projectPlan || showPlanForm ? "Edit Plan" : "Create Plan"}
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardHeader>
@@ -630,177 +467,180 @@ export default function ProjectDetails() {
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">No project plan created yet.</p>
                     {isProjectManager && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create Project Plan
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                          <DialogHeader>
-                            <DialogTitle>Create Project Plan</DialogTitle>
-                          </DialogHeader>
-                          <Form {...form}>
-                            <form onSubmit={form.handleSubmit((data) => updateProjectPlan.mutate(data))} className="space-y-6">
-                              {/* Same form content as above */}
-                              <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Plan Name</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="Enter plan name" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name="description"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Plan Description (Optional)</FormLabel>
-                                    <FormControl>
-                                      <Textarea 
-                                        placeholder="Enter plan description" 
-                                        className="min-h-[80px]"
-                                        {...field} 
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <div className="grid grid-cols-2 gap-4">
-                                <FormField
-                                  control={form.control}
-                                  name="startDate"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Plan Start Date</FormLabel>
-                                      <FormControl>
-                                        <Input type="date" {...field} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-
-                                <FormField
-                                  control={form.control}
-                                  name="endDate"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Plan End Date</FormLabel>
-                                      <FormControl>
-                                        <Input type="date" {...field} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-
-                              {/* Deliverables Section */}
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <FormLabel>Deliverables</FormLabel>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={addDeliverable}
-                                  >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add Deliverable
-                                  </Button>
-                                </div>
-
-                                <FormField
-                                  control={form.control}
-                                  name="deliverables"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <div className="space-y-4">
-                                        {field.value.map((deliverable, index) => (
-                                          <Card key={index} className="p-4">
-                                            <div className="flex items-center justify-between mb-3">
-                                              <h4 className="text-sm font-medium">Deliverable {index + 1}</h4>
-                                              {field.value.length > 1 && (
-                                                <Button
-                                                  type="button"
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={() => removeDeliverable(index)}
-                                                >
-                                                  <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                              )}
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                              <div>
-                                                <FormLabel>Name</FormLabel>
-                                                <Input
-                                                  placeholder="Deliverable name"
-                                                  value={deliverable.name}
-                                                  onChange={(e) => {
-                                                    const newDeliverables = [...field.value];
-                                                    newDeliverables[index].name = e.target.value;
-                                                    field.onChange(newDeliverables);
-                                                  }}
-                                                />
-                                              </div>
-                                              
-                                              <div>
-                                                <FormLabel>Start Date</FormLabel>
-                                                <Input
-                                                  type="date"
-                                                  value={deliverable.startDate}
-                                                  onChange={(e) => {
-                                                    const newDeliverables = [...field.value];
-                                                    newDeliverables[index].startDate = e.target.value;
-                                                    field.onChange(newDeliverables);
-                                                  }}
-                                                />
-                                              </div>
-                                              
-                                              <div>
-                                                <FormLabel>End Date</FormLabel>
-                                                <Input
-                                                  type="date"
-                                                  value={deliverable.endDate}
-                                                  onChange={(e) => {
-                                                    const newDeliverables = [...field.value];
-                                                    newDeliverables[index].endDate = e.target.value;
-                                                    field.onChange(newDeliverables);
-                                                  }}
-                                                />
-                                              </div>
-                                            </div>
-                                          </Card>
-                                        ))}
-                                      </div>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-
-                              <Button type="submit" className="w-full" disabled={updateProjectPlan.isPending}>
-                                {updateProjectPlan.isPending ? "Creating..." : "Create Project Plan"}
-                              </Button>
-                            </form>
-                          </Form>
-                        </DialogContent>
-                      </Dialog>
+                      <Button variant="outline" onClick={() => setShowPlanForm(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Project Plan
+                      </Button>
                     )}
                   </div>
+                )}
+                {showPlanForm && (
+                  <Dialog open={showPlanForm} onOpenChange={setShowPlanForm}>
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>{projectPlan ? "Edit Project Plan" : "Create Project Plan"}</DialogTitle>
+                      </DialogHeader>
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit((data) => updateProjectPlan.mutate(data))} className="space-y-6">
+                          {/* Same form content as above */}
+                          <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Plan Name</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Enter plan name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="description"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Plan Description (Optional)</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Enter plan description"
+                                    className="min-h-[80px]"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="startDate"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Plan Start Date</FormLabel>
+                                  <FormControl>
+                                    <Input type="date" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="endDate"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Plan End Date</FormLabel>
+                                  <FormControl>
+                                    <Input type="date" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          {/* Deliverables Section */}
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <FormLabel>Deliverables</FormLabel>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={addDeliverable}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Deliverable
+                              </Button>
+                            </div>
+
+                            <FormField
+                              control={form.control}
+                              name="deliverables"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <div className="space-y-4">
+                                    {field.value.map((deliverable, index) => (
+                                      <Card key={index} className="p-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <h4 className="text-sm font-medium">Deliverable {index + 1}</h4>
+                                          {field.value.length > 1 && (
+                                            <Button
+                                              type="button"
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => removeDeliverable(index)}
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          )}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                          <div>
+                                            <FormLabel>Name</FormLabel>
+                                            <Input
+                                              placeholder="Deliverable name"
+                                              value={deliverable.name}
+                                              onChange={(e) => {
+                                                const newDeliverables = [...field.value];
+                                                newDeliverables[index].name = e.target.value;
+                                                field.onChange(newDeliverables);
+                                              }}
+                                            />
+                                          </div>
+
+                                          <div>
+                                            <FormLabel>Start Date</FormLabel>
+                                            <Input
+                                              type="date"
+                                              value={deliverable.startDate}
+                                              onChange={(e) => {
+                                                const newDeliverables = [...field.value];
+                                                newDeliverables[index].startDate = e.target.value;
+                                                field.onChange(newDeliverables);
+                                              }}
+                                            />
+                                          </div>
+
+                                          <div>
+                                            <FormLabel>End Date</FormLabel>
+                                            <Input
+                                              type="date"
+                                              value={deliverable.endDate}
+                                              onChange={(e) => {
+                                                const newDeliverables = [...field.value];
+                                                newDeliverables[index].endDate = e.target.value;
+                                                field.onChange(newDeliverables);
+                                              }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </Card>
+                                    ))}
+                                  </div>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <Button type="submit" className="w-full" disabled={updateProjectPlan.isPending}>
+                            {updateProjectPlan.isPending
+                              ? (projectPlan ? "Updating..." : "Creating...")
+                              : (projectPlan ? "Update Project Plan" : "Create Project Plan")
+                            }
+                          </Button>
+                        </form>
+                      </Form>
+                    </DialogContent>
+                  </Dialog>
                 )}
               </CardContent>
             </Card>

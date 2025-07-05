@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,12 +28,23 @@ const projectSchema = z.object({
   endDate: z.string().min(1, "End date is required"),
   clientId: z.string().optional(),
   teamMembers: z.array(z.string()).optional().default([]),
-  // Project plan fields
-  planName: z.string().min(1, "Project plan name is required"),
+  // Project plan fields (optional)
+  createPlan: z.boolean().default(false),
+  planName: z.string().optional(),
   planDescription: z.string().optional(),
-  planStartDate: z.string().min(1, "Plan start date is required"),
-  planEndDate: z.string().min(1, "Plan end date is required"),
-  deliverables: z.array(deliverableSchema).min(1, "At least one deliverable is required"),
+  planStartDate: z.string().optional(),
+  planEndDate: z.string().optional(),
+  deliverables: z.array(deliverableSchema).optional().default([]),
+}).refine((data) => {
+  if (data.createPlan) {
+    return data.planName && data.planName.trim().length > 0 &&
+           data.planStartDate && data.planEndDate &&
+           data.deliverables && data.deliverables.length > 0;
+  }
+  return true;
+}, {
+  message: "When creating a plan, plan name, dates, and at least one deliverable are required",
+  path: ["planName"]
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -56,6 +68,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       endDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
       clientId: project?.clientId?.toString() || "",
       teamMembers: [],
+      createPlan: false,
       planName: "",
       planDescription: "",
       planStartDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
@@ -126,8 +139,8 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
         savedProject = await response.json();
 
-        // Create project plan for new projects only if plan name is provided
-        if (data.planName && data.planName.trim()) {
+        // Create project plan for new projects only if user chose to create one
+        if (data.createPlan && data.planName && data.planName.trim()) {
           const planResponse = await fetch(`/api/projects/${savedProject.id}/plans`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -136,7 +149,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
               description: data.planDescription || "",
               startDate: data.planStartDate,
               endDate: data.planEndDate,
-              deliverables: data.deliverables,
+              deliverables: data.deliverables || [],
             }),
           });
 
@@ -154,7 +167,11 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/project-plans"] });
       toast({
         title: "Success",
-        description: project ? "Project updated successfully!" : "Project and plan created successfully!",
+        description: project 
+          ? "Project updated successfully!" 
+          : data.createPlan 
+            ? "Project and plan created successfully!" 
+            : "Project created successfully!",
       });
       if (!project) {
         form.reset();
@@ -349,9 +366,34 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         {!project && (
           <Card>
             <CardHeader>
-              <h3 className="text-lg font-medium">Project Plan</h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium">Project Plan (Optional)</h3>
+                  <p className="text-sm text-muted-foreground">
+                    You can create a plan now or add it later from the project details page
+                  </p>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="createPlan"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal">
+                        Create plan now
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            {form.watch("createPlan") && (
+              <CardContent className="space-y-4">
               <FormField
                 control={form.control}
                 name="planName"
@@ -500,13 +542,14 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                 />
               </div>
             </CardContent>
+            )}
           </Card>
         )}
 
         <Button type="submit" className="w-full" disabled={saveProject.isPending}>
           {saveProject.isPending 
             ? (project ? "Updating..." : "Creating...") 
-            : (project ? "Update Project" : "Create Project & Plan")
+            : (project ? "Update Project" : form.watch("createPlan") ? "Create Project & Plan" : "Create Project")
           }
         </Button>
       </form>
