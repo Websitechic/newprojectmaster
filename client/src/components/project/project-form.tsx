@@ -93,8 +93,8 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       createPlan: false,
       planName: "",
       planDescription: "",
-      planStartDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
-      planEndDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
+      planStartDate: "",
+      planEndDate: "",
       deliverables: [
         {
           name: "",
@@ -163,16 +163,18 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
         // Create project plan for new projects only if user chose to create one
         if (data.createPlan && data.planName && data.planName.trim()) {
+          const planData = {
+            name: data.planName,
+            description: data.planDescription || "",
+            startDate: data.planStartDate,
+            endDate: data.planEndDate,
+            deliverables: data.deliverables?.filter(d => d.name && d.startDate && d.endDate) || [],
+          };
+
           const planResponse = await fetch(`/api/projects/${savedProject.id}/plans`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: data.planName,
-              description: data.planDescription || "",
-              startDate: data.planStartDate,
-              endDate: data.planEndDate,
-              deliverables: data.deliverables || [],
-            }),
+            body: JSON.stringify(planData),
           });
 
           if (!planResponse.ok) {
@@ -569,7 +571,15 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
           </Card>
         )}
 
-        <Button type="submit" className="w-full" disabled={saveProject.isPending}>
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={saveProject.isPending}
+          onClick={() => {
+            console.log("Form values on submit:", form.getValues());
+            console.log("Form errors:", form.formState.errors);
+          }}
+        >
           {saveProject.isPending 
             ? (project ? "Updating..." : "Creating...") 
             : (project ? "Update Project" : form.watch("createPlan") ? "Create Project & Plan" : "Create Project")
