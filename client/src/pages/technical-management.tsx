@@ -71,7 +71,7 @@ export default function TechnicalManagementPage() {
   const queryClient = useQueryClient();
   const [selectedRequest, setSelectedRequest] = useState<TechnicalSupportRequest | null>(null);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
-  
+
   // Check if user is project manager (read-only mode)
   const isProjectManager = user?.role === "project_manager";
   const isTechnicalSupport = user?.specialization === "technical_support";

@@ -248,11 +248,16 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   return (
     <div>
       <div className="flex justify-end mb-4">
-        { !isStaffView && showNewTaskButton && (
+        { !isStaffView && showNewTaskButton && user?.role !== "product_owner" && (
           <Button onClick={handleNewTask}>
             <Plus className="h-4 w-4 mr-2" />
             New Task
           </Button>
+        )}
+        {user?.role === "product_owner" && (
+          <div className="text-sm text-muted-foreground bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+            <span className="font-medium">Product Owner View:</span> Read-only access to all tasks
+          </div>
         )}
       </div>
 

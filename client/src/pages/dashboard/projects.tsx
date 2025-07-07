@@ -172,6 +172,11 @@ export default function Projects() {
                   </DialogContent>
                 </Dialog>
               )}
+              {user?.role === "product_owner" && (
+                <div className="text-sm text-muted-foreground bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+                  <span className="font-medium">Product Owner View:</span> Read-only access to all projects
+                </div>
+              )}
             </div>
 
           {Object.entries(projectsByCategory).length > 0 ? (
@@ -302,6 +307,11 @@ export default function Projects() {
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
                                 </AlertDialog>
+                              </div>
+                            )}
+                            {user?.role === "product_owner" && (
+                              <div className="text-xs text-muted-foreground px-2 py-1 bg-blue-50 rounded border border-blue-200">
+                                Read Only
                               </div>
                             )}
                           </div>
