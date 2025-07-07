@@ -40,6 +40,56 @@ interface ProductivityStats {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C'];
 
+// Color scheme based on task time tracking status
+const getTaskStatusColor = (task: any, workingHours?: number) => {
+  if (!workingHours || workingHours <= 0) {
+    return '#6B7280'; // Gray for tasks without time allocation
+  }
+  
+  const allocatedTimeInSeconds = workingHours * 3600;
+  const timeUsedPercentage = (task.timeSpent / allocatedTimeInSeconds) * 100;
+  
+  // Red: Time exceeded (over 100%)
+  if (timeUsedPercentage > 100) {
+    return '#EF4444'; // Red
+  }
+  
+  // Orange: At risk (80-99% of allocated time)
+  if (timeUsedPercentage >= 80 && timeUsedPercentage <= 99) {
+    return '#F97316'; // Orange
+  }
+  
+  // Green: Completed within time or in progress with good time management
+  if (task.isCompleted || timeUsedPercentage < 80) {
+    return '#22C55E'; // Green
+  }
+  
+  return '#6B7280'; // Default gray
+};
+
+const getStatusLabel = (task: any, workingHours?: number) => {
+  if (!workingHours || workingHours <= 0) {
+    return 'No Time Allocation';
+  }
+  
+  const allocatedTimeInSeconds = workingHours * 3600;
+  const timeUsedPercentage = (task.timeSpent / allocatedTimeInSeconds) * 100;
+  
+  if (timeUsedPercentage > 100) {
+    return 'Time Exceeded';
+  }
+  
+  if (timeUsedPercentage >= 80 && timeUsedPercentage <= 99) {
+    return 'At Risk';
+  }
+  
+  if (task.isCompleted || timeUsedPercentage < 80) {
+    return 'On Track';
+  }
+  
+  return 'Unknown';
+};
+
 export default function ProductivityPage() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -70,15 +120,24 @@ export default function ProductivityPage() {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Prepare pie chart data for tasks worked on today
-  const taskPieData = productivityData?.today.taskBreakdown.map((task, index) => ({
-    name: task.title,
-    value: task.timeSpent,
-    project: task.projectName,
-    status: task.status,
-    isCompleted: task.isCompleted,
-    color: COLORS[index % COLORS.length]
-  })) || [];
+  // Prepare pie chart data for tasks worked on today with dynamic colors
+  const taskPieData = productivityData?.today.taskBreakdown.map((task, index) => {
+    // Note: You may need to add workingHours to the task data from the API
+    // For now, we'll use a placeholder or derive from existing data
+    const workingHours = (task as any).workingHours || 8; // Default to 8 hours if not provided
+    
+    return {
+      name: task.title,
+      value: task.timeSpent,
+      project: task.projectName,
+      status: task.status,
+      isCompleted: task.isCompleted,
+      color: getTaskStatusColor(task, workingHours),
+      statusLabel: getStatusLabel(task, workingHours),
+      workingHours: workingHours,
+      timeUsedPercentage: workingHours > 0 ? Math.round((task.timeSpent / (workingHours * 3600)) * 100) : 0
+    };
+  }) || [];
 
   // Prepare hourly breakdown data
   const hourlyData = productivityData?.today.hourlyBreakdown.map(item => ({
@@ -203,7 +262,9 @@ export default function ProductivityPage() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ name, value }) => `${name}: ${formatTime(value)}`}
+                          label={({ name, value, timeUsedPercentage }) => 
+                            `${name}: ${formatTime(value)} (${timeUsedPercentage}%)`
+                          }
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="value"
@@ -213,10 +274,28 @@ export default function ProductivityPage() {
                           ))}
                         </Pie>
                         <Tooltip 
-                          formatter={(value: number) => [formatTime(value), "Time Spent"]}
-                          labelFormatter={(label) => `Task: ${label}`}
+                          formatter={(value: number, name: string, props: any) => [
+                            formatTime(value), 
+                            `Time Spent (${props.payload.timeUsedPercentage}% of allocated)`
+                          ]}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload.length > 0) {
+                              const data = payload[0].payload;
+                              return (
+                                <div>
+                                  <div className="font-medium">{label}</div>
+                                  <div className="text-sm text-gray-600">
+                                    Status: {data.statusLabel}
+                                  </div>
+                                  <div className="text-sm text-gray-600">
+                                    Allocated: {formatTime(data.workingHours * 3600)}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return `Task: ${label}`;
+                          }}
                         />
-                        <Legend />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
@@ -228,6 +307,34 @@ export default function ProductivityPage() {
                     </div>
                   )}
                 </CardContent>
+                
+                {/* Color Legend */}
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Time Tracking Status Legend</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                      <div className="text-sm">
+                        <div className="font-medium text-red-700">Time Exceeded</div>
+                        <div className="text-gray-600">Over 100% of allocated time</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-orange-500"></div>
+                      <div className="text-sm">
+                        <div className="font-medium text-orange-700">At Risk</div>
+                        <div className="text-gray-600">80-99% of allocated time</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                      <div className="text-sm">
+                        <div className="font-medium text-green-700">On Track</div>
+                        <div className="text-gray-600">Under 80% or completed on time</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </Card>
 
               {/* Hourly Activity Bar Chart */}
@@ -289,20 +396,37 @@ export default function ProductivityPage() {
                           <TableCell className="font-medium">{task.title}</TableCell>
                           <TableCell>{task.projectName}</TableCell>
                           <TableCell>
-                            <Badge 
-                              variant={task.status === 'completed' ? 'default' : 'secondary'}
-                              className={
-                                task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                                task.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-gray-100 text-gray-800'
-                              }
-                            >
-                              {task.status === 'in_progress' ? 'In Progress' :
-                               task.status === 'todo' ? 'To Do' :
-                               task.status === 'review' ? 'Review' :
-                               task.status === 'completed' ? 'Completed' : task.status}
-                            </Badge>
+                            <div className="flex flex-col gap-1">
+                              <Badge 
+                                variant={task.status === 'completed' ? 'default' : 'secondary'}
+                                className={
+                                  task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                  task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                  task.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }
+                              >
+                                {task.status === 'in_progress' ? 'In Progress' :
+                                 task.status === 'todo' ? 'To Do' :
+                                 task.status === 'review' ? 'Review' :
+                                 task.status === 'completed' ? 'Completed' : task.status}
+                              </Badge>
+                              {(() => {
+                                const workingHours = (task as any).workingHours || 8;
+                                const timeUsedPercentage = workingHours > 0 ? (task.timeSpent / (workingHours * 3600)) * 100 : 0;
+                                const statusLabel = getStatusLabel(task, workingHours);
+                                const statusColor = 
+                                  timeUsedPercentage > 100 ? 'bg-red-100 text-red-800' :
+                                  timeUsedPercentage >= 80 ? 'bg-orange-100 text-orange-800' :
+                                  'bg-green-100 text-green-800';
+                                
+                                return (
+                                  <Badge variant="secondary" className={`text-xs ${statusColor}`}>
+                                    {statusLabel} ({Math.round(timeUsedPercentage)}%)
+                                  </Badge>
+                                );
+                              })()}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right font-mono">
                             {formatTimeDetailed(task.timeSpent)}
