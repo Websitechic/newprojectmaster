@@ -4106,18 +4106,42 @@ export function registerRoutes(app: Express): Server {
           status: task.status,
           isCompleted: task.status === 'completed'
         })),
-        hourlyBreakdown: [] as { hour: number; timeSpent: number; }[]
+        weeklyBreakdown: [] as { day: string; dayName: string; timeSpent: number; hours: number; taskCount: number; tasks: string[]; }[]
       };
 
-      // Generate hourly breakdown (simplified - assumes even distribution)
-      if (todayData.totalTimeWorked > 0) {
-        const businessHours = [9, 10, 11, 12, 13, 14, 15, 16, 17];
-        const timePerHour = todayData.totalTimeWorked / businessHours.length;
+      // Generate weekly breakdown (Monday to Friday of current week)
+      const currentWeekStart = new Date(startOfWeek);
+      
+      for (let i = 0; i < 5; i++) { // Monday to Friday only
+        const currentDay = new Date(currentWeekStart);
+        currentDay.setDate(currentWeekStart.getDate() + i);
         
-        todayData.hourlyBreakdown = businessHours.map(hour => ({
-          hour,
-          timeSpent: Math.floor(timePerHour)
-        }));
+        const dayStart = new Date(currentDay);
+        dayStart.setHours(0, 0, 0, 0);
+        
+        const dayEnd = new Date(currentDay);
+        dayEnd.setHours(23, 59, 59, 999);
+        
+        // Get tasks worked on this specific day
+        const dayTasks = userTasks.filter(task => {
+          if (!task.updatedAt) return false;
+          const taskUpdated = new Date(task.updatedAt);
+          return taskUpdated >= dayStart && taskUpdated <= dayEnd && (task.timeSpent || 0) > 0;
+        });
+        
+        const dayTimeSpent = dayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0);
+        const dayHours = dayTimeSpent / 3600; // Convert seconds to hours
+        
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        
+        todayData.weeklyBreakdown.push({
+          day: currentDay.toISOString().split('T')[0], // YYYY-MM-DD format
+          dayName: dayNames[i],
+          timeSpent: dayTimeSpent,
+          hours: Math.round(dayHours * 100) / 100, // Round to 2 decimal places
+          taskCount: dayTasks.length,
+          tasks: dayTasks.map(task => task.title)
+        });
       }
 
       // Calculate yesterday's data

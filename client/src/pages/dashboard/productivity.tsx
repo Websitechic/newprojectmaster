@@ -22,9 +22,13 @@ interface DailyProductivityData {
     status: string;
     isCompleted: boolean;
   }[];
-  hourlyBreakdown: {
-    hour: number;
+  weeklyBreakdown: {
+    day: string;
+    dayName: string;
     timeSpent: number; // in seconds
+    hours: number;
+    taskCount: number;
+    tasks: string[];
   }[];
 }
 
@@ -139,10 +143,13 @@ export default function ProductivityPage() {
     };
   }) || [];
 
-  // Prepare hourly breakdown data
-  const hourlyData = productivityData?.today.hourlyBreakdown.map(item => ({
-    hour: `${item.hour}:00`,
-    timeSpent: item.timeSpent / 60, // Convert to minutes for better visualization
+  // Prepare weekly breakdown data
+  const weeklyData = productivityData?.today.weeklyBreakdown.map(item => ({
+    day: item.dayName,
+    hours: item.hours,
+    timeSpent: item.timeSpent,
+    taskCount: item.taskCount,
+    tasks: item.tasks
   })) || [];
 
   if (isLoading) {
@@ -337,32 +344,82 @@ export default function ProductivityPage() {
                 </div>
               </Card>
 
-              {/* Hourly Activity Bar Chart */}
+              {/* Weekly Activity Bar Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Hourly Activity</CardTitle>
+                  <CardTitle>Weekly Activity</CardTitle>
                   <CardDescription>
-                    Time spent working each hour of the day
+                    Hours worked each day of the current week (Monday to Friday)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {hourlyData.length > 0 ? (
+                  {weeklyData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={hourlyData}>
+                      <BarChart data={weeklyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="hour" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: number) => [`${Math.round(value)} min`, "Time Worked"]}
+                        <XAxis 
+                          dataKey="day" 
+                          tick={{ fontSize: 12 }}
                         />
-                        <Bar dataKey="timeSpent" fill="#8884d8" />
+                        <YAxis 
+                          label={{ value: 'Hours', angle: -90, position: 'insideLeft' }}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip 
+                          formatter={(value: number, name: string, props: any) => {
+                            const data = props.payload;
+                            return [
+                              `${value.toFixed(2)} hours`,
+                              "Hours Worked"
+                            ];
+                          }}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload.length > 0) {
+                              const data = payload[0].payload;
+                              return (
+                                <div>
+                                  <div className="font-medium">{label}</div>
+                                  <div className="text-sm text-gray-600">
+                                    Tasks worked on: {data.taskCount}
+                                  </div>
+                                  {data.tasks && data.tasks.length > 0 && (
+                                    <div className="text-sm text-gray-600 mt-1">
+                                      <div className="font-medium">Tasks:</div>
+                                      {data.tasks.slice(0, 3).map((task: string, index: number) => (
+                                        <div key={index} className="text-xs">• {task}</div>
+                                      ))}
+                                      {data.tasks.length > 3 && (
+                                        <div className="text-xs text-gray-500">
+                                          +{data.tasks.length - 3} more tasks
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return label;
+                          }}
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #ccc',
+                            borderRadius: '6px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                        <Bar 
+                          dataKey="hours" 
+                          fill="#3b82f6"
+                          radius={[4, 4, 0, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex items-center justify-center h-[300px] text-gray-500">
                       <div className="text-center">
                         <TrendingUp className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                        <p>No hourly activity data</p>
+                        <p>No weekly activity data</p>
+                        <p className="text-sm mt-1">Complete some tasks to see your weekly progress</p>
                       </div>
                     </div>
                   )}
