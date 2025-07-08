@@ -198,8 +198,24 @@ export function registerRoutes(app: Express): Server {
         eq(users.role, "product_owner")
       ));
 
+    // Only apply specialization filter to staff members, not product owners
     if (specialization) {
-      query = query.where(eq(users.specialization, specialization as string));
+      query = query.where(and(
+        eq(users.role, "staff"),
+        eq(users.specialization, specialization as string)
+      ));
+      
+      // Also include all product owners regardless of specialization filter
+      const productOwners = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "product_owner"))
+        .orderBy(desc(users.lastActive));
+      
+      const staffWithSpecialization = await query.orderBy(desc(users.lastActive));
+      
+      const combined = [...staffWithSpecialization, ...productOwners];
+      return res.json(combined);
     }
 
     const staff = await query.orderBy(desc(users.lastActive));
