@@ -223,9 +223,16 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Productivity Tracking",
       href: "/dashboard/productivity",
     }
+  ] : user?.role === "product_owner" ? [
+    // Product owners can apply for leave
+    {
+      icon: <Calendar size={20} />,
+      label: "Leave Application",
+      href: "/dashboard/leave-application",
+    }
   ] : [];
 
-  // Technical support menu items - conditional based on specialization
+  // Technical support menu items - conditional based on specialization and role
   const technicalSupportMenuItems = user?.role === "staff" ? [
     // For technical support staff, show Technical Management
     ...(user?.specialization === "technical_support" ? [{
@@ -239,6 +246,13 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Technical Support",
       href: "/dashboard/technical-support",
     }] : [])
+  ] : user?.role === "product_owner" ? [
+    // Product owners get read-only access to Technical Management
+    {
+      icon: <Settings size={20} />,
+      label: "Technical Management",
+      href: "/dashboard/technical-management",
+    }
   ] : [];
 
   // Extension requests menu items
