@@ -177,8 +177,16 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get available staff by specialization (for project managers)
-  app.get("/api/staff", isProjectManager, async (req, res) => {
+  // Get available staff by specialization (for project managers and product owners)
+  app.get("/api/staff", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    // Only project managers and product owners can view staff
+    if (req.user!.role !== "project_manager" && req.user!.role !== "product_owner") {
+      return res.status(403).send("Access denied");
+    }
     const { specialization } = req.query;
     let query = db
       .select()

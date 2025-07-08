@@ -111,9 +111,15 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   });
 
   // Fetch staff for team members
-  const { data: staff } = useQuery({
+  const { data: staff = [] } = useQuery({
     queryKey: ["/api/staff"],
-    queryFn: () => fetch("/api/staff").then(res => res.json()),
+    queryFn: async () => {
+      const response = await fetch("/api/staff");
+      if (!response.ok) {
+        throw new Error("Failed to fetch staff");
+      }
+      return response.json();
+    },
   });
 
   const saveProject = useMutation({
@@ -356,29 +362,33 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Team Members</FormLabel>
-                  <div className="space-y-2">
-                    {staff?.map((member: any) => (
-                      <div key={member.id} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`member-${member.id}`}
-                          checked={field.value?.includes(member.id.toString()) || false}
-                          onChange={(e) => {
-                            const currentValue = field.value || [];
-                            if (e.target.checked) {
-                              field.onChange([...currentValue, member.id.toString()]);
-                            } else {
-                              field.onChange(currentValue.filter((id: string) => id !== member.id.toString()));
-                            }
-                          }}
-                          className="rounded border-gray-300"
-                        />
-                        <label htmlFor={`member-${member.id}`} className="text-sm">
-                          {member.name} ({member.specialization})
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+                  <FormControl>
+                    <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                      {staff && staff.length > 0 ? (
+                        staff.map((member: any) => (
+                          <div key={member.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`member-${member.id}`}
+                              checked={field.value?.includes(member.id.toString()) || false}
+                              onCheckedChange={(checked) => {
+                                const currentValue = field.value || [];
+                                if (checked) {
+                                  field.onChange([...currentValue, member.id.toString()]);
+                                } else {
+                                  field.onChange(currentValue.filter((id: string) => id !== member.id.toString()));
+                                }
+                              }}
+                            />
+                            <label htmlFor={`member-${member.id}`} className="text-sm cursor-pointer">
+                              {member.name} ({member.specialization || member.role})
+                            </label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No staff members available</p>
+                      )}
+                    </div>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
