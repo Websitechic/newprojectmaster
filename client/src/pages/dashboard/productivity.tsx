@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Clock, CheckCircle, Target, TrendingUp, Calendar } from "lucide-react";
 import { format } from "date-fns";
+import { ProductivityCard } from "@/components/ui/productivity-card";
 
 interface DailyProductivityData {
   totalTasksWorkedOn: number;
@@ -21,6 +22,7 @@ interface DailyProductivityData {
     timeSpent: number; // in seconds
     status: string;
     isCompleted: boolean;
+    workingHours?: number;
   }[];
   weeklyBreakdown: {
     day: string;
@@ -193,6 +195,19 @@ export default function ProductivityPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Productivity Card */}
+            <div className="mb-6">
+              <ProductivityCard
+                assignedTime={todayData?.taskBreakdown.reduce((total, task) => {
+                  const workingHours = (task as any).workingHours || 8;
+                  return total + (workingHours * 3600);
+                }, 0) || 0}
+                actualTime={todayData?.totalTimeWorked || 0}
+                taskCount={todayData?.totalTasksWorkedOn || 0}
+                period={`${format(new Date(selectedDate), "MMM d, yyyy")}`}
+              />
             </div>
 
             {/* Summary Cards */}

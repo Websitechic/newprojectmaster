@@ -4108,6 +4108,7 @@ export function registerRoutes(app: Express): Server {
           projectId: tasks.projectId,
           timeSpent: tasks.timeSpent,
           updatedAt: tasks.updatedAt,
+          workingHours: tasks.workingHours,
           projectName: projects.name
         })
         .from(tasks)
@@ -4146,7 +4147,8 @@ export function registerRoutes(app: Express): Server {
           projectName: task.projectName || 'Unknown Project',
           timeSpent: task.timeSpent || 0,
           status: task.status,
-          isCompleted: task.status === 'completed'
+          isCompleted: task.status === 'completed',
+          workingHours: task.workingHours || 8
         })),
         weeklyBreakdown: [] as { day: string; dayName: string; timeSpent: number; hours: number; taskCount: number; tasks: string[]; }[]
       };
