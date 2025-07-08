@@ -380,7 +380,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                               }}
                             />
                             <label htmlFor={`member-${member.id}`} className="text-sm cursor-pointer">
-                              {member.name} ({member.specialization || member.role})
+                              {member.name} ({member.role === 'product_owner' ? 'Product Owner' : (member.specialization || member.role)})
                             </label>
                           </div>
                         ))

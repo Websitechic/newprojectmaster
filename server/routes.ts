@@ -188,10 +188,15 @@ export function registerRoutes(app: Express): Server {
       return res.status(403).send("Access denied");
     }
     const { specialization } = req.query;
+    
+    // Get both staff and product owners
     let query = db
       .select()
       .from(users)
-      .where(eq(users.role, "staff"));
+      .where(or(
+        eq(users.role, "staff"),
+        eq(users.role, "product_owner")
+      ));
 
     if (specialization) {
       query = query.where(eq(users.specialization, specialization as string));
