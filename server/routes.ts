@@ -220,10 +220,10 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Test endpoint to add current staff member to the first available project
+  // Test endpoint to add current staff member or product owner to the first available project
   app.post("/api/debug/add-me-to-project", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== "staff") {
-      return res.status(403).send("Only staff members can use this endpoint");
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "product_owner")) {
+      return res.status(403).send("Only staff members and product owners can use this endpoint");
     }
 
     try {
@@ -765,6 +765,13 @@ export function registerRoutes(app: Express): Server {
           .from(projects)
           .where(eq(projects.managerId, user.id))
           .orderBy(desc(projects.updatedAt));
+      } else if (user.role === "product_owner") {
+        // Product owners see all projects (read-only access)
+        console.log(`Fetching all projects for product owner user ${user.id} (${user.name})`);
+        projectsList = await db
+          .select()
+          .from(projects)
+          .orderBy(desc(projects.updatedAt));
       } else {
         // Staff see projects they're invited to and have accepted
         console.log(`Fetching projects for staff user ${user.id} (${user.name})`);
@@ -945,18 +952,18 @@ export function registerRoutes(app: Express): Server {
       const projectId = parseInt(req.params.id);
       const { userId } = req.body;
 
-      // Verify user is a staff member
+      // Verify user is a staff member or product owner
       const [staff] = await db
         .select()
         .from(users)
         .where(and(
           eq(users.id, userId),
-          eq(users.role, "staff")
+          or(eq(users.role, "staff"), eq(users.role, "product_owner"))
         ))
         .limit(1);
 
       if (!staff) {
-        return res.status(400).json({ error: "Invalid staff member" });
+        return res.status(400).json({ error: "Invalid staff member or product owner" });
       }
 
       // Check if already invited
@@ -1027,10 +1034,10 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Accept/decline project invitation (Staff only)
+  // Accept/decline project invitation (Staff and Product Owners only)
   app.post("/api/projects/:id/respond", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== "staff") {
-      return res.status(403).send("Only staff members can respond to invitations");
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "product_owner")) {
+      return res.status(403).send("Only staff members and product owners can respond to invitations");
     }
 
     try {
@@ -1091,6 +1098,12 @@ export function registerRoutes(app: Express): Server {
             .where(inArray(tasks.projectId, projectIds))
             .orderBy(desc(tasks.updatedAt));
         }
+      } else if (req.user!.role === "product_owner") {
+        // Product owners see all tasks (read-only access)
+        userTasks = await db
+          .select()
+          .from(tasks)
+          .orderBy(desc(tasks.updatedAt));
       }
 
       res.json(userTasks);
@@ -2431,10 +2444,10 @@ export function registerRoutes(app: Express): Server {
 
   // Leave Applications API Routes
 
-  // Get leave applications for the current user (Staff only)
+  // Get leave applications for the current user (Staff and Product Owners only)
   app.get("/api/leave-applications", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== "staff") {
-      return res.status(403).json({ error: "Only staff members can view leave applications" });
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "product_owner")) {
+      return res.status(403).json({ error: "Only staff members and product owners can view leave applications" });
     }
 
     try {
@@ -2451,10 +2464,10 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Submit leave application (Staff only)
+  // Submit leave application (Staff and Product Owners only)
   app.post("/api/leave-applications", upload.single('proofImage'), async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== "staff") {
-      return res.status(403).json({ error: "Only staff members can submit leave applications" });
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "product_owner")) {
+      return res.status(403).json({ error: "Only staff members and product owners can submit leave applications" });
     }
 
     try {
