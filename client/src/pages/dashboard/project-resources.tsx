@@ -7,15 +7,18 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
-import { Upload, FileText, Download, Search } from "lucide-react";
+import { Upload, FileText, Download, Search, Link, ExternalLink } from "lucide-react";
 
 interface Resource {
   id: number;
   name: string;
   type: string;
-  size: number;
-  path: string;
+  size?: number;
+  path?: string;
+  link?: string;
   uploadedBy: number;
   createdAt: string;
   uploaderName?: string;
@@ -27,13 +30,59 @@ export default function ProjectResources() {
   const [searchTerm, setSearchTerm] = useState("");
   const projectId = parseInt(id!);
 
-  const { data: resources, isLoading } = useQuery<Resource[]>({
+  const { data: resources, isLoading, refetch } = useQuery<Resource[]>({
     queryKey: [`/api/projects/${projectId}/resources`],
     queryFn: () => fetch(`/api/projects/${projectId}/resources`).then(res => res.json()),
     enabled: !!id,
   });
 
   const isProjectManager = user?.role === "project_manager";
+  const isProductOwner = user?.role === "product_owner";
+  const canManageResources = isProjectManager || isProductOwner;
+
+  // State for link upload dialog
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [linkName, setLinkName] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [isSubmittingLink, setIsSubmittingLink] = useState(false);
+
+  const handleAddLink = async () => {
+    if (!linkName.trim() || !linkUrl.trim()) {
+      return;
+    }
+
+    setIsSubmittingLink(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/resources/link`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: linkName.trim(),
+          link: linkUrl.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to add link");
+      }
+
+      // Reset form and close dialog
+      setLinkName("");
+      setLinkUrl("");
+      setShowLinkDialog(false);
+      
+      // Refresh resources list
+      refetch();
+    } catch (error) {
+      console.error("Error adding link:", error);
+      alert(error instanceof Error ? error.message : "Failed to add link");
+    } finally {
+      setIsSubmittingLink(false);
+    }
+  };
 
   const filteredResources = resources?.filter(resource =>
     resource.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -48,6 +97,7 @@ export default function ProjectResources() {
   };
 
   const getFileIcon = (type: string) => {
+    if (type === 'link') return '🔗';
     if (type.includes('image')) return '🖼️';
     if (type.includes('pdf')) return '📄';
     if (type.includes('video')) return '🎥';
@@ -68,7 +118,7 @@ export default function ProjectResources() {
           <div className="mb-6">
             <h1 className="text-2xl font-bold">Project Resources</h1>
             <p className="text-muted-foreground">
-              {isProjectManager ? "Manage" : "Access"} project documents and files
+              {canManageResources ? "Manage" : "Access"} project documents, files, and links
             </p>
           </div>
 
@@ -83,11 +133,63 @@ export default function ProjectResources() {
               />
             </div>
             
-            {isProjectManager && (
-              <Button className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Upload File
-              </Button>
+            {canManageResources && (
+              <div className="flex gap-2">
+                <Button className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Upload File
+                </Button>
+                
+                <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <Link className="h-4 w-4" />
+                      Add Link
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Resource Link</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="linkName">Link Name</Label>
+                        <Input
+                          id="linkName"
+                          value={linkName}
+                          onChange={(e) => setLinkName(e.target.value)}
+                          placeholder="Enter a name for this link"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="linkUrl">URL</Label>
+                        <Input
+                          id="linkUrl"
+                          type="url"
+                          value={linkUrl}
+                          onChange={(e) => setLinkUrl(e.target.value)}
+                          placeholder="https://example.com"
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowLinkDialog(false)}
+                          disabled={isSubmittingLink}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleAddLink}
+                          disabled={!linkName.trim() || !linkUrl.trim() || isSubmittingLink}
+                        >
+                          {isSubmittingLink ? "Adding..." : "Add Link"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             )}
           </div>
 
@@ -104,13 +206,23 @@ export default function ProjectResources() {
                             {resource.name}
                           </CardTitle>
                           <p className="text-xs text-muted-foreground">
-                            {formatFileSize(resource.size)}
+                            {resource.type === 'link' ? 'External Link' : formatFileSize(resource.size || 0)}
                           </p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      {resource.type === 'link' ? (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => window.open(resource.link, '_blank')}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="sm">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
@@ -133,16 +245,26 @@ export default function ProjectResources() {
               <p className="text-sm text-muted-foreground max-w-md">
                 {searchTerm 
                   ? `No resources match "${searchTerm}"`
-                  : isProjectManager 
-                    ? "Start by uploading some project documents and files."
-                    : "No resources have been uploaded to this project yet."
+                  : canManageResources 
+                    ? "Start by uploading files or adding resource links."
+                    : "No resources have been added to this project yet."
                 }
               </p>
-              {isProjectManager && !searchTerm && (
-                <Button className="mt-4 flex items-center gap-2">
-                  <Upload className="h-4 w-4" />
-                  Upload First File
-                </Button>
+              {canManageResources && !searchTerm && (
+                <div className="mt-4 flex gap-2">
+                  <Button className="flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    Upload File
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2"
+                    onClick={() => setShowLinkDialog(true)}
+                  >
+                    <Link className="h-4 w-4" />
+                    Add Link
+                  </Button>
+                </div>
               )}
             </div>
           )}

@@ -478,13 +478,14 @@ export const selectBookingSchema = createSelectSchema(bookings);
 export const insertMessageReadReceiptSchema = createInsertSchema(messageReadReceipts);
 export const selectMessageReadReceiptSchema = createSelectSchema(messageReadReceipts);
 
-// Resources table for file uploads
+// Resources table for file uploads and links
 export const resources = pgTable("resources", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   type: text("type").notNull(),
   size: integer("size"),
-  path: text("path").notNull(),
+  path: text("path"),
+  link: text("link"), // For storing external links
   projectId: integer("project_id").references(() => projects.id),
   uploadedBy: integer("uploaded_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),

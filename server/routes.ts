@@ -1896,12 +1896,116 @@ export function registerRoutes(app: Express): Server {
     try {
       const projectId = parseInt(req.params.id);
 
-      // For now, return empty array as resources table doesn't exist yet
-      // This can be implemented when file upload functionality is added
-      res.json([]);
+      const projectResources = await db
+        .select({
+          id: resources.id,
+          name: resources.name,
+          type: resources.type,
+          size: resources.size,
+          path: resources.path,
+          link: resources.link,
+          uploadedBy: resources.uploadedBy,
+          createdAt: resources.createdAt,
+          uploaderName: users.name,
+        })
+        .from(resources)
+        .leftJoin(users, eq(resources.uploadedBy, users.id))
+        .where(eq(resources.projectId, projectId))
+        .orderBy(desc(resources.createdAt));
+
+      res.json(projectResources);
     } catch (error) {
       console.error("Error fetching project resources:", error);
       res.status(500).json({ error: "Failed to fetch project resources" });
+    }
+  });
+
+  // Add link resource (Project Manager and Product Owner only)
+  app.post("/api/projects/:id/resources/link", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager" && user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only project managers and product owners can add links" });
+    }
+
+    try {
+      const projectId = parseInt(req.params.id);
+      const { name, link } = req.body;
+
+      if (!name || !link) {
+        return res.status(400).json({ error: "Name and link are required" });
+      }
+
+      // Validate URL format
+      try {
+        new URL(link);
+      } catch (error) {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Verify user has access to this project
+      let hasAccess = false;
+      if (user.role === "project_manager") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(and(
+            eq(projects.id, projectId),
+            eq(projects.managerId, user.id)
+          ))
+          .limit(1);
+        hasAccess = !!project;
+      } else if (user.role === "product_owner") {
+        // Product owners can add links to any project
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, projectId))
+          .limit(1);
+        hasAccess = !!project;
+      }
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied to this project" });
+      }
+
+      const [newResource] = await db
+        .insert(resources)
+        .values({
+          name: name.trim(),
+          type: "link",
+          link: link.trim(),
+          projectId,
+          uploadedBy: user.id,
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Get the resource with uploader name
+      const [resourceWithUploader] = await db
+        .select({
+          id: resources.id,
+          name: resources.name,
+          type: resources.type,
+          size: resources.size,
+          path: resources.path,
+          link: resources.link,
+          uploadedBy: resources.uploadedBy,
+          createdAt: resources.createdAt,
+          uploaderName: users.name,
+        })
+        .from(resources)
+        .leftJoin(users, eq(resources.uploadedBy, users.id))
+        .where(eq(resources.id, newResource.id))
+        .limit(1);
+
+      res.json(resourceWithUploader);
+    } catch (error) {
+      console.error("Error adding link resource:", error);
+      res.status(500).json({ error: "Failed to add link resource" });
     }
   });
 
