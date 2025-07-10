@@ -70,6 +70,9 @@ export const users = pgTable("users", {
   verificationToken: text("verification_token"),
   resetPasswordToken: text("reset_password_token"),
   resetPasswordExpires: timestamp("reset_password_expires"),
+  onboardingStatus: text("onboarding_status", { 
+    enum: ["onboarded", "not_onboarded", "onboarding_in_progress", "onboarding_pending"] 
+  }).default("not_onboarded"),
   lastActive: timestamp("last_active").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

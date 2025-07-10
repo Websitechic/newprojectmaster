@@ -4198,6 +4198,108 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Client Management API Routes (Product Owner only)
+
+  // Get all clients with their status
+  app.get("/api/clients/management", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only product owners can access client management" });
+    }
+
+    try {
+      // Get all clients with their project information
+      const clients = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          status: users.status,
+          lastActive: users.lastActive,
+          createdAt: users.createdAt,
+          onboardingStatus: users.onboardingStatus,
+        })
+        .from(users)
+        .where(eq(users.role, "client"))
+        .orderBy(desc(users.createdAt));
+
+      // Get project count for each client
+      const clientsWithProjects = await Promise.all(
+        clients.map(async (client) => {
+          const projectCount = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(projects)
+            .where(eq(projects.clientId, client.id));
+
+          return {
+            ...client,
+            projectCount: projectCount[0]?.count || 0,
+          };
+        })
+      );
+
+      res.json(clientsWithProjects);
+    } catch (error) {
+      console.error("Error fetching clients for management:", error);
+      res.status(500).json({ error: "Failed to fetch clients" });
+    }
+  });
+
+  // Update client onboarding status (Product Owner only)
+  app.put("/api/clients/:id/onboarding-status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only product owners can update client onboarding status" });
+    }
+
+    try {
+      const clientId = parseInt(req.params.id);
+      const { onboardingStatus } = req.body;
+
+      const validStatuses = ["onboarded", "not_onboarded", "onboarding_in_progress", "onboarding_pending"];
+      if (!validStatuses.includes(onboardingStatus)) {
+        return res.status(400).json({ error: "Invalid onboarding status" });
+      }
+
+      // Verify client exists
+      const [client] = await db
+        .select()
+        .from(users)
+        .where(and(
+          eq(users.id, clientId),
+          eq(users.role, "client")
+        ))
+        .limit(1);
+
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Update client onboarding status
+      const [updatedClient] = await db
+        .update(users)
+        .set({
+          onboardingStatus,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, clientId))
+        .returning();
+
+      res.json(updatedClient);
+    } catch (error) {
+      console.error("Error updating client onboarding status:", error);
+      res.status(500).json({ error: "Failed to update client onboarding status" });
+    }
+  });
+
   // Productivity tracking endpoint
   app.get("/api/productivity", async (req: Request, res: Response) => {
     if (!req.isAuthenticated()) {

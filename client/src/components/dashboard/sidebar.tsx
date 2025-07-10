@@ -229,6 +229,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Calendar size={20} />,
       label: "Leave Application",
       href: "/dashboard/leave-application",
+    },
+    {
+      icon: <Users size={20} />,
+      label: "Client Management",
+      href: "/dashboard/client-management",
     }
   ] : [];
 
