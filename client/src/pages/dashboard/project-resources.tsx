@@ -32,7 +32,14 @@ export default function ProjectResources() {
 
   const { data: resources, isLoading, refetch } = useQuery<Resource[]>({
     queryKey: [`/api/projects/${projectId}/resources`],
-    queryFn: () => fetch(`/api/projects/${projectId}/resources`).then(res => res.json()),
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${projectId}/resources`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch resources');
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    },
     enabled: !!id,
   });
 
@@ -84,9 +91,9 @@ export default function ProjectResources() {
     }
   };
 
-  const filteredResources = resources?.filter(resource =>
+  const filteredResources = Array.isArray(resources) ? resources.filter(resource =>
     resource.name.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  ) : [];
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
