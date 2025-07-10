@@ -55,26 +55,56 @@ export default function ProjectResources() {
 
   const handleAddLink = async () => {
     if (!linkName.trim() || !linkUrl.trim()) {
+      console.log("Missing name or URL");
       return;
     }
 
+    console.log("Starting link upload...", { 
+      projectId, 
+      name: linkName.trim(), 
+      link: linkUrl.trim() 
+    });
+
     setIsSubmittingLink(true);
     try {
-      const response = await fetch(`/api/projects/${projectId}/resources/link`, {
+      const url = `/api/projects/${projectId}/resources/link`;
+      const payload = {
+        name: linkName.trim(),
+        link: linkUrl.trim(),
+      };
+
+      console.log("Making request to:", url);
+      console.log("Payload:", payload);
+
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: linkName.trim(),
-          link: linkUrl.trim(),
-        }),
+        body: JSON.stringify(payload),
       });
 
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to add link");
+        const errorText = await response.text();
+        console.log("Error response text:", errorText);
+        
+        let errorMessage = "Failed to add link";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (e) {
+          console.log("Could not parse error as JSON");
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
       }
+
+      const result = await response.json();
+      console.log("Success response:", result);
 
       // Reset form and close dialog
       setLinkName("");
@@ -83,9 +113,12 @@ export default function ProjectResources() {
       
       // Refresh resources list
       refetch();
+      alert("Link added successfully!");
     } catch (error) {
       console.error("Error adding link:", error);
-      alert(error instanceof Error ? error.message : "Failed to add link");
+      const errorMessage = error instanceof Error ? error.message : "Failed to add link";
+      console.error("Error message:", errorMessage);
+      alert(errorMessage);
     } finally {
       setIsSubmittingLink(false);
     }

@@ -1922,12 +1922,21 @@ export function registerRoutes(app: Express): Server {
 
   // Add link resource (Project Manager and Product Owner only)
   app.post("/api/projects/:id/resources/link", async (req, res) => {
+    console.log("Link upload endpoint called");
+    console.log("Request params:", req.params);
+    console.log("Request body:", req.body);
+    console.log("User:", req.user);
+
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      console.log("User not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
+    console.log("User role:", user.role);
+    
     if (user.role !== "project_manager" && user.role !== "product_owner") {
+      console.log("User role not authorized:", user.role);
       return res.status(403).json({ error: "Only project managers and product owners can add links" });
     }
 
@@ -1938,19 +1947,23 @@ export function registerRoutes(app: Express): Server {
       console.log("Adding link resource:", { projectId, name, link, userId: user.id });
 
       if (!name || !link) {
+        console.log("Missing name or link");
         return res.status(400).json({ error: "Name and link are required" });
       }
 
       // Validate URL format
       try {
         new URL(link);
+        console.log("URL validation passed");
       } catch (error) {
+        console.log("URL validation failed:", error);
         return res.status(400).json({ error: "Invalid URL format" });
       }
 
       // Verify user has access to this project
       let hasAccess = false;
       if (user.role === "project_manager") {
+        console.log("Checking project manager access");
         const [project] = await db
           .select()
           .from(projects)
@@ -1960,7 +1973,9 @@ export function registerRoutes(app: Express): Server {
           ))
           .limit(1);
         hasAccess = !!project;
+        console.log("Project manager access:", hasAccess);
       } else if (user.role === "product_owner") {
+        console.log("Checking product owner access");
         // Product owners can add links to any project
         const [project] = await db
           .select()
@@ -1968,12 +1983,15 @@ export function registerRoutes(app: Express): Server {
           .where(eq(projects.id, projectId))
           .limit(1);
         hasAccess = !!project;
+        console.log("Product owner access:", hasAccess);
       }
 
       if (!hasAccess) {
+        console.log("Access denied to project");
         return res.status(403).json({ error: "Access denied to this project" });
       }
 
+      console.log("Inserting resource into database");
       const [newResource] = await db
         .insert(resources)
         .values({
@@ -2011,7 +2029,11 @@ export function registerRoutes(app: Express): Server {
       res.json(resourceWithUploader);
     } catch (error) {
       console.error("Error adding link resource:", error);
-      res.status(500).json({ error: "Failed to add link resource" });
+      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
+      res.status(500).json({ 
+        error: "Failed to add link resource", 
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
