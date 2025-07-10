@@ -80,7 +80,7 @@ function Router() {
       <Route path="/dashboard/productivity" component={() => <PrivateRoute component={Productivity} />} />
       <Route path="/dashboard/direct-messages" component={() => <PrivateRoute component={DirectMessages} />} />
       <Route path="/dashboard/technical-support" component={() => <PrivateRoute component={TechnicalSupport} />} />
-      <Route path="/dashboard/technical-management" component={() => <PrivateRoute component={TechnicalManagement} />} />
+      <Route path="/dashboard/technical-management" component={() => <PrivateRoute component={TechnicalManagementFixed} />} />
       <Route path="/dashboard/extension-requests" component={() => <PrivateRoute component={ExtensionRequestsPage} />} />
       <Route path="/dashboard/deadline-extension-requests" component={() => <PrivateRoute component={DeadlineExtensionRequestsPage} />} />
       <Route path="/dashboard/client-management" component={ClientManagement} />

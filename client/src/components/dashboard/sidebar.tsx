@@ -18,6 +18,7 @@ import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 import { Wrench } from "lucide-react";
 import { Clock } from "lucide-react";
+import { Building2 } from "lucide-react";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
