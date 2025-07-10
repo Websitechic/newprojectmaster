@@ -1935,6 +1935,8 @@ export function registerRoutes(app: Express): Server {
       const projectId = parseInt(req.params.id);
       const { name, link } = req.body;
 
+      console.log("Adding link resource:", { projectId, name, link, userId: user.id });
+
       if (!name || !link) {
         return res.status(400).json({ error: "Name and link are required" });
       }
@@ -1984,6 +1986,8 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
+      console.log("Created resource:", newResource);
+
       // Get the resource with uploader name
       const [resourceWithUploader] = await db
         .select({
@@ -2001,6 +2005,8 @@ export function registerRoutes(app: Express): Server {
         .leftJoin(users, eq(resources.uploadedBy, users.id))
         .where(eq(resources.id, newResource.id))
         .limit(1);
+
+      console.log("Returning resource with uploader:", resourceWithUploader);
 
       res.json(resourceWithUploader);
     } catch (error) {
