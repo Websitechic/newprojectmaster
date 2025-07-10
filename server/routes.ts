@@ -747,6 +747,56 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const projectId = parseInt(req.params.id);
+      
+      // Verify user has access to this project
+      const userRole = req.user!.role;
+      let hasAccess = false;
+
+      if (userRole === "project_manager") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(and(
+            eq(projects.id, projectId),
+            eq(projects.managerId, req.user!.id)
+          ))
+          .limit(1);
+        hasAccess = !!project;
+      } else if (userRole === "product_owner") {
+        // Product owners have access to all projects
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, projectId))
+          .limit(1);
+        hasAccess = !!project;
+      } else if (userRole === "staff") {
+        const [membership] = await db
+          .select()
+          .from(projectMembers)
+          .where(and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.userId, req.user!.id),
+            eq(projectMembers.invitationStatus, "accepted")
+          ))
+          .limit(1);
+        hasAccess = !!membership;
+      } else if (userRole === "client") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(and(
+            eq(projects.id, projectId),
+            eq(projects.clientId, req.user!.id)
+          ))
+          .limit(1);
+        hasAccess = !!project;
+      }
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied to this project" });
+      }
+
       const members = await db
         .select({
           id: users.id,
@@ -3218,6 +3268,14 @@ export function registerRoutes(app: Express): Server {
           ))
           .limit(1);
         hasAccess = !!project;
+      } else if (userRole === "product_owner") {
+        // Product owners have access to all projects
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, projectId))
+          .limit(1);
+        hasAccess = !!project;
       } else if (userRole === "staff") {
         const [membership] = await db
           .select()
@@ -3275,6 +3333,10 @@ export function registerRoutes(app: Express): Server {
 
   // Send team message
   app.post("/api/projects/:projectId/team-messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
     try {
       const projectId = parseInt(req.params.projectId);
       const { content } = req.body;
@@ -3286,6 +3348,55 @@ export function registerRoutes(app: Express): Server {
 
       if (!content || content.trim().length === 0) {
         return res.status(400).json({ error: "Message content is required" });
+      }
+
+      // Verify user has access to this project
+      const userRole = req.user!.role;
+      let hasAccess = false;
+
+      if (userRole === "project_manager") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(and(
+            eq(projects.id, projectId),
+            eq(projects.managerId, req.user!.id)
+          ))
+          .limit(1);
+        hasAccess = !!project;
+      } else if (userRole === "product_owner") {
+        // Product owners have access to all projects
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, projectId))
+          .limit(1);
+        hasAccess = !!project;
+      } else if (userRole === "staff") {
+        const [membership] = await db
+          .select()
+          .from(projectMembers)
+          .where(and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.userId, req.user!.id),
+            eq(projectMembers.invitationStatus, "accepted")
+          ))
+          .limit(1);
+        hasAccess = !!membership;
+      } else if (userRole === "client") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(and(
+            eq(projects.id, projectId),
+            eq(projects.clientId, req.user!.id)
+          ))
+          .limit(1);
+        hasAccess = !!project;
+      }
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied to this project" });
       }
 
       const [message] = await db
@@ -3338,28 +3449,39 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const userId = req.user!.id;
+      const userRole = req.user!.role;
 
-      // Get user's managed projects
-      const managedProjects = await db
-        .select({ id: projects.id })
-        .from(projects)
-        .where(eq(projects.managerId, userId));
+      let allProjectIds: number[] = [];
 
-      // Get user's member projects
-      const memberProjects = await db
-        .select({ projectId: projectMembers.projectId })
-        .from(projectMembers)
-        .where(
-          and(
-            eq(projectMembers.userId, userId),
-            eq(projectMembers.invitationStatus, "accepted")
-          )
-        );
+      if (userRole === "product_owner") {
+        // Product owners have access to all projects
+        const allProjects = await db
+          .select({ id: projects.id })
+          .from(projects);
+        allProjectIds = allProjects.map(p => p.id);
+      } else {
+        // Get user's managed projects
+        const managedProjects = await db
+          .select({ id: projects.id })
+          .from(projects)
+          .where(eq(projects.managerId, userId));
 
-      const allProjectIds = [
-        ...managedProjects.map(p => p.id),
-        ...memberProjects.map(p => p.projectId).filter(id => id !== null)
-      ];
+        // Get user's member projects
+        const memberProjects = await db
+          .select({ projectId: projectMembers.projectId })
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.userId, userId),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          );
+
+        allProjectIds = [
+          ...managedProjects.map(p => p.id),
+          ...memberProjects.map(p => p.projectId).filter(id => id !== null)
+        ];
+      }
       
       // Remove duplicates
       const uniqueProjectIds = Array.from(new Set(allProjectIds.filter(id => id !== null)));

@@ -128,7 +128,7 @@ export default function TeamChat() {
       try {
         const data = JSON.parse(event.data);
         console.log("SSE message received in team chat:", data);
-        if (data.type === "team_message" && data.data.projectId === projectId) {
+        if (data.type === "team_message") {
           console.log("Team message received via SSE, invalidating queries");
           queryClient.invalidateQueries({ 
             queryKey: [`/api/projects/${projectId}/team-messages`] 
