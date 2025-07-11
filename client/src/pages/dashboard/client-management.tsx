@@ -122,7 +122,7 @@ export default function ClientManagement() {
     updateStatusMutation.mutate({ 
       clientId, 
       status: client?.onboardingStatus || "not_onboarded", 
-      portalType: newPortalType 
+      portalType: newPortalType === "not_assigned" ? null : newPortalType 
     });
   };
 
@@ -309,7 +309,7 @@ export default function ClientManagement() {
                             </TableCell>
                             <TableCell>
                               <Select
-                                value={client.portalType || ""}
+                                value={client.portalType || "not_assigned"}
                                 onValueChange={(value) => handlePortalTypeChange(client.id, value)}
                                 disabled={updateStatusMutation.isPending}
                               >
@@ -317,7 +317,7 @@ export default function ClientManagement() {
                                   <SelectValue placeholder="Select portal type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">Not Assigned</SelectItem>
+                                  <SelectItem value="not_assigned">Not Assigned</SelectItem>
                                   <SelectItem value="project_handling">Project Handling</SelectItem>
                                   <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
                                 </SelectContent>
