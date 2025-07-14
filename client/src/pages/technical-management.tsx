@@ -146,7 +146,17 @@ export default function TechnicalManagementPage() {
     setIsUpdateDialogOpen(true);
   };
 
-  // Access control removed - handled by sidebar navigation
+  // Product owners can view all requests (read-only)
+  if (!user || (user.role !== "project_manager" && user.specialization !== "technical_support" && user.role !== "product_owner")) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+          <p className="text-gray-600">You don't have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -163,6 +173,7 @@ export default function TechnicalManagementPage() {
 
   const pendingRequests = requests.filter(r => r.status === 'pending' || !r.assignedToId);
   const myRequests = requests.filter(r => r.assignedToId === user?.id);
+  const allRequests = requests; // Product owners see all requests
 
   return (
     <div className="container mx-auto p-6">
@@ -195,8 +206,75 @@ export default function TechnicalManagementPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Pending Requests Section */}
-          {pendingRequests.length > 0 && (
+          {/* All Requests Section - For Product Owners */}
+          {user?.role === "product_owner" && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Wrench className="h-5 w-5" />
+                All Technical Support Requests ({requests.length})
+              </h2>
+              <div className="grid gap-4">
+                {requests.map((request) => (
+                  <Card key={request.id} className="border-purple-200">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            {getStatusIcon(request.status)}
+                            {request.title}
+                          </CardTitle>
+                          <div className="flex gap-2 mt-2">
+                            <Badge className={statusColors[request.status]}>
+                              {request.status.replace("_", " ")}
+                            </Badge>
+                            <Badge className={priorityColors[request.priority]}>
+                              {request.priority}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {formatDate(request.createdAt)}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-700 mb-3">{request.description}</p>
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className="flex items-center gap-1">
+                          <User className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm">{request.requester.name}</span>
+                        </div>
+                        {request.task && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm text-blue-600">{request.task.title}</span>
+                          </div>
+                        )}
+                        {request.assignedTo && (
+                          <div className="flex items-center gap-1">
+                            <UserCheck className="h-4 w-4 text-green-500" />
+                            <span className="text-sm text-green-700">Assigned to: {request.assignedTo.name}</span>
+                          </div>
+                        )}
+                      </div>
+                      {request.resolution && (
+                        <div className="bg-green-50 p-3 rounded-lg mb-3">
+                          <span className="text-sm font-medium text-green-800">Resolution: </span>
+                          <span className="text-sm text-green-700">{request.resolution}</span>
+                        </div>
+                      )}
+                      <div className="text-sm text-gray-500">
+                        <span className="font-medium">Status:</span> Read-only (Product Owner View)
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pending Requests Section - For Technical Support Staff */}
+          {user?.role !== "product_owner" && pendingRequests.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Clock className="h-5 w-5" />
@@ -283,7 +361,7 @@ export default function TechnicalManagementPage() {
           )}
 
           {/* My Assigned Requests Section - Only for Technical Support Staff */}
-          {!isProjectManager && myRequests.length > 0 && (
+          {user?.role !== "product_owner" && !isProjectManager && myRequests.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <UserCheck className="h-5 w-5" />
