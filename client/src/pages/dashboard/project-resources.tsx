@@ -33,7 +33,9 @@ export default function ProjectResources() {
   const { data: resources, isLoading, refetch } = useQuery<Resource[]>({
     queryKey: [`/api/projects/${projectId}/resources`],
     queryFn: async () => {
-      const response = await fetch(`/api/projects/${projectId}/resources`);
+      const response = await fetch(`/api/projects/${projectId}/resources`, {
+        credentials: "include"
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch resources');
       }
@@ -56,6 +58,7 @@ export default function ProjectResources() {
   const handleAddLink = async () => {
     if (!linkName.trim() || !linkUrl.trim()) {
       console.log("Missing name or URL");
+      alert("Please enter both a name and URL for the link");
       return;
     }
 
@@ -81,6 +84,7 @@ export default function ProjectResources() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Important for session-based authentication
         body: JSON.stringify(payload),
       });
 
@@ -112,13 +116,13 @@ export default function ProjectResources() {
       setShowLinkDialog(false);
       
       // Refresh resources list
-      refetch();
+      await refetch();
       alert("Link added successfully!");
     } catch (error) {
       console.error("Error adding link:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to add link";
       console.error("Error message:", errorMessage);
-      alert(errorMessage);
+      alert(`Error: ${errorMessage}`);
     } finally {
       setIsSubmittingLink(false);
     }
