@@ -3670,17 +3670,21 @@ export function registerRoutes(app: Express): Server {
       
       // Get basic technical support requests first
       let basicRequests;
-      if (user.specialization === 'technical_support' || user.role === 'project_manager') {
-        // Technical support staff and project managers see all requests
+      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner') {
+        // Technical support staff, project managers, and product owners see all requests
+        console.log(`User ${user.id} (${user.role}) fetching all technical support requests`);
         basicRequests = await db.select()
           .from(technicalSupportRequests)
           .orderBy(desc(technicalSupportRequests.createdAt));
+        console.log(`Found ${basicRequests.length} technical support requests for user ${user.id}`);
       } else {
         // Non-technical support staff see only their own requests
+        console.log(`User ${user.id} (${user.role}) fetching their own technical support requests`);
         basicRequests = await db.select()
           .from(technicalSupportRequests)
           .where(eq(technicalSupportRequests.requesterId, user.id))
           .orderBy(desc(technicalSupportRequests.createdAt));
+        console.log(`Found ${basicRequests.length} technical support requests for user ${user.id}`);
       }
 
       // Enrich requests with additional data

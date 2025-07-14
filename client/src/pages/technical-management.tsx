@@ -268,8 +268,9 @@ export default function TechnicalManagementPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
