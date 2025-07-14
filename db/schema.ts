@@ -73,9 +73,6 @@ export const users = pgTable("users", {
   onboardingStatus: text("onboarding_status", { 
     enum: ["onboarded", "not_onboarded", "onboarding_in_progress", "onboarding_pending"] 
   }).default("not_onboarded"),
-  portalType: text("portal_type", {
-    enum: ["project_handling", "support_maintenance"]
-  }),
   lastActive: timestamp("last_active").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

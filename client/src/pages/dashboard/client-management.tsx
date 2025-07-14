@@ -21,7 +21,6 @@ interface Client {
   lastActive?: string;
   createdAt: string;
   onboardingStatus: "onboarded" | "not_onboarded" | "onboarding_in_progress" | "onboarding_pending";
-  portalType: "project_handling" | "support_maintenance" | null;
   projectCount: number;
 }
 
@@ -86,11 +85,11 @@ export default function ClientManagement() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ clientId, status, portalType }: { clientId: number; status: string; portalType?: string }) => {
+    mutationFn: async ({ clientId, status }: { clientId: number; status: string }) => {
       const response = await fetch(`/api/clients/${clientId}/onboarding-status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ onboardingStatus: status, portalType }),
+        body: JSON.stringify({ onboardingStatus: status }),
       });
       if (!response.ok) {
         throw new Error("Failed to update client status");
@@ -117,25 +116,8 @@ export default function ClientManagement() {
     updateStatusMutation.mutate({ clientId, status: newStatus });
   };
 
-  const handlePortalTypeChange = (clientId: number, newPortalType: string) => {
-    const client = clients?.find(c => c.id === clientId);
-    updateStatusMutation.mutate({ 
-      clientId, 
-      status: client?.onboardingStatus || "not_onboarded", 
-      portalType: newPortalType === "not_assigned" ? null : newPortalType 
-    });
-  };
-
   const getStatusSummary = () => {
-    if (!clients) return { 
-      total: 0, 
-      onboarded: 0, 
-      pending: 0, 
-      inProgress: 0, 
-      notOnboarded: 0,
-      projectHandling: 0,
-      supportMaintenance: 0 
-    };
+    if (!clients) return { total: 0, onboarded: 0, pending: 0, inProgress: 0, notOnboarded: 0 };
     
     return {
       total: clients.length,
@@ -143,8 +125,6 @@ export default function ClientManagement() {
       pending: clients.filter(c => c.onboardingStatus === "onboarding_pending").length,
       inProgress: clients.filter(c => c.onboardingStatus === "onboarding_in_progress").length,
       notOnboarded: clients.filter(c => c.onboardingStatus === "not_onboarded").length,
-      projectHandling: clients.filter(c => c.portalType === "project_handling").length,
-      supportMaintenance: clients.filter(c => c.portalType === "support_maintenance").length,
     };
   };
 
@@ -171,7 +151,7 @@ export default function ClientManagement() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
@@ -228,30 +208,6 @@ export default function ClientManagement() {
                   <div className="text-2xl font-bold text-red-600">{summary.notOnboarded}</div>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-blue-600" />
-                    Project Handling
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">{summary.projectHandling}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Users className="h-4 w-4 text-purple-600" />
-                    Support & Maintenance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-purple-600">{summary.supportMaintenance}</div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* Clients Table */}
@@ -276,7 +232,6 @@ export default function ClientManagement() {
                         <TableHead>Projects</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Onboarding Status</TableHead>
-                        <TableHead>Portal Type</TableHead>
                         <TableHead>Joined Date</TableHead>
                         <TableHead>Last Active</TableHead>
                         <TableHead>Actions</TableHead>
@@ -306,22 +261,6 @@ export default function ClientManagement() {
                                   {statusInfo.label}
                                 </Badge>
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={client.portalType || "not_assigned"}
-                                onValueChange={(value) => handlePortalTypeChange(client.id, value)}
-                                disabled={updateStatusMutation.isPending}
-                              >
-                                <SelectTrigger className="w-[160px]">
-                                  <SelectValue placeholder="Select portal type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="not_assigned">Not Assigned</SelectItem>
-                                  <SelectItem value="project_handling">Project Handling</SelectItem>
-                                  <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
-                                </SelectContent>
-                              </Select>
                             </TableCell>
                             <TableCell>
                               {new Date(client.createdAt).toLocaleDateString()}

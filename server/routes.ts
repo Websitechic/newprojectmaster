@@ -4344,7 +4344,6 @@ export function registerRoutes(app: Express): Server {
           lastActive: users.lastActive,
           createdAt: users.createdAt,
           onboardingStatus: users.onboardingStatus,
-          portalType: users.portalType,
         })
         .from(users)
         .where(eq(users.role, "client"))
@@ -4385,16 +4384,11 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const clientId = parseInt(req.params.id);
-      const { onboardingStatus, portalType } = req.body;
+      const { onboardingStatus } = req.body;
 
       const validStatuses = ["onboarded", "not_onboarded", "onboarding_in_progress", "onboarding_pending"];
       if (!validStatuses.includes(onboardingStatus)) {
         return res.status(400).json({ error: "Invalid onboarding status" });
-      }
-
-      const validPortalTypes = ["project_handling", "support_maintenance"];
-      if (portalType && !validPortalTypes.includes(portalType)) {
-        return res.status(400).json({ error: "Invalid portal type" });
       }
 
       // Verify client exists
@@ -4411,19 +4405,13 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Client not found" });
       }
 
-      // Update client onboarding status and portal type
-      const updateData: any = {
-        onboardingStatus,
-        updatedAt: new Date(),
-      };
-
-      if (portalType) {
-        updateData.portalType = portalType;
-      }
-
+      // Update client onboarding status
       const [updatedClient] = await db
         .update(users)
-        .set(updateData)
+        .set({
+          onboardingStatus,
+          updatedAt: new Date(),
+        })
         .where(eq(users.id, clientId))
         .returning();
 
