@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
-import { Upload, FileText, Download, Search, Link, ExternalLink } from "lucide-react";
+import { Upload, FileText, Download, Search, Link, ExternalLink, Edit2, Trash2, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Resource {
   id: number;
@@ -54,6 +56,18 @@ export default function ProjectResources() {
   const [linkName, setLinkName] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [isSubmittingLink, setIsSubmittingLink] = useState(false);
+
+  // State for edit dialog
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editUrl, setEditUrl] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // State for delete dialog
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleAddLink = async () => {
     if (!linkName.trim() || !linkUrl.trim()) {
@@ -125,6 +139,106 @@ export default function ProjectResources() {
       alert(`Error: ${errorMessage}`);
     } finally {
       setIsSubmittingLink(false);
+    }
+  };
+
+  const handleEditResource = (resource: Resource) => {
+    setEditingResource(resource);
+    setEditName(resource.name);
+    setEditUrl(resource.link || "");
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateResource = async () => {
+    if (!editingResource || !editName.trim() || !editUrl.trim()) {
+      alert("Please enter both a name and URL for the link");
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/resources/${editingResource.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          name: editName.trim(),
+          link: editUrl.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = "Failed to update resource";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Reset form and close dialog
+      setEditName("");
+      setEditUrl("");
+      setEditingResource(null);
+      setShowEditDialog(false);
+      
+      // Refresh resources list
+      await refetch();
+      alert("Resource updated successfully!");
+    } catch (error) {
+      console.error("Error updating resource:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to update resource";
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteResource = async (resource: Resource) => {
+    setDeletingResource(resource);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteResource = async () => {
+    if (!deletingResource) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/resources/${deletingResource.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = "Failed to delete resource";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Close dialog and reset state
+      setDeletingResource(null);
+      setShowDeleteDialog(false);
+      
+      // Refresh resources list
+      await refetch();
+      alert("Resource deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting resource:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete resource";
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -237,6 +351,73 @@ export default function ProjectResources() {
             )}
           </div>
 
+          {/* Edit Resource Dialog */}
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Resource Link</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="editName">Link Name</Label>
+                  <Input
+                    id="editName"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Enter a name for this link"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editUrl">URL</Label>
+                  <Input
+                    id="editUrl"
+                    type="url"
+                    value={editUrl}
+                    onChange={(e) => setEditUrl(e.target.value)}
+                    placeholder="https://example.com"
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowEditDialog(false)}
+                    disabled={isUpdating}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleUpdateResource}
+                    disabled={!editName.trim() || !editUrl.trim() || isUpdating}
+                  >
+                    {isUpdating ? "Updating..." : "Update"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Resource Dialog */}
+          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the resource "{deletingResource?.name}". This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmDeleteResource}
+                  disabled={isDeleting}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           {filteredResources.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredResources.map((resource) => (
@@ -254,19 +435,46 @@ export default function ProjectResources() {
                           </p>
                         </div>
                       </div>
-                      {resource.type === 'link' ? (
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => window.open(resource.link, '_blank')}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <Button variant="ghost" size="sm">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {resource.type === 'link' ? (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => window.open(resource.link, '_blank')}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="sm">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
+                        {canManageResources && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              {resource.type === 'link' && (
+                                <DropdownMenuItem onClick={() => handleEditResource(resource)}>
+                                  <Edit2 className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteResource(resource)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">

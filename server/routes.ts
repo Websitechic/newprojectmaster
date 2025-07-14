@@ -2087,6 +2087,182 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Edit link resource (Project Manager and Product Owner only)
+  app.put("/api/projects/:projectId/resources/:resourceId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    
+    if (user.role !== "project_manager" && user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only project managers and product owners can edit resources" });
+    }
+
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const resourceId = parseInt(req.params.resourceId);
+      const { name, link } = req.body;
+
+      if (!name || !link) {
+        return res.status(400).json({ error: "Name and link are required" });
+      }
+
+      // Validate URL format
+      try {
+        new URL(link);
+      } catch (error) {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Verify user has access to this project
+      let hasAccess = false;
+      if (user.role === "project_manager") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(and(
+            eq(projects.id, projectId),
+            eq(projects.managerId, user.id)
+          ))
+          .limit(1);
+        hasAccess = !!project;
+      } else if (user.role === "product_owner") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, projectId))
+          .limit(1);
+        hasAccess = !!project;
+      }
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied to this project" });
+      }
+
+      // Verify resource exists and is a link
+      const [resource] = await db
+        .select()
+        .from(resources)
+        .where(and(
+          eq(resources.id, resourceId),
+          eq(resources.projectId, projectId),
+          eq(resources.type, "link")
+        ))
+        .limit(1);
+
+      if (!resource) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
+
+      // Update the resource
+      const [updatedResource] = await db
+        .update(resources)
+        .set({
+          name: name.trim(),
+          link: link.trim(),
+        })
+        .where(eq(resources.id, resourceId))
+        .returning();
+
+      // Get the updated resource with uploader name
+      const [resourceWithUploader] = await db
+        .select({
+          id: resources.id,
+          name: resources.name,
+          type: resources.type,
+          size: resources.size,
+          path: resources.path,
+          link: resources.link,
+          uploadedBy: resources.uploadedBy,
+          createdAt: resources.createdAt,
+          uploaderName: users.name,
+        })
+        .from(resources)
+        .leftJoin(users, eq(resources.uploadedBy, users.id))
+        .where(eq(resources.id, resourceId))
+        .limit(1);
+
+      res.json(resourceWithUploader);
+    } catch (error) {
+      console.error("Error updating link resource:", error);
+      res.status(500).json({ 
+        error: "Failed to update link resource", 
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Delete resource (Project Manager and Product Owner only)
+  app.delete("/api/projects/:projectId/resources/:resourceId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    
+    if (user.role !== "project_manager" && user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only project managers and product owners can delete resources" });
+    }
+
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const resourceId = parseInt(req.params.resourceId);
+
+      // Verify user has access to this project
+      let hasAccess = false;
+      if (user.role === "project_manager") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(and(
+            eq(projects.id, projectId),
+            eq(projects.managerId, user.id)
+          ))
+          .limit(1);
+        hasAccess = !!project;
+      } else if (user.role === "product_owner") {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, projectId))
+          .limit(1);
+        hasAccess = !!project;
+      }
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied to this project" });
+      }
+
+      // Verify resource exists in this project
+      const [resource] = await db
+        .select()
+        .from(resources)
+        .where(and(
+          eq(resources.id, resourceId),
+          eq(resources.projectId, projectId)
+        ))
+        .limit(1);
+
+      if (!resource) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
+
+      // Delete the resource
+      await db
+        .delete(resources)
+        .where(eq(resources.id, resourceId));
+
+      res.json({ message: "Resource deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting resource:", error);
+      res.status(500).json({ 
+        error: "Failed to delete resource", 
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Performance
   app.get("/api/performance", async (req, res) => {
     if (!req.isAuthenticated()) {
