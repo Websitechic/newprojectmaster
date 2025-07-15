@@ -25,6 +25,7 @@ import TechnicalSupport from "@/pages/technical-support";
 import TechnicalManagementFixed from "@/pages/technical-management-fixed";
 import DeadlineExtensionRequests from "@/pages/deadline-extension-requests";
 import ClientManagement from "@/pages/dashboard/client-management";
+import ExtensionRequestsPage from "@/pages/extension-requests";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -82,7 +83,7 @@ function Router() {
       <Route path="/dashboard/technical-support" component={() => <PrivateRoute component={TechnicalSupport} />} />
       <Route path="/dashboard/technical-management" component={() => <PrivateRoute component={TechnicalManagementFixed} />} />
       <Route path="/dashboard/extension-requests" component={() => <PrivateRoute component={ExtensionRequestsPage} />} />
-      <Route path="/dashboard/deadline-extension-requests" component={() => <PrivateRoute component={DeadlineExtensionRequestsPage} />} />
+      <Route path="/dashboard/deadline-extension-requests" component={() => <PrivateRoute component={DeadlineExtensionRequests} />} />
       <Route path="/dashboard/client-management" component={ClientManagement} />
       <Route component={NotFound} />
     </Switch>
