@@ -213,69 +213,53 @@ export default function TechnicalManagementPage() {
                 <Wrench className="h-5 w-5" />
                 All Technical Support Requests ({requests.length})
               </h2>
-              <div className="border rounded-lg bg-white">
-                <div className="grid grid-cols-12 gap-4 p-4 border-b bg-gray-50 font-medium text-sm">
-                  <div className="col-span-3">Title</div>
-                  <div className="col-span-2">Status</div>
-                  <div className="col-span-2">Priority</div>
-                  <div className="col-span-2">Requester</div>
-                  <div className="col-span-2">Assigned To</div>
-                  <div className="col-span-1">Date</div>
-                </div>
-                {requests.map((request, index) => (
-                  <div key={request.id} className={`grid grid-cols-12 gap-4 p-4 hover:bg-gray-50 transition-colors ${index !== requests.length - 1 ? 'border-b' : ''}`}>
-                    <div className="col-span-3">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(request.status)}
-                        <div>
-                          <div className="font-medium">{request.title}</div>
-                          <div className="text-sm text-gray-600 truncate">{request.description}</div>
+              <div className="space-y-2">
+                {requests.map((request) => (
+                  <div key={request.id} className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3 flex-1">
+                      {getStatusIcon(request.status)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium text-gray-900 truncate">{request.title}</h3>
+                          <Badge className={statusColors[request.status]}>
+                            {request.status.replace("_", " ")}
+                          </Badge>
+                          <Badge className={priorityColors[request.priority]}>
+                            {request.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1 line-clamp-1">{request.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            <span>{request.requester.name}</span>
+                          </div>
+                          {request.assignedTo ? (
+                            <div className="flex items-center gap-1">
+                              <UserCheck className="h-3 w-3 text-green-500" />
+                              <span className="text-green-700">{request.assignedTo.name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">Unassigned</span>
+                          )}
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatDate(request.createdAt)}</span>
+                          </div>
                           {request.task && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Calendar className="h-3 w-3 text-gray-500" />
-                              <span className="text-xs text-blue-600">{request.task.title}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-blue-600">Task: {request.task.title}</span>
                             </div>
                           )}
                         </div>
+                        {request.resolution && (
+                          <div className="mt-2 bg-green-50 p-2 rounded text-xs">
+                            <span className="font-medium text-green-800">Resolution: </span>
+                            <span className="text-green-700">{request.resolution}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="col-span-2">
-                      <Badge className={statusColors[request.status]}>
-                        {request.status.replace("_", " ")}
-                      </Badge>
-                    </div>
-                    <div className="col-span-2">
-                      <Badge className={priorityColors[request.priority]}>
-                        {request.priority}
-                      </Badge>
-                    </div>
-                    <div className="col-span-2">
-                      <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm">{request.requester.name}</span>
-                      </div>
-                    </div>
-                    <div className="col-span-2">
-                      {request.assignedTo ? (
-                        <div className="flex items-center gap-1">
-                          <UserCheck className="h-4 w-4 text-green-500" />
-                          <span className="text-sm text-green-700">{request.assignedTo.name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-500">Unassigned</span>
-                      )}
-                    </div>
-                    <div className="col-span-1">
-                      <div className="text-sm text-gray-500">
-                        {formatDate(request.createdAt)}
-                      </div>
-                    </div>
-                    {request.resolution && (
-                      <div className="col-span-12 mt-2 bg-green-50 p-3 rounded-lg">
-                        <span className="text-sm font-medium text-green-800">Resolution: </span>
-                        <span className="text-sm text-green-700">{request.resolution}</span>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -289,90 +273,74 @@ export default function TechnicalManagementPage() {
                 <Clock className="h-5 w-5" />
                 Pending Requests ({pendingRequests.length})
               </h2>
-              <div className="border rounded-lg bg-white">
-                <div className="grid grid-cols-12 gap-4 p-4 border-b bg-gray-50 font-medium text-sm">
-                  <div className="col-span-3">Title</div>
-                  <div className="col-span-2">Status</div>
-                  <div className="col-span-2">Priority</div>
-                  <div className="col-span-2">Requester</div>
-                  <div className="col-span-2">Date</div>
-                  <div className="col-span-1">Actions</div>
-                </div>
-                {pendingRequests.map((request, index) => (
-                  <div key={request.id} className={`grid grid-cols-12 gap-4 p-4 hover:bg-gray-50 transition-colors ${index !== pendingRequests.length - 1 ? 'border-b' : ''}`}>
-                    <div className="col-span-3">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(request.status)}
-                        <div>
-                          <div className="font-medium">{request.title}</div>
-                          <div className="text-sm text-gray-600 truncate">{request.description}</div>
+              <div className="space-y-2">
+                {pendingRequests.map((request) => (
+                  <div key={request.id} className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3 flex-1">
+                      {getStatusIcon(request.status)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium text-gray-900 truncate">{request.title}</h3>
+                          <Badge className={statusColors[request.status]}>
+                            {request.status.replace("_", " ")}
+                          </Badge>
+                          <Badge className={priorityColors[request.priority]}>
+                            {request.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1 line-clamp-1">{request.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            <span>{request.requester.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatDate(request.createdAt)}</span>
+                          </div>
                           {request.task && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Calendar className="h-3 w-3 text-gray-500" />
-                              <span className="text-xs text-blue-600">{request.task.title}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-blue-600">Task: {request.task.title}</span>
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div className="col-span-2">
-                      <Badge className={statusColors[request.status]}>
-                        {request.status.replace("_", " ")}
-                      </Badge>
-                    </div>
-                    <div className="col-span-2">
-                      <Badge className={priorityColors[request.priority]}>
-                        {request.priority}
-                      </Badge>
-                    </div>
-                    <div className="col-span-2">
-                      <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm">{request.requester.name}</span>
-                      </div>
-                    </div>
-                    <div className="col-span-2">
-                      <div className="text-sm text-gray-500">
-                        {formatDate(request.createdAt)}
-                      </div>
-                    </div>
-                    <div className="col-span-1">
-                      {!isProjectManager && (
-                        <div className="flex gap-1">
-                          {!request.assignedToId ? (
-                            <Button
-                              size="sm"
-                              onClick={() => assignRequestMutation.mutate(request.id)}
-                              disabled={assignRequestMutation.isPending}
-                            >
-                              <UserCheck className="h-4 w-4 mr-1" />
-                              Assign
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              disabled
-                              className="bg-gray-300 text-black cursor-not-allowed"
-                            >
-                              <UserCheck className="h-4 w-4 mr-1" />
-                              Assigned
-                            </Button>
-                          )}
+                    {!isProjectManager && (
+                      <div className="flex gap-2 ml-4">
+                        {!request.assignedToId ? (
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => handleUpdateRequest(request)}
+                            onClick={() => assignRequestMutation.mutate(request.id)}
+                            disabled={assignRequestMutation.isPending}
                           >
-                            Update
+                            <UserCheck className="h-4 w-4 mr-1" />
+                            Assign
                           </Button>
-                        </div>
-                      )}
-                      {isProjectManager && request.assignedToId && (
-                        <div className="text-sm text-gray-600">
-                          <span className="font-medium">Assigned to:</span> {request.assignedTo?.name || 'Unknown'}
-                        </div>
-                      )}
-                    </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            disabled
+                            className="bg-gray-300 text-black cursor-not-allowed"
+                          >
+                            <UserCheck className="h-4 w-4 mr-1" />
+                            Assigned
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUpdateRequest(request)}
+                        >
+                          Update
+                        </Button>
+                      </div>
+                    )}
+                    {isProjectManager && request.assignedToId && (
+                      <div className="text-sm text-gray-600 ml-4">
+                        <span className="font-medium">Assigned to:</span> {request.assignedTo?.name || 'Unknown'}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -386,55 +354,47 @@ export default function TechnicalManagementPage() {
                 <UserCheck className="h-5 w-5" />
                 My Assigned Requests ({myRequests.length})
               </h2>
-              <div className="border rounded-lg bg-white">
-                <div className="grid grid-cols-12 gap-4 p-4 border-b bg-gray-50 font-medium text-sm">
-                  <div className="col-span-3">Title</div>
-                  <div className="col-span-2">Status</div>
-                  <div className="col-span-2">Priority</div>
-                  <div className="col-span-2">Requester</div>
-                  <div className="col-span-2">Date</div>
-                  <div className="col-span-1">Actions</div>
-                </div>
-                {myRequests.map((request, index) => (
-                  <div key={request.id} className={`grid grid-cols-12 gap-4 p-4 hover:bg-gray-50 transition-colors ${index !== myRequests.length - 1 ? 'border-b' : ''}`}>
-                    <div className="col-span-3">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(request.status)}
-                        <div>
-                          <div className="font-medium">{request.title}</div>
-                          <div className="text-sm text-gray-600 truncate">{request.description}</div>
+              <div className="space-y-2">
+                {myRequests.map((request) => (
+                  <div key={request.id} className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3 flex-1">
+                      {getStatusIcon(request.status)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium text-gray-900 truncate">{request.title}</h3>
+                          <Badge className={statusColors[request.status]}>
+                            {request.status.replace("_", " ")}
+                          </Badge>
+                          <Badge className={priorityColors[request.priority]}>
+                            {request.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1 line-clamp-1">{request.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            <span>{request.requester.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatDate(request.createdAt)}</span>
+                          </div>
                           {request.task && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Calendar className="h-3 w-3 text-gray-500" />
-                              <span className="text-xs text-blue-600">{request.task.title}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-blue-600">Task: {request.task.title}</span>
                             </div>
                           )}
                         </div>
+                        {request.resolution && (
+                          <div className="mt-2 bg-green-50 p-2 rounded text-xs">
+                            <span className="font-medium text-green-800">Resolution: </span>
+                            <span className="text-green-700">{request.resolution}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="col-span-2">
-                      <Badge className={statusColors[request.status]}>
-                        {request.status.replace("_", " ")}
-                      </Badge>
-                    </div>
-                    <div className="col-span-2">
-                      <Badge className={priorityColors[request.priority]}>
-                        {request.priority}
-                      </Badge>
-                    </div>
-                    <div className="col-span-2">
-                      <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm">{request.requester.name}</span>
-                      </div>
-                    </div>
-                    <div className="col-span-2">
-                      <div className="text-sm text-gray-500">
-                        {formatDate(request.createdAt)}
-                      </div>
-                    </div>
-                    <div className="col-span-1">
-                      {!isProjectManager && (
+                    {!isProjectManager && (
+                      <div className="ml-4">
                         <Button
                           size="sm"
                           variant="outline"
@@ -442,12 +402,6 @@ export default function TechnicalManagementPage() {
                         >
                           Update
                         </Button>
-                      )}
-                    </div>
-                    {request.resolution && (
-                      <div className="col-span-12 mt-2 bg-green-50 p-3 rounded-lg">
-                        <span className="text-sm font-medium text-green-800">Resolution: </span>
-                        <span className="text-sm text-green-700">{request.resolution}</span>
                       </div>
                     )}
                   </div>
