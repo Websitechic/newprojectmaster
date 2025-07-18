@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import { Upload, FileText, Download, Search, Link, ExternalLink, Edit2, Trash2, MoreVertical } from "lucide-react";
+import { Upload, FileText, Download, Search, Link, ExternalLink, Edit2, Trash2, MoreVertical, ChevronDown, ChevronRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Resource {
@@ -30,6 +32,7 @@ export default function ProjectResources() {
   const { id } = useParams();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["onboarding", "login_details", "creatives", "written_copies", "other_deliverables"]));
   const projectId = parseInt(id!);
 
   const { data: resources, isLoading, refetch } = useQuery<Resource[]>({
@@ -51,10 +54,31 @@ export default function ProjectResources() {
   const isProductOwner = user?.role === "product_owner";
   const canManageResources = isProjectManager || isProductOwner;
 
+  const categoryOptions = [
+    { value: "onboarding", label: "Onboarding" },
+    { value: "login_details", label: "Login Details" },
+    { value: "creatives", label: "Creatives" },
+    { value: "written_copies", label: "Written Copies" },
+    { value: "other_deliverables", label: "Other Deliverables" }
+  ];
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
+    });
+  };
+
   // State for link upload dialog
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkName, setLinkName] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
+  const [linkCategory, setLinkCategory] = useState("");
   const [isSubmittingLink, setIsSubmittingLink] = useState(false);
 
   // State for edit dialog
@@ -62,6 +86,7 @@ export default function ProjectResources() {
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [editName, setEditName] = useState("");
   const [editUrl, setEditUrl] = useState("");
+  const [editCategory, setEditCategory] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
   // State for delete dialog
@@ -70,9 +95,9 @@ export default function ProjectResources() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleAddLink = async () => {
-    if (!linkName.trim() || !linkUrl.trim()) {
-      console.log("Missing name or URL");
-      alert("Please enter both a name and URL for the link");
+    if (!linkName.trim() || !linkUrl.trim() || !linkCategory.trim()) {
+      console.log("Missing name, URL, or category");
+      alert("Please enter a name, URL, and select a category for the link");
       return;
     }
 
@@ -88,6 +113,7 @@ export default function ProjectResources() {
       const payload = {
         name: linkName.trim(),
         link: linkUrl.trim(),
+        category: linkCategory.trim(),
       };
 
       console.log("Making request to:", url);
@@ -127,6 +153,7 @@ export default function ProjectResources() {
       // Reset form and close dialog
       setLinkName("");
       setLinkUrl("");
+      setLinkCategory("");
       setShowLinkDialog(false);
       
       // Refresh resources list
@@ -146,12 +173,13 @@ export default function ProjectResources() {
     setEditingResource(resource);
     setEditName(resource.name);
     setEditUrl(resource.link || "");
+    setEditCategory(resource.type || "");
     setShowEditDialog(true);
   };
 
   const handleUpdateResource = async () => {
-    if (!editingResource || !editName.trim() || !editUrl.trim()) {
-      alert("Please enter both a name and URL for the link");
+    if (!editingResource || !editName.trim() || !editUrl.trim() || !editCategory.trim()) {
+      alert("Please enter a name, URL, and select a category for the link");
       return;
     }
 
@@ -166,6 +194,7 @@ export default function ProjectResources() {
         body: JSON.stringify({
           name: editName.trim(),
           link: editUrl.trim(),
+          category: editCategory.trim(),
         }),
       });
 
@@ -184,6 +213,7 @@ export default function ProjectResources() {
       // Reset form and close dialog
       setEditName("");
       setEditUrl("");
+      setEditCategory("");
       setEditingResource(null);
       setShowEditDialog(false);
       
@@ -245,6 +275,16 @@ export default function ProjectResources() {
   const filteredResources = Array.isArray(resources) ? resources.filter(resource =>
     resource.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) : [];
+
+  // Group resources by category
+  const resourcesByCategory = filteredResources.reduce((acc, resource) => {
+    const category = resource.type || 'other_deliverables';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(resource);
+    return acc;
+  }, {} as Record<string, typeof filteredResources>);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -329,6 +369,21 @@ export default function ProjectResources() {
                           placeholder="https://example.com"
                         />
                       </div>
+                      <div>
+                        <Label htmlFor="linkCategory">Category</Label>
+                        <Select value={linkCategory} onValueChange={setLinkCategory}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categoryOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="flex justify-end space-x-2">
                         <Button 
                           variant="outline" 
@@ -339,7 +394,7 @@ export default function ProjectResources() {
                         </Button>
                         <Button 
                           onClick={handleAddLink}
-                          disabled={!linkName.trim() || !linkUrl.trim() || isSubmittingLink}
+                          disabled={!linkName.trim() || !linkUrl.trim() || !linkCategory.trim() || isSubmittingLink}
                         >
                           {isSubmittingLink ? "Adding..." : "Add Link"}
                         </Button>
@@ -377,6 +432,21 @@ export default function ProjectResources() {
                     placeholder="https://example.com"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="editCategory">Category</Label>
+                  <Select value={editCategory} onValueChange={setEditCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex justify-end space-x-2">
                   <Button 
                     variant="outline" 
@@ -387,7 +457,7 @@ export default function ProjectResources() {
                   </Button>
                   <Button 
                     onClick={handleUpdateResource}
-                    disabled={!editName.trim() || !editUrl.trim() || isUpdating}
+                    disabled={!editName.trim() || !editUrl.trim() || !editCategory.trim() || isUpdating}
                   >
                     {isUpdating ? "Updating..." : "Update"}
                   </Button>
@@ -419,74 +489,104 @@ export default function ProjectResources() {
           </AlertDialog>
 
           {filteredResources.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredResources.map((resource) => (
-                <Card key={resource.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{getFileIcon(resource.type)}</span>
-                        <div className="min-w-0 flex-1">
-                          <CardTitle className="text-sm font-medium truncate" title={resource.name}>
-                            {resource.name}
-                          </CardTitle>
-                          <p className="text-xs text-muted-foreground">
-                            {resource.type === 'link' ? 'External Link' : formatFileSize(resource.size || 0)}
-                          </p>
+            <div className="space-y-6">
+              {categoryOptions.map(({ value: categoryKey, label: categoryLabel }) => {
+                const categoryResources = resourcesByCategory[categoryKey] || [];
+                if (categoryResources.length === 0) return null;
+
+                return (
+                  <div key={categoryKey} className="border rounded-lg shadow-sm">
+                    <Collapsible 
+                      open={expandedCategories.has(categoryKey)} 
+                      onOpenChange={() => toggleCategory(categoryKey)}
+                    >
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 hover:bg-muted rounded-t-lg text-left border-b border-border/50">
+                        <h2 className="text-lg font-semibold flex items-center">
+                          {expandedCategories.has(categoryKey) ? 
+                            <ChevronDown className="mr-2 h-4 w-4 text-primary" /> : 
+                            <ChevronRight className="mr-2 h-4 w-4 text-primary" />
+                          }
+                          {categoryLabel}
+                        </h2>
+                        <span className="bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-xs font-medium">
+                          {categoryResources.length} {categoryResources.length === 1 ? 'resource' : 'resources'}
+                        </span>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {categoryResources.map((resource) => (
+                            <Card key={resource.id} className="hover:shadow-md transition-shadow">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-2xl">{getFileIcon(resource.type)}</span>
+                                    <div className="min-w-0 flex-1">
+                                      <CardTitle className="text-sm font-medium truncate" title={resource.name}>
+                                        {resource.name}
+                                      </CardTitle>
+                                      <p className="text-xs text-muted-foreground">
+                                        {resource.type === 'link' || resource.link ? 'External Link' : formatFileSize(resource.size || 0)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {resource.type === 'link' || resource.link ? (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => window.open(resource.link, '_blank')}
+                                      >
+                                        <ExternalLink className="h-4 w-4" />
+                                      </Button>
+                                    ) : (
+                                      <Button variant="ghost" size="sm">
+                                        <Download className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                    
+                                    {canManageResources && (
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="sm">
+                                            <MoreVertical className="h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                          {(resource.type === 'link' || resource.link) && (
+                                            <DropdownMenuItem onClick={() => handleEditResource(resource)}>
+                                              <Edit2 className="h-4 w-4 mr-2" />
+                                              Edit
+                                            </DropdownMenuItem>
+                                          )}
+                                          <DropdownMenuItem 
+                                            onClick={() => handleDeleteResource(resource)}
+                                            className="text-red-600"
+                                          >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="text-xs text-muted-foreground">
+                                  <p>Uploaded {new Date(resource.createdAt).toLocaleDateString()}</p>
+                                  {resource.uploaderName && (
+                                    <p>by {resource.uploaderName}</p>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {resource.type === 'link' ? (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => window.open(resource.link, '_blank')}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="sm">
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        )}
-                        
-                        {canManageResources && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              {resource.type === 'link' && (
-                                <DropdownMenuItem onClick={() => handleEditResource(resource)}>
-                                  <Edit2 className="h-4 w-4 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem 
-                                onClick={() => handleDeleteResource(resource)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="text-xs text-muted-foreground">
-                      <p>Uploaded {new Date(resource.createdAt).toLocaleDateString()}</p>
-                      {resource.uploaderName && (
-                        <p>by {resource.uploaderName}</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
