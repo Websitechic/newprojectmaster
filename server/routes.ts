@@ -2046,7 +2046,7 @@ export function registerRoutes(app: Express): Server {
         .insert(resources)
         .values({
           name: name.trim(),
-          type: req.body.category || "other_deliverables", // Use category from request body
+          type: category.trim(), // Use the category field directly
           link: link.trim(),
           projectId,
           uploadedBy: user.id,
@@ -2161,7 +2161,7 @@ export function registerRoutes(app: Express): Server {
         .set({
           name: name.trim(),
           link: link.trim(),
-          type: req.body.category || "other_deliverables", // Update category as well
+          type: category.trim(), // Update category as well
         })
         .where(eq(resources.id, resourceId))
         .returning();
