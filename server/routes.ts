@@ -1992,13 +1992,13 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const projectId = parseInt(req.params.id);
-      const { name, link } = req.body;
+      const { name, link, category } = req.body;
 
-      console.log("Adding link resource:", { projectId, name, link, userId: user.id });
+      console.log("Adding link resource:", { projectId, name, link, category, userId: user.id });
 
-      if (!name || !link) {
-        console.log("Missing name or link");
-        return res.status(400).json({ error: "Name and link are required" });
+      if (!name || !link || !category) {
+        console.log("Missing name, link, or category");
+        return res.status(400).json({ error: "Name, link, and category are required" });
       }
 
       // Validate URL format
@@ -2046,7 +2046,7 @@ export function registerRoutes(app: Express): Server {
         .insert(resources)
         .values({
           name: name.trim(),
-          type: "link",
+          type: req.body.category || "other_deliverables", // Use category from request body
           link: link.trim(),
           projectId,
           uploadedBy: user.id,
@@ -2102,10 +2102,10 @@ export function registerRoutes(app: Express): Server {
     try {
       const projectId = parseInt(req.params.projectId);
       const resourceId = parseInt(req.params.resourceId);
-      const { name, link } = req.body;
+      const { name, link, category } = req.body;
 
-      if (!name || !link) {
-        return res.status(400).json({ error: "Name and link are required" });
+      if (!name || !link || !category) {
+        return res.status(400).json({ error: "Name, link, and category are required" });
       }
 
       // Validate URL format
@@ -2161,6 +2161,7 @@ export function registerRoutes(app: Express): Server {
         .set({
           name: name.trim(),
           link: link.trim(),
+          type: req.body.category || "other_deliverables", // Update category as well
         })
         .where(eq(resources.id, resourceId))
         .returning();
