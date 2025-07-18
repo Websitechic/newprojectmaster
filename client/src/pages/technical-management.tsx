@@ -213,64 +213,72 @@ export default function TechnicalManagementPage() {
                 <Wrench className="h-5 w-5" />
                 All Technical Support Requests ({requests.length})
               </h2>
-              <div className="grid gap-4">
-                {requests.map((request) => (
-                  <Card key={request.id} className="border-purple-200">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            {getStatusIcon(request.status)}
-                            {request.title}
-                          </CardTitle>
-                          <div className="flex gap-2 mt-2">
-                            <Badge className={statusColors[request.status]}>
-                              {request.status.replace("_", " ")}
-                            </Badge>
-                            <Badge className={priorityColors[request.priority]}>
-                              {request.priority}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {formatDate(request.createdAt)}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 mb-3">{request.description}</p>
-                      <div className="flex items-center gap-4 mb-3">
-                        <div className="flex items-center gap-1">
-                          <User className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm">{request.requester.name}</span>
-                        </div>
-                        {request.task && (
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm text-blue-600">{request.task.title}</span>
-                          </div>
-                        )}
-                        {request.assignedTo && (
-                          <div className="flex items-center gap-1">
-                            <UserCheck className="h-4 w-4 text-green-500" />
-                            <span className="text-sm text-green-700">Assigned to: {request.assignedTo.name}</span>
-                          </div>
-                        )}
-                      </div>
-                      {request.resolution && (
-                        <div className="bg-green-50 p-3 rounded-lg mb-3">
-                          <span className="text-sm font-medium text-green-800">Resolution: </span>
-                          <span className="text-sm text-green-700">{request.resolution}</span>
-                        </div>
-                      )}
-                      <div className="text-sm text-gray-500">
-                        <span className="font-medium">Status:</span> Read-only (Product Owner View)
-                      </div>
-                    </CardContent>
-                  </Card>
-                  ))}
+              <div className="border rounded-lg bg-white">
+                <div className="grid grid-cols-12 gap-4 p-4 border-b bg-gray-50 font-medium text-sm">
+                  <div className="col-span-3">Title</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-2">Priority</div>
+                  <div className="col-span-2">Requester</div>
+                  <div className="col-span-2">Assigned To</div>
+                  <div className="col-span-1">Date</div>
                 </div>
-              )}
+                {requests.map((request, index) => (
+                  <div key={request.id} className={`grid grid-cols-12 gap-4 p-4 hover:bg-gray-50 transition-colors ${index !== requests.length - 1 ? 'border-b' : ''}`}>
+                    <div className="col-span-3">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(request.status)}
+                        <div>
+                          <div className="font-medium">{request.title}</div>
+                          <div className="text-sm text-gray-600 truncate">{request.description}</div>
+                          {request.task && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Calendar className="h-3 w-3 text-gray-500" />
+                              <span className="text-xs text-blue-600">{request.task.title}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <Badge className={statusColors[request.status]}>
+                        {request.status.replace("_", " ")}
+                      </Badge>
+                    </div>
+                    <div className="col-span-2">
+                      <Badge className={priorityColors[request.priority]}>
+                        {request.priority}
+                      </Badge>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="flex items-center gap-1">
+                        <User className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm">{request.requester.name}</span>
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      {request.assignedTo ? (
+                        <div className="flex items-center gap-1">
+                          <UserCheck className="h-4 w-4 text-green-500" />
+                          <span className="text-sm text-green-700">{request.assignedTo.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-500">Unassigned</span>
+                      )}
+                    </div>
+                    <div className="col-span-1">
+                      <div className="text-sm text-gray-500">
+                        {formatDate(request.createdAt)}
+                      </div>
+                    </div>
+                    {request.resolution && (
+                      <div className="col-span-12 mt-2 bg-green-50 p-3 rounded-lg">
+                        <span className="text-sm font-medium text-green-800">Resolution: </span>
+                        <span className="text-sm text-green-700">{request.resolution}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -281,46 +289,56 @@ export default function TechnicalManagementPage() {
                 <Clock className="h-5 w-5" />
                 Pending Requests ({pendingRequests.length})
               </h2>
-              <div className="grid gap-4">
-                {pendingRequests.map((request) => (
-                  <Card key={request.id} className="border-orange-200">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
+              <div className="border rounded-lg bg-white">
+                <div className="grid grid-cols-12 gap-4 p-4 border-b bg-gray-50 font-medium text-sm">
+                  <div className="col-span-3">Title</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-2">Priority</div>
+                  <div className="col-span-2">Requester</div>
+                  <div className="col-span-2">Date</div>
+                  <div className="col-span-1">Actions</div>
+                </div>
+                {pendingRequests.map((request, index) => (
+                  <div key={request.id} className={`grid grid-cols-12 gap-4 p-4 hover:bg-gray-50 transition-colors ${index !== pendingRequests.length - 1 ? 'border-b' : ''}`}>
+                    <div className="col-span-3">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(request.status)}
                         <div>
-                          <CardTitle className="flex items-center gap-2">
-                            {getStatusIcon(request.status)}
-                            {request.title}
-                          </CardTitle>
-                          <div className="flex gap-2 mt-2">
-                            <Badge className={statusColors[request.status]}>
-                              {request.status.replace("_", " ")}
-                            </Badge>
-                            <Badge className={priorityColors[request.priority]}>
-                              {request.priority}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {formatDate(request.createdAt)}
+                          <div className="font-medium">{request.title}</div>
+                          <div className="text-sm text-gray-600 truncate">{request.description}</div>
+                          {request.task && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Calendar className="h-3 w-3 text-gray-500" />
+                              <span className="text-xs text-blue-600">{request.task.title}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 mb-3">{request.description}</p>
-                      <div className="flex items-center gap-4 mb-3">
-                        <div className="flex items-center gap-1">
-                          <User className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm">{request.requester.name}</span>
-                        </div>
-                        {request.task && (
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm text-blue-600">{request.task.title}</span>
-                          </div>
-                        )}
+                    </div>
+                    <div className="col-span-2">
+                      <Badge className={statusColors[request.status]}>
+                        {request.status.replace("_", " ")}
+                      </Badge>
+                    </div>
+                    <div className="col-span-2">
+                      <Badge className={priorityColors[request.priority]}>
+                        {request.priority}
+                      </Badge>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="flex items-center gap-1">
+                        <User className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm">{request.requester.name}</span>
                       </div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="text-sm text-gray-500">
+                        {formatDate(request.createdAt)}
+                      </div>
+                    </div>
+                    <div className="col-span-1">
                       {!isProjectManager && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-1">
                           {!request.assignedToId ? (
                             <Button
                               size="sm"
@@ -328,7 +346,7 @@ export default function TechnicalManagementPage() {
                               disabled={assignRequestMutation.isPending}
                             >
                               <UserCheck className="h-4 w-4 mr-1" />
-                              Assign to Me
+                              Assign
                             </Button>
                           ) : (
                             <Button
@@ -345,7 +363,7 @@ export default function TechnicalManagementPage() {
                             variant="outline"
                             onClick={() => handleUpdateRequest(request)}
                           >
-                            Update Status
+                            Update
                           </Button>
                         </div>
                       )}
@@ -354,8 +372,8 @@ export default function TechnicalManagementPage() {
                           <span className="font-medium">Assigned to:</span> {request.assignedTo?.name || 'Unknown'}
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -368,61 +386,71 @@ export default function TechnicalManagementPage() {
                 <UserCheck className="h-5 w-5" />
                 My Assigned Requests ({myRequests.length})
               </h2>
-              <div className="grid gap-4">
-                {myRequests.map((request) => (
-                  <Card key={request.id} className="border-blue-200">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
+              <div className="border rounded-lg bg-white">
+                <div className="grid grid-cols-12 gap-4 p-4 border-b bg-gray-50 font-medium text-sm">
+                  <div className="col-span-3">Title</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-2">Priority</div>
+                  <div className="col-span-2">Requester</div>
+                  <div className="col-span-2">Date</div>
+                  <div className="col-span-1">Actions</div>
+                </div>
+                {myRequests.map((request, index) => (
+                  <div key={request.id} className={`grid grid-cols-12 gap-4 p-4 hover:bg-gray-50 transition-colors ${index !== myRequests.length - 1 ? 'border-b' : ''}`}>
+                    <div className="col-span-3">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(request.status)}
                         <div>
-                          <CardTitle className="flex items-center gap-2">
-                            {getStatusIcon(request.status)}
-                            {request.title}
-                          </CardTitle>
-                          <div className="flex gap-2 mt-2">
-                            <Badge className={statusColors[request.status]}>
-                              {request.status.replace("_", " ")}
-                            </Badge>
-                            <Badge className={priorityColors[request.priority]}>
-                              {request.priority}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {formatDate(request.createdAt)}
+                          <div className="font-medium">{request.title}</div>
+                          <div className="text-sm text-gray-600 truncate">{request.description}</div>
+                          {request.task && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Calendar className="h-3 w-3 text-gray-500" />
+                              <span className="text-xs text-blue-600">{request.task.title}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 mb-3">{request.description}</p>
-                      <div className="flex items-center gap-4 mb-3">
-                        <div className="flex items-center gap-1">
-                          <User className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm">{request.requester.name}</span>
-                        </div>
-                        {request.task && (
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm text-blue-600">{request.task.title}</span>
-                          </div>
-                        )}
+                    </div>
+                    <div className="col-span-2">
+                      <Badge className={statusColors[request.status]}>
+                        {request.status.replace("_", " ")}
+                      </Badge>
+                    </div>
+                    <div className="col-span-2">
+                      <Badge className={priorityColors[request.priority]}>
+                        {request.priority}
+                      </Badge>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="flex items-center gap-1">
+                        <User className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm">{request.requester.name}</span>
                       </div>
-                      {request.resolution && (
-                        <div className="bg-green-50 p-3 rounded-lg mb-3">
-                          <span className="text-sm font-medium text-green-800">Resolution: </span>
-                          <span className="text-sm text-green-700">{request.resolution}</span>
-                        </div>
-                      )}
+                    </div>
+                    <div className="col-span-2">
+                      <div className="text-sm text-gray-500">
+                        {formatDate(request.createdAt)}
+                      </div>
+                    </div>
+                    <div className="col-span-1">
                       {!isProjectManager && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleUpdateRequest(request)}
                         >
-                          Update Status
+                          Update
                         </Button>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                    {request.resolution && (
+                      <div className="col-span-12 mt-2 bg-green-50 p-3 rounded-lg">
+                        <span className="text-sm font-medium text-green-800">Resolution: </span>
+                        <span className="text-sm text-green-700">{request.resolution}</span>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
