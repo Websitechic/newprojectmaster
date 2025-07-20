@@ -15,6 +15,8 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"client" | "project_manager" | "staff" | "intern" | "product_owner">("staff");
   const [specialization, setSpecialization] = useState("");
+  const [productService, setProductService] = useState("");
+  const [clientType, setClientType] = useState("");
   const [breakOneTime, setBreakOneTime] = useState("");
   const [breakTwoTime, setBreakTwoTime] = useState("");
   const [resetMode, setResetMode] = useState(false);
@@ -36,6 +38,18 @@ export default function AuthPage() {
             variant: "destructive",
           });
           return;
+        }
+
+        // Validate product/service and client type for client users
+        if (role === "client") {
+          if (!productService || !clientType) {
+            toast({
+              title: "Error",
+              description: "Please select both Product/Service and Client Type",
+              variant: "destructive",
+            });
+            return;
+          }
         }
 
         // Validate break times for non-client users
@@ -71,6 +85,8 @@ export default function AuthPage() {
           email,
           role,
           specialization: (role === "staff" || role === "intern") ? specialization : undefined,
+          productService: role === "client" ? productService : undefined,
+          clientType: role === "client" ? clientType : undefined,
           breakOneTime: role !== "client" ? breakOneTime : undefined,
           breakTwoTime: role !== "client" ? breakTwoTime : undefined
         });
@@ -218,6 +234,37 @@ export default function AuthPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                )}
+                {role === "client" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="productService">Product/Service</Label>
+                      <Select value={productService} onValueChange={setProductService}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select product/service" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="website_development">Website Development</SelectItem>
+                          <SelectItem value="dpl_outright">DPL Outright</SelectItem>
+                          <SelectItem value="dpl_partnership">DPL Partnership</SelectItem>
+                          <SelectItem value="direct_marketing">Direct Marketing</SelectItem>
+                          <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="clientType">Client Type</Label>
+                      <Select value={clientType} onValueChange={setClientType}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select client type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="project_client">Project Client</SelectItem>
+                          <SelectItem value="support_maintenance_client">Support & Maintenance Client</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
                 )}
                 {role !== "client" && (
                   <>

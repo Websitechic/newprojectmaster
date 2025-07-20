@@ -73,6 +73,12 @@ export const users = pgTable("users", {
   onboardingStatus: text("onboarding_status", { 
     enum: ["onboarded", "not_onboarded", "onboarding_in_progress", "onboarding_pending"] 
   }).default("not_onboarded"),
+  productService: text("product_service", {
+    enum: ["website_development", "dpl_outright", "dpl_partnership", "direct_marketing", "support_maintenance"]
+  }),
+  clientType: text("client_type", {
+    enum: ["project_client", "support_maintenance_client"]
+  }),
   lastActive: timestamp("last_active").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

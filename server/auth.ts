@@ -125,13 +125,13 @@ export function setupAuth(app: Express) {
       if (!user) {
         return res.status(401).json({ message: info.message || "Authentication failed" });
       }
-      
+
       // Login the user
       req.logIn(user, async (err) => {
         if (err) {
           return next(err);
         }
-        
+
         // Update user status to online and last active timestamp
         try {
           await db
@@ -141,12 +141,12 @@ export function setupAuth(app: Express) {
               lastActive: new Date()
             })
             .where(eq(users.id, user.id));
-            
+
           console.log(`User ${user.id} (${user.username}) is now online`);
         } catch (error) {
           console.error('Error updating user status on login:', error);
         }
-        
+
         return res.json({ 
           message: "Login successful",
           user: {
@@ -171,13 +171,13 @@ export function setupAuth(app: Express) {
             lastActive: new Date()
           })
           .where(eq(users.id, req.user.id));
-          
+
         console.log(`User ${req.user.id} (${req.user.username}) is now offline`);
       } catch (error) {
         console.error('Error updating user status on logout:', error);
       }
     }
-    
+
     // Then proceed with the normal logout
     req.logout((err) => {
       if (err) {

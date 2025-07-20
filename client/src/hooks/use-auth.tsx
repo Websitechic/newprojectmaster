@@ -33,6 +33,9 @@ type RegisterData = LoginData & {
   name: string;
   email: string;
   role: "client" | "project_manager" | "staff" | "intern";
+  specialization?: string;
+  productService?: string;
+  clientType?: string;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -105,7 +108,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (data: RegisterData) => {
+    mutationFn: async (data: { 
+      username: string; 
+      password: string; 
+      role: string; 
+      name: string; 
+      email: string;
+      specialization?: string;
+      productService?: string;
+      clientType?: string;
+      breakOneTime?: string;
+      breakTwoTime?: string;
+    }) => {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { 
