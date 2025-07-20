@@ -19,6 +19,7 @@ import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 import { Wrench } from "lucide-react";
 import { Clock } from "lucide-react";
 import { Building2 } from "lucide-react";
+import { BarChart3, FolderOpen, BookOpen, Headphones, UserPlus } from "lucide-react";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -271,6 +272,52 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     label: "Extension Requests",
     href: "/dashboard/extension-requests",
   }] : [];
+
+  // Project Manager specific navigation
+  const projectManagerNavItems = [
+    { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
+    { icon: FolderOpen, label: "Projects", path: "/dashboard/projects" },
+    { icon: Users, label: "Team Chat", path: "/dashboard/team-chat" },
+    { icon: MessageSquare, label: "Direct Messages", path: "/dashboard/direct-messages" },
+    { icon: Calendar, label: "Bookings", path: "/dashboard/bookings" },
+    { icon: FileText, label: "Leave Management", path: "/dashboard/leave-management" },
+    { icon: BookOpen, label: "Productivity", path: "/dashboard/productivity" },
+    { icon: Headphones, label: "Technical Support", path: "/dashboard/technical-support" },
+    { icon: Clock, label: "Extension Requests", path: "/dashboard/extension-requests" },
+    { icon: UserPlus, label: "Client Management", path: "/dashboard/client-management" },
+  ];
+
+  // Operations Manager specific navigation (mirrors Project Manager)
+  const operationsManagerNavItems = [
+    { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
+    { icon: FolderOpen, label: "Projects", path: "/dashboard/projects" },
+    { icon: Users, label: "Team Chat", path: "/dashboard/team-chat" },
+    { icon: MessageSquare, label: "Direct Messages", path: "/dashboard/direct-messages" },
+    { icon: Calendar, label: "Bookings", path: "/dashboard/bookings" },
+    { icon: FileText, label: "Leave Management", path: "/dashboard/leave-management" },
+    { icon: BookOpen, label: "Productivity", path: "/dashboard/productivity" },
+    { icon: Headphones, label: "Technical Support", path: "/dashboard/technical-support" },
+    { icon: Clock, label: "Extension Requests", path: "/dashboard/extension-requests" },
+    { icon: UserPlus, label: "Client Management", path: "/dashboard/client-management" },
+  ];
+
+  const getNavigationItems = () => {
+    switch (user?.role) {
+      case 'client':
+        return [];
+      case 'project_manager':
+        return projectManagerNavItems;
+      case 'operations_manager':
+        return operationsManagerNavItems;
+      case 'product_owner':
+        return [];
+      case 'staff':
+      case 'intern':
+        return [];
+      default:
+        return [];
+    }
+  };
 
   // Combine menu items based on user role
   const menuItems = [

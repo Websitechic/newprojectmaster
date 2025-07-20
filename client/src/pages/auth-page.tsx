@@ -13,7 +13,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"client" | "project_manager" | "staff" | "intern" | "product_owner">("staff");
+  const [role, setRole] = useState<"client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager">("staff");
   const [specialization, setSpecialization] = useState("");
   const [productService, setProductService] = useState("");
   const [clientType, setClientType] = useState("");
@@ -200,7 +200,7 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={(value: "client" | "project_manager" | "staff" | "intern" | "product_owner") => setRole(value)}>
+                  <Select value={role} onValueChange={(value: "client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager") => setRole(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -208,6 +208,7 @@ export default function AuthPage() {
                       <SelectItem value="client">Client</SelectItem>
                       <SelectItem value="project_manager">Project Manager</SelectItem>
                       <SelectItem value="product_owner">Product Owner</SelectItem>
+                      <SelectItem value="operations_manager">Operations Manager</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
                       <SelectItem value="intern">Intern</SelectItem>
                     </SelectContent>
