@@ -275,7 +275,13 @@ export default function Projects() {
                                         onSuccess={() => {
                                           setIsEditDialogOpen(false);
                                           setEditingProject(null);
-                                        }} 
+                                          queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+                                          toast({
+                                            title: "Success",
+                                            description: "Project updated successfully.",
+                                          });
+                                        }}
+                                        restrictToSupportMaintenance={user?.role === "product_owner"}
                                       />
                                     )}
                                   </DialogContent>

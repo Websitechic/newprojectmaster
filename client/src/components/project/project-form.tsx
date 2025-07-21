@@ -71,8 +71,8 @@ const projectSchema = z.object({
 type ProjectFormData = z.infer<typeof projectSchema>;
 
 interface ProjectFormProps {
+  project?: Project | null;
   onSuccess: () => void;
-  editingProject?: Project | null;
   restrictToSupportMaintenance?: boolean;
 }
 
@@ -85,7 +85,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
     defaultValues: {
       name: project?.name || "",
       description: project?.description || "",
-      category: project?.category || "",
+      category: project?.category || (restrictToSupportMaintenance ? "support_maintenance" : ""),
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
       clientId: project?.clientId?.toString() || "",
@@ -281,17 +281,25 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={restrictToSupportMaintenance}>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || (restrictToSupportMaintenance ? "support_maintenance" : "")}
+                      disabled={restrictToSupportMaintenance}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="website_development">Website Development</SelectItem>
-                        <SelectItem value="dpl_outright">DPL Outright</SelectItem>
-                        <SelectItem value="dpl_partnership">DPL Partnership</SelectItem>
-                        <SelectItem value="direct_marketing">Direct Marketing</SelectItem>
+                        {!restrictToSupportMaintenance && (
+                          <>
+                            <SelectItem value="website_development">Website Development</SelectItem>
+                            <SelectItem value="dpl_outright">DPL Outright</SelectItem>
+                            <SelectItem value="dpl_partnership">DPL Partnership</SelectItem>
+                            <SelectItem value="direct_marketing">Direct Marketing</SelectItem>
+                          </>
+                        )}
                         <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
                       </SelectContent>
                     </Select>
