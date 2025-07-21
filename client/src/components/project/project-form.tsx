@@ -71,11 +71,12 @@ const projectSchema = z.object({
 type ProjectFormData = z.infer<typeof projectSchema>;
 
 interface ProjectFormProps {
-  project?: Project;
-  onSuccess?: () => void;
+  onSuccess: () => void;
+  editingProject?: Project | null;
+  restrictToSupportMaintenance?: boolean;
 }
 
-export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
+export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance = false }: ProjectFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -280,7 +281,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={restrictToSupportMaintenance}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
@@ -294,6 +295,11 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                         <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
                       </SelectContent>
                     </Select>
+                    {restrictToSupportMaintenance && (
+                      <p className="text-sm text-muted-foreground">
+                        Product owners can only create Support & Maintenance projects
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

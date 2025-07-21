@@ -310,8 +310,53 @@ export default function Projects() {
                               </div>
                             )}
                             {user?.role === "product_owner" && (
-                              <div className="text-xs text-muted-foreground px-2 py-1 bg-blue-50 rounded border border-blue-200">
-                                Read Only
+                              <div className="flex gap-2">
+                                {project.category === "support_maintenance" ? (
+                                  <>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingProject(project);
+                                        setIsEditDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost">
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete the project from our servers.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              deleteProjectMutation.mutate(project.id.toString());
+                                            }}
+                                            disabled={deleteProjectMutation.isPending}
+                                          >
+                                            {deleteProjectMutation.isPending ? "Deleting..." : "Delete"}
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>
+                                ) : (
+                                  <div className="text-xs text-muted-foreground px-2 py-1 bg-blue-50 rounded border border-blue-200">
+                                    Read Only
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>

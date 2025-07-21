@@ -48,8 +48,8 @@ const isProjectManager = (req: Express.Request, res: Response, next: NextFunctio
   next();
 };
 
-// Middleware to check if user can manage tasks (project managers or technical support staff)
-const canManageTasks = (req: Express.Request, res: Response, next: NextFunction) => {
+// Middleware to check if user can manage tasks (project managers, technical support staff, or product owners for Support & Maintenance)
+const canManageTasks = async (req: Express.Request, res: Response, next: NextFunction) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Not authenticated" });
   }
@@ -57,12 +57,42 @@ const canManageTasks = (req: Express.Request, res: Response, next: NextFunction)
   const user = req.user!;
   const isProjectManager = user.role === UserRole.PROJECT_MANAGER;
   const isTechnicalSupport = user.role === UserRole.STAFF && user.specialization === 'technical_support';
+  const isProductOwner = user.role === 'product_owner';
 
-  if (!isProjectManager && !isTechnicalSupport) {
-    return res.status(403).json({ error: "Only project managers and technical support staff can perform this action" });
+  if (isProjectManager || isTechnicalSupport) {
+    return next();
   }
 
-  next();
+  if (isProductOwner) {
+    // For product owners, check if the project is Support & Maintenance category
+    const { projectId } = req.body;
+    if (projectId) {
+      try {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, projectId))
+          .limit(1);
+
+        if (!project) {
+          return res.status(404).json({ error: "Project not found" });
+        }
+
+        if (project.category !== "support_maintenance") {
+          return res.status(403).json({ 
+            error: "Product owners can only manage tasks in Support & Maintenance category projects" 
+          });
+        }
+
+        return next();
+      } catch (error) {
+        console.error("Error checking project category:", error);
+        return res.status(500).json({ error: "Failed to verify project permissions" });
+      }
+    }
+  }
+
+  return res.status(403).json({ error: "Only project managers, technical support staff, and product owners (for Support & Maintenance projects) can perform this action" });
 };
 
 // Configure multer for file uploads
@@ -527,8 +557,51 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Update project (Project Manager only)
-  app.put("/api/projects/:id", isProjectManager, async (req, res) => {
+  // Update project (Project Manager and Product Owner for Support & Maintenance only)
+  app.put("/api/projects/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+    const { category } = req.body;
+
+    // Verify the project exists first
+    const [existingProject] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    if (!existingProject) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Check permissions
+    if (user.role === "project_manager") {
+      // Project managers can edit any project they manage
+      if (existingProject.managerId !== user.id) {
+        return res.status(403).json({ 
+          error: "You don't have permission to edit this project" 
+        });
+      }
+    } else if (user.role === "product_owner") {
+      // Product owners can only edit Support & Maintenance projects
+      if (existingProject.category !== "support_maintenance") {
+        return res.status(403).json({ 
+          error: "Product owners can only edit Support & Maintenance category projects" 
+        });
+      }
+      // Also check if they're trying to change category away from support_maintenance
+      if (category && category !== "support_maintenance") {
+        return res.status(403).json({ 
+          error: "Product owners cannot change projects away from Support & Maintenance category" 
+        });
+      }
+    } else {
+      return res.status(403).json({ error: "Only project managers and product owners can edit projects" });
+    }
     try {
       const projectId = parseInt(req.params.id);
       console.log("Updating project:", projectId, "with data:", req.body);
@@ -636,8 +709,44 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Delete project (Project Manager only)
-  app.delete("/api/projects/:id", isProjectManager, async (req, res) => {
+  // Delete project (Project Manager and Product Owner for Support & Maintenance only)
+  app.delete("/api/projects/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+
+    // Verify the project exists first
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Check permissions
+    if (user.role === "project_manager") {
+      // Project managers can delete projects they manage
+      if (project.managerId !== user.id) {
+        return res.status(403).json({ 
+          error: "You don't have permission to delete this project" 
+        });
+      }
+    } else if (user.role === "product_owner") {
+      // Product owners can only delete Support & Maintenance projects
+      if (project.category !== "support_maintenance") {
+        return res.status(403).json({ 
+          error: "Product owners can only delete Support & Maintenance category projects" 
+        });
+      }
+    } else {
+      return res.status(403).json({ error: "Only project managers and product owners can delete projects" });
+    }
     try {
       const projectId = parseInt(req.params.id);
 
@@ -905,8 +1014,28 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Create Project (Project Manager only)
-  app.post("/api/projects", isProjectManager, async (req, res) => {
+  // Create Project (Project Manager and Product Owner for Support & Maintenance only)
+  app.post("/api/projects", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const { category } = req.body;
+
+    // Check permissions
+    if (user.role === "project_manager") {
+      // Project managers can create any project
+    } else if (user.role === "product_owner") {
+      // Product owners can only create Support & Maintenance projects
+      if (category !== "support_maintenance") {
+        return res.status(403).json({ 
+          error: "Product owners can only create Support & Maintenance category projects" 
+        });
+      }
+    } else {
+      return res.status(403).json({ error: "Only project managers and product owners can create projects" });
+    }
     try {
       const { 
         name, 
@@ -1309,8 +1438,47 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Update task (Project Manager and Technical Support only)
-  app.put("/api/tasks/:id", canManageTasks, async (req, res) => {
+  // Update task (Project Manager, Technical Support, and Product Owner for Support & Maintenance only)
+  app.put("/api/tasks/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const taskId = parseInt(req.params.id);
+
+    // Get the task and its project to check category
+    const [task] = await db
+      .select({
+        id: tasks.id,
+        projectId: tasks.projectId,
+        title: tasks.title,
+        projectCategory: projects.category,
+      })
+      .from(tasks)
+      .leftJoin(projects, eq(tasks.projectId, projects.id))
+      .where(eq(tasks.id, taskId))
+      .limit(1);
+
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    // Check permissions
+    const isProjectManager = user.role === UserRole.PROJECT_MANAGER;
+    const isTechnicalSupport = user.role === UserRole.STAFF && user.specialization === 'technical_support';
+    const isProductOwner = user.role === 'product_owner';
+
+    if (!isProjectManager && !isTechnicalSupport && !isProductOwner) {
+      return res.status(403).json({ error: "Only project managers, technical support staff, and product owners can update tasks" });
+    }
+
+    // For product owners, check if the project is Support & Maintenance category
+    if (isProductOwner && task.projectCategory !== "support_maintenance") {
+      return res.status(403).json({ 
+        error: "Product owners can only update tasks in Support & Maintenance category projects" 
+      });
+    }
     try {
       const taskId = parseInt(req.params.id);
       const { title, description, status, assigneeId, deadline, startDate, workingHours } = req.body;
@@ -1633,8 +1801,47 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Delete task (Project Manager and Technical Support only)
-  app.delete("/api/tasks/:id", canManageTasks, async (req, res) => {
+  // Delete task (Project Manager, Technical Support, and Product Owner for Support & Maintenance only)
+  app.delete("/api/tasks/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const taskId = parseInt(req.params.id);
+
+    // Get the task and its project to check category
+    const [task] = await db
+      .select({
+        id: tasks.id,
+        projectId: tasks.projectId,
+        title: tasks.title,
+        projectCategory: projects.category,
+      })
+      .from(tasks)
+      .leftJoin(projects, eq(tasks.projectId, projects.id))
+      .where(eq(tasks.id, taskId))
+      .limit(1);
+
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    // Check permissions
+    const isProjectManager = user.role === UserRole.PROJECT_MANAGER;
+    const isTechnicalSupport = user.role === UserRole.STAFF && user.specialization === 'technical_support';
+    const isProductOwner = user.role === 'product_owner';
+
+    if (!isProjectManager && !isTechnicalSupport && !isProductOwner) {
+      return res.status(403).json({ error: "Only project managers, technical support staff, and product owners can delete tasks" });
+    }
+
+    // For product owners, check if the project is Support & Maintenance category
+    if (isProductOwner && task.projectCategory !== "support_maintenance") {
+      return res.status(403).json({ 
+        error: "Product owners can only delete tasks in Support & Maintenance category projects" 
+      });
+    }
     try {
       const taskId = parseInt(req.params.id);
 
