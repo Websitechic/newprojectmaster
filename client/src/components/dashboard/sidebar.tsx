@@ -332,7 +332,10 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     { icon: PlayCircle, label: "Guide Videos", path: "/dashboard/guide-videos" },
     { icon: AlertTriangle, label: "Register Your Dissatisfaction", path: "/dashboard/register-dissatisfaction" },
     { icon: Star, label: "Rate Us", path: "https://g.co/kgs/YduK9rn", external: true },
-    { icon: Shield, label: "Support Policy", path: "/dashboard/support-policy" },
+    // Only include Support Policy for Support & Maintenance clients
+    ...(user?.productService === "support_maintenance" ? [
+      { icon: Shield, label: "Support Policy", path: "/dashboard/support-policy" }
+    ] : []),
     { icon: Phone, label: "Emergency During Off Days", path: "/dashboard/emergency-support" },
   ];
 
@@ -372,11 +375,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "https://g.co/kgs/YduK9rn",
       external: true,
     },
-    {
+    // Only show Support Policy for Support & Maintenance clients
+    ...(user?.productService === "support_maintenance" ? [{
       icon: <Shield size={20} />,
       label: "Support Policy",
       href: "/dashboard/support-policy",
-    },
+    }] : []),
     {
       icon: <Phone size={20} />,
       label: "Emergency During Off Days",
