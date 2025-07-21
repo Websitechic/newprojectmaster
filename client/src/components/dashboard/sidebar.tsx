@@ -436,7 +436,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
-            <p className="text-xs text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</p>
+            <p className="text-xs text-gray-500 capitalize">
+                {user?.role === 'client' ? 
+                  `${user?.clientType?.replace('_', ' ') || 'Client'} • ${user?.productService?.replace('_', ' ') || 'Service not specified'}` :
+                  user?.role?.replace('_', ' ')
+                }
+              </p>
           </div>
         </div>
         <Button

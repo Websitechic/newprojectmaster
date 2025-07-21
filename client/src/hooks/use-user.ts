@@ -96,3 +96,14 @@ export function useUser() {
     register: registerMutation.mutateAsync,
   };
 }
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  specialization?: string;
+  profileImage?: string;
+  status?: string;
+  clientType?: string;
+  productService?: string;
+}
