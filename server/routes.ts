@@ -167,6 +167,83 @@ export function registerRoutes(app: Express): Server {
 
   const server = createServer(app);
 
+  // Get team members for client (Client only)
+  app.get("/api/client/team-members", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "client") {
+      return res.status(403).json({ error: "Only clients can access team members" });
+    }
+
+    try {
+      // Get client's projects
+      const clientProjects = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.clientId, user.id));
+
+      if (clientProjects.length === 0) {
+        return res.json([]); // No projects, no team members
+      }
+
+      // Get all team members from client's projects
+      const projectIds = clientProjects.map(p => p.id);
+      const teamMembers = new Set<number>();
+
+      // Add project managers
+      for (const project of clientProjects) {
+        teamMembers.add(project.managerId);
+      }
+
+      // Add project members
+      const projectMembersData = await db
+        .select()
+        .from(projectMembers)
+        .where(and(
+          inArray(projectMembers.projectId, projectIds),
+          eq(projectMembers.invitationStatus, "accepted")
+        ));
+
+      for (const member of projectMembersData) {
+        if (member.userId) {
+          teamMembers.add(member.userId);
+        }
+      }
+
+      // Get user details for team members (Product Owner, Technical Support, Operation Manager, Developer)
+      const teamMemberIds = Array.from(teamMembers);
+      const users = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          specialization: users.specialization,
+          status: users.status,
+          lastActive: users.lastActive,
+        })
+        .from(users)
+        .where(and(
+          inArray(users.id, teamMemberIds),
+          or(
+            eq(users.role, "product_owner"),
+            eq(users.role, "project_manager"),
+            eq(users.role, "operations_manager"),
+            and(eq(users.role, "staff"), eq(users.specialization, "technical_support")),
+            and(eq(users.role, "staff"), eq(users.specialization, "developer"))
+          )
+        ));
+
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      res.status(500).json({ error: "Failed to fetch team members" });
+    }
+  });
+
   // Get available clients (for project managers and product owners)
   app.get("/api/clients", async (req, res) => {
     if (!req.isAuthenticated()) {

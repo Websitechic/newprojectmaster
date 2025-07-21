@@ -30,6 +30,7 @@ import GuideVideos from "@/pages/dashboard/guide-videos";
 import RegisterDissatisfaction from "@/pages/dashboard/register-dissatisfaction";
 import SupportPolicy from "@/pages/dashboard/support-policy";
 import EmergencySupport from "@/pages/dashboard/emergency-support";
+import ReachUsPage from "@/pages/dashboard/reach-us";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -93,6 +94,7 @@ function Router() {
       <Route path="/dashboard/register-dissatisfaction" component={() => <PrivateRoute component={RegisterDissatisfaction} />} />
       <Route path="/dashboard/support-policy" component={() => <PrivateRoute component={SupportPolicy} />} />
       <Route path="/dashboard/emergency-support" component={() => <PrivateRoute component={EmergencySupport} />} />
+      <Route path="/dashboard/reach-us" component={() => <PrivateRoute component={ReachUsPage} />} />
       <Route component={NotFound} />
     </Switch>
   );
