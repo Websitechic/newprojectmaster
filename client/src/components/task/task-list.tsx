@@ -248,7 +248,13 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   return (
     <div>
       <div className="flex justify-end mb-4">
-        { !isStaffView && showNewTaskButton && (user?.role !== "product_owner" || (user?.role === "product_owner" && projectId)) && (
+        { !isStaffView && showNewTaskButton && user?.role !== "product_owner" && (
+          <Button onClick={handleNewTask}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Task
+          </Button>
+        )}
+        { !isStaffView && showNewTaskButton && user?.role === "product_owner" && projectId && (
           <Button onClick={handleNewTask}>
             <Plus className="h-4 w-4 mr-2" />
             New Task

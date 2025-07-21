@@ -1319,13 +1319,45 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Create Task (Project Manager and Technical Support only)
-  app.post("/api/tasks", canManageTasks, async (req, res) => {
-    try {
-      const { title, description, status, assigneeId, deadline, projectId, startDate, workingHours } = req.body;
+  // Create Task (Project Manager, Technical Support, and Product Owner for Support & Maintenance only)
+  app.post("/api/tasks", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
 
-      if (!title || !projectId) {
-        return res.status(400).json({ error: "Title and project ID are required" });
+    const user = req.user!;
+    const { title, description, status, assigneeId, deadline, projectId, startDate, workingHours } = req.body;
+
+    if (!title || !projectId) {
+      return res.status(400).json({ error: "Title and project ID are required" });
+    }
+
+    try {
+      // Verify project exists and get its category
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check permissions
+      const isProjectManager = user.role === UserRole.PROJECT_MANAGER;
+      const isTechnicalSupport = user.role === UserRole.STAFF && user.specialization === 'technical_support';
+      const isProductOwner = user.role === 'product_owner';
+
+      if (!isProjectManager && !isTechnicalSupport && !isProductOwner) {
+        return res.status(403).json({ error: "Only project managers, technical support staff, and product owners can create tasks" });
+      }
+
+      // For product owners, check if the project is Support & Maintenance category
+      if (isProductOwner && project.category !== "support_maintenance") {
+        return res.status(403).json({ 
+          error: "Product owners can only create tasks in Support & Maintenance category projects" 
+        });
       }
 
       // Convert startDate and deadline strings to Date if present
@@ -1361,17 +1393,6 @@ export function registerRoutes(app: Express): Server {
         if (isNaN(taskWorkingHours) || taskWorkingHours < 1) {
           return res.status(400).json({ error: "Working hours must be a positive number" });
         }
-      }
-
-      // Verify project exists
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, projectId))
-        .limit(1);
-
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
       }
 
       // Create the task
