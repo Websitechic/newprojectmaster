@@ -167,6 +167,55 @@ export function registerRoutes(app: Express): Server {
 
   const server = createServer(app);
 
+  // Debug endpoint for client team members
+  app.get("/api/client/team-members/debug", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "client") {
+      return res.status(403).json({ error: "Only clients can access this debug info" });
+    }
+
+    try {
+      // Get client's projects
+      const clientProjects = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.clientId, user.id));
+
+      // Get all users with relevant roles
+      const allRelevantUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          specialization: users.specialization,
+        })
+        .from(users)
+        .where(or(
+          eq(users.role, "product_owner"),
+          eq(users.role, "project_manager"),
+          eq(users.role, "operations_manager"),
+          and(eq(users.role, "staff"), eq(users.specialization, "technical_support")),
+          and(eq(users.role, "staff"), eq(users.specialization, "developer"))
+        ));
+
+      res.json({
+        clientId: user.id,
+        clientName: user.name,
+        clientProjects: clientProjects,
+        allRelevantUsers: allRelevantUsers,
+        message: "Debug info for troubleshooting team members"
+      });
+    } catch (error) {
+      console.error("Error in debug endpoint:", error);
+      res.status(500).json({ error: "Failed to fetch debug info" });
+    }
+  });
+
   // Get team members for client (Client only)
   app.get("/api/client/team-members", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -179,43 +228,9 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      // Get client's projects
-      const clientProjects = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.clientId, user.id));
-
-      if (clientProjects.length === 0) {
-        return res.json([]); // No projects, no team members
-      }
-
-      // Get all team members from client's projects
-      const projectIds = clientProjects.map(p => p.id);
-      const teamMembers = new Set<number>();
-
-      // Add project managers
-      for (const project of clientProjects) {
-        teamMembers.add(project.managerId);
-      }
-
-      // Add project members
-      const projectMembersData = await db
-        .select()
-        .from(projectMembers)
-        .where(and(
-          inArray(projectMembers.projectId, projectIds),
-          eq(projectMembers.invitationStatus, "accepted")
-        ));
-
-      for (const member of projectMembersData) {
-        if (member.userId) {
-          teamMembers.add(member.userId);
-        }
-      }
-
-      // Get user details for team members (Product Owner, Technical Support, Operation Manager, Developer)
-      const teamMemberIds = Array.from(teamMembers);
-      const users = await db
+      // For now, show all relevant team members (Product Owner, Technical Support, Operation Manager, Developer, Project Manager)
+      // This ensures clients can always reach the right people
+      const teamMembers = await db
         .select({
           id: users.id,
           name: users.name,
@@ -226,18 +241,16 @@ export function registerRoutes(app: Express): Server {
           lastActive: users.lastActive,
         })
         .from(users)
-        .where(and(
-          inArray(users.id, teamMemberIds),
-          or(
-            eq(users.role, "product_owner"),
-            eq(users.role, "project_manager"),
-            eq(users.role, "operations_manager"),
-            and(eq(users.role, "staff"), eq(users.specialization, "technical_support")),
-            and(eq(users.role, "staff"), eq(users.specialization, "developer"))
-          )
-        ));
+        .where(or(
+          eq(users.role, "product_owner"),
+          eq(users.role, "project_manager"),
+          eq(users.role, "operations_manager"),
+          and(eq(users.role, "staff"), eq(users.specialization, "technical_support")),
+          and(eq(users.role, "staff"), eq(users.specialization, "developer"))
+        ))
+        .orderBy(users.name);
 
-      res.json(users);
+      res.json(teamMembers);
     } catch (error) {
       console.error("Error fetching team members:", error);
       res.status(500).json({ error: "Failed to fetch team members" });
