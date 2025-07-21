@@ -164,8 +164,16 @@ export function registerRoutes(app: Express): Server {
 
   const server = createServer(app);
 
-  // Get available clients (for project managers)
-  app.get("/api/clients", isProjectManager, async (req, res) => {
+  // Get available clients (for project managers and product owners)
+  app.get("/api/clients", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager" && user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only project managers and product owners can access clients" });
+    }
     try {
       const clients = await db
         .select()
