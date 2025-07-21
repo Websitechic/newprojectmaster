@@ -336,6 +336,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     ...(user?.productService === "support_maintenance" ? [
       { icon: Shield, label: "Support Policy", path: "/dashboard/support-policy" }
     ] : []),
+    { icon: MessageSquare, label: "Reach Us", path: "/dashboard/reach-us" },
     { icon: Phone, label: "Emergency During Off Days", path: "/dashboard/emergency-support" },
   ];
 
@@ -381,6 +382,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Support Policy",
       href: "/dashboard/support-policy",
     }] : []),
+    {
+      icon: <MessageSquare size={20} />,
+      label: "Reach Us",
+      href: "/dashboard/reach-us",
+    },
     {
       icon: <Phone size={20} />,
       label: "Emergency During Off Days",
