@@ -156,7 +156,7 @@ export default function Projects() {
                 <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
                 <p className="text-gray-600 mt-1">Manage and track your digital agency projects</p>
               </div>
-              {user?.role === "project_manager" && (
+              {(user?.role === "project_manager" || user?.role === "product_owner") && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-4 py-2 font-medium">
@@ -168,14 +168,12 @@ export default function Projects() {
                     <DialogHeader>
                       <DialogTitle>Create New Project</DialogTitle>
                     </DialogHeader>
-                    <ProjectForm onSuccess={handleCreateSuccess} />
+                    <ProjectForm 
+                      onSuccess={handleCreateSuccess} 
+                      restrictToSupportMaintenance={user?.role === "product_owner"}
+                    />
                   </DialogContent>
                 </Dialog>
-              )}
-              {user?.role === "product_owner" && (
-                <div className="text-sm text-muted-foreground bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
-                  <span className="font-medium">Product Owner View:</span> Read-only access to all projects
-                </div>
               )}
             </div>
 

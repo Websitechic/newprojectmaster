@@ -3863,12 +3863,12 @@ export function registerRoutes(app: Express): Server {
 
         allProjectIds = [
           ...managedProjects.map(p => p.id),
-          ...memberProjects.map(p => p.projectId).filter(id => id !== null)
+          ...memberProjects.map(p => p.projectId).filter(id => id !== null && id !== undefined)
         ];
       }
       
-      // Remove duplicates
-      const uniqueProjectIds = Array.from(new Set(allProjectIds.filter(id => id !== null)));
+      // Remove duplicates and filter out null/undefined values
+      const uniqueProjectIds = Array.from(new Set(allProjectIds.filter(id => id !== null && id !== undefined)));
 
       if (uniqueProjectIds.length === 0) {
         return res.json({});
@@ -3876,7 +3876,7 @@ export function registerRoutes(app: Express): Server {
 
       // Validate project IDs are valid numbers
       const validProjectIds = uniqueProjectIds.filter(id => 
-        typeof id === 'number' && !isNaN(id) && Number.isInteger(id)
+        typeof id === 'number' && !isNaN(id) && Number.isInteger(id) && id > 0
       );
 
       if (validProjectIds.length === 0) {
