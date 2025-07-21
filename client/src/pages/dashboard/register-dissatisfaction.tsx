@@ -7,23 +7,30 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Send } from "lucide-react";
+import { AlertTriangle, Send, Upload, X } from "lucide-react";
 
 export default function RegisterDissatisfaction() {
   const [location] = useLocation();
   const { toast } = useToast();
-  const [category, setCategory] = useState("");
-  const [description, setDescription] = useState("");
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    productManagerName: "",
+    developerName: "",
+    technicalManagerName: "",
+    valuableThings: ["", "", ""],
+    detailedExplanation: "",
+  });
+  const [screenshot, setScreenshot] = useState<File | null>(null);
 
   const submitComplaint = useMutation({
-    mutationFn: async (data: { category: string; description: string }) => {
+    mutationFn: async (data: FormData) => {
       const response = await fetch("/api/complaints", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: data,
       });
       if (!response.ok) {
         throw new Error("Failed to submit complaint");
@@ -35,8 +42,16 @@ export default function RegisterDissatisfaction() {
         title: "Complaint Submitted",
         description: "Your feedback has been received. We'll address your concerns promptly.",
       });
-      setCategory("");
-      setDescription("");
+      setFormData({
+        name: "",
+        email: "",
+        productManagerName: "",
+        developerName: "",
+        technicalManagerName: "",
+        valuableThings: ["", "", ""],
+        detailedExplanation: "",
+      });
+      setScreenshot(null);
     },
     onError: (error: Error) => {
       toast({
@@ -47,17 +62,95 @@ export default function RegisterDissatisfaction() {
     },
   });
 
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleValuableThingChange = (index: number, value: string) => {
+    const newValuableThings = [...formData.valuableThings];
+    newValuableThings[index] = value;
+    setFormData(prev => ({ ...prev, valuableThings: newValuableThings }));
+  };
+
+  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select a file smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setScreenshot(file);
+    }
+  };
+
+  const removeScreenshot = () => {
+    setScreenshot(null);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!category || !description.trim()) {
+    
+    // Validation
+    if (!formData.name.trim() || !formData.email.trim() || !formData.detailedExplanation.trim()) {
       toast({
         title: "Missing Information",
-        description: "Please select a category and provide a detailed description.",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
     }
-    submitComplaint.mutate({ category, description: description.trim() });
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if at least one valuable thing is filled
+    if (!formData.valuableThings.some(thing => thing.trim())) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide at least one thing you find valuable.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const submitData = new FormData();
+    submitData.append('name', formData.name.trim());
+    submitData.append('email', formData.email.trim());
+    submitData.append('productManagerName', formData.productManagerName.trim());
+    submitData.append('developerName', formData.developerName.trim());
+    submitData.append('technicalManagerName', formData.technicalManagerName.trim());
+    submitData.append('valuableThings', JSON.stringify(formData.valuableThings.filter(thing => thing.trim())));
+    submitData.append('detailedExplanation', formData.detailedExplanation.trim());
+    
+    if (screenshot) {
+      submitData.append('screenshot', screenshot);
+    }
+
+    submitComplaint.mutate(submitData);
   };
 
   return (
@@ -85,38 +178,140 @@ export default function RegisterDissatisfaction() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select complaint category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="service_quality">Service Quality</SelectItem>
-                        <SelectItem value="communication">Communication Issues</SelectItem>
-                        <SelectItem value="timeline_delays">Timeline & Delays</SelectItem>
-                        <SelectItem value="technical_issues">Technical Issues</SelectItem>
-                        <SelectItem value="billing_concerns">Billing Concerns</SelectItem>
-                        <SelectItem value="staff_behavior">Staff Behavior</SelectItem>
-                        <SelectItem value="project_management">Project Management</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Name *</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        placeholder="Your full name"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        placeholder="your.email@example.com"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="productManagerName">Product Manager Name</Label>
+                      <Input
+                        id="productManagerName"
+                        value={formData.productManagerName}
+                        onChange={(e) => handleInputChange('productManagerName', e.target.value)}
+                        placeholder="Product manager's name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="developerName">Developer Name</Label>
+                      <Input
+                        id="developerName"
+                        value={formData.developerName}
+                        onChange={(e) => handleInputChange('developerName', e.target.value)}
+                        placeholder="Developer's name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="technicalManagerName">Technical Manager Name</Label>
+                      <Input
+                        id="technicalManagerName"
+                        value={formData.technicalManagerName}
+                        onChange={(e) => handleInputChange('technicalManagerName', e.target.value)}
+                        placeholder="Technical manager's name"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label>3 Things You Find Valuable in This Package *</Label>
+                    {formData.valuableThings.map((thing, index) => (
+                      <div key={index} className="space-y-2">
+                        <Label htmlFor={`valuable-${index}`}>Valuable Thing {index + 1}</Label>
+                        <Input
+                          id={`valuable-${index}`}
+                          value={thing}
+                          onChange={(e) => handleValuableThingChange(index, e.target.value)}
+                          placeholder={`What do you find valuable about this package? (${index + 1})`}
+                        />
+                      </div>
+                    ))}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Detailed Description</Label>
+                    <Label htmlFor="detailedExplanation">Detailed Explanation of Your Complaint *</Label>
                     <Textarea
-                      id="description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Please provide a detailed description of your concern or issue. Include specific dates, names, or incidents if relevant."
+                      id="detailedExplanation"
+                      value={formData.detailedExplanation}
+                      onChange={(e) => handleInputChange('detailedExplanation', e.target.value)}
+                      placeholder="Please provide a detailed explanation of your complaint. Include specific dates, incidents, or concerns you'd like us to address."
                       className="min-h-32"
-                      maxLength={1000}
+                      maxLength={2000}
+                      required
                     />
                     <p className="text-xs text-gray-500">
-                      {description.length}/1000 characters
+                      {formData.detailedExplanation.length}/2000 characters
                     </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="screenshot">Screenshot (Optional)</Label>
+                    <div className="space-y-2">
+                      {!screenshot ? (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                          <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-600 mb-2">
+                            Click to upload a screenshot or drag and drop
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            PNG, JPG, JPEG up to 5MB
+                          </p>
+                          <Input
+                            id="screenshot"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleScreenshotChange}
+                            className="hidden"
+                          />
+                          <Label
+                            htmlFor="screenshot"
+                            className="inline-block mt-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-md cursor-pointer hover:bg-blue-100"
+                          >
+                            Choose File
+                          </Label>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Upload className="h-4 w-4 text-green-600" />
+                            <span className="text-sm text-gray-700">{screenshot.name}</span>
+                            <span className="text-xs text-gray-500">
+                              ({(screenshot.size / 1024 / 1024).toFixed(2)} MB)
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={removeScreenshot}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="bg-blue-50 p-4 rounded-lg">
