@@ -26,6 +26,10 @@ import TechnicalManagementFixed from "@/pages/technical-management-fixed";
 import DeadlineExtensionRequests from "@/pages/deadline-extension-requests";
 import ClientManagement from "@/pages/dashboard/client-management";
 import ExtensionRequestsPage from "@/pages/extension-requests";
+import GuideVideos from "@/pages/dashboard/guide-videos";
+import RegisterDissatisfaction from "@/pages/dashboard/register-dissatisfaction";
+import SupportPolicy from "@/pages/dashboard/support-policy";
+import EmergencySupport from "@/pages/dashboard/emergency-support";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -85,6 +89,10 @@ function Router() {
       <Route path="/dashboard/extension-requests" component={() => <PrivateRoute component={ExtensionRequestsPage} />} />
       <Route path="/dashboard/deadline-extension-requests" component={() => <PrivateRoute component={DeadlineExtensionRequests} />} />
       <Route path="/dashboard/client-management" component={ClientManagement} />
+      <Route path="/dashboard/guide-videos" component={() => <PrivateRoute component={GuideVideos} />} />
+      <Route path="/dashboard/register-dissatisfaction" component={() => <PrivateRoute component={RegisterDissatisfaction} />} />
+      <Route path="/dashboard/support-policy" component={() => <PrivateRoute component={SupportPolicy} />} />
+      <Route path="/dashboard/emergency-support" component={() => <PrivateRoute component={EmergencySupport} />} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -10,6 +10,11 @@ import {
   LogOut,
   Calendar,
   CalendarDays,
+  PlayCircle,
+  AlertTriangle,
+  Star,
+  Shield,
+  Phone,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -29,25 +34,46 @@ interface SidebarItemProps {
   badge?: number;
 }
 
-function SidebarItem({ icon, label, href, active, badge }: SidebarItemProps) {
+interface SidebarItemProps {
+  icon: React.ReactNode;
+  label: string;
+  href: string;
+  active?: boolean;
+  badge?: number;
+  external?: boolean;
+}
+
+function SidebarItem({ icon, label, href, active, badge, external }: SidebarItemProps) {
+  const content = (
+    <div
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative cursor-pointer",
+        active 
+          ? "bg-purple-100 text-purple-700 shadow-sm" 
+          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+      )}
+    >
+      <div className={cn("w-5 h-5", active ? "text-purple-700" : "text-gray-500")}>
+        {icon}
+      </div>
+      <span className="flex-1">{label}</span>
+      {badge && badge > 0 && (
+        <div className="w-2 h-2 bg-red-500 rounded-full" />
+      )}
+    </div>
+  );
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {content}
+      </a>
+    );
+  }
+
   return (
     <Link href={href}>
-      <div
-        className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative cursor-pointer",
-          active 
-            ? "bg-purple-100 text-purple-700 shadow-sm" 
-            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-        )}
-      >
-        <div className={cn("w-5 h-5", active ? "text-purple-700" : "text-gray-500")}>
-          {icon}
-        </div>
-        <span className="flex-1">{label}</span>
-        {badge && badge > 0 && (
-          <div className="w-2 h-2 bg-red-500 rounded-full" />
-        )}
-      </div>
+      {content}
     </Link>
   );
 }
@@ -301,10 +327,19 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     { icon: UserPlus, label: "Client Management", path: "/dashboard/client-management" },
   ];
 
+  // Client specific navigation items
+  const clientNavItems = [
+    { icon: PlayCircle, label: "Guide Videos", path: "/dashboard/guide-videos" },
+    { icon: AlertTriangle, label: "Register Your Dissatisfaction", path: "/dashboard/register-dissatisfaction" },
+    { icon: Star, label: "Rate Us", path: "https://g.co/kgs/YduK9rn", external: true },
+    { icon: Shield, label: "Support Policy", path: "/dashboard/support-policy" },
+    { icon: Phone, label: "Emergency During Off Days", path: "/dashboard/emergency-support" },
+  ];
+
   const getNavigationItems = () => {
     switch (user?.role) {
       case 'client':
-        return [];
+        return clientNavItems;
       case 'project_manager':
         return projectManagerNavItems;
       case 'operations_manager':
@@ -319,6 +354,36 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     }
   };
 
+  // Client specific menu items
+  const clientMenuItems = user?.role === "client" ? [
+    {
+      icon: <PlayCircle size={20} />,
+      label: "Guide Videos",
+      href: "/dashboard/guide-videos",
+    },
+    {
+      icon: <AlertTriangle size={20} />,
+      label: "Register Your Dissatisfaction",
+      href: "/dashboard/register-dissatisfaction",
+    },
+    {
+      icon: <Star size={20} />,
+      label: "Rate Us",
+      href: "https://g.co/kgs/YduK9rn",
+      external: true,
+    },
+    {
+      icon: <Shield size={20} />,
+      label: "Support Policy",
+      href: "/dashboard/support-policy",
+    },
+    {
+      icon: <Phone size={20} />,
+      label: "Emergency During Off Days",
+      href: "/dashboard/emergency-support",
+    },
+  ] : [];
+
   // Combine menu items based on user role
   const menuItems = [
     ...baseMenuItems.slice(0, 2), // Dashboard, Projects
@@ -326,6 +391,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     ...staffMenuItems,            // Staff specific items
     ...technicalSupportMenuItems, // Technical support menu items
     ...extensionMenuItems,        // Extension requests menu items
+    ...clientMenuItems,           // Client specific items
     ...baseMenuItems.slice(2)     // Messages, Settings
   ];
 
@@ -352,6 +418,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
               key={item.href}
               {...item}
               active={currentPath === item.href}
+              external={item.external}
             />
           ))}
         </div>
