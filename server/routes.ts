@@ -228,8 +228,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      // For now, show all relevant team members (Product Owner, Technical Support, Operation Manager, Developer, Project Manager)
-      // This ensures clients can always reach the right people
+      // Show all relevant team members including staff and managers
       const teamMembers = await db
         .select({
           id: users.id,
@@ -241,15 +240,21 @@ export function registerRoutes(app: Express): Server {
           lastActive: users.lastActive,
         })
         .from(users)
-        .where(or(
-          eq(users.role, "product_owner"),
-          eq(users.role, "project_manager"),
-          eq(users.role, "operations_manager"),
-          and(eq(users.role, "staff"), eq(users.specialization, "technical_support")),
-          and(eq(users.role, "staff"), eq(users.specialization, "developer"))
-        ))
+        .where(
+          and(
+            ne(users.id, user.id), // Exclude the current user
+            or(
+              eq(users.role, "product_owner"),
+              eq(users.role, "project_manager"),
+              eq(users.role, "operations_manager"),
+              eq(users.role, "staff"),
+              eq(users.role, "admin")
+            )
+          )
+        )
         .orderBy(users.name);
 
+      console.log(`Found ${teamMembers.length} team members for client ${user.name}`);
       res.json(teamMembers);
     } catch (error) {
       console.error("Error fetching team members:", error);
