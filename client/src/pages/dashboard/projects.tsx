@@ -317,17 +317,46 @@ export default function Projects() {
                               <div className="flex gap-2">
                                 {project.category === "support_maintenance" ? (
                                   <>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditingProject(project);
-                                        setIsEditDialogOpen(true);
-                                      }}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
+                                    <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
+                                      setIsEditDialogOpen(open);
+                                      if (!open) {
+                                        setEditingProject(null);
+                                      }
+                                    }}>
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingProject(project);
+                                            setIsEditDialogOpen(true);
+                                          }}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
+                                        <DialogHeader>
+                                          <DialogTitle>Edit Project</DialogTitle>
+                                        </DialogHeader>
+                                        {editingProject && editingProject.id === project.id && (
+                                          <ProjectForm 
+                                            project={editingProject} 
+                                            onSuccess={() => {
+                                              setIsEditDialogOpen(false);
+                                              setEditingProject(null);
+                                              queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+                                              toast({
+                                                title: "Success",
+                                                description: "Project updated successfully.",
+                                              });
+                                            }}
+                                            restrictToSupportMaintenance={user?.role === "product_owner"}
+                                          />
+                                        )}
+                                      </DialogContent>
+                                    </Dialog>
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
                                         <Button size="icon" variant="ghost">

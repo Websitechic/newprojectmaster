@@ -89,6 +89,9 @@ const canManageTasks = async (req: Express.Request, res: Response, next: NextFun
         console.error("Error checking project category:", error);
         return res.status(500).json({ error: "Failed to verify project permissions" });
       }
+    } else {
+      // Allow product owners to proceed if no projectId in body (they'll select project in form)
+      return next();
     }
   }
 
@@ -632,21 +635,8 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Verify the project exists and is managed by this PM
-      const [existingProject] = await db
-        .select()
-        .from(projects)
-        .where(and(
-          eq(projects.id, projectId),
-          eq(projects.managerId, req.user!.id)
-        ))
-        .limit(1);
-
-      if (!existingProject) {
-        return res.status(404).json({ 
-          error: "Project not found or you don't have permission to edit it" 
-        });
-      }
+      // Verify project permissions are already checked above
+      // No need for additional manager-only check here
 
       // Parse and validate dates
       let parsedStartDate: Date | null = null;
@@ -948,7 +938,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       if (user.role === "client") {
-        // Clients see their own projects
+        // Clients see projects they're assigned to as clientId
         projectsList = await db
           .select()
           .from(projects)
