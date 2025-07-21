@@ -145,31 +145,14 @@ export default function ProductivityPage() {
     };
   }) || [];
 
-  // Prepare weekly breakdown data with performance indicators
-  const weeklyData = productivityData?.today.weeklyBreakdown.map(item => {
-    // Determine performance based on hours worked
-    // Assuming 8 hours is the target workday
-    let performance = 'Poor';
-    let performanceColor = '#EF4444'; // Red
-    
-    if (item.hours >= 7) {
-      performance = 'Good';
-      performanceColor = '#22C55E'; // Green
-    } else if (item.hours >= 4) {
-      performance = 'Fair';
-      performanceColor = '#F97316'; // Orange
-    }
-    
-    return {
-      day: item.dayName,
-      hours: item.hours,
-      timeSpent: item.timeSpent,
-      taskCount: item.taskCount,
-      tasks: item.tasks,
-      performance,
-      performanceColor
-    };
-  }) || [];
+  // Prepare weekly breakdown data
+  const weeklyData = productivityData?.today.weeklyBreakdown.map(item => ({
+    day: item.dayName,
+    hours: item.hours,
+    timeSpent: item.timeSpent,
+    taskCount: item.taskCount,
+    tasks: item.tasks
+  })) || [];
 
   if (isLoading) {
     return (
@@ -381,99 +364,71 @@ export default function ProductivityPage() {
                 <CardHeader>
                   <CardTitle>Weekly Activity</CardTitle>
                   <CardDescription>
-                    Hours worked each day of the current week (Monday to Friday) with performance indicators
+                    Hours worked each day of the current week (Monday to Friday)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {weeklyData.length > 0 ? (
-                    <div className="relative">
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={weeklyData} margin={{ top: 40, right: 30, left: 20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="day" 
-                            tick={{ fontSize: 12 }}
-                          />
-                          <YAxis 
-                            label={{ value: 'Hours', angle: -90, position: 'insideLeft' }}
-                            tick={{ fontSize: 12 }}
-                          />
-                          <Tooltip 
-                            formatter={(value: number, name: string, props: any) => {
-                              const data = props.payload;
-                              return [
-                                `${value.toFixed(2)} hours`,
-                                "Hours Worked"
-                              ];
-                            }}
-                            labelFormatter={(label, payload) => {
-                              if (payload && payload.length > 0) {
-                                const data = payload[0].payload;
-                                return (
-                                  <div>
-                                    <div className="font-medium">{label}</div>
-                                    <div className="text-sm text-gray-600">
-                                      Performance: <span style={{ color: data.performanceColor, fontWeight: 'bold' }}>
-                                        {data.performance}
-                                      </span>
-                                    </div>
-                                    <div className="text-sm text-gray-600">
-                                      Tasks worked on: {data.taskCount}
-                                    </div>
-                                    {data.tasks && data.tasks.length > 0 && (
-                                      <div className="text-sm text-gray-600 mt-1">
-                                        <div className="font-medium">Tasks:</div>
-                                        {data.tasks.slice(0, 3).map((task: string, index: number) => (
-                                          <div key={index} className="text-xs">• {task}</div>
-                                        ))}
-                                        {data.tasks.length > 3 && (
-                                          <div className="text-xs text-gray-500">
-                                            +{data.tasks.length - 3} more tasks
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={weeklyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="day" 
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis 
+                          label={{ value: 'Hours', angle: -90, position: 'insideLeft' }}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip 
+                          formatter={(value: number, name: string, props: any) => {
+                            const data = props.payload;
+                            return [
+                              `${value.toFixed(2)} hours`,
+                              "Hours Worked"
+                            ];
+                          }}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload.length > 0) {
+                              const data = payload[0].payload;
+                              return (
+                                <div>
+                                  <div className="font-medium">{label}</div>
+                                  <div className="text-sm text-gray-600">
+                                    Tasks worked on: {data.taskCount}
                                   </div>
-                                );
-                              }
-                              return label;
-                            }}
-                            contentStyle={{
-                              backgroundColor: 'white',
-                              border: '1px solid #ccc',
-                              borderRadius: '6px',
-                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                            }}
-                          />
-                          <Bar 
-                            dataKey="hours" 
-                            fill="#3b82f6"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                      
-                      {/* Performance Labels Above Bars */}
-                      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                        <div className="flex justify-around items-start h-full" style={{ paddingTop: '25px', paddingLeft: '20px', paddingRight: '30px' }}>
-                          {weeklyData.map((item, index) => (
-                            <div key={index} className="flex flex-col items-center" style={{ width: `${100 / weeklyData.length}%` }}>
-                              <div 
-                                className="text-xs font-semibold px-2 py-1 rounded-md"
-                                style={{ 
-                                  backgroundColor: `${item.performanceColor}20`,
-                                  color: item.performanceColor,
-                                  border: `1px solid ${item.performanceColor}`,
-                                  marginBottom: '5px'
-                                }}
-                              >
-                                {item.performance}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                                  {data.tasks && data.tasks.length > 0 && (
+                                    <div className="text-sm text-gray-600 mt-1">
+                                      <div className="font-medium">Tasks:</div>
+                                      {data.tasks.slice(0, 3).map((task: string, index: number) => (
+                                        <div key={index} className="text-xs">• {task}</div>
+                                      ))}
+                                      {data.tasks.length > 3 && (
+                                        <div className="text-xs text-gray-500">
+                                          +{data.tasks.length - 3} more tasks
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return label;
+                          }}
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #ccc',
+                            borderRadius: '6px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                        <Bar 
+                          dataKey="hours" 
+                          fill="#3b82f6"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
                   ) : (
                     <div className="flex items-center justify-center h-[300px] text-gray-500">
                       <div className="text-center">
@@ -484,36 +439,6 @@ export default function ProductivityPage() {
                     </div>
                   )}
                 </CardContent>
-                
-                {/* Performance Legend */}
-                {weeklyData.length > 0 && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3">Daily Performance Legend</h4>
-                    <div className="flex flex-wrap gap-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                        <div className="text-sm">
-                          <div className="font-medium text-green-700">Good</div>
-                          <div className="text-gray-600">7+ hours worked</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-                        <div className="text-sm">
-                          <div className="font-medium text-orange-700">Fair</div>
-                          <div className="text-gray-600">4-6.9 hours worked</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                        <div className="text-sm">
-                          <div className="font-medium text-red-700">Poor</div>
-                          <div className="text-gray-600">Less than 4 hours worked</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </Card>
             </div>
 
