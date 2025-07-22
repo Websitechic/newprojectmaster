@@ -218,29 +218,53 @@ export function registerRoutes(app: Express): Server {
 
   // Get team members for client (Client only) - Filtered based on specific criteria
   app.get("/api/client/team-members", async (req, res) => {
+    console.log("Client team members endpoint hit");
     if (!req.isAuthenticated()) {
+      console.log("User not authenticated");
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
+    console.log(`User accessing team members: ${user.name} (${user.role})`);
     if (user.role !== "client") {
+      console.log(`Access denied - user role is ${user.role}, not client`);
       return res.status(403).json({ error: "Only clients can access team members" });
     }
 
     try {
       // Get client's projects
       const clientProjects = await db
-        .select({ id: projects.id, createdBy: projects.createdBy })
+        .select({ id: projects.id, managerId: projects.managerId })
         .from(projects)
         .where(eq(projects.clientId, user.id));
 
       const projectIds = clientProjects.map(p => p.id);
-      const projectCreatorIds = [...new Set(clientProjects.map(p => p.createdBy))]; // Unique product owners
+      const projectManagerIds = [...new Set(clientProjects.map(p => p.managerId).filter(Boolean))];
       
-      let allowedContacts = [];
+      let allowedContacts: any[] = [];
 
       if (projectIds.length > 0) {
-        // 1. Get Product Owners (who created the client's projects)
+        // 1. Get Project Managers (who manage the client's projects)
+        const projectManagers = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            role: users.role,
+            specialization: users.specialization,
+            status: users.status,
+            lastActive: users.lastActive,
+          })
+          .from(users)
+          .where(
+            and(
+              ne(users.id, user.id), // Exclude the current user
+              inArray(users.id, projectManagerIds)
+            )
+          )
+          .orderBy(users.name);
+
+        // Also get Product Owners who might have created tasks or been involved
         const productOwners = await db
           .select({
             id: users.id,
@@ -255,7 +279,7 @@ export function registerRoutes(app: Express): Server {
           .where(
             and(
               ne(users.id, user.id), // Exclude the current user
-              inArray(users.id, projectCreatorIds)
+              eq(users.role, "product_owner")
             )
           )
           .orderBy(users.name);
@@ -308,7 +332,7 @@ export function registerRoutes(app: Express): Server {
           )
           .orderBy(users.name);
 
-        allowedContacts = [...productOwners, ...technicalSupportStaff, ...developerStaff];
+        allowedContacts = [...projectManagers, ...productOwners, ...technicalSupportStaff, ...developerStaff];
       }
 
       // 3. Always include Operations Manager regardless of project assignment

@@ -55,18 +55,27 @@ export function ReachUsChat() {
   useEffect(() => {
     const fetchTeamMembers = async () => {
       try {
+        console.log("Fetching team members for reach us page...");
         const response = await fetch("/api/client/team-members");
+        console.log("Team members response status:", response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log("Team members data:", data);
           setAvailableUsers(data);
+        } else {
+          const errorText = await response.text();
+          console.error("Failed to fetch team members:", response.status, errorText);
         }
       } catch (error) {
         console.error("Error fetching team members:", error);
       }
     };
 
-    fetchTeamMembers();
-  }, []);
+    if (user) {
+      fetchTeamMembers();
+    }
+  }, [user]);
 
   // Fetch existing conversations with team members
   useEffect(() => {
