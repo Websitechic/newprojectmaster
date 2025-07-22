@@ -357,129 +357,149 @@ export default function TechnicalManagementPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {/* Desktop Table View */}
+            {/* Desktop Table View - Optimized for High Volume */}
             <div className="hidden lg:block">
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b sticky top-0 z-10">
                     <tr>
-                      <th className="w-8"></th>
-                      <th className="text-left p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100" 
+                      <th className="w-6"></th>
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 min-w-[200px]" 
                           onClick={() => handleSort('title')}>
                         <div className="flex items-center gap-1">
                           Title
-                          {sortBy === 'title' && (sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
+                          {sortBy === 'title' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[100px]" 
                           onClick={() => handleSort('status')}>
                         <div className="flex items-center gap-1">
                           Status
-                          {sortBy === 'status' && (sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
+                          {sortBy === 'status' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[80px]" 
                           onClick={() => handleSort('priority')}>
                         <div className="flex items-center gap-1">
                           Priority
-                          {sortBy === 'priority' && (sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
+                          {sortBy === 'priority' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[120px]" 
                           onClick={() => handleSort('requester')}>
                         <div className="flex items-center gap-1">
                           Requester
-                          {sortBy === 'requester' && (sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
+                          {sortBy === 'requester' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[120px]" 
                           onClick={() => handleSort('assignedTo')}>
                         <div className="flex items-center gap-1">
-                          Assigned To
-                          {sortBy === 'assignedTo' && (sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
+                          Assigned
+                          {sortBy === 'assignedTo' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[100px]" 
                           onClick={() => handleSort('createdAt')}>
                         <div className="flex items-center gap-1">
                           Created
-                          {sortBy === 'createdAt' && (sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
+                          {sortBy === 'createdAt' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-center p-3 font-medium text-gray-700 w-32">Actions</th>
+                      <th className="text-center py-2 px-2 font-medium text-gray-700 w-[100px]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-gray-100">
                     {filteredAndSortedRequests.map((request) => (
                       <React.Fragment key={request.id}>
-                        <tr className="border-b hover:bg-gray-50 transition-colors">
-                          <td className="p-3">
+                        <tr className={`hover:bg-gray-50 transition-colors ${
+                          request.priority === 'urgent' ? 'border-l-4 border-red-500 bg-red-50/30' :
+                          request.priority === 'high' ? 'border-l-4 border-orange-500 bg-orange-50/30' :
+                          request.status === 'pending' ? 'border-l-4 border-yellow-500 bg-yellow-50/30' : ''
+                        }`}>
+                          <td className="py-2 px-2">
                             <button
                               onClick={() => toggleRowExpansion(request.id)}
-                              className="text-gray-400 hover:text-gray-600"
+                              className="text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded p-1"
                             >
                               {expandedRows.has(request.id) ? 
-                                <ChevronDown className="h-4 w-4" /> : 
-                                <ChevronRight className="h-4 w-4" />
+                                <ChevronDown className="h-3 w-3" /> : 
+                                <ChevronRight className="h-3 w-3" />
                               }
                             </button>
                           </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
+                          <td className="py-2 px-2">
+                            <div className="flex items-start gap-2">
                               {getStatusIcon(request.status)}
-                              <span className="font-medium text-gray-900 truncate max-w-[200px]" title={request.title}>
-                                {request.title}
-                              </span>
+                              <div className="min-w-0 flex-1">
+                                <span className="font-medium text-gray-900 block truncate" title={request.title}>
+                                  {request.title}
+                                </span>
+                                {request.task && (
+                                  <div className="text-xs text-blue-600 truncate mt-0.5">
+                                    Task: {request.task.title}
+                                  </div>
+                                )}
+                                <div className="text-xs text-gray-500 truncate mt-0.5" title={request.description}>
+                                  {request.description.substring(0, 60)}...
+                                </div>
+                              </div>
                             </div>
-                            {request.task && (
-                              <div className="text-xs text-blue-600 mt-1">Task: {request.task.title}</div>
-                            )}
                           </td>
-                          <td className="p-3">
-                            <Badge className={statusColors[request.status]}>
-                              {request.status.replace("_", " ")}
+                          <td className="py-2 px-2">
+                            <Badge className={`${statusColors[request.status]} text-xs`}>
+                              {request.status === 'in_progress' ? 'In Progress' : 
+                               request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                             </Badge>
                           </td>
-                          <td className="p-3">
-                            <Badge className={priorityColors[request.priority]}>
-                              {request.priority}
+                          <td className="py-2 px-2">
+                            <Badge className={`${priorityColors[request.priority]} text-xs`}>
+                              {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)}
                             </Badge>
                           </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <User className="h-3 w-3 text-gray-400" />
-                              <span className="text-sm text-gray-700 truncate max-w-[120px]" title={request.requester.name}>
+                          <td className="py-2 px-2">
+                            <div className="flex items-center gap-1">
+                              <User className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-700 truncate" title={request.requester.name}>
                                 {request.requester.name}
                               </span>
                             </div>
                           </td>
-                          <td className="p-3">
+                          <td className="py-2 px-2">
                             {request.assignedTo ? (
-                              <div className="flex items-center gap-2">
-                                <UserCheck className="h-3 w-3 text-green-500" />
-                                <span className="text-sm text-green-700 truncate max-w-[120px]" title={request.assignedTo.name}>
+                              <div className="flex items-center gap-1">
+                                <UserCheck className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                <span className="text-xs text-green-700 truncate" title={request.assignedTo.name}>
                                   {request.assignedTo.name}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-sm text-gray-400">Unassigned</span>
+                              <span className="text-xs text-gray-400">Unassigned</span>
                             )}
                           </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-1 text-sm text-gray-500">
-                              <Calendar className="h-3 w-3" />
-                              <span>{formatDate(request.createdAt)}</span>
+                          <td className="py-2 px-2">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">
+                                {new Date(request.createdAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
                             </div>
                           </td>
-                          <td className="p-3">
-                            <div className="flex gap-1">
+                          <td className="py-2 px-2">
+                            <div className="flex gap-1 justify-center">
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handleViewRequest(request)}
-                                className="h-8 w-8 p-0"
+                                className="h-7 w-7 p-0"
+                                title="View Details"
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="h-3 w-3" />
                               </Button>
                               {!isProjectManager && (
                                 <>
@@ -488,7 +508,8 @@ export default function TechnicalManagementPage() {
                                       size="sm"
                                       onClick={() => assignRequestMutation.mutate(request.id)}
                                       disabled={assignRequestMutation.isPending}
-                                      className="h-8 px-2 text-xs"
+                                      className="h-7 px-2 text-xs"
+                                      title="Assign to Me"
                                     >
                                       Assign
                                     </Button>
@@ -497,7 +518,8 @@ export default function TechnicalManagementPage() {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => handleUpdateRequest(request)}
-                                      className="h-8 px-2 text-xs"
+                                      className="h-7 px-2 text-xs"
+                                      title="Update Status"
                                     >
                                       Update
                                     </Button>
@@ -510,21 +532,60 @@ export default function TechnicalManagementPage() {
                         {expandedRows.has(request.id) && (
                           <tr className="bg-gray-50">
                             <td></td>
-                            <td colSpan={7} className="p-4">
-                              <div className="space-y-2">
-                                <div>
-                                  <span className="font-medium text-gray-700">Description:</span>
-                                  <p className="text-gray-600 mt-1">{request.description}</p>
+                            <td colSpan={7} className="py-3 px-2">
+                              <div className="space-y-3 max-w-4xl">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <span className="font-medium text-gray-700 text-sm">Full Description:</span>
+                                    <p className="text-gray-600 text-sm mt-1 p-2 bg-white rounded border">
+                                      {request.description}
+                                    </p>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                      <div>
+                                        <span className="font-medium text-gray-700">Requester:</span>
+                                        <p className="text-gray-600">{request.requester.name}</p>
+                                        <p className="text-gray-500">{request.requester.email}</p>
+                                      </div>
+                                      <div>
+                                        <span className="font-medium text-gray-700">Assigned To:</span>
+                                        <p className="text-gray-600">
+                                          {request.assignedTo ? request.assignedTo.name : "Unassigned"}
+                                        </p>
+                                        {request.assignedTo && (
+                                          <p className="text-gray-500">{request.assignedTo.email}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                                      <div>
+                                        <span className="font-medium">Created:</span>
+                                        <p>{formatDate(request.createdAt)}</p>
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">Updated:</span>
+                                        <p>{formatDate(request.updatedAt)}</p>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
                                 {request.resolution && (
                                   <div className="bg-green-50 p-3 rounded border-l-4 border-green-400">
-                                    <span className="font-medium text-green-800">Resolution:</span>
-                                    <p className="text-green-700 mt-1">{request.resolution}</p>
+                                    <span className="font-medium text-green-800 text-sm">Resolution:</span>
+                                    <p className="text-green-700 text-sm mt-1">{request.resolution}</p>
+                                    {request.resolvedAt && (
+                                      <p className="text-xs text-green-600 mt-2">
+                                        Resolved on {formatDate(request.resolvedAt)}
+                                      </p>
+                                    )}
                                   </div>
                                 )}
-                                <div className="text-xs text-gray-500">
-                                  ID: {request.id} | Updated: {formatDate(request.updatedAt)}
-                                  {request.resolvedAt && ` | Resolved: ${formatDate(request.resolvedAt)}`}
+                                <div className="flex justify-between items-center text-xs text-gray-400 border-t pt-2">
+                                  <span>Request ID: {request.id}</span>
+                                  {request.task && (
+                                    <span>Related Task ID: {request.task.id}</span>
+                                  )}
                                 </div>
                               </div>
                             </td>
@@ -537,24 +598,39 @@ export default function TechnicalManagementPage() {
               </div>
             </div>
 
-            {/* Mobile Card View */}
-            <div className="lg:hidden space-y-2 p-4">
+            {/* Mobile Card View - Optimized for High Volume */}
+            <div className="lg:hidden space-y-3 p-4">
               {filteredAndSortedRequests.map((request) => (
-                <Card key={request.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                <Card key={request.id} className={`hover:shadow-md transition-all duration-200 ${
+                  request.priority === 'urgent' ? 'border-l-4 border-red-500 shadow-lg' :
+                  request.priority === 'high' ? 'border-l-4 border-orange-500' :
+                  request.status === 'pending' ? 'border-l-4 border-yellow-500' : ''
+                }`}>
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
                         {getStatusIcon(request.status)}
-                        <h3 className="font-semibold text-lg truncate">{request.title}</h3>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-base truncate">{request.title}</h3>
+                          <div className="flex gap-1 mt-1">
+                            <Badge className={`${statusColors[request.status]} text-xs`}>
+                              {request.status === 'in_progress' ? 'In Progress' : 
+                               request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </Badge>
+                            <Badge className={`${priorityColors[request.priority]} text-xs`}>
+                              {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex gap-1 ml-2">
+                      <div className="flex gap-1 ml-2 flex-shrink-0">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => handleViewRequest(request)}
-                          className="h-8 w-8 p-0"
+                          className="h-7 w-7 p-0"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-3 w-3" />
                         </Button>
                         {!isProjectManager && (
                           <>
@@ -563,7 +639,7 @@ export default function TechnicalManagementPage() {
                                 size="sm"
                                 onClick={() => assignRequestMutation.mutate(request.id)}
                                 disabled={assignRequestMutation.isPending}
-                                className="h-8 px-2 text-xs"
+                                className="h-7 px-2 text-xs"
                               >
                                 Assign
                               </Button>
@@ -572,7 +648,7 @@ export default function TechnicalManagementPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleUpdateRequest(request)}
-                                className="h-8 px-2 text-xs"
+                                className="h-7 px-2 text-xs"
                               >
                                 Update
                               </Button>
@@ -581,48 +657,46 @@ export default function TechnicalManagementPage() {
                         )}
                       </div>
                     </div>
-                    
-                    <div className="flex gap-2 mb-3">
-                      <Badge className={statusColors[request.status]}>
-                        {request.status.replace("_", " ")}
-                      </Badge>
-                      <Badge className={priorityColors[request.priority]}>
-                        {request.priority}
-                      </Badge>
-                    </div>
 
-                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">{request.description}</p>
+                    <p className="text-gray-600 text-sm mb-2 line-clamp-2" title={request.description}>
+                      {request.description}
+                    </p>
                     
-                    <div className="space-y-2 text-xs text-gray-500">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          <span>{request.requester.name}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>{formatDate(request.createdAt)}</span>
-                        </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-2">
+                      <div className="flex items-center gap-1">
+                        <User className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{request.requester.name}</span>
                       </div>
-                      
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3 flex-shrink-0" />
+                        <span>{new Date(request.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs">
                       {request.assignedTo ? (
                         <div className="flex items-center gap-1">
                           <UserCheck className="h-3 w-3 text-green-500" />
-                          <span className="text-green-700">Assigned to {request.assignedTo.name}</span>
+                          <span className="text-green-700 truncate">{request.assignedTo.name}</span>
                         </div>
                       ) : (
-                        <div className="text-gray-500">Unassigned</div>
+                        <span className="text-gray-500">Unassigned</span>
                       )}
                       
                       {request.task && (
-                        <div className="text-blue-600">Task: {request.task.title}</div>
+                        <span className="text-blue-600 truncate ml-2">Task: {request.task.title}</span>
                       )}
                     </div>
 
                     {request.resolution && (
-                      <div className="mt-3 bg-green-50 p-2 rounded border-l-4 border-green-400">
+                      <div className="mt-2 bg-green-50 p-2 rounded border-l-4 border-green-400">
                         <span className="font-medium text-green-800 text-xs">Resolution:</span>
-                        <p className="text-green-700 text-xs mt-1">{request.resolution}</p>
+                        <p className="text-green-700 text-xs mt-1 line-clamp-2">{request.resolution}</p>
                       </div>
                     )}
                   </CardContent>
