@@ -350,7 +350,10 @@ export function registerRoutes(app: Express): Server {
         .where(
           and(
             ne(users.id, user.id), // Exclude the current user
-            eq(users.specialization, "operations_manager")
+            or(
+              eq(users.specialization, "operations_manager"),
+              eq(users.role, "operations_manager")
+            )
           )
         )
         .orderBy(users.name);
