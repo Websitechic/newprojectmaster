@@ -216,7 +216,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get team members for client (Client only)
+  // Get team members for client (Client only) - Filtered based on specific criteria
   app.get("/api/client/team-members", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -230,17 +230,38 @@ export function registerRoutes(app: Express): Server {
     try {
       // Get client's projects
       const clientProjects = await db
-        .select({ id: projects.id })
+        .select({ id: projects.id, createdBy: projects.createdBy })
         .from(projects)
         .where(eq(projects.clientId, user.id));
 
       const projectIds = clientProjects.map(p => p.id);
+      const projectCreatorIds = [...new Set(clientProjects.map(p => p.createdBy))]; // Unique product owners
       
-      let teamMembers = [];
+      let allowedContacts = [];
 
       if (projectIds.length > 0) {
-        // Get team members from client's projects
-        const projectTeamMembers = await db
+        // 1. Get Product Owners (who created the client's projects)
+        const productOwners = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            role: users.role,
+            specialization: users.specialization,
+            status: users.status,
+            lastActive: users.lastActive,
+          })
+          .from(users)
+          .where(
+            and(
+              ne(users.id, user.id), // Exclude the current user
+              inArray(users.id, projectCreatorIds)
+            )
+          )
+          .orderBy(users.name);
+
+        // 2. Get Technical Support Staff assigned to client's projects
+        const technicalSupportStaff = await db
           .select({
             id: users.id,
             name: users.name,
@@ -256,13 +277,15 @@ export function registerRoutes(app: Express): Server {
             and(
               ne(users.id, user.id), // Exclude the current user
               inArray(projectMembers.projectId, projectIds),
-              eq(projectMembers.invitationStatus, "accepted")
+              eq(projectMembers.invitationStatus, "accepted"),
+              eq(users.role, "staff"),
+              eq(users.specialization, "technical_support")
             )
           )
           .orderBy(users.name);
 
-        // Get project managers for client's projects
-        const projectManagersForProjects = await db
+        // 4. Get Developer staff assigned to client's projects
+        const developerStaff = await db
           .select({
             id: users.id,
             name: users.name,
@@ -273,19 +296,22 @@ export function registerRoutes(app: Express): Server {
             lastActive: users.lastActive,
           })
           .from(users)
-          .innerJoin(projects, eq(users.id, projects.managerId))
+          .innerJoin(projectMembers, eq(users.id, projectMembers.userId))
           .where(
             and(
               ne(users.id, user.id), // Exclude the current user
-              inArray(projects.id, projectIds)
+              inArray(projectMembers.projectId, projectIds),
+              eq(projectMembers.invitationStatus, "accepted"),
+              eq(users.role, "staff"),
+              eq(users.specialization, "developer")
             )
           )
           .orderBy(users.name);
 
-        teamMembers = [...projectTeamMembers, ...projectManagersForProjects];
+        allowedContacts = [...productOwners, ...technicalSupportStaff, ...developerStaff];
       }
 
-      // Always include operations managers regardless of project assignment
+      // 3. Always include Operations Manager regardless of project assignment
       const operationsManagers = await db
         .select({
           id: users.id,
@@ -306,13 +332,13 @@ export function registerRoutes(app: Express): Server {
         .orderBy(users.name);
 
       // Combine and remove duplicates
-      const allTeamMembers = [...teamMembers, ...operationsManagers];
-      const uniqueTeamMembers = allTeamMembers.filter((member, index, self) => 
-        index === self.findIndex(m => m.id === member.id)
+      const allAllowedContacts = [...allowedContacts, ...operationsManagers];
+      const uniqueContacts = allAllowedContacts.filter((contact, index, self) => 
+        index === self.findIndex(c => c.id === contact.id)
       );
 
-      console.log(`Found ${uniqueTeamMembers.length} team members for client ${user.name}`);
-      res.json(uniqueTeamMembers);
+      console.log(`Found ${uniqueContacts.length} allowed contacts for client ${user.name}`);
+      res.json(uniqueContacts);
     } catch (error) {
       console.error("Error fetching team members:", error);
       res.status(500).json({ error: "Failed to fetch team members" });
