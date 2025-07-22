@@ -189,8 +189,8 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     }
   }, [currentPath]);
 
-  // Base menu items for all users
-  const baseMenuItems = [
+  // Base menu items for all users (excluding clients)
+  const baseMenuItems = user?.role !== "client" ? [
     {
       icon: <LayoutDashboard size={20} />,
       label: "Dashboard",
@@ -207,6 +207,23 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Direct Messages",
       href: "/dashboard/direct-messages",
       badge: unreadDirectMessages,
+    },
+    {
+      icon: <Settings size={20} />,
+      label: "Settings",
+      href: "/dashboard/settings",
+    },
+  ] : [
+    {
+      icon: <LayoutDashboard size={20} />,
+      label: "Dashboard",
+      href: "/dashboard",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Projects",
+      href: "/dashboard/projects",
+      badge: totalUnreadProjectMessages,
     },
     {
       icon: <Settings size={20} />,
@@ -395,14 +412,16 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   ] : [];
 
   // Combine menu items based on user role
-  const menuItems = [
+  const menuItems = user?.role === "client" ? [
+    ...baseMenuItems,             // Dashboard, Projects, Settings (no Direct Messages for clients)
+    ...clientMenuItems,           // Client specific items
+  ] : [
     ...baseMenuItems.slice(0, 2), // Dashboard, Projects
     ...pmMenuItems,               // Project manager specific items
     ...staffMenuItems,            // Staff specific items
     ...technicalSupportMenuItems, // Technical support menu items
     ...extensionMenuItems,        // Extension requests menu items
-    ...clientMenuItems,           // Client specific items
-    ...baseMenuItems.slice(2)     // Messages, Settings
+    ...baseMenuItems.slice(2)     // Direct Messages, Settings
   ];
 
   return (
