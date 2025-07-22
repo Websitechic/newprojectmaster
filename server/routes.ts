@@ -228,8 +228,65 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      // Show all relevant team members including staff and managers
-      const teamMembers = await db
+      // Get client's projects
+      const clientProjects = await db
+        .select({ id: projects.id })
+        .from(projects)
+        .where(eq(projects.clientId, user.id));
+
+      const projectIds = clientProjects.map(p => p.id);
+      
+      let teamMembers = [];
+
+      if (projectIds.length > 0) {
+        // Get team members from client's projects
+        const projectTeamMembers = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            role: users.role,
+            specialization: users.specialization,
+            status: users.status,
+            lastActive: users.lastActive,
+          })
+          .from(users)
+          .innerJoin(projectMembers, eq(users.id, projectMembers.userId))
+          .where(
+            and(
+              ne(users.id, user.id), // Exclude the current user
+              inArray(projectMembers.projectId, projectIds),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .orderBy(users.name);
+
+        // Get project managers for client's projects
+        const projectManagersForProjects = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            role: users.role,
+            specialization: users.specialization,
+            status: users.status,
+            lastActive: users.lastActive,
+          })
+          .from(users)
+          .innerJoin(projects, eq(users.id, projects.managerId))
+          .where(
+            and(
+              ne(users.id, user.id), // Exclude the current user
+              inArray(projects.id, projectIds)
+            )
+          )
+          .orderBy(users.name);
+
+        teamMembers = [...projectTeamMembers, ...projectManagersForProjects];
+      }
+
+      // Always include operations managers regardless of project assignment
+      const operationsManagers = await db
         .select({
           id: users.id,
           name: users.name,
@@ -243,19 +300,19 @@ export function registerRoutes(app: Express): Server {
         .where(
           and(
             ne(users.id, user.id), // Exclude the current user
-            or(
-              eq(users.role, "product_owner"),
-              eq(users.role, "project_manager"),
-              eq(users.role, "operations_manager"),
-              eq(users.role, "staff"),
-              eq(users.role, "admin")
-            )
+            eq(users.specialization, "operations_manager")
           )
         )
         .orderBy(users.name);
 
-      console.log(`Found ${teamMembers.length} team members for client ${user.name}`);
-      res.json(teamMembers);
+      // Combine and remove duplicates
+      const allTeamMembers = [...teamMembers, ...operationsManagers];
+      const uniqueTeamMembers = allTeamMembers.filter((member, index, self) => 
+        index === self.findIndex(m => m.id === member.id)
+      );
+
+      console.log(`Found ${uniqueTeamMembers.length} team members for client ${user.name}`);
+      res.json(uniqueTeamMembers);
     } catch (error) {
       console.error("Error fetching team members:", error);
       res.status(500).json({ error: "Failed to fetch team members" });
