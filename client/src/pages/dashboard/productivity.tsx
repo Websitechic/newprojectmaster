@@ -31,6 +31,11 @@ interface DailyProductivityData {
     hours: number;
     taskCount: number;
     tasks: string[];
+    workdayStart: string | null;
+    workdayEnd: string | null;
+    totalSpanHours: number;
+    performanceStatus: string;
+    performanceColor: string;
   }[];
 }
 
@@ -362,79 +367,171 @@ export default function ProductivityPage() {
               {/* Weekly Activity Bar Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Weekly Activity</CardTitle>
+                  <CardTitle>Weekly Activity Tracking</CardTitle>
                   <CardDescription>
-                    Hours worked each day of the current week (Monday to Friday)
+                    Workday span and performance for each day (Monday to Friday)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {weeklyData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={weeklyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="day" 
-                          tick={{ fontSize: 12 }}
-                        />
-                        <YAxis 
-                          label={{ value: 'Hours', angle: -90, position: 'insideLeft' }}
-                          tick={{ fontSize: 12 }}
-                        />
-                        <Tooltip 
-                          formatter={(value: number, name: string, props: any) => {
-                            const data = props.payload;
-                            return [
-                              `${value.toFixed(2)} hours`,
-                              "Hours Worked"
-                            ];
-                          }}
-                          labelFormatter={(label, payload) => {
-                            if (payload && payload.length > 0) {
-                              const data = payload[0].payload;
-                              return (
-                                <div>
-                                  <div className="font-medium">{label}</div>
-                                  <div className="text-sm text-gray-600">
-                                    Tasks worked on: {data.taskCount}
-                                  </div>
-                                  {data.tasks && data.tasks.length > 0 && (
-                                    <div className="text-sm text-gray-600 mt-1">
-                                      <div className="font-medium">Tasks:</div>
-                                      {data.tasks.slice(0, 3).map((task: string, index: number) => (
-                                        <div key={index} className="text-xs">• {task}</div>
-                                      ))}
-                                      {data.tasks.length > 3 && (
-                                        <div className="text-xs text-gray-500">
-                                          +{data.tasks.length - 3} more tasks
+                    <div className="space-y-4">
+                      <ResponsiveContainer width="100%" height={350}>
+                        <BarChart data={weeklyData} margin={{ top: 40, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="day" 
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis 
+                            label={{ value: 'Hours', angle: -90, position: 'insideLeft' }}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <Tooltip 
+                            formatter={(value: number, name: string, props: any) => {
+                              const data = props.payload;
+                              return [
+                                `${value.toFixed(2)} hours`,
+                                "Actual Work Hours"
+                              ];
+                            }}
+                            labelFormatter={(label, payload) => {
+                              if (payload && payload.length > 0) {
+                                const data = payload[0].payload;
+                                const formatTime = (isoString: string) => {
+                                  return new Date(isoString).toLocaleTimeString('en-US', {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  });
+                                };
+                                
+                                return (
+                                  <div className="space-y-2">
+                                    <div className="font-medium">{label}</div>
+                                    
+                                    {data.workdayStart && data.workdayEnd ? (
+                                      <div className="text-sm text-gray-600">
+                                        <div><strong>Started:</strong> {formatTime(data.workdayStart)}</div>
+                                        <div><strong>Ended:</strong> {formatTime(data.workdayEnd)}</div>
+                                        <div><strong>Total Span:</strong> {data.totalSpanHours}h</div>
+                                        <div><strong>Actual Work:</strong> {data.hours.toFixed(2)}h</div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-gray-600">
+                                        No timer activity recorded
+                                      </div>
+                                    )}
+                                    
+                                    <div className="text-sm text-gray-600">
+                                      <div><strong>Tasks worked on:</strong> {data.taskCount}</div>
+                                      {data.tasks && data.tasks.length > 0 && (
+                                        <div className="mt-1">
+                                          <div className="font-medium">Tasks:</div>
+                                          {data.tasks.slice(0, 3).map((task: string, index: number) => (
+                                            <div key={index} className="text-xs">• {task}</div>
+                                          ))}
+                                          {data.tasks.length > 3 && (
+                                            <div className="text-xs text-gray-500">
+                                              +{data.tasks.length - 3} more tasks
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                     </div>
-                                  )}
-                                </div>
+                                    
+                                    <div className={`text-sm font-medium px-2 py-1 rounded text-center ${
+                                      data.performanceStatus === 'good' ? 'bg-green-100 text-green-800' :
+                                      data.performanceStatus === 'fair' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-red-100 text-red-800'
+                                    }`}>
+                                      Performance: {data.performanceStatus.charAt(0).toUpperCase() + data.performanceStatus.slice(1)}
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return label;
+                            }}
+                            contentStyle={{
+                              backgroundColor: 'white',
+                              border: '1px solid #ccc',
+                              borderRadius: '6px',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                              maxWidth: '300px'
+                            }}
+                          />
+                          <Bar 
+                            dataKey="totalSpanHours" 
+                            fill="#E5E7EB"
+                            radius={[4, 4, 0, 0]}
+                            name="Total Span"
+                          />
+                          <Bar 
+                            dataKey="hours" 
+                            fill="#3b82f6"
+                            radius={[4, 4, 0, 0]}
+                            name="Actual Work"
+                          />
+                          
+                          {/* Performance status indicators above bars */}
+                          {weeklyData.map((entry, index) => {
+                            if (entry.hours > 0) {
+                              return (
+                                <text
+                                  key={index}
+                                  x={`${(index + 0.5) * (100 / weeklyData.length)}%`}
+                                  y={30}
+                                  textAnchor="middle"
+                                  fontSize={10}
+                                  fontWeight="bold"
+                                  fill={entry.performanceColor}
+                                >
+                                  {entry.performanceStatus.toUpperCase()}
+                                </text>
                               );
                             }
-                            return label;
-                          }}
-                          contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid #ccc',
-                            borderRadius: '6px',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                          }}
-                        />
-                        <Bar 
-                          dataKey="hours" 
-                          fill="#3b82f6"
-                          radius={[4, 4, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+                            return null;
+                          })}
+                        </BarChart>
+                      </ResponsiveContainer>
+                      
+                      {/* Performance Legend */}
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Daily Performance Status Legend</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                            <div className="text-sm">
+                              <div className="font-medium text-red-700">Poor</div>
+                              <div className="text-gray-600">Less than 2 hours worked</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                            <div className="text-sm">
+                              <div className="font-medium text-yellow-700">Fair</div>
+                              <div className="text-gray-600">2-4 hours worked</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                            <div className="text-sm">
+                              <div className="font-medium text-green-700">Good</div>
+                              <div className="text-gray-600">4+ hours worked</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3 text-xs text-gray-500">
+                          <strong>Note:</strong> Light gray bars show total workday span (first timer start to last timer end). 
+                          Blue bars show actual work hours. Performance is based on actual work hours.
+                        </div>
+                      </div>
+                    </div>
                   ) : (
-                    <div className="flex items-center justify-center h-[300px] text-gray-500">
+                    <div className="flex items-center justify-center h-[350px] text-gray-500">
                       <div className="text-center">
                         <TrendingUp className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                         <p>No weekly activity data</p>
-                        <p className="text-sm mt-1">Complete some tasks to see your weekly progress</p>
+                        <p className="text-sm mt-1">Start some timers to see your weekly progress</p>
                       </div>
                     </div>
                   )}
