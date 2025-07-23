@@ -5144,6 +5144,18 @@ export function registerRoutes(app: Express): Server {
         const dayTimeSpent = dayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0);
         const dayHours = dayTimeSpent / 3600; // Convert seconds to hours
         
+        // Calculate performance status and color based on hours worked
+        let performanceStatus = 'poor';
+        let performanceColor = '#EF4444'; // Red
+        
+        if (dayHours >= 4) {
+          performanceStatus = 'good';
+          performanceColor = '#22C55E'; // Green
+        } else if (dayHours >= 2) {
+          performanceStatus = 'fair';
+          performanceColor = '#EAB308'; // Yellow
+        }
+        
         const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         
         todayData.weeklyBreakdown.push({
@@ -5152,7 +5164,12 @@ export function registerRoutes(app: Express): Server {
           timeSpent: dayTimeSpent,
           hours: Math.round(dayHours * 100) / 100, // Round to 2 decimal places
           taskCount: dayTasks.length,
-          tasks: dayTasks.map(task => task.title)
+          tasks: dayTasks.map(task => task.title),
+          workdayStart: null, // Will be set by timer tracking if available
+          workdayEnd: null, // Will be set by timer tracking if available
+          totalSpanHours: Math.round(dayHours * 100) / 100,
+          performanceStatus,
+          performanceColor
         });
       }
 

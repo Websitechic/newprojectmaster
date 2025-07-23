@@ -474,7 +474,7 @@ export default function ProductivityPage() {
                           
                           {/* Performance status indicators above bars */}
                           {weeklyData.map((entry, index) => {
-                            if (entry.hours > 0) {
+                            if (entry.hours > 0 && entry.performanceStatus) {
                               return (
                                 <text
                                   key={index}
@@ -483,7 +483,7 @@ export default function ProductivityPage() {
                                   textAnchor="middle"
                                   fontSize={10}
                                   fontWeight="bold"
-                                  fill={entry.performanceColor}
+                                  fill={entry.performanceColor || '#666'}
                                 >
                                   {entry.performanceStatus.toUpperCase()}
                                 </text>
