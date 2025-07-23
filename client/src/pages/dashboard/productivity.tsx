@@ -55,17 +55,17 @@ const getTaskStatusColor = (task: any, workingHours?: number) => {
   const allocatedTimeInSeconds = workingHours * 3600;
   const timeUsedPercentage = (task.timeSpent / allocatedTimeInSeconds) * 100;
   
-  // Red: Time exceeded (over 100%)
+  // Red: Poor (over 100%)
   if (timeUsedPercentage > 100) {
     return '#EF4444'; // Red
   }
   
-  // Orange: At risk (80-99% of allocated time)
+  // Yellow: Fair (80-99% of allocated time)
   if (timeUsedPercentage >= 80 && timeUsedPercentage <= 99) {
-    return '#F97316'; // Orange
+    return '#EAB308'; // Yellow
   }
   
-  // Green: Completed within time or in progress with good time management
+  // Green: Good - Completed within time or in progress with good time management
   if (task.isCompleted || timeUsedPercentage < 80) {
     return '#22C55E'; // Green
   }
@@ -82,15 +82,15 @@ const getStatusLabel = (task: any, workingHours?: number) => {
   const timeUsedPercentage = (task.timeSpent / allocatedTimeInSeconds) * 100;
   
   if (timeUsedPercentage > 100) {
-    return 'Time Exceeded';
+    return 'Poor';
   }
   
   if (timeUsedPercentage >= 80 && timeUsedPercentage <= 99) {
-    return 'At Risk';
+    return 'Fair';
   }
   
   if (task.isCompleted || timeUsedPercentage < 80) {
-    return 'On Track';
+    return 'Good';
   }
   
   return 'Unknown';
@@ -337,21 +337,21 @@ export default function ProductivityPage() {
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded-full bg-red-500"></div>
                       <div className="text-sm">
-                        <div className="font-medium text-red-700">Time Exceeded</div>
+                        <div className="font-medium text-red-700">Poor</div>
                         <div className="text-gray-600">Over 100% of allocated time</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-orange-500"></div>
+                      <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
                       <div className="text-sm">
-                        <div className="font-medium text-orange-700">At Risk</div>
+                        <div className="font-medium text-yellow-700">Fair</div>
                         <div className="text-gray-600">80-99% of allocated time</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded-full bg-green-500"></div>
                       <div className="text-sm">
-                        <div className="font-medium text-green-700">On Track</div>
+                        <div className="font-medium text-green-700">Good</div>
                         <div className="text-gray-600">Under 80% or completed on time</div>
                       </div>
                     </div>
@@ -489,7 +489,7 @@ export default function ProductivityPage() {
                                 const statusLabel = getStatusLabel(task, workingHours);
                                 const statusColor = 
                                   timeUsedPercentage > 100 ? 'bg-red-100 text-red-800' :
-                                  timeUsedPercentage >= 80 ? 'bg-orange-100 text-orange-800' :
+                                  timeUsedPercentage >= 80 ? 'bg-yellow-100 text-yellow-800' :
                                   'bg-green-100 text-green-800';
                                 
                                 return (
