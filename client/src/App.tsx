@@ -31,6 +31,7 @@ import RegisterDissatisfaction from "@/pages/dashboard/register-dissatisfaction"
 import SupportPolicy from "@/pages/dashboard/support-policy";
 import EmergencySupport from "@/pages/dashboard/emergency-support";
 import ReachUsPage from "@/pages/dashboard/reach-us";
+import ClientDashboard from "@/pages/dashboard/client-dashboard";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -69,7 +70,7 @@ function Router() {
       <Route path="/">
         {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
       </Route>
-      <Route path="/dashboard" component={() => <PrivateRoute component={Dashboard} />} />
+      <Route path="/dashboard" component={() => <PrivateRoute component={user?.role === "client" ? ClientDashboard : Dashboard} />} />
       <Route path="/dashboard/projects" component={() => <PrivateRoute component={Projects} />} />
       <Route path="/dashboard/projects/:id" component={() => <PrivateRoute component={ProjectDetails} />} />
       <Route path="/dashboard/projects/:id/tasks" component={() => <PrivateRoute component={ProjectTasks} />} />
