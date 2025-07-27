@@ -22,29 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 import { Wrench } from "lucide-react";
-import { Clock } from "lucide-react";
-import { Building2 } from "lucide-react";
-import { 
-  FolderOpen, 
-  MessageSquare, 
-  Users, 
-  Settings, 
-  HelpCircle,
-  BookOpen,
-  FileText,
-  Clock,
-  Target,
-  TrendingUp,
-  User,
-  CheckSquare,
-  AlertTriangle,
-  LifeBuoy,
-  Video,
-  PhoneCall,
-  UserPlus,
-  Briefcase,
-  BarChart3
-} from "lucide-react";
+import { Clock, Building2 } from "lucide-react";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -336,64 +314,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     href: "/dashboard/extension-requests",
   }] : [];
 
-  // Project Manager specific navigation
-  const projectManagerNavItems = [
-    { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
-    { icon: FolderOpen, label: "Projects", path: "/dashboard/projects" },
-    { icon: Users, label: "Team Chat", path: "/dashboard/team-chat" },
-    { icon: MessageSquare, label: "Direct Messages", path: "/dashboard/direct-messages" },
-    { icon: Calendar, label: "Bookings", path: "/dashboard/bookings" },
-    { icon: FileText, label: "Leave Management", path: "/dashboard/leave-management" },
-    { icon: BookOpen, label: "Productivity", path: "/dashboard/productivity" },
-    { icon: Headphones, label: "Technical Support", path: "/dashboard/technical-support" },
-    { icon: Clock, label: "Extension Requests", path: "/dashboard/extension-requests" },
-    { icon: UserPlus, label: "Client Management", path: "/dashboard/client-management" },
-  ];
-
-  // Operations Manager specific navigation (mirrors Project Manager)
-  const operationsManagerNavItems = [
-    { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
-    { icon: FolderOpen, label: "Projects", path: "/dashboard/projects" },
-    { icon: Users, label: "Team Chat", path: "/dashboard/team-chat" },
-    { icon: MessageSquare, label: "Direct Messages", path: "/dashboard/direct-messages" },
-    { icon: Calendar, label: "Bookings", path: "/dashboard/bookings" },
-    { icon: FileText, label: "Leave Management", path: "/dashboard/leave-management" },
-    { icon: BookOpen, label: "Productivity", path: "/dashboard/productivity" },
-    { icon: Headphones, label: "Technical Support", path: "/dashboard/technical-support" },
-    { icon: Clock, label: "Extension Requests", path: "/dashboard/extension-requests" },
-    { icon: UserPlus, label: "Client Management", path: "/dashboard/client-management" },
-  ];
-
-  // Client specific navigation items
-  const clientNavItems = [
-    { icon: PlayCircle, label: "Guide Videos", path: "/dashboard/guide-videos" },
-    { icon: AlertTriangle, label: "Register Your Dissatisfaction", path: "/dashboard/register-dissatisfaction" },
-    { icon: Star, label: "Rate Us", path: "https://g.co/kgs/YduK9rn", external: true },
-    // Only include Support Policy for Support & Maintenance clients
-    ...(user?.productService === "support_maintenance" ? [
-      { icon: Shield, label: "Support Policy", path: "/dashboard/support-policy" }
-    ] : []),
-    { icon: MessageSquare, label: "Reach Us", path: "/dashboard/reach-us" },
-    { icon: Phone, label: "Emergency During Off Days", path: "/dashboard/emergency-support" },
-  ];
-
-  const getNavigationItems = () => {
-    switch (user?.role) {
-      case 'client':
-        return clientNavItems;
-      case 'project_manager':
-        return projectManagerNavItems;
-      case 'operations_manager':
-        return operationsManagerNavItems;
-      case 'product_owner':
-        return [];
-      case 'staff':
-      case 'intern':
-        return [];
-      default:
-        return [];
-    }
-  };
+  
 
   // Client specific menu items
   const clientMenuItems = user?.role === "client" ? [
