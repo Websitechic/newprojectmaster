@@ -316,6 +316,19 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     href: "/dashboard/extension-requests",
   }] : [];
 
+  // Operations Manager specific menu items
+  const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" ? [
+    {
+      icon: <Calendar size={20} />,
+      label: "Bookings",
+      href: "/dashboard/bookings",
+    },
+    {
+      icon: <AlertTriangle size={20} />,
+      label: "Complaints",
+      href: "/dashboard/complaints-management",
+    },
+  ] : [];
 
 
   // Client specific menu items
@@ -363,6 +376,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     ...staffMenuItems,            // Staff specific items
     ...technicalSupportMenuItems, // Technical support menu items
     ...extensionMenuItems,        // Extension requests menu items
+    ...operationsManagerMenuItems,
     ...baseMenuItems.slice(2)     // Direct Messages, Settings
   ];
 

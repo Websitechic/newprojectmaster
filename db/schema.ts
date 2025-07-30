@@ -576,7 +576,41 @@ export const deadlineExtensionRequestsRelations = relations(deadlineExtensionReq
 
 export type DeadlineExtensionRequest = typeof deadlineExtensionRequests.$inferSelect;
 export const insertDeadlineExtensionRequestSchema = createInsertSchema(deadlineExtensionRequests);
-export const selectDeadlineExtensionRequestSchema = createSelectSchema(deadlineExtensionRequests);
+export const selectDeladlineExtensionRequestSchema = createSelectSchema(deadlineExtensionRequests);
+
+export const complaints = pgTable("complaints", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  productManagerName: text("product_manager_name"),
+  developerName: text("developer_name"),
+  technicalManagerName: text("technical_manager_name"),
+  valuableThings: jsonb("valuable_things"), // Array of strings
+  detailedExplanation: text("detailed_explanation").notNull(),
+  screenshotUrl: text("screenshot_url"),
+  submittedBy: integer("submitted_by").references(() => users.id),
+  status: text("status", { enum: ["pending", "reviewed", "resolved"] }).default("pending"),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewComments: text("review_comments"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const complaintsRelations = relations(complaints, ({ one }) => ({
+  submitter: one(users, {
+    fields: [complaints.submittedBy],
+    references: [users.id],
+  }),
+  reviewer: one(users, {
+    fields: [complaints.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+export type Complaint = typeof complaints.$inferSelect;
+export const insertComplaintSchema = createInsertSchema(complaints);
+export const selectComplaintSchema = createSelectSchema(complaints);
 
 export const insertTechnicalSupportRequestSchema = createInsertSchema(technicalSupportRequests);
 export const selectTechnicalSupportRequestSchema = createSelectSchema(technicalSupportRequests);

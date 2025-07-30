@@ -31,6 +31,7 @@ import {
   technicalSupportRequests,
   messageReadReceipts,
   deadlineExtensionRequests,
+  complaints,
   insertTechnicalSupportRequestSchema,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
@@ -5031,6 +5032,212 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating client onboarding status:", error);
       res.status(500).json({ error: "Failed to update client onboarding status" });
+    }
+  });
+
+  // Configure multer for complaint screenshots
+  const complaintUploadDir = path.join(process.cwd(), 'uploads', 'complaint-screenshots');
+  if (!fs.existsSync(complaintUploadDir)) {
+    fs.mkdirSync(complaintUploadDir, { recursive: true });
+  }
+
+  const complaintStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, complaintUploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+  });
+
+  const complaintUpload = multer({ 
+    storage: complaintStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed'));
+      }
+    }
+  });
+
+  // Complaints API endpoint
+  app.post("/api/complaints", complaintUpload.single('screenshot'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const { name, email, productManagerName, developerName, technicalManagerName, valuableThings, detailedExplanation } = req.body;
+
+      if (!name || !email || !detailedExplanation) {
+        return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
+      }
+
+      // Parse valuable things if it's a string
+      let parsedValuableThings = [];
+      if (valuableThings) {
+        try {
+          parsedValuableThings = typeof valuableThings === 'string' ? JSON.parse(valuableThings) : valuableThings;
+        } catch (error) {
+          console.error("Error parsing valuable things:", error);
+          parsedValuableThings = [];
+        }
+      }
+
+      // Handle screenshot if uploaded
+      let screenshotUrl = null;
+      if (req.file) {
+        screenshotUrl = `/uploads/complaint-screenshots/${req.file.filename}`;
+      }
+
+      // Create complaint record
+      const [newComplaint] = await db
+        .insert(complaints)
+        .values({
+          name: name.trim(),
+          email: email.trim(),
+          productManagerName: productManagerName?.trim() || null,
+          developerName: developerName?.trim() || null,
+          technicalManagerName: technicalManagerName?.trim() || null,
+          valuableThings: parsedValuableThings,
+          detailedExplanation: detailedExplanation.trim(),
+          screenshotUrl,
+          submittedBy: req.user!.id,
+          status: "pending",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      // Get all operations managers
+      const operationsManagers = await db
+        .select()
+        .from(users)
+        .where(or(
+          eq(users.specialization, "operations_manager"),
+          eq(users.role, "operations_manager")
+        ));
+
+      // Send notification to all operations managers
+      for (const manager of operationsManagers) {
+        const [notification] = await db
+          .insert(notifications)
+          .values({
+            userId: manager.id,
+            type: "task_assigned", // Using existing type
+            content: `New complaint received from ${name}: ${detailedExplanation.substring(0, 100)}...`,
+            referenceId: newComplaint.id,
+            referenceType: "project", // Using existing type
+            createdAt: new Date(),
+          })
+          .returning();
+
+        // Send real-time notification via SSE if manager is connected
+        const clientResponse = global.sseClients?.get(manager.id);
+        if (clientResponse && !clientResponse.writableEnded) {
+          try {
+            clientResponse.write(`data: ${JSON.stringify({
+              type: "notification",
+              data: notification
+            })}\n\n`);
+          } catch (error) {
+            console.error(`Error sending SSE notification to operations manager ${manager.id}:`, error);
+            global.sseClients?.delete(manager.id);
+          }
+        }
+      }
+
+      res.json({ message: "Complaint submitted successfully", complaint: newComplaint });
+    } catch (error) {
+      console.error("Error submitting complaint:", error);
+      res.status(500).json({ error: "Failed to submit complaint" });
+    }
+  });
+
+  // Get all complaints (Operations Manager only)
+  app.get("/api/complaints", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.specialization !== "operations_manager" && user.role !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can view complaints" });
+    }
+
+    try {
+      const allComplaints = await db
+        .select({
+          id: complaints.id,
+          name: complaints.name,
+          email: complaints.email,
+          productManagerName: complaints.productManagerName,
+          developerName: complaints.developerName,
+          technicalManagerName: complaints.technicalManagerName,
+          valuableThings: complaints.valuableThings,
+          detailedExplanation: complaints.detailedExplanation,
+          screenshotUrl: complaints.screenshotUrl,
+          status: complaints.status,
+          reviewComments: complaints.reviewComments,
+          createdAt: complaints.createdAt,
+          reviewedAt: complaints.reviewedAt,
+          submitterName: users.name,
+          reviewerName: users.name,
+        })
+        .from(complaints)
+        .leftJoin(users, eq(complaints.submittedBy, users.id))
+        .orderBy(desc(complaints.createdAt));
+
+      res.json(allComplaints);
+    } catch (error) {
+      console.error("Error fetching complaints:", error);
+      res.status(500).json({ error: "Failed to fetch complaints" });
+    }
+  });
+
+  // Update complaint status (Operations Manager only)
+  app.put("/api/complaints/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.specialization !== "operations_manager" && user.role !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can update complaints" });
+    }
+
+    try {
+      const complaintId = parseInt(req.params.id);
+      const { status, reviewComments } = req.body;
+
+      const validStatuses = ["pending", "reviewed", "resolved"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const [updatedComplaint] = await db
+        .update(complaints)
+        .set({
+          status,
+          reviewComments: reviewComments || null,
+          reviewedBy: user.id,
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(complaints.id, complaintId))
+        .returning();
+
+      if (!updatedComplaint) {
+        return res.status(404).json({ error: "Complaint not found" });
+      }
+
+      res.json(updatedComplaint);
+    } catch (error) {
+      console.error("Error updating complaint:", error);
+      res.status(500).json({ error: "Failed to update complaint" });
     }
   });
 
