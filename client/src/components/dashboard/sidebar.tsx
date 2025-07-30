@@ -240,6 +240,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/staff-report",
     },
     {
+      icon: <Building2 size={20} />,
+      label: "Client Accounts",
+      href: "/dashboard/client-accounts",
+    },
+    {
       icon: <CalendarDays size={20} />,
       label: "Bookings",
       href: "/dashboard/bookings",
@@ -279,6 +284,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Users size={20} />,
       label: "Client Management",
       href: "/dashboard/client-management",
+    },
+    {
+      icon: <Building2 size={20} />,
+      label: "Client Accounts",
+      href: "/dashboard/client-accounts",
     }
   ] : [];
 

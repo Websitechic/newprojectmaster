@@ -5727,5 +5727,134 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Client Account Management API Routes
+
+  // Middleware to check if user can manage client accounts
+  const canManageClientAccounts = (req: Express.Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager" && user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only project managers and product owners can manage client accounts" });
+    }
+
+    next();
+  };
+
+  // Get all client accounts
+  app.get("/api/client-accounts", canManageClientAccounts, async (req, res) => {
+    try {
+      const clientAccounts = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          username: users.username,
+          role: users.role,
+          productService: users.productService,
+          clientType: users.clientType,
+          onboardingStatus: users.onboardingStatus,
+          emailVerified: users.emailVerified,
+          createdAt: users.createdAt,
+          lastActive: users.lastActive,
+        })
+        .from(users)
+        .where(eq(users.role, "client"))
+        .orderBy(desc(users.createdAt));
+
+      res.json(clientAccounts);
+    } catch (error) {
+      console.error("Error fetching client accounts:", error);
+      res.status(500).json({ error: "Failed to fetch client accounts" });
+    }
+  });
+
+  // Create a new client account
+  app.post("/api/client-accounts", canManageClientAccounts, async (req, res) => {
+    try {
+      const { name, email, username, password, productService, clientType } = req.body;
+
+      // Validate required fields
+      if (!name || !email || !username || !password || !productService || !clientType) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+
+      // Check if username already exists
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+
+      // Check if email already exists
+      const [existingEmail] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (existingEmail) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+
+      // Hash password (using same method as auth.ts)
+      const { scrypt, randomBytes } = await import("crypto");
+      const { promisify } = await import("util");
+      const scryptAsync = promisify(scrypt);
+      
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+
+      // Create the client account
+      const [newClient] = await db
+        .insert(users)
+        .values({
+          name,
+          email,
+          username,
+          password: hashedPassword,
+          role: "client",
+          productService,
+          clientType,
+          onboardingStatus: "not_onboarded",
+          emailVerified: false,
+          status: "offline",
+          workStatus: "active",
+          absenceReason: "not_applicable",
+          breakCount: 0,
+          createdAt: new Date(),
+          lastActive: new Date(),
+        })
+        .returning();
+
+      // Remove password from response
+      const { password: _, ...clientResponse } = newClient;
+
+      // Create notification for the client
+      await db
+        .insert(notifications)
+        .values({
+          userId: newClient.id,
+          type: "task_updated", // Using existing type
+          content: `Welcome! Your account has been created. You can now log in to access your dashboard.`,
+          referenceId: newClient.id,
+          referenceType: "project", // Using existing type
+          createdAt: new Date(),
+        });
+
+      res.status(201).json(clientResponse);
+    } catch (error) {
+      console.error("Error creating client account:", error);
+      res.status(500).json({ error: "Failed to create client account" });
+    }
+  });
+
   return server;
 }

@@ -34,6 +34,7 @@ import ReachUsPage from "@/pages/dashboard/reach-us";
 import RateUs from "@/pages/dashboard/rate-us";
 import ClientDashboard from "@/pages/dashboard/client-dashboard";
 import ComplaintsManagement from "@/pages/dashboard/complaints-management";
+import ClientAccounts from "@/pages/dashboard/client-accounts";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -100,6 +101,7 @@ function Router() {
       <Route path="/dashboard/reach-us" component={() => <PrivateRoute component={ReachUsPage} />} />
       <Route path="/dashboard/rate-us" component={() => <PrivateRoute component={RateUs} />} />
       <Route path="/dashboard/complaints-management" component={() => <PrivateRoute component={ComplaintsManagement} />} />
+      <Route path="/dashboard/client-accounts" component={() => <PrivateRoute component={ClientAccounts} />} />
       <Route component={NotFound} />
     </Switch>
   );
