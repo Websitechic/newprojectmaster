@@ -127,15 +127,18 @@ export default function RegisterDissatisfaction() {
       return;
     }
 
-    // Check if at least one valuable thing is filled
-    if (!formData.valuableThings.some(thing => thing.trim())) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide at least one thing you find valuable.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Filter out empty valuable things
+    const filteredValuableThings = formData.valuableThings.filter(thing => thing.trim());
+    
+    // Check if at least one valuable thing is filled (optional - remove this check if not required)
+    // if (filteredValuableThings.length === 0) {
+    //   toast({
+    //     title: "Missing Information",
+    //     description: "Please provide at least one thing you find valuable.",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
 
     const submitData = new FormData();
     submitData.append('name', formData.name.trim());
@@ -143,7 +146,7 @@ export default function RegisterDissatisfaction() {
     submitData.append('productManagerName', formData.productManagerName.trim());
     submitData.append('developerName', formData.developerName.trim());
     submitData.append('technicalManagerName', formData.technicalManagerName.trim());
-    submitData.append('valuableThings', JSON.stringify(formData.valuableThings.filter(thing => thing.trim())));
+    submitData.append('valuableThings', JSON.stringify(filteredValuableThings));
     submitData.append('detailedExplanation', formData.detailedExplanation.trim());
     
     if (screenshot) {

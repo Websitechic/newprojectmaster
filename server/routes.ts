@@ -5072,7 +5072,9 @@ export function registerRoutes(app: Express): Server {
     try {
       const { name, email, productManagerName, developerName, technicalManagerName, valuableThings, detailedExplanation } = req.body;
 
-      if (!name || !email || !detailedExplanation) {
+      console.log("Complaint submission data:", { name, email, productManagerName, developerName, technicalManagerName, valuableThings, detailedExplanation });
+
+      if (!name?.trim() || !email?.trim() || !detailedExplanation?.trim()) {
         return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
       }
 
@@ -5081,6 +5083,10 @@ export function registerRoutes(app: Express): Server {
       if (valuableThings) {
         try {
           parsedValuableThings = typeof valuableThings === 'string' ? JSON.parse(valuableThings) : valuableThings;
+          // Ensure it's an array
+          if (!Array.isArray(parsedValuableThings)) {
+            parsedValuableThings = [];
+          }
         } catch (error) {
           console.error("Error parsing valuable things:", error);
           parsedValuableThings = [];
