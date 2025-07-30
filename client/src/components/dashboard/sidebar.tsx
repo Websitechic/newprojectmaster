@@ -15,6 +15,8 @@ import {
   Star,
   Shield,
   Phone,
+  Building2,
+  Clock,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -22,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 import { Wrench } from "lucide-react";
-import { Clock, Building2 } from "lucide-react";
+
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -314,7 +316,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     href: "/dashboard/extension-requests",
   }] : [];
 
-  
+
 
   // Client specific menu items
   const clientMenuItems = user?.role === "client" ? [
@@ -331,8 +333,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     {
       icon: <Star size={20} />,
       label: "Rate Us",
-      href: "https://g.co/kgs/YduK9rn",
-      external: true,
+      href: "/dashboard/rate-us",
     },
     // Only show Support Policy for Support & Maintenance clients
     ...(user?.productService === "support_maintenance" ? [{

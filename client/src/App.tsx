@@ -31,6 +31,7 @@ import RegisterDissatisfaction from "@/pages/dashboard/register-dissatisfaction"
 import SupportPolicy from "@/pages/dashboard/support-policy";
 import EmergencySupport from "@/pages/dashboard/emergency-support";
 import ReachUsPage from "@/pages/dashboard/reach-us";
+import RateUs from "@/pages/dashboard/rate-us";
 import ClientDashboard from "@/pages/dashboard/client-dashboard";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
@@ -96,6 +97,7 @@ function Router() {
       <Route path="/dashboard/support-policy" component={() => <PrivateRoute component={SupportPolicy} />} />
       <Route path="/dashboard/emergency-support" component={() => <PrivateRoute component={EmergencySupport} />} />
       <Route path="/dashboard/reach-us" component={() => <PrivateRoute component={ReachUsPage} />} />
+      <Route path="/dashboard/rate-us" component={() => <PrivateRoute component={RateUs} />} />
       <Route component={NotFound} />
     </Switch>
   );
