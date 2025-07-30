@@ -1,4 +1,3 @@
-
 import { useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -7,33 +6,6 @@ import { PlayCircle } from "lucide-react";
 
 export default function GuideVideos() {
   const [location] = useLocation();
-
-  const videoCategories = [
-    {
-      title: "Getting Started",
-      videos: [
-        { title: "Dashboard Overview", duration: "5:30", thumbnail: "/api/placeholder/300/180" },
-        { title: "Project Navigation", duration: "4:15", thumbnail: "/api/placeholder/300/180" },
-        { title: "Communication Tools", duration: "6:20", thumbnail: "/api/placeholder/300/180" },
-      ]
-    },
-    {
-      title: "Project Management", 
-      videos: [
-        { title: "Understanding Project Timeline", duration: "8:45", thumbnail: "/api/placeholder/300/180" },
-        { title: "Task Progress Tracking", duration: "5:50", thumbnail: "/api/placeholder/300/180" },
-        { title: "Resource Management", duration: "7:30", thumbnail: "/api/placeholder/300/180" },
-      ]
-    },
-    {
-      title: "Support & Maintenance",
-      videos: [
-        { title: "How to Submit Support Requests", duration: "4:40", thumbnail: "/api/placeholder/300/180" },
-        { title: "Emergency Contact Procedures", duration: "3:20", thumbnail: "/api/placeholder/300/180" },
-        { title: "Maintenance Schedules", duration: "5:15", thumbnail: "/api/placeholder/300/180" },
-      ]
-    }
-  ];
 
   return (
     <div className="flex h-screen">
@@ -49,34 +21,28 @@ export default function GuideVideos() {
                   Guide Videos
                 </h1>
                 <p className="text-muted-foreground">
-                  Learn how to effectively use our platform with these helpful video tutorials
+                  Learn how to effectively use our platform with this helpful video tutorial
                 </p>
               </div>
             </div>
 
-            {videoCategories.map((category, categoryIndex) => (
-              <div key={categoryIndex} className="space-y-4">
-                <h2 className="text-xl font-semibold text-gray-900">{category.title}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {category.videos.map((video, videoIndex) => (
-                    <Card key={videoIndex} className="hover:shadow-md transition-shadow cursor-pointer">
-                      <div className="relative">
-                        <div className="w-full h-40 bg-gray-200 rounded-t-lg flex items-center justify-center">
-                          <PlayCircle className="h-12 w-12 text-blue-600" />
-                        </div>
-                        <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                          {video.duration}
-                        </div>
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-medium text-gray-900 mb-2">{video.title}</h3>
-                        <p className="text-sm text-gray-500">Duration: {video.duration}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
+            <Card>
+              <CardHeader>
+                <CardTitle>Guide video on how to navigate the worktool</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="aspect-video w-full">
+                  <iframe
+                    src="https://www.youtube.com/embed/I0OuqhLFzXw"
+                    title="Guide video on how to navigate the worktool"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="w-full h-full rounded-lg"
+                  ></iframe>
                 </div>
-              </div>
-            ))}
+              </CardContent>
+            </Card>
 
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-6">
