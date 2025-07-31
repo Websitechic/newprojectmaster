@@ -98,7 +98,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, nam
     <text 
       x={x} 
       y={y} 
-      fill="white" 
+      fill="black" 
       textAnchor={x > cx ? 'start' : 'end'} 
       dominantBaseline="central"
       fontSize="12"
