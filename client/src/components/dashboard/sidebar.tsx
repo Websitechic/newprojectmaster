@@ -358,27 +358,20 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Rate Us",
       href: "/dashboard/rate-us",
     },
-    // Only show Support Policy for Support & Maintenance clients
-    ...(user?.productService === "support_maintenance" ? [{
-      icon: <Shield size={20} />,
-      label: "Support Policy",
-      href: "/dashboard/support-policy",
-    }] : []),
     {
       icon: <MessageSquare size={20} />,
       label: "Reach Us",
       href: "/dashboard/reach-us",
     },
-    {
-      icon: <Phone size={20} />,
-      label: "Emergency During Off Days",
-      href: "/dashboard/emergency-support",
-    },
   ] : [];
 
   // Combine menu items based on user role
   const menuItems = user?.role === "client" ? [
-    ...baseMenuItems,             // Dashboard, Projects, Settings (no Direct Messages for clients)
+    {
+      icon: <LayoutDashboard size={20} />,
+      label: "Dashboard",
+      href: "/dashboard",
+    },
     ...clientMenuItems,           // Client specific items
   ] : [
     ...baseMenuItems.slice(0, 2), // Dashboard, Projects
