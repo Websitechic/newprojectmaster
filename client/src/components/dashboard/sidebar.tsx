@@ -340,9 +340,15 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     },
   ] : [];
 
-
-  // Client specific menu items
+  // Client specific menu items based on client type
   const clientMenuItems = user?.role === "client" ? [
+    // Projects tab only for Support & Maintenance clients
+    ...(user?.clientType === "support_maintenance_client" ? [{
+      icon: <FileText size={20} />,
+      label: "Projects",
+      href: "/dashboard/projects",
+      badge: totalUnreadProjectMessages,
+    }] : []),
     {
       icon: <PlayCircle size={20} />,
       label: "Guide Videos",
@@ -353,16 +359,29 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Register Your Dissatisfaction",
       href: "/dashboard/register-dissatisfaction",
     },
+    // Support Policy only for Support & Maintenance clients
+    ...(user?.clientType === "support_maintenance_client" ? [{
+      icon: <Shield size={20} />,
+      label: "Support Policy",
+      href: "/dashboard/support-policy",
+    }] : []),
     {
       icon: <Star size={20} />,
       label: "Rate Us",
       href: "/dashboard/rate-us",
     },
-    {
+    // Emergency During Off Days only for Support & Maintenance clients
+    ...(user?.clientType === "support_maintenance_client" ? [{
+      icon: <Phone size={20} />,
+      label: "Emergency During Off Days",
+      href: "/dashboard/emergency-support",
+    }] : []),
+    // Reach Us only for Project clients
+    ...(user?.clientType === "project_client" ? [{
       icon: <MessageSquare size={20} />,
       label: "Reach Us",
       href: "/dashboard/reach-us",
-    },
+    }] : []),
   ] : [];
 
   // Combine menu items based on user role
