@@ -129,6 +129,22 @@ const CenterLabel = ({ viewBox, completedTasks, totalTasks }: any) => {
 export default function ClientDashboard() {
   const { user } = useAuth();
 
+  // If this is a Support & Maintenance client, show the main dashboard with full task management
+  if (user?.clientType === "support_maintenance_client") {
+    const MainDashboard = React.lazy(() => import("./index"));
+    return (
+      <React.Suspense fallback={
+        <div className="flex h-screen">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+          </div>
+        </div>
+      }>
+        <MainDashboard />
+      </React.Suspense>
+    );
+  }
+
   const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });

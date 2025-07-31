@@ -46,13 +46,15 @@ export default function Dashboard() {
     };
   }, [updateStatus]);
 
-  // Filter tasks for staff user or all tasks for managers
+  // Filter tasks for staff user or all tasks for managers and support maintenance clients
   const staffTasks = user?.role === "staff" 
     ? tasks?.filter(task => task.assigneeId === user?.id) || []
     : tasks || [];
 
-  // Use appropriate task set based on user role
-  const userTasks = user?.role === "staff" ? staffTasks : tasks || [];
+  // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
+  const userTasks = user?.role === "staff" ? staffTasks : 
+                   user?.role === "client" && user?.clientType === "support_maintenance_client" ? tasks || [] :
+                   tasks || [];
 
   // Categorize tasks
   const activeTask = staffTasks.find(task => task.isTimerRunning);
@@ -120,9 +122,9 @@ export default function Dashboard() {
         <MeetingAlert />
         <div className="flex-1 overflow-auto p-6">
           <BookingAlert />
-          {user?.role === "staff" ? (
+          {user?.role === "staff" || (user?.role === "client" && user?.clientType === "support_maintenance_client") ? (
             <>
-              {/* Staff Dashboard */}
+              {/* Staff & Support Maintenance Client Dashboard */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
 
                 {/* Tasks in Progress */}

@@ -32,14 +32,6 @@ interface SidebarItemProps {
   href: string;
   active?: boolean;
   badge?: number;
-}
-
-interface SidebarItemProps {
-  icon: React.ReactNode;
-  label: string;
-  href: string;
-  active?: boolean;
-  badge?: number;
   external?: boolean;
 }
 
@@ -189,8 +181,9 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     }
   }, [currentPath]);
 
-  // Base menu items for all users (excluding clients)
-  const baseMenuItems = user?.role !== "client" ? [
+  // Base menu items for all users, support maintenance clients get the same as non-clients
+  const isClientWithSpecialAccess = user?.role === "client" && user?.clientType === "support_maintenance_client";
+  const baseMenuItems = (user?.role !== "client" || isClientWithSpecialAccess) ? [
     {
       icon: <LayoutDashboard size={20} />,
       label: "Dashboard",
@@ -242,28 +235,35 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     },
   ];
 
-  // Project manager specific menu items
-  const pmMenuItems = user?.role === "project_manager" ? [
+  // Project manager specific menu items - support maintenance clients get task and technical management access
+  const pmMenuItems = (user?.role === "project_manager" || isClientWithSpecialAccess) ? [
     {
-      icon: <Users size={20} />,
-      label: "Staff Report",
-      href: "/dashboard/staff-report",
+      icon: <CheckSquare size={20} />,
+      label: "Tasks",
+      href: "/dashboard/tasks",
     },
-    {
-      icon: <Building2 size={20} />,
-      label: "Client Accounts",
-      href: "/dashboard/client-accounts",
-    },
-    {
-      icon: <CalendarDays size={20} />,
-      label: "Bookings",
-      href: "/dashboard/bookings",
-    },
-    {
-      icon: <Calendar size={20} />,
-      label: "Leave Management",
-      href: "/dashboard/leave-management",
-    },
+    ...(user?.role === "project_manager" ? [
+      {
+        icon: <Users size={20} />,
+        label: "Staff Report",
+        href: "/dashboard/staff-report",
+      },
+      {
+        icon: <Building2 size={20} />,
+        label: "Client Accounts",
+        href: "/dashboard/client-accounts",
+      },
+      {
+        icon: <CalendarDays size={20} />,
+        label: "Bookings",
+        href: "/dashboard/bookings",
+      },
+      {
+        icon: <Calendar size={20} />,
+        label: "Leave Management",
+        href: "/dashboard/leave-management",
+      },
+    ] : []),
     {
       icon: <Wrench size={20} />,
       label: "Technical Management",

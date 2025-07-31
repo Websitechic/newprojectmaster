@@ -1531,6 +1531,21 @@ export function registerRoutes(app: Express): Server {
           .select()
           .from(tasks)
           .orderBy(desc(tasks.updatedAt));
+      } else if (req.user!.role === "client" && req.user!.clientType === "support_maintenance_client") {
+        // Support maintenance clients see tasks in their projects
+        const clientProjects = await db
+          .select({ projectId: projectMembers.projectId })
+          .from(projectMembers)
+          .where(eq(projectMembers.userId, req.user!.id));
+
+        if (clientProjects.length > 0) {
+          const projectIds = clientProjects.map(p => p.projectId);
+          userTasks = await db
+            .select()
+            .from(tasks)
+            .where(inArray(tasks.projectId, projectIds))
+            .orderBy(desc(tasks.updatedAt));
+        }
       }
 
       res.json(userTasks);
