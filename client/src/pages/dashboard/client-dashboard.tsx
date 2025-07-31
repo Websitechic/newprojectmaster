@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { Calendar, Clock, CheckCircle, AlertCircle, TrendingUp, Users, Target } from "lucide-react";
 import { format } from "date-fns";
 
@@ -48,19 +48,82 @@ interface ProjectProgress {
   progressPercentage: number;
 }
 
-const PROGRESS_COLORS = {
-  completed: '#22C55E',
-  inProgress: '#3B82F6',
-  pending: '#F59E0B',
-  overdue: '#EF4444',
-  remaining: '#E5E7EB'
+interface TaskPieData {
+  name: string;
+  value: number;
+  status: string;
+  color: string;
+  taskId: number;
+}
+
+const TASK_COLORS = {
+  completed: '#22C55E', // Green
+  incomplete: '#EAB308', // Yellow
 };
 
 const STATUS_COLORS = {
-  active: '#22C55E',
-  pending: '#F59E0B',
-  completed: '#10B981',
-  on_hold: '#6B7280'
+  completed: '#22C55E',
+  in_progress: '#EAB308',
+  todo: '#6B7280',
+  review: '#3B82F6',
+};
+
+// Custom tooltip component for pie chart
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white p-3 border rounded shadow-lg">
+        <p className="font-medium">{data.name}</p>
+        <p className="text-sm text-gray-600">Status: {data.status}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+// Custom label component to show task names on slices
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name }: any) => {
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  
+  // Only show label if there's enough space
+  if (name.length > 15) {
+    return null;
+  }
+
+  return (
+    <text 
+      x={x} 
+      y={y} 
+      fill="white" 
+      textAnchor={x > cx ? 'start' : 'end'} 
+      dominantBaseline="central"
+      fontSize="12"
+      fontWeight="bold"
+    >
+      {name.length > 10 ? `${name.substring(0, 10)}...` : name}
+    </text>
+  );
+};
+
+// Custom center label to show completion percentage
+const CenterLabel = ({ viewBox, completedTasks, totalTasks }: any) => {
+  const { cx, cy } = viewBox;
+  const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  
+  return (
+    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+      <tspan x={cx} y={cy - 10} fontSize="24" fontWeight="bold" fill="#374151">
+        {percentage}%
+      </tspan>
+      <tspan x={cx} y={cy + 15} fontSize="14" fill="#6B7280">
+        Complete
+      </tspan>
+    </text>
+  );
 };
 
 export default function ClientDashboard() {
@@ -106,48 +169,68 @@ export default function ClientDashboard() {
         totalTimeSpent,
         estimatedTotalTime,
         progressPercentage,
-        project
+        project,
+        tasks: projectTasks
       };
     });
   }, [projects, allTasks]);
 
-  // Prepare pie chart data for the main project (first project)
-  const mainProject = projectsProgress[0];
-  const pieChartData = mainProject ? [
-    { name: 'Completed', value: mainProject.completedTasks, color: PROGRESS_COLORS.completed },
-    { name: 'In Progress', value: mainProject.inProgressTasks, color: PROGRESS_COLORS.inProgress },
-    { name: 'Pending', value: mainProject.pendingTasks, color: PROGRESS_COLORS.pending },
-    { name: 'Overdue', value: mainProject.overdueTasks, color: PROGRESS_COLORS.overdue }
-  ].filter(item => item.value > 0) : [];
+  // Prepare pie chart data for each project
+  const projectPieData = React.useMemo(() => {
+    return projectsProgress.map(project => {
+      const pieData: TaskPieData[] = project.tasks.map(task => ({
+        name: task.title,
+        value: 1, // Each task is 1 slice
+        status: task.status,
+        color: task.status === 'completed' ? TASK_COLORS.completed : TASK_COLORS.incomplete,
+        taskId: task.id
+      }));
 
-  // Time progress data
-  const timeProgressData = mainProject ? [
-    { 
-      name: 'Time Spent', 
-      value: Math.round(mainProject.totalTimeSpent / 3600), 
-      color: PROGRESS_COLORS.completed 
-    },
-    { 
-      name: 'Remaining', 
-      value: Math.max(0, Math.round((mainProject.estimatedTotalTime - mainProject.totalTimeSpent) / 3600)), 
-      color: PROGRESS_COLORS.remaining 
-    }
-  ] : [];
-
-  // All projects overview for bar chart
-  const projectsOverviewData = projectsProgress.map(project => ({
-    name: project.projectName.length > 15 ? project.projectName.substring(0, 15) + '...' : project.projectName,
-    completed: project.completedTasks,
-    inProgress: project.inProgressTasks,
-    pending: project.pendingTasks,
-    overdue: project.overdueTasks,
-    progressPercentage: project.progressPercentage
-  }));
+      return {
+        projectId: project.projectId,
+        projectName: project.projectName,
+        pieData,
+        completedTasks: project.completedTasks,
+        totalTasks: project.totalTasks,
+        tasks: project.tasks
+      };
+    });
+  }, [projectsProgress]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'in_progress':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'todo':
+        return 'bg-gray-100 text-gray-800';
+      case 'review':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Completed';
+      case 'in_progress':
+        return 'In Progress';
+      case 'todo':
+        return 'Pending';
+      case 'review':
+        return 'In Review';
+      default:
+        return status;
+    }
   };
 
   if (projectsLoading || tasksLoading) {
@@ -190,30 +273,30 @@ export default function ClientDashboard() {
       <Sidebar currentPath="/dashboard" />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 md:p-6">
           <div className="mb-6">
             <h1 className="text-2xl font-bold">Project Dashboard</h1>
             <p className="text-muted-foreground">
-              Track the progress of your projects and stay updated on development milestones.
+              Track the progress of your projects and view task completion status.
             </p>
           </div>
 
           {/* Overview Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Projects</p>
                     <p className="text-2xl font-bold">{projects.length}</p>
                   </div>
-                  <Target className="h-8 w-8 text-blue-500" />
+                  <Target className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Active Projects</p>
@@ -221,13 +304,13 @@ export default function ClientDashboard() {
                       {projects.filter(p => p.status === 'active').length}
                     </p>
                   </div>
-                  <TrendingUp className="h-8 w-8 text-green-500" />
+                  <TrendingUp className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Tasks</p>
@@ -235,13 +318,13 @@ export default function ClientDashboard() {
                       {projectsProgress.reduce((sum, p) => sum + p.totalTasks, 0)}
                     </p>
                   </div>
-                  <CheckCircle className="h-8 w-8 text-purple-500" />
+                  <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-purple-500" />
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Completion Rate</p>
@@ -251,49 +334,98 @@ export default function ClientDashboard() {
                         : 0}%
                     </p>
                   </div>
-                  <Target className="h-8 w-8 text-orange-500" />
+                  <Target className="h-6 w-6 md:h-8 md:w-8 text-orange-500" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Main Project Progress */}
-          {mainProject && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Task Distribution Pie Chart */}
-              <Card>
+          {/* Project Progress Charts */}
+          <div className="space-y-6 md:space-y-8">
+            {projectPieData.map((projectData) => (
+              <Card key={projectData.projectId} className="w-full">
                 <CardHeader>
-                  <CardTitle>{mainProject.projectName} - Task Progress</CardTitle>
+                  <CardTitle className="text-lg md:text-xl">{projectData.projectName}</CardTitle>
                   <CardDescription>
-                    Current status of all tasks in your main project
+                    Task progress visualization - {projectData.completedTasks} of {projectData.totalTasks} tasks completed
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {pieChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={pieChartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, value, percent }) => 
-                            `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
-                          }
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {pieChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+                  {projectData.totalTasks > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                      {/* Pie Chart */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-full max-w-md">
+                          <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                              <Pie
+                                data={projectData.pieData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={renderCustomizedLabel}
+                                outerRadius={100}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {projectData.pieData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip content={<CustomTooltip />} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        
+                        {/* Center percentage overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="text-center">
+                            <div className="text-2xl md:text-3xl font-bold text-gray-700">
+                              {Math.round((projectData.completedTasks / projectData.totalTasks) * 100)}%
+                            </div>
+                            <div className="text-sm text-gray-500">Complete</div>
+                          </div>
+                        </div>
+
+                        {/* Legend */}
+                        <div className="flex items-center justify-center gap-4 mt-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span className="text-sm">Completed</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <span className="text-sm">Incomplete</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Task List */}
+                      <div className="space-y-3">
+                        <h4 className="text-lg font-semibold">Task Details</h4>
+                        <div className="space-y-2 max-h-80 overflow-y-auto">
+                          {projectData.tasks.map((task) => (
+                            <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {task.title}
+                                </p>
+                                {task.deadline && (
+                                  <p className="text-xs text-gray-500">
+                                    Due: {format(new Date(task.deadline), "MMM d, yyyy")}
+                                  </p>
+                                )}
+                              </div>
+                              <Badge className={`ml-2 ${getStatusBadgeColor(task.status)}`}>
+                                {getStatusLabel(task.status)}
+                              </Badge>
+                            </div>
                           ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
-                    <div className="flex items-center justify-center h-[300px] text-gray-500">
+                    <div className="flex items-center justify-center h-64 text-gray-500">
                       <div className="text-center">
                         <AlertCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                         <p>No tasks available for this project</p>
@@ -302,161 +434,8 @@ export default function ClientDashboard() {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Time Progress */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Time Progress</CardTitle>
-                  <CardDescription>
-                    Time spent vs estimated time for {mainProject.projectName}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {timeProgressData.length > 0 && mainProject.estimatedTotalTime > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={timeProgressData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, value }) => `${name}: ${value}h`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {timeProgressData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => [`${value} hours`, 'Time']} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-[300px] text-gray-500">
-                      <div className="text-center">
-                        <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                        <p>No time estimates available</p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* All Projects Overview */}
-          {projectsProgress.length > 1 && (
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>All Projects Overview</CardTitle>
-                <CardDescription>
-                  Task distribution across all your projects
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={projectsOverviewData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="completed" stackId="a" fill={PROGRESS_COLORS.completed} name="Completed" />
-                    <Bar dataKey="inProgress" stackId="a" fill={PROGRESS_COLORS.inProgress} name="In Progress" />
-                    <Bar dataKey="pending" stackId="a" fill={PROGRESS_COLORS.pending} name="Pending" />
-                    <Bar dataKey="overdue" stackId="a" fill={PROGRESS_COLORS.overdue} name="Overdue" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Project Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Details</CardTitle>
-              <CardDescription>
-                Detailed information about your projects
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {projectsProgress.map((project) => (
-                  <div key={project.projectId} className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="font-semibold text-lg">{project.projectName}</h3>
-                        <p className="text-sm text-gray-600 capitalize">
-                          {project.project.category?.replace(/_/g, ' ')} • {project.project.type?.replace(/_/g, ' ')}
-                        </p>
-                      </div>
-                      <Badge 
-                        className={`${project.project.status === 'active' ? 'bg-green-100 text-green-800' : 
-                          project.project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                          'bg-gray-100 text-gray-800'}`}
-                      >
-                        {project.project.status}
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Overall Progress</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Progress value={project.progressPercentage} className="flex-1" />
-                          <span className="text-sm font-medium">{project.progressPercentage}%</span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Tasks Completed</p>
-                        <p className="text-lg font-semibold">{project.completedTasks} / {project.totalTasks}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Time Spent</p>
-                        <p className="text-lg font-semibold">{formatTime(project.totalTimeSpent)}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                        <span>Completed: {project.completedTasks}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                        <span>In Progress: {project.inProgressTasks}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                        <span>Pending: {project.pendingTasks}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                        <span>Overdue: {project.overdueTasks}</span>
-                      </div>
-                    </div>
-
-                    {project.project.startDate && project.project.endDate && (
-                      <div className="mt-4 pt-4 border-t">
-                        <div className="flex items-center justify-between text-sm text-gray-600">
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4" />
-                            <span>Start: {format(new Date(project.project.startDate), "MMM d, yyyy")}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4" />
-                            <span>End: {format(new Date(project.project.endDate), "MMM d, yyyy")}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
         </div>
       </div>
     </div>
