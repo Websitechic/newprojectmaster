@@ -4008,6 +4008,19 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ error: "Access denied to this project" });
       }
 
+      // Get project members for mention processing
+      const projectMembersData = await db
+        .select({
+          userId: projectMembers.userId,
+          userName: users.name,
+        })
+        .from(projectMembers)
+        .innerJoin(users, eq(projectMembers.userId, users.id))
+        .where(and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.invitationStatus, "accepted")
+        ));
+
       const [message] = await db
         .insert(projectMessages)
         .values({
@@ -4016,6 +4029,57 @@ export function registerRoutes(app: Express): Server {
           content: content.trim(),
         })
         .returning();
+
+      // Parse mentions from message content
+      const mentionRegex = /@([a-zA-Z0-9_\s]+)/g;
+      const mentions = [];
+      let match;
+
+      while ((match = mentionRegex.exec(content)) !== null) {
+        const mentionedName = match[1].trim();
+        // Find the mentioned user in project members
+        const mentionedMember = projectMembersData.find(member => 
+          member.userName && member.userName.toLowerCase() === mentionedName.toLowerCase()
+        );
+        
+        if (mentionedMember && mentionedMember.userId !== userId) {
+          mentions.push(mentionedMember.userId);
+        }
+      }
+
+      // Create notifications for mentioned users
+      for (const mentionedUserId of mentions) {
+        try {
+          const [notification] = await db
+            .insert(notifications)
+            .values({
+              userId: mentionedUserId,
+              type: "mention",
+              content: `${req.user!.name} mentioned you in team chat: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
+              referenceId: projectId,
+              referenceType: "project",
+              createdAt: new Date(),
+            })
+            .returning();
+
+          // Send real-time notification via SSE if user is connected
+          const clientResponse = global.sseClients?.get(mentionedUserId);
+          if (clientResponse && !clientResponse.writableEnded) {
+            try {
+              clientResponse.write(`data: ${JSON.stringify({
+                type: "notification",
+                data: notification
+              })}\n\n`);
+              console.log(`Team chat mention notification sent to user ${mentionedUserId} via SSE`);
+            } catch (error) {
+              console.error(`Error sending SSE notification to user ${mentionedUserId}:`, error);
+              global.sseClients?.delete(mentionedUserId);
+            }
+          }
+        } catch (error) {
+          console.error(`Error creating notification for mentioned user ${mentionedUserId}:`, error);
+        }
+      }
 
       // Get the message with sender info
       const messageWithSender = await db
