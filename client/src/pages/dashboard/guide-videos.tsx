@@ -21,7 +21,8 @@ export default function GuideVideos() {
                   Guide Videos
                 </h1>
                 <p className="text-muted-foreground">
-                  Learn how to effectively use our platform with these comprehensive video tutorials
+                  Learn how to effectively use our platform with these
+                  comprehensive video tutorials
                 </p>
               </div>
             </div>
@@ -65,7 +66,7 @@ export default function GuideVideos() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Task Assignment & Tracking</CardTitle>
+                  <CardTitle>Track Assignment & Tracking</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video w-full">
@@ -141,9 +142,12 @@ export default function GuideVideos() {
                 <div className="flex items-start gap-3">
                   <PlayCircle className="h-6 w-6 text-blue-600 mt-1" />
                   <div>
-                    <h3 className="font-semibold text-blue-900 mb-2">Need Help?</h3>
+                    <h3 className="font-semibold text-blue-900 mb-2">
+                      Need Help?
+                    </h3>
                     <p className="text-blue-800 mb-4">
-                      Can't find what you're looking for? Contact our support team for personalized assistance.
+                      Can't find what you're looking for? Contact our support
+                      team for personalized assistance.
                     </p>
                     <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                       Contact Support

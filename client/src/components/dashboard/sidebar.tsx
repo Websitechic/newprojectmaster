@@ -209,6 +209,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       badge: unreadDirectMessages,
     },
     {
+      icon: <PlayCircle size={20} />,
+      label: "Guide Videos",
+      href: "/dashboard/guide-videos",
+    },
+    {
       icon: <Settings size={20} />,
       label: "Settings",
       href: "/dashboard/settings",
@@ -224,6 +229,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Projects",
       href: "/dashboard/projects",
       badge: totalUnreadProjectMessages,
+    },
+    {
+      icon: <PlayCircle size={20} />,
+      label: "Guide Videos",
+      href: "/dashboard/guide-videos",
     },
     {
       icon: <Settings size={20} />,
