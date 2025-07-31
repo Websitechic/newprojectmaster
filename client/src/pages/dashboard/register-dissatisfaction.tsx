@@ -32,8 +32,16 @@ export default function RegisterDissatisfaction() {
         method: "POST",
         body: data,
       });
+      
       if (!response.ok) {
-        throw new Error("Failed to submit complaint");
+        let errorMessage = "Failed to submit complaint";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
       return response.json();
     },

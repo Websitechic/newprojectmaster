@@ -21,28 +21,120 @@ export default function GuideVideos() {
                   Guide Videos
                 </h1>
                 <p className="text-muted-foreground">
-                  Learn how to effectively use our platform with this helpful video tutorial
+                  Learn how to effectively use our platform with these comprehensive video tutorials
                 </p>
               </div>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Guide video on how to navigate the worktool</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="aspect-video w-full">
-                  <iframe
-                    src="https://www.youtube.com/embed/I0OuqhLFzXw"
-                    title="Guide video on how to navigate the worktool"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                    className="w-full h-full rounded-lg"
-                  ></iframe>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Platform Navigation Basics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/I0OuqhLFzXw"
+                      title="Platform Navigation Basics"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Project Management Features</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                      title="Project Management Features"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Task Assignment & Tracking</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                      title="Task Assignment & Tracking"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Team Communication Tools</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                      title="Team Communication Tools"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Time Tracking & Productivity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                      title="Time Tracking & Productivity"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reporting & Analytics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                      title="Reporting & Analytics"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-6">

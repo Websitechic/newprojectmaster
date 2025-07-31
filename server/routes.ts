@@ -5144,8 +5144,14 @@ export function registerRoutes(app: Express): Server {
 
   // Complaints API endpoint
   app.post("/api/complaints", complaintUpload.single('screenshot'), async (req, res) => {
+    console.log("POST /api/complaints - Session:", req.session?.id);
+    console.log("POST /api/complaints - User:", req.user);
+    console.log("POST /api/complaints - Request body:", req.body);
+    console.log("POST /api/complaints - File:", req.file);
+
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      console.log("Complaints endpoint - Authentication failed");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     try {
