@@ -355,7 +355,7 @@ export default function ClientDashboard() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                       {/* Pie Chart */}
                       <div className="flex flex-col items-center">
-                        <div className="w-full max-w-md">
+                        <div className="w-full max-w-md relative">
                           <ResponsiveContainer width="100%" height={300}>
                             <PieChart>
                               <Pie
@@ -365,6 +365,7 @@ export default function ClientDashboard() {
                                 labelLine={false}
                                 label={renderCustomizedLabel}
                                 outerRadius={100}
+                                innerRadius={60}
                                 fill="#8884d8"
                                 dataKey="value"
                               >
@@ -375,15 +376,15 @@ export default function ClientDashboard() {
                               <Tooltip content={<CustomTooltip />} />
                             </PieChart>
                           </ResponsiveContainer>
-                        </div>
-                        
-                        {/* Center percentage overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <div className="text-center">
-                            <div className="text-2xl md:text-3xl font-bold text-gray-700">
-                              {Math.round((projectData.completedTasks / projectData.totalTasks) * 100)}%
+                          
+                          {/* Center percentage overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="text-center">
+                              <div className="text-2xl md:text-3xl font-bold text-gray-700">
+                                {Math.round((projectData.completedTasks / projectData.totalTasks) * 100)}%
+                              </div>
+                              <div className="text-sm text-gray-500">Complete</div>
                             </div>
-                            <div className="text-sm text-gray-500">Complete</div>
                           </div>
                         </div>
 

@@ -1488,7 +1488,22 @@ export function registerRoutes(app: Express): Server {
 
     try {
       let userTasks = [];
-      if (req.user!.role === "staff") {
+      if (req.user!.role === "client") {
+        // Clients see tasks in their projects
+        const clientProjects = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.clientId, req.user!.id));
+
+        const projectIds = clientProjects.map(p => p.id);
+        if (projectIds.length > 0) {
+          userTasks = await db
+            .select()
+            .from(tasks)
+            .where(inArray(tasks.projectId, projectIds))
+            .orderBy(desc(tasks.updatedAt));
+        }
+      } else if (req.user!.role === "staff") {
         // Staff see tasks assigned to them
         userTasks = await db
           .select()
