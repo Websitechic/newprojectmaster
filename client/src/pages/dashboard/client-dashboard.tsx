@@ -267,45 +267,7 @@ function SupportMaintenanceClientDashboard() {
             </CardContent>
           </Card>
 
-          {/* Projects Overview */}
-          <div className="mt-8">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" />
-                  Your Projects
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {projects.map(project => {
-                    const projectTasks = clientTasks.filter(task => task.projectId === project.id);
-                    const completedTasks = projectTasks.filter(task => task.status === 'completed');
-                    const progressPercentage = projectTasks.length > 0
-                      ? Math.round((completedTasks.length / projectTasks.length) * 100)
-                      : 0;
-
-                    return (
-                      <Card key={project.id} className="p-4">
-                        <h4 className="font-medium mb-2">{project.name}</h4>
-                        <div className="space-y-2 text-sm text-gray-600">
-                          <div className="flex justify-between">
-                            <span>Progress</span>
-                            <span>{progressPercentage}%</span>
-                          </div>
-                          <Progress value={progressPercentage} className="h-2" />
-                          <div className="flex justify-between">
-                            <span>Tasks</span>
-                            <span>{completedTasks.length}/{projectTasks.length}</span>
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          
         </div>
       </div>
     </div>

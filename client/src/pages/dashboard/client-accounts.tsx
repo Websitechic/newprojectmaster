@@ -317,7 +317,7 @@ export default function ClientAccounts() {
         </Dialog>
       </div>
 
-      {/* Client List */}
+      {/* Client List - Table Format */}
       <Card>
         <CardHeader>
           <CardTitle>Client Directory ({clients.length} clients)</CardTitle>
@@ -326,66 +326,53 @@ export default function ClientAccounts() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="divide-y">
-            {clients.map((client) => (
-              <div key={client.id} className="p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  {/* Left side - Client Info */}
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                      <h3 className="font-semibold text-lg">{client.name}</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left p-4 font-medium">Name</th>
+                  <th className="text-left p-4 font-medium">Email</th>
+                  <th className="text-left p-4 font-medium">Username</th>
+                  <th className="text-left p-4 font-medium">Product/Service</th>
+                  <th className="text-left p-4 font-medium">Client Type</th>
+                  <th className="text-left p-4 font-medium">Status</th>
+                  <th className="text-left p-4 font-medium">Email Verified</th>
+                  <th className="text-left p-4 font-medium">Created</th>
+                  <th className="text-left p-4 font-medium">Last Active</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clients.map((client, index) => (
+                  <tr key={client.id} className={`border-b hover:bg-gray-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-muted/20"}`}>
+                    <td className="p-4 font-medium">{client.name}</td>
+                    <td className="p-4 text-gray-600">{client.email}</td>
+                    <td className="p-4 text-gray-600">{client.username}</td>
+                    <td className="p-4 text-gray-600">{getProductServiceLabel(client.productService)}</td>
+                    <td className="p-4 text-gray-600">{getClientTypeLabel(client.clientType)}</td>
+                    <td className="p-4">
                       <Badge 
                         variant={getStatusBadgeVariant(client.onboardingStatus)}
                         className="text-xs"
                       >
                         {client.onboardingStatus.replace(/_/g, " ")}
                       </Badge>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Mail className="w-3 h-3 flex-shrink-0" />
-                      <span>{client.email}</span>
-                    </div>
-                    
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Building2 className="w-3 h-3" />
-                        <span>{getProductServiceLabel(client.productService)}</span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${client.emailVerified ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                        <span className="text-xs text-gray-600">
+                          {client.emailVerified ? 'Verified' : 'Pending'}
+                        </span>
                       </div>
-                      
-                      <div className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        <span>{getClientTypeLabel(client.clientType)}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        <span>Created {format(new Date(client.createdAt), "MMM dd, yyyy")}</span>
-                      </div>
-                      
-                      {client.lastActive && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>Last active {format(new Date(client.lastActive), "MMM dd, yyyy")}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Right side - Status */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${client.emailVerified ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                      <span className="text-xs text-gray-600">
-                        {client.emailVerified ? 'Email Verified' : 'Email Pending'}
-                      </span>
-                      {client.emailVerified && <CheckCircle className="w-4 h-4 text-green-500" />}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    </td>
+                    <td className="p-4 text-gray-600">{format(new Date(client.createdAt), "MMM dd, yyyy")}</td>
+                    <td className="p-4 text-gray-600">
+                      {client.lastActive ? format(new Date(client.lastActive), "MMM dd, yyyy") : "Never"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
