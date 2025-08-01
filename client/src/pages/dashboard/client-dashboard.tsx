@@ -8,8 +8,357 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
-import { Calendar, Clock, CheckCircle, AlertCircle, TrendingUp, Users, Target } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, TrendingUp, Users, Target, AlertTriangle } from "lucide-react";
+import { useLocation } from "wouter";
 import { format } from "date-fns";
+
+// Support & Maintenance Client Dashboard Component
+function SupportMaintenanceClientDashboard() {
+  const { user } = useAuth();
+  const [location] = useLocation();
+
+  const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
+  const { data: allTasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
+    queryKey: ["/api/tasks"],
+  });
+
+  const { data: staff = [] } = useQuery({
+    queryKey: ["/api/staff"],
+  });
+
+  // Get tasks for client's projects
+  const clientTasks = React.useMemo(() => {
+    if (!projects.length || !allTasks.length) return [];
+    
+    const clientProjectIds = projects.map(p => p.id);
+    return allTasks.filter(task => clientProjectIds.includes(task.projectId));
+  }, [projects, allTasks]);
+
+  // Categorize tasks by status
+  const tasksByStatus = React.useMemo(() => {
+    return {
+      todo: clientTasks.filter(task => task.status === 'todo'),
+      in_progress: clientTasks.filter(task => task.status === 'in_progress'),
+      review: clientTasks.filter(task => task.status === 'review'),
+      completed: clientTasks.filter(task => task.status === 'completed'),
+      technical_support: clientTasks.filter(task => task.status === 'technical_support')
+    };
+  }, [clientTasks]);
+
+  const getAssignedStaffName = (assigneeId: number | null) => {
+    if (!assigneeId) return "Unassigned";
+    const staffMember = staff.find((s: any) => s.id === assigneeId);
+    return staffMember?.name || "Unknown";
+  };
+
+  const getProjectName = (projectId: number) => {
+    const project = projects.find(p => p.id === projectId);
+    return project?.name || "Unknown Project";
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'review':
+        return 'bg-purple-100 text-purple-800';
+      case 'todo':
+        return 'bg-gray-100 text-gray-800';
+      case 'technical_support':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "No deadline";
+    return format(new Date(dateString), "MMM d, yyyy");
+  };
+
+  const TaskCard = ({ task }: { task: Task }) => (
+    <Card className="mb-4">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-2">
+          <h4 className="font-medium text-sm">{task.title}</h4>
+          <Badge className={`text-xs ${getStatusBadgeColor(task.status)}`}>
+            {task.status.replace('_', ' ').toUpperCase()}
+          </Badge>
+        </div>
+        <div className="space-y-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            <span>Assigned to: {getAssignedStaffName(task.assigneeId)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            <span>Project: {getProjectName(task.projectId)}</span>
+          </div>
+          {task.deadline && (
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              <span>Due: {formatDate(task.deadline)}</span>
+            </div>
+          )}
+          {task.description && (
+            <p className="text-xs text-gray-500 mt-2 line-clamp-2">{task.description}</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  if (projectsLoading || tasksLoading) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar currentPath="/dashboard" />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen">
+      <Sidebar currentPath="/dashboard" />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <div className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">Support & Maintenance Dashboard</h1>
+            <p className="text-muted-foreground">
+              View-only access to your support and maintenance tasks.
+            </p>
+          </div>
+
+          {/* Overview Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6 mb-6 md:mb-8">
+            <Card>
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Tasks</p>
+                    <p className="text-2xl font-bold">{clientTasks.length}</p>
+                  </div>
+                  <Target className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">To Do</p>
+                    <p className="text-2xl font-bold">{tasksByStatus.todo.length}</p>
+                  </div>
+                  <Clock className="h-6 w-6 md:h-8 md:w-8 text-gray-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">In Progress</p>
+                    <p className="text-2xl font-bold">{tasksByStatus.in_progress.length}</p>
+                  </div>
+                  <TrendingUp className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">In Review</p>
+                    <p className="text-2xl font-bold">{tasksByStatus.review.length}</p>
+                  </div>
+                  <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Completed</p>
+                    <p className="text-2xl font-bold">{tasksByStatus.completed.length}</p>
+                  </div>
+                  <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Task Categories */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* To Do Tasks */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-gray-500" />
+                  To Do ({tasksByStatus.todo.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="max-h-96 overflow-y-auto">
+                {tasksByStatus.todo.length > 0 ? (
+                  tasksByStatus.todo.map(task => (
+                    <TaskCard key={task.id} task={task} />
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-4">
+                    <p className="text-sm">No pending tasks</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* In Progress Tasks */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-500" />
+                  In Progress ({tasksByStatus.in_progress.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="max-h-96 overflow-y-auto">
+                {tasksByStatus.in_progress.length > 0 ? (
+                  tasksByStatus.in_progress.map(task => (
+                    <TaskCard key={task.id} task={task} />
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-4">
+                    <p className="text-sm">No tasks in progress</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* In Review Tasks */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-purple-500" />
+                  In Review ({tasksByStatus.review.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="max-h-96 overflow-y-auto">
+                {tasksByStatus.review.length > 0 ? (
+                  tasksByStatus.review.map(task => (
+                    <TaskCard key={task.id} task={task} />
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-4">
+                    <p className="text-sm">No tasks in review</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Technical Support Tasks */}
+            {tasksByStatus.technical_support.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-orange-500" />
+                    Technical Support ({tasksByStatus.technical_support.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="max-h-96 overflow-y-auto">
+                  {tasksByStatus.technical_support.map(task => (
+                    <TaskCard key={task.id} task={task} />
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Completed Tasks */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  Completed ({tasksByStatus.completed.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="max-h-96 overflow-y-auto">
+                {tasksByStatus.completed.length > 0 ? (
+                  tasksByStatus.completed.slice(0, 10).map(task => (
+                    <TaskCard key={task.id} task={task} />
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-4">
+                    <p className="text-sm">No completed tasks</p>
+                  </div>
+                )}
+                {tasksByStatus.completed.length > 10 && (
+                  <div className="text-center text-gray-500 py-2">
+                    <p className="text-xs">Showing latest 10 completed tasks</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Projects Overview */}
+          <div className="mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Your Projects
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {projects.map(project => {
+                    const projectTasks = clientTasks.filter(task => task.projectId === project.id);
+                    const completedTasks = projectTasks.filter(task => task.status === 'completed');
+                    const progressPercentage = projectTasks.length > 0 
+                      ? Math.round((completedTasks.length / projectTasks.length) * 100)
+                      : 0;
+
+                    return (
+                      <Card key={project.id} className="p-4">
+                        <h4 className="font-medium mb-2">{project.name}</h4>
+                        <div className="space-y-2 text-sm text-gray-600">
+                          <div className="flex justify-between">
+                            <span>Progress</span>
+                            <span>{progressPercentage}%</span>
+                          </div>
+                          <Progress value={progressPercentage} className="h-2" />
+                          <div className="flex justify-between">
+                            <span>Tasks</span>
+                            <span>{completedTasks.length}/{projectTasks.length}</span>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface Project {
   id: number;
@@ -129,20 +478,9 @@ const CenterLabel = ({ viewBox, completedTasks, totalTasks }: any) => {
 export default function ClientDashboard() {
   const { user } = useAuth();
 
-  // If this is a Support & Maintenance client, show the main dashboard with full task management
+  // If this is a Support & Maintenance client, show a view-only task management dashboard
   if (user?.clientType === "support_maintenance_client") {
-    const MainDashboard = React.lazy(() => import("./index"));
-    return (
-      <React.Suspense fallback={
-        <div className="flex h-screen">
-          <div className="flex-1 flex items-center justify-center">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-          </div>
-        </div>
-      }>
-        <MainDashboard />
-      </React.Suspense>
-    );
+    return <SupportMaintenanceClientDashboard />;
   }
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
