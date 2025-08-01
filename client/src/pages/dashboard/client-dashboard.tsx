@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
-import { Calendar, Clock, CheckCircle, AlertCircle, TrendingUp, Users, Target, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, Users, BarChart3, TrendingUp, Target, ListTodo, Info as InfoIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 
@@ -32,7 +31,7 @@ function SupportMaintenanceClientDashboard() {
   // Get tasks for client's projects
   const clientTasks = React.useMemo(() => {
     if (!projects.length || !allTasks.length) return [];
-    
+
     const clientProjectIds = projects.map(p => p.id);
     return allTasks.filter(task => clientProjectIds.includes(task.projectId));
   }, [projects, allTasks]);
@@ -222,33 +221,51 @@ function SupportMaintenanceClientDashboard() {
             </Card>
           </div>
 
-          {/* Task Categories */}
-          <div className="space-y-6">
-            {/* To Do Tasks */}
-            <TaskTable tasks={tasksByStatus.todo} title="📋 To Do Tasks" />
-
-            {/* In Progress Tasks */}
-            <TaskTable tasks={tasksByStatus.in_progress} title="🔄 In Progress Tasks" />
-
-            {/* In Review Tasks */}
-            <TaskTable tasks={tasksByStatus.review} title="👀 In Review Tasks" />
-
-            {/* Technical Support Tasks */}
-            {tasksByStatus.technical_support.length > 0 && (
-              <TaskTable tasks={tasksByStatus.technical_support} title="🛠️ Technical Support Tasks" />
-            )}
-
-            {/* Completed Tasks */}
-            <TaskTable 
-              tasks={tasksByStatus.completed.slice(0, 10)} 
-              title="✅ Completed Tasks" 
-            />
-            {tasksByStatus.completed.length > 10 && (
-              <div className="text-center text-gray-500 py-2">
-                <p className="text-sm">Showing latest 10 completed tasks</p>
-              </div>
-            )}
-          </div>
+          {/* All Tasks Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ListTodo className="h-5 w-5" />
+                All Tasks
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {clientTasks && clientTasks.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-4 font-medium">Task Name</th>
+                        <th className="text-left p-4 font-medium">Description</th>
+                        <th className="text-left p-4 font-medium">Status</th>
+                        <th className="text-left p-4 font-medium">Assigned User</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clientTasks.map((task: any) => (
+                        <tr key={task.id} className="border-b hover:bg-gray-50">
+                          <td className="p-4 font-medium">{task.title}</td>
+                          <td className="p-4 text-gray-600">{task.description || 'No description'}</td>
+                          <td className="p-4">
+                            <Badge
+                              className={getStatusBadgeColor(task.status)}
+                            >
+                              {task.status.replace('_', ' ').toUpperCase()}
+                            </Badge>
+                          </td>
+                          <td className="p-4">{getAssignedStaffName(task.assigneeId)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  <p className="text-sm">No tasks available</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Projects Overview */}
           <div className="mt-8">
@@ -264,7 +281,7 @@ function SupportMaintenanceClientDashboard() {
                   {projects.map(project => {
                     const projectTasks = clientTasks.filter(task => task.projectId === project.id);
                     const completedTasks = projectTasks.filter(task => task.status === 'completed');
-                    const progressPercentage = projectTasks.length > 0 
+                    const progressPercentage = projectTasks.length > 0
                       ? Math.round((completedTasks.length / projectTasks.length) * 100)
                       : 0;
 
@@ -372,7 +389,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, nam
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  
+
   // Only show label if there's enough space
   if (name.length > 15) {
     return null;
@@ -397,7 +414,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, nam
 const CenterLabel = ({ viewBox, completedTasks, totalTasks }: any) => {
   const { cx, cy } = viewBox;
   const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  
+
   return (
     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
       <tspan x={cx} y={cy - 10} fontSize="24" fontWeight="bold" fill="#374151">
@@ -665,7 +682,7 @@ export default function ClientDashboard() {
                               <Tooltip content={<CustomTooltip />} />
                             </PieChart>
                           </ResponsiveContainer>
-                          
+
                           {/* Center percentage overlay */}
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="text-center">
