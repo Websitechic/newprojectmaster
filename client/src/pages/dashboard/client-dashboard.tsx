@@ -81,34 +81,50 @@ function SupportMaintenanceClientDashboard() {
     return format(new Date(dateString), "MMM d, yyyy");
   };
 
-  const TaskCard = ({ task }: { task: Task }) => (
-    <Card className="mb-4">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-2">
-          <h4 className="font-medium text-sm">{task.title}</h4>
-          <Badge className={`text-xs ${getStatusBadgeColor(task.status)}`}>
-            {task.status.replace('_', ' ').toUpperCase()}
-          </Badge>
-        </div>
-        <div className="space-y-2 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            <span>Assigned to: {getAssignedStaffName(task.assigneeId)}</span>
+  const TaskTable = ({ tasks, title }: { tasks: Task[]; title: string }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {title} ({tasks.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {tasks.length > 0 ? (
+          <div className="rounded-md border">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left p-4 font-medium">Task Name</th>
+                  <th className="text-left p-4 font-medium">Description</th>
+                  <th className="text-left p-4 font-medium">Status</th>
+                  <th className="text-left p-4 font-medium">Assigned User</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((task, index) => (
+                  <tr key={task.id} className={index % 2 === 0 ? "bg-white" : "bg-muted/20"}>
+                    <td className="p-4 font-medium">{task.title}</td>
+                    <td className="p-4 max-w-xs">
+                      <div className="truncate" title={task.description || ""}>
+                        {task.description || "No description"}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <Badge className={getStatusBadgeColor(task.status)}>
+                        {task.status.replace('_', ' ').toUpperCase()}
+                      </Badge>
+                    </td>
+                    <td className="p-4">{getAssignedStaffName(task.assigneeId)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4" />
-            <span>Project: {getProjectName(task.projectId)}</span>
+        ) : (
+          <div className="text-center text-gray-500 py-8">
+            <p className="text-sm">No tasks in this category</p>
           </div>
-          {task.deadline && (
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span>Due: {formatDate(task.deadline)}</span>
-            </div>
-          )}
-          {task.description && (
-            <p className="text-xs text-gray-500 mt-2 line-clamp-2">{task.description}</p>
-          )}
-        </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -207,112 +223,31 @@ function SupportMaintenanceClientDashboard() {
           </div>
 
           {/* Task Categories */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="space-y-6">
             {/* To Do Tasks */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-gray-500" />
-                  To Do ({tasksByStatus.todo.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="max-h-96 overflow-y-auto">
-                {tasksByStatus.todo.length > 0 ? (
-                  tasksByStatus.todo.map(task => (
-                    <TaskCard key={task.id} task={task} />
-                  ))
-                ) : (
-                  <div className="text-center text-gray-500 py-4">
-                    <p className="text-sm">No pending tasks</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <TaskTable tasks={tasksByStatus.todo} title="📋 To Do Tasks" />
 
             {/* In Progress Tasks */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-blue-500" />
-                  In Progress ({tasksByStatus.in_progress.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="max-h-96 overflow-y-auto">
-                {tasksByStatus.in_progress.length > 0 ? (
-                  tasksByStatus.in_progress.map(task => (
-                    <TaskCard key={task.id} task={task} />
-                  ))
-                ) : (
-                  <div className="text-center text-gray-500 py-4">
-                    <p className="text-sm">No tasks in progress</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <TaskTable tasks={tasksByStatus.in_progress} title="🔄 In Progress Tasks" />
 
             {/* In Review Tasks */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-purple-500" />
-                  In Review ({tasksByStatus.review.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="max-h-96 overflow-y-auto">
-                {tasksByStatus.review.length > 0 ? (
-                  tasksByStatus.review.map(task => (
-                    <TaskCard key={task.id} task={task} />
-                  ))
-                ) : (
-                  <div className="text-center text-gray-500 py-4">
-                    <p className="text-sm">No tasks in review</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <TaskTable tasks={tasksByStatus.review} title="👀 In Review Tasks" />
 
             {/* Technical Support Tasks */}
             {tasksByStatus.technical_support.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-orange-500" />
-                    Technical Support ({tasksByStatus.technical_support.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="max-h-96 overflow-y-auto">
-                  {tasksByStatus.technical_support.map(task => (
-                    <TaskCard key={task.id} task={task} />
-                  ))}
-                </CardContent>
-              </Card>
+              <TaskTable tasks={tasksByStatus.technical_support} title="🛠️ Technical Support Tasks" />
             )}
 
             {/* Completed Tasks */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  Completed ({tasksByStatus.completed.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="max-h-96 overflow-y-auto">
-                {tasksByStatus.completed.length > 0 ? (
-                  tasksByStatus.completed.slice(0, 10).map(task => (
-                    <TaskCard key={task.id} task={task} />
-                  ))
-                ) : (
-                  <div className="text-center text-gray-500 py-4">
-                    <p className="text-sm">No completed tasks</p>
-                  </div>
-                )}
-                {tasksByStatus.completed.length > 10 && (
-                  <div className="text-center text-gray-500 py-2">
-                    <p className="text-xs">Showing latest 10 completed tasks</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <TaskTable 
+              tasks={tasksByStatus.completed.slice(0, 10)} 
+              title="✅ Completed Tasks" 
+            />
+            {tasksByStatus.completed.length > 10 && (
+              <div className="text-center text-gray-500 py-2">
+                <p className="text-sm">Showing latest 10 completed tasks</p>
+              </div>
+            )}
           </div>
 
           {/* Projects Overview */}
