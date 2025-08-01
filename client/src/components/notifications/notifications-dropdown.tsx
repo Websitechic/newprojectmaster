@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 
 interface Notification {
   id: number;
@@ -17,11 +18,14 @@ interface Notification {
   content: string;
   read: boolean;
   createdAt: string;
+  referenceId?: number;
+  referenceType?: string;
 }
 
 export function NotificationsDropdown() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [_, setLocation] = useLocation();
   const [isConnecting, setIsConnecting] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -118,6 +122,18 @@ export function NotificationsDropdown() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark notification as read
+    await markAsRead(notification.id);
+    
+    // Handle navigation based on notification type and reference
+    if (notification.type === "mention" && notification.referenceType === "project" && notification.referenceId) {
+      // Navigate to team chat for the mentioned project
+      setLocation(`/dashboard/projects/${notification.referenceId}/team-chat`);
+    }
+    // Add more navigation cases here for other notification types as needed
+  };
+
   const markAsRead = async (notificationId: number) => {
     try {
       await fetch(`/api/notifications/${notificationId}/read`, {
@@ -158,7 +174,7 @@ export function NotificationsDropdown() {
             <DropdownMenuItem
               key={notification.id}
               className={`cursor-pointer ${!notification.read ? 'bg-muted' : ''}`}
-              onClick={() => markAsRead(notification.id)}
+              onClick={() => handleNotificationClick(notification)}
             >
               <div className="flex flex-col space-y-1">
                 <p className="text-sm">{notification.content}</p>
