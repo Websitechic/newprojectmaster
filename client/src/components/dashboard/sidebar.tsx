@@ -206,11 +206,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Guide Videos",
       href: "/dashboard/guide-videos",
     },
-    {
-      icon: <Settings size={20} />,
-      label: "Settings",
-      href: "/dashboard/settings",
-    },
   ] : [
     {
       icon: <LayoutDashboard size={20} />,
@@ -228,20 +223,10 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Guide Videos",
       href: "/dashboard/guide-videos",
     },
-    {
-      icon: <Settings size={20} />,
-      label: "Settings",
-      href: "/dashboard/settings",
-    },
   ];
 
-  // Project manager specific menu items - support maintenance clients get task and technical management access
+  // Project manager specific menu items - support maintenance clients get technical management access
   const pmMenuItems = (user?.role === "project_manager" || isClientWithSpecialAccess) ? [
-    {
-      icon: <CheckSquare size={20} />,
-      label: "Tasks",
-      href: "/dashboard/tasks",
-    },
     ...(user?.role === "project_manager" ? [
       {
         icon: <Users size={20} />,

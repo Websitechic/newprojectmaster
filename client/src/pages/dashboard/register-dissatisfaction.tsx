@@ -28,24 +28,39 @@ export default function RegisterDissatisfaction() {
 
   const submitComplaint = useMutation({
     mutationFn: async (data: FormData) => {
+      console.log("Submitting complaint...");
+      
+      // Log form data for debugging
+      for (let [key, value] of data.entries()) {
+        console.log(`${key}:`, value);
+      }
+      
       const response = await fetch("/api/complaints", {
         method: "POST",
         body: data,
       });
       
+      console.log("Response status:", response.status);
+      
       if (!response.ok) {
         let errorMessage = "Failed to submit complaint";
         try {
           const errorData = await response.json();
+          console.error("Server error response:", errorData);
           errorMessage = errorData.error || errorMessage;
-        } catch {
-          errorMessage = `Server error: ${response.status}`;
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError);
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
         }
         throw new Error(errorMessage);
       }
-      return response.json();
+      
+      const result = await response.json();
+      console.log("Success response:", result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Complaint submitted successfully:", data);
       toast({
         title: "Complaint Submitted",
         description: "Your feedback has been received. We'll address your concerns promptly.",
@@ -62,9 +77,10 @@ export default function RegisterDissatisfaction() {
       setScreenshot(null);
     },
     onError: (error: Error) => {
+      console.error("Complaint submission error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Error Submitting Complaint",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     },
@@ -114,11 +130,31 @@ export default function RegisterDissatisfaction() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("Form submission started with data:", formData);
+    
     // Validation
-    if (!formData.name.trim() || !formData.email.trim() || !formData.detailedExplanation.trim()) {
+    if (!formData.name?.trim()) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields.",
+        description: "Please enter your name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.email?.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter your email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.detailedExplanation?.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide a detailed explanation of your complaint.",
         variant: "destructive",
       });
       return;
@@ -126,7 +162,7 @@ export default function RegisterDissatisfaction() {
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
+    if (!emailRegex.test(formData.email.trim())) {
       toast({
         title: "Invalid Email",
         description: "Please enter a valid email address.",
@@ -136,32 +172,32 @@ export default function RegisterDissatisfaction() {
     }
 
     // Filter out empty valuable things
-    const filteredValuableThings = formData.valuableThings.filter(thing => thing.trim());
+    const filteredValuableThings = formData.valuableThings.filter(thing => thing?.trim());
     
-    // Check if at least one valuable thing is filled (optional - remove this check if not required)
-    // if (filteredValuableThings.length === 0) {
-    //   toast({
-    //     title: "Missing Information",
-    //     description: "Please provide at least one thing you find valuable.",
-    //     variant: "destructive",
-    //   });
-    //   return;
-    // }
+    try {
+      const submitData = new FormData();
+      submitData.append('name', formData.name.trim());
+      submitData.append('email', formData.email.trim());
+      submitData.append('productManagerName', formData.productManagerName?.trim() || '');
+      submitData.append('developerName', formData.developerName?.trim() || '');
+      submitData.append('technicalManagerName', formData.technicalManagerName?.trim() || '');
+      submitData.append('valuableThings', JSON.stringify(filteredValuableThings));
+      submitData.append('detailedExplanation', formData.detailedExplanation.trim());
+      
+      if (screenshot) {
+        submitData.append('screenshot', screenshot);
+      }
 
-    const submitData = new FormData();
-    submitData.append('name', formData.name.trim());
-    submitData.append('email', formData.email.trim());
-    submitData.append('productManagerName', formData.productManagerName.trim());
-    submitData.append('developerName', formData.developerName.trim());
-    submitData.append('technicalManagerName', formData.technicalManagerName.trim());
-    submitData.append('valuableThings', JSON.stringify(filteredValuableThings));
-    submitData.append('detailedExplanation', formData.detailedExplanation.trim());
-    
-    if (screenshot) {
-      submitData.append('screenshot', screenshot);
+      console.log("Submitting form data...");
+      submitComplaint.mutate(submitData);
+    } catch (error) {
+      console.error("Error preparing form data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to prepare form data. Please try again.",
+        variant: "destructive",
+      });
     }
-
-    submitComplaint.mutate(submitData);
   };
 
   return (
