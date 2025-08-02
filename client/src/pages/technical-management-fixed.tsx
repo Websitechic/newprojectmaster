@@ -6,6 +6,14 @@ import { z } from "zod";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -16,6 +24,8 @@ import {
   User,
   Calendar,
   UserCheck,
+  Edit,
+  UserPlus,
 } from "lucide-react";
 import {
   Dialog,
@@ -224,85 +234,116 @@ export default function TechnicalManagementPage() {
           <p className="text-gray-500">There are no technical support requests at the moment.</p>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {requests.map((request) => (
-            <Card key={request.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Request</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Requester</TableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead>Task/Project</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {requests.map((request) => (
+                <TableRow key={request.id} className="hover:bg-muted/50">
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(request.status)}
+                        <span className="font-medium">{request.title}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {request.description}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={statusColors[request.status]}>
+                      {request.status.replace("_", " ")}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={priorityColors[request.priority]}>
+                      {request.priority}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(request.status)}
-                      <h3 className="font-semibold text-lg">{request.title}</h3>
+                      <User className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm">{request.requester.name}</span>
                     </div>
-                    <div className="flex gap-2 mt-2">
-                      <Badge className={statusColors[request.status]}>
-                        {request.status.replace("_", " ")}
-                      </Badge>
-                      <Badge className={priorityColors[request.priority]}>
-                        {request.priority}
-                      </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {request.assignedTo ? (
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="h-4 w-4 text-green-500" />
+                        <span className="text-sm text-green-700">{request.assignedTo.name}</span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Unassigned</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {request.task ? (
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-blue-500" />
+                        <div className="text-sm">
+                          <div className="text-blue-600">{request.task.title}</div>
+                          {request.project && (
+                            <div className="text-muted-foreground">{request.project.name}</div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">No task linked</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-muted-foreground">
+                      {formatDate(request.createdAt)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      {request.assignedToId ? (
+                        <Button
+                          size="sm"
+                          disabled
+                          className="bg-gray-200 text-black cursor-not-allowed"
+                        >
+                          <UserCheck className="h-4 w-4 mr-1" />
+                          {request.assignedTo?.id === user?.id ? "Assigned to You" : "Already Assigned"}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => assignRequestMutation.mutate(request.id)}
+                          disabled={assignRequestMutation.isPending}
+                        >
+                          <UserPlus className="h-4 w-4 mr-1" />
+                          {assignRequestMutation.isPending ? "Assigning..." : "Assign to Me"}
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleUpdateRequest(request)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Update
+                      </Button>
                     </div>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {formatDate(request.createdAt)}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 mb-3">{request.description}</p>
-                <div className="space-y-2 mb-3">
-                  <div className="flex items-center gap-1">
-                    <User className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm">Requested by: {request.requester.name}</span>
-                  </div>
-                  {request.task && (
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-blue-600">
-                        Task: {request.task.title}
-                        {request.project && ` (${request.project.name})`}
-                      </span>
-                    </div>
-                  )}
-                  {request.assignedTo && (
-                    <div className="flex items-center gap-1">
-                      <UserCheck className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-green-700">Assigned to: {request.assignedTo.name}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {request.assignedToId ? (
-                    <Button
-                      size="sm"
-                      disabled
-                      className="bg-gray-200 text-black cursor-not-allowed"
-                    >
-                      <UserCheck className="h-4 w-4 mr-1" />
-                      {request.assignedTo?.id === user?.id ? "Assigned to You" : "Already Assigned"}
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => assignRequestMutation.mutate(request.id)}
-                      disabled={assignRequestMutation.isPending}
-                    >
-                      <UserCheck className="h-4 w-4 mr-1" />
-                      {assignRequestMutation.isPending ? "Assigning..." : "Assign to Me"}
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleUpdateRequest(request)}
-                  >
-                    Update Status
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
       )}
 
       <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
