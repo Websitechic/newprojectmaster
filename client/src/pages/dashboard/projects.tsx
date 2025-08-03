@@ -245,8 +245,8 @@ export default function Projects() {
                              {user?.role === "project_manager" && (
                               <div className="flex space-x-2">
                                 <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
-                                  setIsEditDialogOpen(open);
                                   if (!open) {
+                                    setIsEditDialogOpen(false);
                                     setEditingProject(null);
                                   }
                                 }}>
@@ -267,7 +267,7 @@ export default function Projects() {
                                     <DialogHeader>
                                       <DialogTitle>Edit Project</DialogTitle>
                                     </DialogHeader>
-                                    {editingProject && editingProject.id === project.id && (
+                                    {editingProject && (
                                       <ProjectForm 
                                         project={editingProject} 
                                         onSuccess={() => {
@@ -318,8 +318,8 @@ export default function Projects() {
                                 {project.category === "support_maintenance" ? (
                                   <>
                                     <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
-                                      setIsEditDialogOpen(open);
                                       if (!open) {
+                                        setIsEditDialogOpen(false);
                                         setEditingProject(null);
                                       }
                                     }}>
@@ -340,7 +340,7 @@ export default function Projects() {
                                         <DialogHeader>
                                           <DialogTitle>Edit Project</DialogTitle>
                                         </DialogHeader>
-                                        {editingProject && editingProject.id === project.id && (
+                                        {editingProject && (
                                           <ProjectForm 
                                             project={editingProject} 
                                             onSuccess={() => {
