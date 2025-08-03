@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +105,14 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
     },
   });
 
+  // Update form values when project members are loaded
+  useEffect(() => {
+    if (project && projectMembers.length > 0) {
+      const memberIds = projectMembers.map((member: any) => member.id.toString());
+      form.setValue("teamMembers", memberIds);
+    }
+  }, [project, projectMembers, form]);
+
   // Fetch clients for dropdown
   const { data: clients } = useQuery({
     queryKey: ["/api/clients"],
@@ -121,6 +129,20 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
       }
       return response.json();
     },
+  });
+
+  // Fetch existing project members when editing
+  const { data: projectMembers = [] } = useQuery({
+    queryKey: [`/api/projects/${project?.id}/members`],
+    queryFn: async () => {
+      if (!project?.id) return [];
+      const response = await fetch(`/api/projects/${project.id}/members`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch project members");
+      }
+      return response.json();
+    },
+    enabled: !!project?.id,
   });
 
   const saveProject = useMutation({
