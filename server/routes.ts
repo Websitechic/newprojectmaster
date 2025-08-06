@@ -5191,24 +5191,14 @@ export function registerRoutes(app: Express): Server {
         screenshotUrl = `/uploads/complaint-screenshots/${req.file.filename}`;
       }
 
-      // Create complaint record
-      const [newComplaint] = await db
-        .insert(complaints)
-        .values({
-          name: name.trim(),
-          email: email.trim(),
-          productManagerName: productManagerName?.trim() || null,
-          developerName: developerName?.trim() || null,
-          technicalManagerName: technicalManagerName?.trim() || null,
-          valuableThings: parsedValuableThings,
-          detailedExplanation: detailedExplanation.trim(),
-          screenshotUrl,
-          submittedBy: req.user!.id,
-          status: "pending",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
+      // Create complaint record using raw SQL since we don't have Drizzle schema for complaints table
+      const result = await db.execute(sql`
+        INSERT INTO complaints (name, email, product_manager_name, developer_name, technical_manager_name, valuable_things, detailed_explanation, screenshot_url, submitter_id)
+        VALUES (${name.trim()}, ${email.trim()}, ${productManagerName?.trim() || null}, ${developerName?.trim() || null}, ${technicalManagerName?.trim() || null}, ${JSON.stringify(parsedValuableThings)}, ${detailedExplanation.trim()}, ${screenshotUrl || null}, ${req.user!.id})
+        RETURNING *
+      `);
+      
+      const newComplaint = result.rows[0];
 
       // Get all operations managers
       const operationsManagers = await db
@@ -5267,27 +5257,25 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const allComplaints = await db
-        .select({
-          id: complaints.id,
-          name: complaints.name,
-          email: complaints.email,
-          productManagerName: complaints.productManagerName,
-          developerName: complaints.developerName,
-          technicalManagerName: complaints.technicalManagerName,
-          valuableThings: complaints.valuableThings,
-          detailedExplanation: complaints.detailedExplanation,
-          screenshotUrl: complaints.screenshotUrl,
-          status: complaints.status,
-          reviewComments: complaints.reviewComments,
-          createdAt: complaints.createdAt,
-          reviewedAt: complaints.reviewedAt,
-          submitterName: users.name,
-          reviewerName: users.name,
-        })
-        .from(complaints)
-        .leftJoin(users, eq(complaints.submittedBy, users.id))
-        .orderBy(desc(complaints.createdAt));
+      const result = await db.execute(sql`
+        SELECT * FROM complaints ORDER BY created_at DESC
+      `);
+      
+      const allComplaints = result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        productManagerName: row.product_manager_name,
+        developerName: row.developer_name,
+        technicalManagerName: row.technical_manager_name,
+        valuableThings: typeof row.valuable_things === 'string' ? JSON.parse(row.valuable_things) : row.valuable_things,
+        detailedExplanation: row.detailed_explanation,
+        screenshotUrl: row.screenshot_url,
+        status: row.status || 'pending',
+        reviewComments: row.review_comments,
+        createdAt: row.created_at,
+        reviewedAt: row.reviewed_at
+      }));
 
       res.json(allComplaints);
     } catch (error) {
@@ -5316,17 +5304,16 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Invalid status" });
       }
 
-      const [updatedComplaint] = await db
-        .update(complaints)
-        .set({
-          status,
-          reviewComments: reviewComments || null,
-          reviewedBy: user.id,
-          reviewedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(complaints.id, complaintId))
-        .returning();
+      const result = await db.execute(sql`
+        UPDATE complaints 
+        SET status = ${status}, 
+            review_comments = ${reviewComments || null}, 
+            reviewed_at = CURRENT_TIMESTAMP
+        WHERE id = ${complaintId}
+        RETURNING *
+      `);
+      
+      const updatedComplaint = result.rows[0];
 
       if (!updatedComplaint) {
         return res.status(404).json({ error: "Complaint not found" });

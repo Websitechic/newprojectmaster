@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
@@ -28,45 +27,25 @@ export default function RegisterDissatisfaction() {
 
   const submitComplaint = useMutation({
     mutationFn: async (data: FormData) => {
-      console.log("Submitting complaint...");
-      
-      // Log form data for debugging
-      console.log("FormData entries:");
-      data.forEach((value, key) => {
-        console.log(`${key}:`, value);
-      });
-      
       const response = await fetch("/api/complaints", {
         method: "POST",
         body: data,
         credentials: "include",
       });
       
-      console.log("Response status:", response.status);
-      
       if (!response.ok) {
-        let errorMessage = "Failed to submit complaint";
-        try {
-          const errorData = await response.json();
-          console.error("Server error response:", errorData);
-          errorMessage = errorData.error || errorMessage;
-        } catch (parseError) {
-          console.error("Failed to parse error response:", parseError);
-          errorMessage = `Server error: ${response.status} ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to submit complaint");
       }
       
-      const result = await response.json();
-      console.log("Success response:", result);
-      return result;
+      return response.json();
     },
-    onSuccess: (data) => {
-      console.log("Complaint submitted successfully:", data);
+    onSuccess: () => {
       toast({
         title: "Complaint Submitted",
         description: "Your feedback has been received. We'll address your concerns promptly.",
       });
+      // Reset form
       setFormData({
         name: "",
         email: "",
@@ -79,10 +58,9 @@ export default function RegisterDissatisfaction() {
       setScreenshot(null);
     },
     onError: (error: Error) => {
-      console.error("Complaint submission error:", error);
       toast({
-        title: "Error Submitting Complaint",
-        description: error.message || "An unexpected error occurred. Please try again.",
+        title: "Error",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -101,26 +79,14 @@ export default function RegisterDissatisfaction() {
   const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (limit to 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "File too large",
-          description: "Please select a file smaller than 5MB.",
+          description: "Screenshot must be less than 5MB",
           variant: "destructive",
         });
         return;
       }
-      
-      // Check file type
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select an image file.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       setScreenshot(file);
     }
   };
@@ -132,74 +98,35 @@ export default function RegisterDissatisfaction() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log("Form submission started with data:", formData);
+    // Validate required fields
+    if (!formData.name.trim() || !formData.email.trim() || !formData.detailedExplanation.trim()) {
+      toast({
+        title: "Missing Required Fields",
+        description: "Please fill in your name, email, and detailed explanation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create FormData object
+    const data = new FormData();
+    data.append("name", formData.name.trim());
+    data.append("email", formData.email.trim());
+    data.append("productManagerName", formData.productManagerName.trim());
+    data.append("developerName", formData.developerName.trim());
+    data.append("technicalManagerName", formData.technicalManagerName.trim());
+    data.append("detailedExplanation", formData.detailedExplanation.trim());
     
-    // Validation
-    if (!formData.name?.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter your name.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.email?.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter your email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.detailedExplanation?.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide a detailed explanation of your complaint.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email.trim())) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Filter out empty valuable things
-    const filteredValuableThings = formData.valuableThings.filter(thing => thing?.trim());
+    // Add valuable things as JSON string
+    const nonEmptyValuableThings = formData.valuableThings.filter(thing => thing.trim());
+    data.append("valuableThings", JSON.stringify(nonEmptyValuableThings));
     
-    try {
-      const submitData = new FormData();
-      submitData.append('name', formData.name.trim());
-      submitData.append('email', formData.email.trim());
-      submitData.append('productManagerName', formData.productManagerName?.trim() || '');
-      submitData.append('developerName', formData.developerName?.trim() || '');
-      submitData.append('technicalManagerName', formData.technicalManagerName?.trim() || '');
-      submitData.append('valuableThings', JSON.stringify(filteredValuableThings));
-      submitData.append('detailedExplanation', formData.detailedExplanation.trim());
-      
-      if (screenshot) {
-        submitData.append('screenshot', screenshot);
-      }
-
-      console.log("Submitting form data...");
-      submitComplaint.mutate(submitData);
-    } catch (error) {
-      console.error("Error preparing form data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to prepare form data. Please try again.",
-        variant: "destructive",
-      });
+    // Add screenshot if present
+    if (screenshot) {
+      data.append("screenshot", screenshot);
     }
+
+    submitComplaint.mutate(data);
   };
 
   return (
@@ -208,7 +135,7 @@ export default function RegisterDissatisfaction() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-2xl mx-auto space-y-6">
+          <div className="max-w-4xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -216,7 +143,7 @@ export default function RegisterDissatisfaction() {
                   Register Your Dissatisfaction
                 </h1>
                 <p className="text-muted-foreground">
-                  We value your feedback. Please let us know about any concerns or issues you've experienced.
+                  Share your feedback and concerns with our team
                 </p>
               </div>
             </div>
@@ -227,181 +154,155 @@ export default function RegisterDissatisfaction() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Personal Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                    <div>
                       <Label htmlFor="name">Name *</Label>
                       <Input
                         id="name"
                         value={formData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        onChange={(e) => handleInputChange("name", e.target.value)}
                         placeholder="Your full name"
                         required
                       />
                     </div>
-
-                    <div className="space-y-2">
+                    <div>
                       <Label htmlFor="email">Email Address *</Label>
                       <Input
                         id="email"
                         type="email"
                         value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        onChange={(e) => handleInputChange("email", e.target.value)}
                         placeholder="your.email@example.com"
                         required
                       />
                     </div>
                   </div>
 
+                  {/* Team Members */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="productManagerName">Product Manager Name</Label>
+                    <div>
+                      <Label htmlFor="productManager">Product Manager Name</Label>
                       <Input
-                        id="productManagerName"
+                        id="productManager"
                         value={formData.productManagerName}
-                        onChange={(e) => handleInputChange('productManagerName', e.target.value)}
+                        onChange={(e) => handleInputChange("productManagerName", e.target.value)}
                         placeholder="Product manager's name"
                       />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="developerName">Developer Name</Label>
+                    <div>
+                      <Label htmlFor="developer">Developer Name</Label>
                       <Input
-                        id="developerName"
+                        id="developer"
                         value={formData.developerName}
-                        onChange={(e) => handleInputChange('developerName', e.target.value)}
+                        onChange={(e) => handleInputChange("developerName", e.target.value)}
                         placeholder="Developer's name"
                       />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="technicalManagerName">Technical Manager Name</Label>
+                    <div>
+                      <Label htmlFor="technicalManager">Technical Manager Name</Label>
                       <Input
-                        id="technicalManagerName"
+                        id="technicalManager"
                         value={formData.technicalManagerName}
-                        onChange={(e) => handleInputChange('technicalManagerName', e.target.value)}
+                        onChange={(e) => handleInputChange("technicalManagerName", e.target.value)}
                         placeholder="Technical manager's name"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <Label>3 Things You Find Valuable in This Package *</Label>
-                    {formData.valuableThings.map((thing, index) => (
-                      <div key={index} className="space-y-2">
-                        <Label htmlFor={`valuable-${index}`}>Valuable Thing {index + 1}</Label>
+                  {/* Valuable Things */}
+                  <div>
+                    <Label>3 Things You Find Valuable in This Package</Label>
+                    <div className="space-y-2 mt-2">
+                      {formData.valuableThings.map((thing, index) => (
                         <Input
-                          id={`valuable-${index}`}
+                          key={index}
                           value={thing}
                           onChange={(e) => handleValuableThingChange(index, e.target.value)}
-                          placeholder={`What do you find valuable about this package? (${index + 1})`}
+                          placeholder={`Valuable thing ${index + 1}`}
                         />
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="detailedExplanation">Detailed Explanation of Your Complaint *</Label>
+                  {/* Detailed Explanation */}
+                  <div>
+                    <Label htmlFor="explanation">Detailed Explanation of Your Complaint *</Label>
                     <Textarea
-                      id="detailedExplanation"
+                      id="explanation"
                       value={formData.detailedExplanation}
-                      onChange={(e) => handleInputChange('detailedExplanation', e.target.value)}
-                      placeholder="Please provide a detailed explanation of your complaint. Include specific dates, incidents, or concerns you'd like us to address."
-                      className="min-h-32"
-                      maxLength={2000}
+                      onChange={(e) => handleInputChange("detailedExplanation", e.target.value)}
+                      placeholder="Please provide a detailed explanation of your complaint, including any relevant context, specific issues, and how they have affected you or your project..."
+                      rows={6}
                       required
                     />
-                    <p className="text-xs text-gray-500">
-                      {formData.detailedExplanation.length}/2000 characters
-                    </p>
                   </div>
 
-                  <div className="space-y-2">
+                  {/* Screenshot Upload */}
+                  <div>
                     <Label htmlFor="screenshot">Screenshot (Optional)</Label>
-                    <div className="space-y-2">
-                      {!screenshot ? (
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                          <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-600 mb-2">
-                            Click to upload a screenshot or drag and drop
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            PNG, JPG, JPEG up to 5MB
-                          </p>
-                          <Input
-                            id="screenshot"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleScreenshotChange}
-                            className="hidden"
-                          />
-                          <Label
-                            htmlFor="screenshot"
-                            className="inline-block mt-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-md cursor-pointer hover:bg-blue-100"
-                          >
-                            Choose File
-                          </Label>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <Upload className="h-4 w-4 text-green-600" />
-                            <span className="text-sm text-gray-700">{screenshot.name}</span>
-                            <span className="text-xs text-gray-500">
-                              ({(screenshot.size / 1024 / 1024).toFixed(2)} MB)
-                            </span>
+                    <div className="mt-2">
+                      {screenshot ? (
+                        <div className="flex items-center gap-4 p-4 border border-dashed rounded-lg">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{screenshot.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(screenshot.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
                           </div>
                           <Button
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={removeScreenshot}
                           >
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
+                      ) : (
+                        <div className="flex items-center justify-center w-full">
+                          <label
+                            htmlFor="screenshot"
+                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
+                          >
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                              <Upload className="w-8 h-8 mb-4 text-gray-500" />
+                              <p className="mb-2 text-sm text-gray-500">
+                                <span className="font-semibold">Click to upload</span> or drag and drop
+                              </p>
+                              <p className="text-xs text-gray-500">PNG, JPG, JPEG (MAX. 5MB)</p>
+                            </div>
+                            <input
+                              id="screenshot"
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={handleScreenshotChange}
+                            />
+                          </label>
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-blue-900 mb-2">What happens next?</h3>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• Your complaint will be reviewed within 24 hours</li>
-                      <li>• You'll receive an acknowledgment email</li>
-                      <li>• We'll investigate and provide a resolution plan</li>
-                      <li>• Follow-up communication will be sent regularly</li>
-                    </ul>
+                  {/* Submit Button */}
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      disabled={submitComplaint.isPending}
+                      className="min-w-32"
+                    >
+                      {submitComplaint.isPending ? (
+                        "Submitting..."
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4 mr-2" />
+                          Submit Complaint
+                        </>
+                      )}
+                    </Button>
                   </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={submitComplaint.isPending}
-                  >
-                    {submitComplaint.isPending ? (
-                      "Submitting..."
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Submit Complaint
-                      </>
-                    )}
-                  </Button>
                 </form>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-orange-50 border-orange-200">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-6 w-6 text-orange-600 mt-1" />
-                  <div>
-                    <h3 className="font-semibold text-orange-900 mb-2">Urgent Issues?</h3>
-                    <p className="text-orange-800">
-                      For urgent matters that require immediate attention, please use our emergency contact options or call our support hotline directly.
-                    </p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
