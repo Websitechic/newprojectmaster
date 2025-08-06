@@ -31,9 +31,10 @@ export default function RegisterDissatisfaction() {
       console.log("Submitting complaint...");
       
       // Log form data for debugging
-      for (let [key, value] of data.entries()) {
+      console.log("FormData entries:");
+      data.forEach((value, key) => {
         console.log(`${key}:`, value);
-      }
+      });
       
       const response = await fetch("/api/complaints", {
         method: "POST",

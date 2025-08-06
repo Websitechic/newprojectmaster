@@ -1006,6 +1006,11 @@ export function registerRoutes(app: Express): Server {
           eq(notifications.referenceType, "project")
         ));
 
+      // Delete project resources
+      await db
+        .delete(resources)
+        .where(eq(resources.projectId, projectId));
+
       // Finally delete the project
       await db
         .delete(projects)
@@ -5220,10 +5225,10 @@ export function registerRoutes(app: Express): Server {
           .insert(notifications)
           .values({
             userId: manager.id,
-            type: "task_assigned", // Using existing type
+            type: "technical_support_request",
             content: `New complaint received from ${name}: ${detailedExplanation.substring(0, 100)}...`,
             referenceId: newComplaint.id,
-            referenceType: "project", // Using existing type
+            referenceType: "complaint",
             createdAt: new Date(),
           })
           .returning();

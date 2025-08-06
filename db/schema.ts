@@ -187,7 +187,7 @@ export const notifications = pgTable("notifications", {
   content: text("content").notNull(),
   referenceId: integer("reference_id"),
   referenceType: text("reference_type", { 
-    enum: ["task", "project", "message", "technical_support_request"] 
+    enum: ["task", "project", "message", "technical_support_request", "complaint"] 
   }),
   read: boolean("read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
