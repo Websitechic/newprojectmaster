@@ -333,14 +333,9 @@ export default function ProjectResources() {
             
             {canManageResources && (
               <div className="flex gap-2">
-                <Button className="flex items-center gap-2">
-                  <Upload className="h-4 w-4" />
-                  Upload File
-                </Button>
-                
                 <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="flex items-center gap-2">
+                    <Button className="flex items-center gap-2">
                       <Link className="h-4 w-4" />
                       Add Link
                     </Button>
@@ -604,12 +599,7 @@ export default function ProjectResources() {
               </p>
               {canManageResources && !searchTerm && (
                 <div className="mt-4 flex gap-2">
-                  <Button className="flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    Upload File
-                  </Button>
                   <Button 
-                    variant="outline" 
                     className="flex items-center gap-2"
                     onClick={() => setShowLinkDialog(true)}
                   >
