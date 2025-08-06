@@ -951,24 +951,8 @@ export function registerRoutes(app: Express): Server {
     } else {
       return res.status(403).json({ error: "Only project managers and product owners can delete projects" });
     }
+
     try {
-      const projectId = parseInt(req.params.id);
-
-      // Verify the project exists and is managed by this PM
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(and(
-          eq(projects.id, projectId),
-          eq(projects.managerId, req.user!.id)
-        ))
-        .limit(1);
-
-      if (!project) {
-        return res.status(404).json({ 
-          error: "Project not found or you don't have permission to delete it" 
-        });
-      }
 
       // First delete related records to avoid foreign key constraint errors
       
@@ -1017,7 +1001,10 @@ export function registerRoutes(app: Express): Server {
       // Delete notifications related to this project
       await db
         .delete(notifications)
-        .where(eq(notifications.referenceId, projectId));
+        .where(and(
+          eq(notifications.referenceId, projectId),
+          eq(notifications.referenceType, "project")
+        ));
 
       // Finally delete the project
       await db
