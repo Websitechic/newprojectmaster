@@ -39,6 +39,7 @@ export default function RegisterDissatisfaction() {
       const response = await fetch("/api/complaints", {
         method: "POST",
         body: data,
+        credentials: "include",
       });
       
       console.log("Response status:", response.status);
