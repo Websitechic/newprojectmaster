@@ -135,6 +135,132 @@ export default function GuideVideos() {
                   </div>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How to send a message on team chat</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/hXM6eGqkRCg"
+                      title="How to send a message on team chat"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How to book a meeting</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/vna0OxMN7qA"
+                      title="How to book a meeting"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How to send a direct message</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/3UU2Fq2uuy0"
+                      title="How to send a direct message"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How to upload a resource</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/6kej-vc6mNs"
+                      title="How to upload a resource"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How to create a task</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/oXMYzxyXbcQ"
+                      title="How to create a task"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How to create a project plan</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/nIuc4IIptEA"
+                      title="How to create a project plan"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How to create a project</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/7i8AeShZvTg"
+                      title="How to create a project"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <Card className="bg-blue-50 border-blue-200">
