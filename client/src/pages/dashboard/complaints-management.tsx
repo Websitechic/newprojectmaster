@@ -333,3 +333,291 @@ export default function ComplaintsManagement() {
     </div>
   );
 }
+import { useLocation } from "wouter";
+import { Header } from "@/components/dashboard/header";
+import { Sidebar } from "@/components/dashboard/sidebar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useUser } from "@/hooks/use-user";
+import { useState, useEffect } from "react";
+import { AlertTriangle, Eye, MessageSquare } from "lucide-react";
+
+interface Complaint {
+  id: number;
+  name: string;
+  email: string;
+  productManagerName?: string;
+  developerName?: string;
+  technicalManagerName?: string;
+  valuableThings: string[];
+  detailedExplanation: string;
+  screenshotUrl?: string;
+  status: 'pending' | 'reviewed' | 'resolved';
+  reviewComments?: string;
+  createdAt: string;
+  reviewedAt?: string;
+}
+
+export default function ComplaintsManagement() {
+  const [location] = useLocation();
+  const { user } = useUser();
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const [reviewStatus, setReviewStatus] = useState('');
+  const [reviewComments, setReviewComments] = useState('');
+
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
+
+  const fetchComplaints = async () => {
+    try {
+      const response = await fetch("/api/complaints");
+      if (response.ok) {
+        const data = await response.json();
+        setComplaints(data);
+      }
+    } catch (error) {
+      console.error("Error fetching complaints:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReviewComplaint = async () => {
+    if (!selectedComplaint || !reviewStatus) return;
+
+    try {
+      const response = await fetch(`/api/complaints/${selectedComplaint.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: reviewStatus,
+          reviewComments,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchComplaints();
+        setSelectedComplaint(null);
+        setReviewStatus('');
+        setReviewComments('');
+      }
+    } catch (error) {
+      console.error("Error updating complaint:", error);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-500';
+      case 'reviewed': return 'bg-blue-500';
+      case 'resolved': return 'bg-green-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  return (
+    <div className="flex h-screen">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <div className="flex-1 overflow-auto p-6">
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-2xl font-bold flex items-center gap-2">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                  Complaints Management
+                </h1>
+                <p className="text-muted-foreground">
+                  Review and manage client complaints and dissatisfaction reports
+                </p>
+              </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {complaints.filter(c => c.status === 'pending').length}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Reviewed</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {complaints.filter(c => c.status === 'reviewed').length}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Resolved</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {complaints.filter(c => c.status === 'resolved').length}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Complaints List */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Client Complaints</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="text-center py-8">Loading...</div>
+                ) : complaints.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No complaints found.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {complaints.map((complaint) => (
+                      <div key={complaint.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-medium">{complaint.name}</h3>
+                              <Badge className={`${getStatusColor(complaint.status)} text-white text-xs`}>
+                                {complaint.status}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Email: {complaint.email}
+                            </p>
+                            <p className="text-sm mb-2 line-clamp-2">
+                              {complaint.detailedExplanation}
+                            </p>
+                            <div className="text-xs text-muted-foreground">
+                              Created: {new Date(complaint.createdAt).toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedComplaint(complaint)}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  View
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                                <DialogHeader>
+                                  <DialogTitle>Complaint Details</DialogTitle>
+                                </DialogHeader>
+                                {selectedComplaint && (
+                                  <div className="space-y-4">
+                                    <div>
+                                      <label className="font-medium">Client Name:</label>
+                                      <p>{selectedComplaint.name}</p>
+                                    </div>
+                                    <div>
+                                      <label className="font-medium">Email:</label>
+                                      <p>{selectedComplaint.email}</p>
+                                    </div>
+                                    {selectedComplaint.productManagerName && (
+                                      <div>
+                                        <label className="font-medium">Product Manager:</label>
+                                        <p>{selectedComplaint.productManagerName}</p>
+                                      </div>
+                                    )}
+                                    {selectedComplaint.developerName && (
+                                      <div>
+                                        <label className="font-medium">Developer:</label>
+                                        <p>{selectedComplaint.developerName}</p>
+                                      </div>
+                                    )}
+                                    {selectedComplaint.technicalManagerName && (
+                                      <div>
+                                        <label className="font-medium">Technical Manager:</label>
+                                        <p>{selectedComplaint.technicalManagerName}</p>
+                                      </div>
+                                    )}
+                                    {selectedComplaint.valuableThings.length > 0 && (
+                                      <div>
+                                        <label className="font-medium">Valuable Things:</label>
+                                        <ul className="list-disc list-inside">
+                                          {selectedComplaint.valuableThings.map((item, index) => (
+                                            <li key={index}>{item}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    <div>
+                                      <label className="font-medium">Detailed Explanation:</label>
+                                      <p className="whitespace-pre-wrap">{selectedComplaint.detailedExplanation}</p>
+                                    </div>
+                                    {selectedComplaint.screenshotUrl && (
+                                      <div>
+                                        <label className="font-medium">Screenshot:</label>
+                                        <img 
+                                          src={selectedComplaint.screenshotUrl} 
+                                          alt="Complaint screenshot" 
+                                          className="max-w-full h-auto mt-2 rounded"
+                                        />
+                                      </div>
+                                    )}
+                                    
+                                    {/* Review Section */}
+                                    <div className="border-t pt-4">
+                                      <h3 className="font-medium mb-2">Review Complaint</h3>
+                                      <div className="space-y-4">
+                                        <Select value={reviewStatus} onValueChange={setReviewStatus}>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select status" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="reviewed">Reviewed</SelectItem>
+                                            <SelectItem value="resolved">Resolved</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        <Textarea
+                                          placeholder="Review comments..."
+                                          value={reviewComments}
+                                          onChange={(e) => setReviewComments(e.target.value)}
+                                        />
+                                        <Button onClick={handleReviewComplaint}>
+                                          Update Status
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
