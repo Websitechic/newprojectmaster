@@ -324,6 +324,21 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   // Operations Manager specific menu items
   const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" ? [
     {
+      icon: <Users size={20} />,
+      label: "Staff Report",
+      href: "/dashboard/staff-report",
+    },
+    {
+      icon: <Building2 size={20} />,
+      label: "Client Accounts",
+      href: "/dashboard/client-accounts",
+    },
+    {
+      icon: <Wrench size={20} />,
+      label: "Technical Management",
+      href: "/dashboard/technical-management",
+    },
+    {
       icon: <Calendar size={20} />,
       label: "Bookings",
       href: "/dashboard/bookings",
