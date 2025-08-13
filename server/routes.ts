@@ -5514,10 +5514,10 @@ export function registerRoutes(app: Express): Server {
           LEFT JOIN memo_reads mr ON m.id = mr.memo_id AND mr.user_id = ${user.id}
           WHERE 
             (m.type = 'general') OR
-            (m.type = 'individual' AND JSON_CONTAINS(m.recipients, CAST(${user.id} AS JSON))) OR
+            (m.type = 'individual' AND m.recipients @> ${JSON.stringify([user.id])}) OR
             (m.type = 'department' AND (
-              JSON_CONTAINS(m.recipients, '"all_staff"') OR
-              (${user.specialization ? `JSON_CONTAINS(m.recipients, ${JSON.stringify(`"${user.specialization}"`)}` : 'false'})
+              m.recipients @> '["all_staff"]' OR
+              ${user.specialization ? `m.recipients @> ${JSON.stringify([user.specialization])}` : 'FALSE'}
             ))
           ORDER BY m.created_at DESC
         `);
