@@ -35,7 +35,7 @@ import RateUs from "@/pages/dashboard/rate-us";
 import ClientDashboard from "@/pages/dashboard/client-dashboard";
 import ComplaintsManagement from "@/pages/dashboard/complaints-management";
 import ClientAccounts from "@/pages/dashboard/client-accounts";
-import TechnicalManagement from "./pages/dashboard/technical-management";
+import TechnicalManagement from "@/pages/dashboard/technical-management";
 import Memos from "@/pages/dashboard/memos";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
