@@ -5918,6 +5918,7 @@ export function registerRoutes(app: Express): Server {
           emailVerified: users.emailVerified,
           createdAt: users.createdAt,
           lastActive: users.lastActive,
+          gender: users.gender,
         })
         .from(users)
         .where(eq(users.role, "client"))

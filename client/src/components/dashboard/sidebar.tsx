@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 import { Wrench } from "lucide-react";
+import { MessageSquareX } from "lucide-react";
 
 
 interface SidebarItemProps {
@@ -40,8 +41,8 @@ function SidebarItem({ icon, label, href, active, badge, external }: SidebarItem
     <div
       className={cn(
         "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative cursor-pointer",
-        active 
-          ? "bg-purple-100 text-purple-700 shadow-sm" 
+        active
+          ? "bg-purple-100 text-purple-700 shadow-sm"
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
       )}
     >
@@ -344,8 +345,8 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/bookings",
     },
     {
-      icon: <AlertTriangle size={20} />,
-      label: "Complaints",
+      icon: <MessageSquareX size={20} />,
+      label: "Clients complain",
       href: "/dashboard/complaints-management",
     },
   ] : [];
@@ -454,7 +455,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
             <p className="text-xs text-gray-500 capitalize">
-                {user?.role === 'client' ? 
+                {user?.role === 'client' ?
                   `${user?.clientType?.replace('_', ' ') || 'Client'} • ${user?.productService?.replace('_', ' ') || 'Service not specified'}` :
                   user?.role?.replace('_', ' ')
                 }
