@@ -49,6 +49,20 @@ const isProjectManager = (req: Express.Request, res: Response, next: NextFunctio
   next();
 };
 
+// Middleware to check if user is a project manager or operations manager
+const isProjectManagerOrOperationsManager = (req: Express.Request, res: Response, next: NextFunction) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const user = req.user!;
+  if (user.role !== UserRole.PROJECT_MANAGER && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+    return res.status(403).json({ error: "Only project managers and operations managers can perform this action" });
+  }
+
+  next();
+};
+
 // Middleware to check if user can manage tasks (project managers, technical support staff, product owners for Support & Maintenance, or operations managers)
 const canManageTasks = async (req: Express.Request, res: Response, next: NextFunction) => {
   if (!req.isAuthenticated()) {
@@ -553,7 +567,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Get staff with their assigned tasks
-  app.get("/api/staff-report", isProjectManager, async (req, res) => {
+  app.get("/api/staff-report", isProjectManagerOrOperationsManager, async (req, res) => {
     try {
       // First update staff status based on approved leave applications
       const now = new Date();

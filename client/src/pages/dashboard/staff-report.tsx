@@ -155,11 +155,11 @@ export default function StaffReport() {
     );
   }
 
-  if (user.role !== "project_manager") {
+  if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-        <p className="text-sm text-destructive">Only project managers can access the staff report</p>
+        <p className="text-sm text-destructive">Only project managers and operations managers can access the staff report</p>
       </div>
     );
   }
@@ -188,7 +188,7 @@ export default function StaffReport() {
 
       return response.json();
     },
-    enabled: user?.role === "project_manager",
+    enabled: user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager",
     retry: (failureCount, error) => {
       // Don't retry on 401/403 errors (authentication/authorization)
       if (error?.message?.includes('Authentication') || error?.message?.includes('Access denied')) {

@@ -52,7 +52,7 @@ export default function ClientAccounts() {
   });
 
   // Check if user has permission to access this page
-  if (user?.role !== "project_manager" && user?.role !== "product_owner") {
+  if (user?.role !== "project_manager" && user?.role !== "product_owner" && user?.role !== "operations_manager" && user?.specialization !== "operations_manager") {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
         <Card className="w-full max-w-md">
@@ -61,7 +61,7 @@ export default function ClientAccounts() {
             <div className="text-center">
               <h3 className="text-lg font-semibold">Access Restricted</h3>
               <p className="text-sm text-gray-600">
-                Only Project Managers and Product Owners can access client account management.
+                Only Project Managers, Product Owners, and Operations Managers can access client account management.
               </p>
             </div>
           </CardContent>
