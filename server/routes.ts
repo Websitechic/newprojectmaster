@@ -3990,6 +3990,14 @@ export function registerRoutes(app: Express): Server {
           .where(eq(projects.id, projectId))
           .limit(1);
         hasAccess = !!project;
+      } else if (userRole === "operations_manager") {
+        // Operations managers have access to all projects
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, projectId))
+          .limit(1);
+        hasAccess = !!project;
       } else if (userRole === "staff") {
         const [membership] = await db
           .select()
@@ -4080,6 +4088,14 @@ export function registerRoutes(app: Express): Server {
         hasAccess = !!project;
       } else if (userRole === "product_owner") {
         // Product owners have access to all projects
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, projectId))
+          .limit(1);
+        hasAccess = !!project;
+      } else if (userRole === "operations_manager") {
+        // Operations managers have access to all projects
         const [project] = await db
           .select()
           .from(projects)
