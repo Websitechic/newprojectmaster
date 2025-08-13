@@ -5580,9 +5580,11 @@ export function registerRoutes(app: Express): Server {
       let targetUsers = [];
 
       if (type === "general") {
-        // Send to all users (everyone in the system)
+        // Send to all users (everyone in the system except operations managers)
         const allUsersResult = await db.execute(sql`
-          SELECT id, name FROM users WHERE role != 'operations_manager'
+          SELECT id, name FROM users 
+          WHERE role != 'operations_manager' 
+          AND specialization != 'operations_manager'
         `);
         targetUsers = allUsersResult.rows;
       } else if (type === "individual") {
