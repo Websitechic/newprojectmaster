@@ -35,7 +35,7 @@ import RateUs from "@/pages/dashboard/rate-us";
 import ClientDashboard from "@/pages/dashboard/client-dashboard";
 import ComplaintsManagement from "@/pages/dashboard/complaints-management";
 import ClientAccounts from "@/pages/dashboard/client-accounts";
-import TechnicalManagement from "@/pages/dashboard/technical-management";
+
 import Memos from "@/pages/dashboard/memos";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
@@ -104,7 +104,7 @@ function Router() {
       <Route path="/dashboard/rate-us" component={() => <PrivateRoute component={RateUs} />} />
       <Route path="/dashboard/complaints-management" component={() => <PrivateRoute component={ComplaintsManagement} />} />
       <Route path="/dashboard/client-accounts" component={() => <PrivateRoute component={ClientAccounts} />} />
-      <Route path="/dashboard/technical-management" component={() => <PrivateRoute component={TechnicalManagement} />} />
+
       <Route path="/dashboard/memos" component={Memos} />
       <Route component={NotFound} />
     </Switch>
