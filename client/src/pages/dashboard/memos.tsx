@@ -50,7 +50,7 @@ interface MemoRead {
 
 const MEMO_TYPES = {
   individual: "Individual",
-  staff_members: "Staff Members",
+  general: "General",
   department: "Department"
 };
 
@@ -188,10 +188,26 @@ export default function Memos() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.content || !formData.type || formData.recipients.length === 0) {
+    if (!formData.title || !formData.content || !formData.type) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For general memos, no specific recipients needed
+    if (formData.type === "general") {
+      createMemoMutation.mutate({ ...formData, recipients: [] });
+      return;
+    }
+
+    // For individual and department memos, recipients are required
+    if (formData.recipients.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one recipient",
         variant: "destructive",
       });
       return;
@@ -219,7 +235,7 @@ export default function Memos() {
   const getTypeBadge = (type: string) => {
     const colors = {
       individual: "bg-blue-100 text-blue-800",
-      staff_members: "bg-green-100 text-green-800", 
+      general: "bg-green-100 text-green-800", 
       department: "bg-purple-100 text-purple-800"
     };
 
@@ -331,7 +347,7 @@ export default function Memos() {
                         </Select>
                       </div>
 
-                      {formData.type && (
+                      {formData.type && formData.type !== "general" && (
                         <div>
                           <Label>Recipients *</Label>
                           <div className="max-h-40 overflow-y-auto border rounded-md p-3 space-y-2">
@@ -353,6 +369,14 @@ export default function Memos() {
                           </div>
                           <p className="text-sm text-gray-500 mt-1">
                             {formData.recipients.length} recipient(s) selected
+                          </p>
+                        </div>
+                      )}
+
+                      {formData.type === "general" && (
+                        <div className="p-4 bg-blue-50 rounded-lg">
+                          <p className="text-sm text-blue-700">
+                            <strong>General Memo:</strong> This memo will be automatically sent to all users in the system (except operations managers).
                           </p>
                         </div>
                       )}

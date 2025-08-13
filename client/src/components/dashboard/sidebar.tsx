@@ -280,6 +280,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <CheckSquare size={20} />,
       label: "Productivity Tracking",
       href: "/dashboard/productivity",
+    },
+    {
+      icon: <MessageSquareX size={20} />,
+      label: "Send Your Complaint",
+      href: "/send-complaint",
     }
   ] : user?.role === "product_owner" ? [
     // Product owners can apply for leave
@@ -365,6 +370,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <MessageSquareX size={20} />,
       label: "Clients complain",
       href: "/dashboard/complaints-management",
+    },
+    {
+      icon: <AlertTriangle size={20} />,
+      label: "Staff Complaints",
+      href: "/dashboard/staff-complaints",
     },
   ] : [];
 

@@ -5513,8 +5513,8 @@ export function registerRoutes(app: Express): Server {
           LEFT JOIN users u ON m.sent_by = u.id 
           LEFT JOIN memo_reads mr ON m.id = mr.memo_id AND mr.user_id = ${user.id}
           WHERE 
-            (m.type = 'staff_members') OR
-            (m.type = 'individual' AND JSON_CONTAINS(m.recipients, ${JSON.stringify([user.id])})) OR
+            (m.type = 'general') OR
+            (m.type = 'individual' AND JSON_CONTAINS(m.recipients, CAST(${user.id} AS JSON))) OR
             (m.type = 'department' AND (
               JSON_CONTAINS(m.recipients, '"all_staff"') OR
               (${user.specialization ? `JSON_CONTAINS(m.recipients, ${JSON.stringify(`"${user.specialization}"`)}` : 'false'})
@@ -5562,7 +5562,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Title, content, and type are required" });
       }
 
-      const validTypes = ["individual", "staff_members", "department"];
+      const validTypes = ["individual", "general", "department"];
       if (!validTypes.includes(type)) {
         return res.status(400).json({ error: "Invalid memo type" });
       }
@@ -5579,12 +5579,12 @@ export function registerRoutes(app: Express): Server {
       // Determine recipients and send notifications
       let targetUsers = [];
 
-      if (type === "staff_members") {
-        // Send to all staff members
-        const staffResult = await db.execute(sql`
-          SELECT id, name FROM users WHERE role = 'staff' OR specialization IN ('automation', 'copywriting', 'design', 'media_buying', 'development', 'community_manager', 'technical_support')
+      if (type === "general") {
+        // Send to all users (everyone in the system)
+        const allUsersResult = await db.execute(sql`
+          SELECT id, name FROM users WHERE role != 'operations_manager'
         `);
-        targetUsers = staffResult.rows;
+        targetUsers = allUsersResult.rows;
       } else if (type === "individual") {
         // Send to specific users
         if (recipients && recipients.length > 0) {
@@ -5716,6 +5716,196 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error deleting memo:", error);
       res.status(500).json({ error: "Failed to delete memo" });
+    }
+  });
+
+  // Staff Complaint API Routes
+
+  // Submit staff complaint
+  app.post("/api/staff-complaints", upload.single('screenshot'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const { name, email, department, detailedExplanation } = req.body;
+
+      if (!name || !email || !detailedExplanation) {
+        return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
+      }
+
+      // Handle screenshot if uploaded
+      let screenshotUrl = null;
+      if (req.file) {
+        screenshotUrl = `/uploads/complaint-screenshots/${req.file.filename}`;
+      }
+
+      // Create staff complaint record
+      const result = await db.execute(sql`
+        INSERT INTO staff_complaints (name, email, department, detailed_explanation, screenshot_url, submitter_id)
+        VALUES (${name.trim()}, ${email.trim()}, ${department || null}, ${detailedExplanation.trim()}, ${screenshotUrl || null}, ${req.user!.id})
+        RETURNING *
+      `);
+
+      const newComplaint = result.rows[0];
+
+      // Get all operations managers
+      const operationsManagers = await db
+        .select()
+        .from(users)
+        .where(or(
+          eq(users.specialization, "operations_manager"),
+          eq(users.role, "operations_manager")
+        ));
+
+      // Send notification to all operations managers
+      for (const manager of operationsManagers) {
+        const [notification] = await db
+          .insert(notifications)
+          .values({
+            userId: manager.id,
+            type: "staff_complaint",
+            content: `New staff complaint from ${name}: ${detailedExplanation.substring(0, 100)}...`,
+            referenceId: newComplaint.id,
+            referenceType: "staff_complaint",
+            createdAt: new Date(),
+          })
+          .returning();
+
+        // Send real-time notification via SSE if manager is connected
+        const clientResponse = global.sseClients?.get(manager.id);
+        if (clientResponse && !clientResponse.writableEnded) {
+          try {
+            clientResponse.write(`data: ${JSON.stringify({
+              type: "notification",
+              data: notification
+            })}\n\n`);
+          } catch (error) {
+            console.error(`Error sending SSE notification to operations manager ${manager.id}:`, error);
+            global.sseClients?.delete(manager.id);
+          }
+        }
+      }
+
+      res.json({ message: "Staff complaint submitted successfully", complaint: newComplaint });
+    } catch (error) {
+      console.error("Error submitting staff complaint:", error);
+      res.status(500).json({ error: "Failed to submit staff complaint" });
+    }
+  });
+
+  // Get all staff complaints (Operations Manager only)
+  app.get("/api/staff-complaints", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.specialization !== "operations_manager" && user.role !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can view staff complaints" });
+    }
+
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM staff_complaints ORDER BY created_at DESC
+      `);
+
+      const allComplaints = result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        department: row.department,
+        detailedExplanation: row.detailed_explanation,
+        screenshotUrl: row.screenshot_url,
+        status: row.status || 'pending',
+        reviewComments: row.review_comments,
+        createdAt: row.created_at,
+        reviewedAt: row.reviewed_at
+      }));
+
+      res.json(allComplaints);
+    } catch (error) {
+      console.error("Error fetching staff complaints:", error);
+      res.status(500).json({ error: "Failed to fetch staff complaints" });
+    }
+  });
+
+  // Update staff complaint status (Operations Manager only)
+  app.put("/api/staff-complaints/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.specialization !== "operations_manager" && user.role !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can update staff complaints" });
+    }
+
+    try {
+      const complaintId = parseInt(req.params.id);
+      const { status, reviewComments } = req.body;
+
+      const validStatuses = ["pending", "reviewed", "resolved"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      // Get the complaint details first to get submitter info
+      const complaintResult = await db.execute(sql`
+        SELECT submitter_id, name FROM staff_complaints WHERE id = ${complaintId}
+      `);
+
+      if (complaintResult.rows.length === 0) {
+        return res.status(404).json({ error: "Staff complaint not found" });
+      }
+
+      const complaint = complaintResult.rows[0];
+
+      // Update the complaint
+      const result = await db.execute(sql`
+        UPDATE staff_complaints 
+        SET status = ${status}, 
+            review_comments = ${reviewComments || null}, 
+            reviewed_at = CURRENT_TIMESTAMP
+        WHERE id = ${complaintId}
+        RETURNING *
+      `);
+
+      const updatedComplaint = result.rows[0];
+
+      // Send notification to the staff member who submitted the complaint
+      if (complaint.submitter_id) {
+        const [notification] = await db
+          .insert(notifications)
+          .values({
+            userId: complaint.submitter_id,
+            type: "complaint_update",
+            content: `Your complaint has been ${status}. ${reviewComments ? 'Review comments have been added.' : ''}`,
+            referenceId: complaintId,
+            referenceType: "staff_complaint",
+            createdAt: new Date(),
+          })
+          .returning();
+
+        // Send real-time notification via SSE if staff member is connected
+        const clientResponse = global.sseClients?.get(complaint.submitter_id);
+        if (clientResponse && !clientResponse.writableEnded) {
+          try {
+            clientResponse.write(`data: ${JSON.stringify({
+              type: "notification",
+              data: notification
+            })}\n\n`);
+          } catch (error) {
+            console.error(`Error sending SSE notification to staff member ${complaint.submitter_id}:`, error);
+            global.sseClients?.delete(complaint.submitter_id);
+          }
+        }
+      }
+
+      res.json(updatedComplaint);
+    } catch (error) {
+      console.error("Error updating staff complaint:", error);
+      res.status(500).json({ error: "Failed to update staff complaint" });
     }
   });
 
