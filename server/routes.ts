@@ -33,8 +33,11 @@ import {
   deadlineExtensionRequests,
   complaints,
   insertTechnicalSupportRequestSchema,
+  memos,
+  memoReads,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
+import WebSocket from "ws";
 
 // Middleware to check if user is a project manager
 const isProjectManager = (req: Express.Request, res: Response, next: NextFunction) => {
@@ -256,7 +259,7 @@ export function registerRoutes(app: Express): Server {
 
       const projectIds = clientProjects.map(p => p.id);
       const projectManagerIds = [...new Set(clientProjects.map(p => p.managerId).filter(Boolean))];
-      
+
       let allowedContacts: any[] = [];
 
       if (projectIds.length > 0) {
@@ -450,7 +453,7 @@ export function registerRoutes(app: Express): Server {
       return res.status(403).send("Access denied");
     }
     const { specialization } = req.query;
-    
+
     // Get both staff and product owners
     let query = db
       .select()
@@ -466,16 +469,16 @@ export function registerRoutes(app: Express): Server {
         eq(users.role, "staff"),
         eq(users.specialization, specialization as string)
       ));
-      
+
       // Also include all product owners regardless of specialization filter
       const productOwners = await db
         .select()
         .from(users)
         .where(eq(users.role, "product_owner"))
         .orderBy(desc(users.lastActive));
-      
+
       const staffWithSpecialization = await query.orderBy(desc(users.lastActive));
-      
+
       const combined = [...staffWithSpecialization, ...productOwners];
       return res.json(combined);
     }
@@ -771,7 +774,7 @@ export function registerRoutes(app: Express): Server {
       if (isNaN(projectId)) {
         return res.status(400).json({ error: "Invalid project ID" });
       }
-      
+
       const [project] = await db
         .select()
         .from(projects)
@@ -974,7 +977,7 @@ export function registerRoutes(app: Express): Server {
     try {
 
       // First delete related records to avoid foreign key constraint errors
-      
+
       // Delete deliverables from project plans
       const projectPlansList = await db
         .select()
@@ -1071,7 +1074,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const projectId = parseInt(req.params.id);
-      
+
       // Verify user has access to this project
       const userRole = req.user!.role;
       let hasAccess = false;
@@ -1491,7 +1494,7 @@ export function registerRoutes(app: Express): Server {
           referenceId: projectId,
           referenceType: "project",
           createdAt: new Date(),
-                })
+        })
         .returning();
 
       // Send notification through SSE if user is connected
@@ -2242,7 +2245,7 @@ export function registerRoutes(app: Express): Server {
     const keepAlive = setInterval(() => {
       if (res.writableEnded) {
         clearInterval(keepAlive);
-        global.sseClients.delete(userId);
+        global.sseClients?.delete(userId);
         return;
       }
       try {
@@ -2250,7 +2253,7 @@ export function registerRoutes(app: Express): Server {
       } catch (error) {
         console.error(`Error sending keepalive to user ${userId}:`, error);
         clearInterval(keepAlive);
-        global.sseClients.delete(userId);
+        global.sseClients?.delete(userId);
         res.end();
       }
     }, 30000);
@@ -2518,7 +2521,7 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
     console.log("User role:", user.role);
-    
+
     if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
       console.log("User role not authorized:", user.role);
       return res.status(403).json({ error: "Only project managers, product owners, and operations managers can add links" });
@@ -2628,7 +2631,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const user = req.user!;
-    
+
     if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
       return res.status(403).json({ error: "Only project managers, product owners, and operations managers can edit resources" });
     }
@@ -2735,7 +2738,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const user = req.user!;
-    
+
     if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
       return res.status(403).json({ error: "Only project managers, product owners, and operations managers can delete resources" });
     }
@@ -3883,7 +3886,7 @@ export function registerRoutes(app: Express): Server {
           })}\n\n`);
         } catch (error) {
           console.error(`Error sending SSE notification to user ${receiverId}:`, error);
-          global.sseClients.delete(receiverId);
+          global.sseClients?.delete(receiverId);
         }
       }
 
@@ -4143,7 +4146,7 @@ export function registerRoutes(app: Express): Server {
         const mentionedMember = projectMembersData.find(member => 
           member.userName && member.userName.toLowerCase() === mentionedName.toLowerCase()
         );
-        
+
         if (mentionedMember && mentionedMember.userId !== userId) {
           mentions.push(mentionedMember.userId);
         }
@@ -4212,7 +4215,7 @@ export function registerRoutes(app: Express): Server {
       res.status(201).json(messageData);
     } catch (error) {
       console.error("Error sending team message:", error);
-      res.status(500).json({ error: "Failed to send message" });
+      res.status(500).json({ error: "Failed to send team message" });
     }
   });
 
@@ -4257,7 +4260,7 @@ export function registerRoutes(app: Express): Server {
           ...memberProjects.map(p => p.projectId).filter(id => id !== null && id !== undefined)
         ];
       }
-      
+
       // Remove duplicates and filter out null/undefined values
       const uniqueProjectIds = Array.from(new Set(allProjectIds.filter(id => id !== null && id !== undefined)));
 
@@ -4276,7 +4279,7 @@ export function registerRoutes(app: Express): Server {
 
       // Get unread counts for each project using read receipts for team chat (projectMessages)
       const unreadCounts: Record<number, number> = {};
-      
+
       for (const projectId of validProjectIds) {
         try {
           // Get all team messages for this project that are not from current user
@@ -4302,7 +4305,7 @@ export function registerRoutes(app: Express): Server {
             .where(eq(messageReadReceipts.userId, userId));
 
           const readIds = new Set(readMessageIds.map(r => r.messageId));
-          
+
           // Count unread team messages
           const unreadCount = teamMessagesList.filter(msg => !readIds.has(msg.id)).length;
           unreadCounts[projectId] = unreadCount;
@@ -4442,7 +4445,7 @@ export function registerRoutes(app: Express): Server {
     }
     try {
       const user = req.user as Express.User;
-      
+
       // Get basic technical support requests first
       let basicRequests;
       if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'operations_manager' || user.specialization === 'operations_manager') {
@@ -4507,7 +4510,7 @@ export function registerRoutes(app: Express): Server {
           project
         };
       }));
-      
+
       res.json(requests);
     } catch (error) {
       console.error("Error fetching technical support requests:", error);
@@ -4521,7 +4524,7 @@ export function registerRoutes(app: Express): Server {
     }
     try {
       const user = req.user as Express.User;
-      
+
       // Only non-technical support staff can create requests
       if (user.specialization === 'technical_support') {
         return res.status(403).json({ error: "Technical support staff cannot create requests" });
@@ -4712,7 +4715,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       const updateData: any = { ...req.body, updatedAt: new Date() };
-      
+
       if (req.body.status === 'resolved') {
         updateData.resolvedAt = new Date();
       }
@@ -4870,7 +4873,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const user = req.user!;
-    
+
     // Only non-project manager staff can create requests
     if (user.role === "project_manager") {
       return res.status(403).json({ error: "Project managers cannot create deadline extension requests" });
@@ -5046,18 +5049,18 @@ export function registerRoutes(app: Express): Server {
       // If approved, update the task
       if (status === "approved") {
         const taskUpdateData: any = {};
-        
+
         if (approvedDeadline) {
           taskUpdateData.deadline = new Date(approvedDeadline);
         }
-        
+
         if (approvedWorkingHours) {
           taskUpdateData.workingHours = parseInt(approvedWorkingHours);
         }
 
         if (Object.keys(taskUpdateData).length > 0) {
           taskUpdateData.updatedAt = new Date();
-          
+
           await db
             .update(tasks)
             .set(taskUpdateData)
@@ -5277,7 +5280,7 @@ export function registerRoutes(app: Express): Server {
         VALUES (${name.trim()}, ${email.trim()}, ${productManagerName?.trim() || null}, ${developerName?.trim() || null}, ${technicalManagerName?.trim() || null}, ${JSON.stringify(parsedValuableThings)}::jsonb, ${detailedExplanation.trim()}, ${screenshotUrl || null}, ${req.user!.id})
         RETURNING *
       `);
-      
+
       const newComplaint = result.rows[0];
 
       // Get all operations managers
@@ -5340,7 +5343,7 @@ export function registerRoutes(app: Express): Server {
       const result = await db.execute(sql`
         SELECT * FROM complaints ORDER BY created_at DESC
       `);
-      
+
       const allComplaints = result.rows.map(row => ({
         id: row.id,
         name: row.name,
@@ -5392,7 +5395,7 @@ export function registerRoutes(app: Express): Server {
         WHERE id = ${complaintId}
         RETURNING *
       `);
-      
+
       const updatedComplaint = result.rows[0];
 
       if (!updatedComplaint) {
@@ -5411,16 +5414,16 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
-    
+
     try {
       const user = req.user as Express.User;
       const dateParam = req.query.date as string;
       const targetDate = dateParam ? new Date(dateParam) : new Date();
-      
+
       // Set target date to start of day
       const startOfDay = new Date(targetDate);
       startOfDay.setHours(0, 0, 0, 0);
-      
+
       const endOfDay = new Date(targetDate);
       endOfDay.setHours(23, 59, 59, 999);
 
@@ -5495,31 +5498,31 @@ export function registerRoutes(app: Express): Server {
 
       // Generate weekly breakdown (Monday to Friday of current week)
       const currentWeekStart = new Date(startOfWeek);
-      
+
       for (let i = 0; i < 5; i++) { // Monday to Friday only
         const currentDay = new Date(currentWeekStart);
         currentDay.setDate(currentWeekStart.getDate() + i);
-        
+
         const dayStart = new Date(currentDay);
         dayStart.setHours(0, 0, 0, 0);
-        
+
         const dayEnd = new Date(currentDay);
         dayEnd.setHours(23, 59, 59, 999);
-        
+
         // Get tasks worked on this specific day
         const dayTasks = userTasks.filter(task => {
           if (!task.updatedAt) return false;
           const taskUpdated = new Date(task.updatedAt);
           return taskUpdated >= dayStart && taskUpdated <= dayEnd && (task.timeSpent || 0) > 0;
         });
-        
+
         const dayTimeSpent = dayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0);
         const dayHours = dayTimeSpent / 3600; // Convert seconds to hours
-        
+
         // Calculate performance status and color based on hours worked
         let performanceStatus = 'poor';
         let performanceColor = '#EF4444'; // Red
-        
+
         if (dayHours >= 4) {
           performanceStatus = 'good';
           performanceColor = '#22C55E'; // Green
@@ -5527,9 +5530,9 @@ export function registerRoutes(app: Express): Server {
           performanceStatus = 'fair';
           performanceColor = '#EAB308'; // Yellow
         }
-        
+
         const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        
+
         todayData.weeklyBreakdown.push({
           day: currentDay.toISOString().split('T')[0], // YYYY-MM-DD format
           dayName: dayNames[i],
@@ -5846,7 +5849,7 @@ export function registerRoutes(app: Express): Server {
         .orderBy(bookings.startTime);
 
       console.log(`Retrieved ${allBookings.length} total scheduled bookings`);
-      
+
       // Filter bookings where user is a participant
       const upcomingBookings = allBookings.filter(booking => {
         try {
@@ -5854,7 +5857,7 @@ export function registerRoutes(app: Express): Server {
             console.log(`Booking ${booking.id} has no participants`);
             return false;
           }
-          
+
           let participants;
           if (Array.isArray(booking.participants)) {
             participants = booking.participants;
@@ -5864,12 +5867,12 @@ export function registerRoutes(app: Express): Server {
             console.log(`Booking ${booking.id} has invalid participants format:`, typeof booking.participants);
             return false;
           }
-          
+
           if (!Array.isArray(participants)) {
             console.log(`Booking ${booking.id} participants is not an array:`, participants);
             return false;
           }
-          
+
           console.log(`Booking ${booking.id} participants:`, participants, `User ${userId} included:`, participants.includes(userId));
           return participants.includes(userId);
         } catch (error) {
@@ -5967,7 +5970,7 @@ export function registerRoutes(app: Express): Server {
       const { scrypt, randomBytes } = await import("crypto");
       const { promisify } = await import("util");
       const scryptAsync = promisify(scrypt);
-      
+
       const salt = randomBytes(16).toString("hex");
       const buf = (await scryptAsync(password, salt, 64)) as Buffer;
       const hashedPassword = `${buf.toString("hex")}.${salt}`;

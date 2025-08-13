@@ -612,5 +612,51 @@ export type Complaint = typeof complaints.$inferSelect;
 export const insertComplaintSchema = createInsertSchema(complaints);
 export const selectComplaintSchema = createSelectSchema(complaints);
 
+export const memos = pgTable("memos", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  type: text("type", { 
+    enum: ["individual", "staff_members", "department"] 
+  }).notNull(),
+  recipients: jsonb("recipients").notNull(), // Array of user IDs or department names
+  sentBy: integer("sent_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const memoReads = pgTable("memo_reads", {
+  id: serial("id").primaryKey(),
+  memoId: integer("memo_id").references(() => memos.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  readAt: timestamp("read_at").defaultNow(),
+});
+
+export const memosRelations = relations(memos, ({ one, many }) => ({
+  sender: one(users, {
+    fields: [memos.sentBy],
+    references: [users.id],
+  }),
+  reads: many(memoReads),
+}));
+
+export const memoReadsRelations = relations(memoReads, ({ one }) => ({
+  memo: one(memos, {
+    fields: [memoReads.memoId],
+    references: [memos.id],
+  }),
+  user: one(users, {
+    fields: [memoReads.userId],
+    references: [users.id],
+  }),
+}));
+
+export type Memo = typeof memos.$inferSelect;
+export type MemoRead = typeof memoReads.$inferSelect;
+export const insertMemoSchema = createInsertSchema(memos);
+export const selectMemoSchema = createSelectSchema(memos);
+export const insertMemoReadSchema = createInsertSchema(memoReads);
+export const selectMemoReadSchema = createSelectSchema(memoReads);
+
 export const insertTechnicalSupportRequestSchema = createInsertSchema(technicalSupportRequests);
 export const selectTechnicalSupportRequestSchema = createSelectSchema(technicalSupportRequests);

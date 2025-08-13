@@ -17,14 +17,14 @@ import {
   Phone,
   Building2,
   Clock,
+  Wrench,
+  MessageSquareX,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
-import { Wrench } from "lucide-react";
-import { MessageSquareX } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 
 interface SidebarItemProps {
@@ -75,7 +75,19 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   const { logout, user } = useUser();
   const [, setLocation] = useLocation();
   const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
-  const { data: unreadCounts = {} } = useUnreadMessageCounts();
+  const { data: unreadCounts = {} } = useQuery({
+    queryKey: ["/api/projects/unread-counts"],
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Fetch unread memos count for non-operations managers
+  const { data: unreadMemos = [] } = useQuery({
+    queryKey: ["/api/memos/my-memos"],
+    enabled: user?.role !== "operations_manager" && user?.specialization !== "operations_manager",
+    refetchInterval: 30000,
+  });
+
+  const unreadMemoCount = unreadMemos.filter((memo: any) => !memo.isRead).length;
 
   // Calculate total unread project messages
   const totalUnreadProjectMessages = Object.values(unreadCounts).reduce((total, count) => total + count, 0);
@@ -345,6 +357,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/bookings",
     },
     {
+      icon: <FileText size={20} />,
+      label: "Memos",
+      href: "/dashboard/memos",
+    },
+    {
       icon: <MessageSquareX size={20} />,
       label: "Clients complain",
       href: "/dashboard/complaints-management",
@@ -410,6 +427,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     ...technicalSupportMenuItems, // Technical support menu items
     ...extensionMenuItems,        // Extension requests menu items
     ...operationsManagerMenuItems,
+    {
+      icon: <FileText size={20} />,
+      label: "Memos",
+      href: "/dashboard/memos",
+      badge: user?.role !== "operations_manager" && user?.specialization !== "operations_manager" && unreadMemoCount > 0 ? unreadMemoCount : undefined,
+    },
     ...baseMenuItems.slice(2)     // Direct Messages, Settings
   ];
 
