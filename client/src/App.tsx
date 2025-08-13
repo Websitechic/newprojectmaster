@@ -36,7 +36,6 @@ import ClientDashboard from "@/pages/dashboard/client-dashboard";
 import ComplaintsManagement from "@/pages/dashboard/complaints-management";
 import ClientAccounts from "@/pages/dashboard/client-accounts";
 import TechnicalManagement from "./pages/dashboard/technical-management";
-import ComplaintsManagement from "./pages/dashboard/complaints-management";
 
 
 function PrivateRoute({ component: Component, ...rest }: any) {
