@@ -76,14 +76,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
   const { data: unreadCounts = {} } = useUnreadMessageCounts();
 
-  // Debug: Log user info to console
-  console.log("User debug info:", {
-    role: user?.role,
-    specialization: user?.specialization,
-    name: user?.name,
-    isOperationsManager: user?.specialization === "operations_manager" || user?.role === "operations_manager"
-  });
-
   // Calculate total unread project messages
   const totalUnreadProjectMessages = Object.values(unreadCounts).reduce((total, count) => total + count, 0);
 
@@ -330,7 +322,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   }] : [];
 
   // Operations Manager specific menu items
-  const operationsManagerMenuItems = (user?.specialization === "operations_manager" || user?.role === "operations_manager") ? [
+  const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" ? [
     {
       icon: <Users size={20} />,
       label: "Staff Report",
@@ -412,12 +404,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     ...clientMenuItems,           // Client specific items
   ] : [
     ...baseMenuItems.slice(0, 2), // Dashboard, Projects
-    ...operationsManagerMenuItems, // Operations Manager specific items (should come first)
     ...pmMenuItems,               // Project manager specific items
     ...staffMenuItems,            // Staff specific items
     ...technicalSupportMenuItems, // Technical support menu items
     ...extensionMenuItems,        // Extension requests menu items
-    ...baseMenuItems.slice(2)     // Direct Messages, Guide Videos
+    ...operationsManagerMenuItems,
+    ...baseMenuItems.slice(2)     // Direct Messages, Settings
   ];
 
   return (

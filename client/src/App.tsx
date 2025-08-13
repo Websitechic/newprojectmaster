@@ -21,7 +21,7 @@ import LeaveManagement from "@/pages/dashboard/leave-management";
 import DirectMessages from "@/pages/dashboard/direct-messages";
 import Bookings from "@/pages/dashboard/bookings";
 import Productivity from "@/pages/dashboard/productivity";
-import TechnicalSupport from "./pages/technical-support";
+import TechnicalSupport from "@/pages/technical-support";
 import TechnicalManagementFixed from "@/pages/technical-management-fixed";
 import DeadlineExtensionRequests from "@/pages/deadline-extension-requests";
 import ClientManagement from "@/pages/dashboard/client-management";
@@ -35,8 +35,6 @@ import RateUs from "@/pages/dashboard/rate-us";
 import ClientDashboard from "@/pages/dashboard/client-dashboard";
 import ComplaintsManagement from "@/pages/dashboard/complaints-management";
 import ClientAccounts from "@/pages/dashboard/client-accounts";
-import TechnicalManagement from "./pages/dashboard/technical-management";
-
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -91,11 +89,10 @@ function Router() {
       <Route path="/dashboard/bookings" component={() => <PrivateRoute component={Bookings} />} />
       <Route path="/dashboard/productivity" component={() => <PrivateRoute component={Productivity} />} />
       <Route path="/dashboard/direct-messages" component={() => <PrivateRoute component={DirectMessages} />} />
-      <Route path="/dashboard/technical-support" component={TechnicalSupport} />
-      <Route path="/dashboard/technical-management" component={TechnicalManagement} />
-      <Route path="/dashboard/complaints-management" component={ComplaintsManagement} />
-      <Route path="/dashboard/extension-requests" component={ExtensionRequestsPage} />
-      <Route path="/dashboard/deadline-extension-requests" component={DeadlineExtensionRequests} />
+      <Route path="/dashboard/technical-support" component={() => <PrivateRoute component={TechnicalSupport} />} />
+      <Route path="/dashboard/technical-management" component={() => <PrivateRoute component={TechnicalManagementFixed} />} />
+      <Route path="/dashboard/extension-requests" component={() => <PrivateRoute component={ExtensionRequestsPage} />} />
+      <Route path="/dashboard/deadline-extension-requests" component={() => <PrivateRoute component={DeadlineExtensionRequests} />} />
       <Route path="/dashboard/client-management" component={ClientManagement} />
       <Route path="/dashboard/guide-videos" component={() => <PrivateRoute component={GuideVideos} />} />
       <Route path="/dashboard/register-dissatisfaction" component={() => <PrivateRoute component={RegisterDissatisfaction} />} />
