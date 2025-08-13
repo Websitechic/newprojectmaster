@@ -138,7 +138,7 @@ export default function GuideVideos() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>How to send a message on team chat</CardTitle>
+                  <CardTitle>How To Send A Message On Team Chat</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video w-full">
@@ -156,7 +156,7 @@ export default function GuideVideos() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>How to book a meeting</CardTitle>
+                  <CardTitle>How To Book A Meeting</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video w-full">
@@ -174,7 +174,7 @@ export default function GuideVideos() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>How to send a direct message</CardTitle>
+                  <CardTitle>How To Send A direct Message</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video w-full">
@@ -192,7 +192,7 @@ export default function GuideVideos() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>How to upload a resource</CardTitle>
+                  <CardTitle>How To Upload A Resource</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video w-full">
@@ -210,7 +210,7 @@ export default function GuideVideos() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>How to create a task</CardTitle>
+                  <CardTitle>How To Create A Task</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video w-full">
@@ -228,7 +228,7 @@ export default function GuideVideos() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>How to create a project plan</CardTitle>
+                  <CardTitle>How To Create A Project Plan</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video w-full">
@@ -246,7 +246,7 @@ export default function GuideVideos() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>How to create a project</CardTitle>
+                  <CardTitle>How To Create A Project</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video w-full">
