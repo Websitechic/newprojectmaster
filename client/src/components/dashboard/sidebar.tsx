@@ -19,6 +19,12 @@ import {
   Clock,
   Wrench,
   MessageSquareX,
+  Home, // Imported Home icon
+  FolderOpen, // Imported FolderOpen icon
+  MessageCircle, // Imported MessageCircle icon
+  TrendingUp, // Imported TrendingUp icon
+  ThumbsUp, // Imported ThumbsUp icon
+  LifeBuoy, // Imported LifeBuoy icon
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -34,9 +40,10 @@ interface SidebarItemProps {
   active?: boolean;
   badge?: number;
   external?: boolean;
+  key?: string; // Added key prop
 }
 
-function SidebarItem({ icon, label, href, active, badge, external }: SidebarItemProps) {
+function SidebarItem({ icon, label, href, active, badge, external, key }: SidebarItemProps) {
   const content = (
     <div
       className={cn(
@@ -201,40 +208,47 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <LayoutDashboard size={20} />,
       label: "Dashboard",
       href: "/dashboard",
+      key: "dashboard",
     },
     {
       icon: <FileText size={20} />,
       label: "Projects",
       href: "/dashboard/projects",
       badge: totalUnreadProjectMessages,
+      key: "projects",
     },
     {
       icon: <MessageSquare size={20} />,
       label: "Direct Messages",
       href: "/dashboard/direct-messages",
       badge: unreadDirectMessages,
+      key: "direct-messages",
     },
     {
       icon: <PlayCircle size={20} />,
       label: "Guide Videos",
       href: "/dashboard/guide-videos",
+      key: "guide-videos",
     },
   ] : [
     {
       icon: <LayoutDashboard size={20} />,
       label: "Dashboard",
       href: "/dashboard",
+      key: "dashboard",
     },
     {
       icon: <FileText size={20} />,
       label: "Projects",
       href: "/dashboard/projects",
       badge: totalUnreadProjectMessages,
+      key: "projects",
     },
     {
       icon: <PlayCircle size={20} />,
       label: "Guide Videos",
       href: "/dashboard/guide-videos",
+      key: "guide-videos",
     },
   ];
 
@@ -245,27 +259,32 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
         icon: <Users size={20} />,
         label: "Staff Report",
         href: "/dashboard/staff-report",
+        key: "staff-report",
       },
       {
         icon: <Building2 size={20} />,
         label: "Client Accounts",
         href: "/dashboard/client-accounts",
+        key: "client-accounts",
       },
       {
         icon: <CalendarDays size={20} />,
         label: "Bookings",
         href: "/dashboard/bookings",
+        key: "bookings",
       },
       {
         icon: <Calendar size={20} />,
         label: "Leave Management",
         href: "/dashboard/leave-management",
+        key: "leave-management",
       },
     ] : []),
     {
       icon: <Wrench size={20} />,
       label: "Technical Management",
       href: "/dashboard/technical-management",
+      key: "technical-management",
     }
   ] : [];
 
@@ -275,16 +294,19 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Calendar size={20} />,
       label: "Leave Application",
       href: "/dashboard/leave-application",
+      key: "leave-application",
     },
     {
       icon: <CheckSquare size={20} />,
       label: "Productivity Tracking",
       href: "/dashboard/productivity",
+      key: "productivity",
     },
     {
       icon: <MessageSquareX size={20} />,
       label: "Send Your Complaint",
       href: "/send-complaint",
+      key: "send-complaint",
     }
   ] : user?.role === "product_owner" ? [
     // Product owners can apply for leave
@@ -292,16 +314,19 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Calendar size={20} />,
       label: "Leave Application",
       href: "/dashboard/leave-application",
+      key: "leave-application",
     },
     {
       icon: <Users size={20} />,
       label: "Client Management",
       href: "/dashboard/client-management",
+      key: "client-management",
     },
     {
       icon: <Building2 size={20} />,
       label: "Client Accounts",
       href: "/dashboard/client-accounts",
+      key: "client-accounts",
     }
   ] : [];
 
@@ -312,12 +337,14 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Settings size={20} />,
       label: "Technical Management",
       href: "/dashboard/technical-management",
+      key: "technical-management",
     }] : []),
     // For non-technical support staff (including null specialization), show Technical Support
     ...(user?.specialization !== "technical_support" ? [{
       icon: <Settings size={20} />,
       label: "Technical Support",
       href: "/dashboard/technical-support",
+      key: "technical-support",
     }] : [])
   ] : user?.role === "product_owner" ? [
     // Product owners get read-only access to Technical Management
@@ -325,6 +352,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Settings size={20} />,
       label: "Technical Management",
       href: "/dashboard/technical-management",
+      key: "technical-management",
     }
   ] : [];
 
@@ -333,10 +361,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     icon: <Clock size={20} />,
     label: "Deadline Extension Requests",
     href: "/dashboard/deadline-extension-requests",
+    key: "deadline-extension-requests",
   }] : user?.role === "staff" ? [{
     icon: <Clock size={20} />,
     label: "Extension Requests",
     href: "/dashboard/extension-requests",
+    key: "extension-requests",
   }] : [];
 
   // Operations Manager specific menu items
@@ -345,36 +375,43 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Users size={20} />,
       label: "Staff Report",
       href: "/dashboard/staff-report",
+      key: "operations-staff-report",
     },
     {
       icon: <Building2 size={20} />,
       label: "Client Accounts",
       href: "/dashboard/client-accounts",
+      key: "operations-client-accounts",
     },
     {
       icon: <Wrench size={20} />,
       label: "Technical Management",
       href: "/dashboard/technical-management",
+      key: "operations-technical-management",
     },
     {
       icon: <Calendar size={20} />,
       label: "Bookings",
       href: "/dashboard/bookings",
+      key: "operations-bookings",
     },
     {
       icon: <FileText size={20} />,
       label: "Memos",
       href: "/dashboard/memos",
+      key: "operations-memos",
     },
     {
       icon: <MessageSquareX size={20} />,
       label: "Clients complain",
       href: "/dashboard/complaints-management",
+      key: "operations-complaints-management",
     },
     {
       icon: <AlertTriangle size={20} />,
       label: "Staff Complaints",
       href: "/dashboard/staff-complaints",
+      key: "operations-staff-complaints",
     },
   ] : [];
 
@@ -386,39 +423,46 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Projects",
       href: "/dashboard/projects",
       badge: totalUnreadProjectMessages,
+      key: "client-projects",
     }] : []),
     {
       icon: <PlayCircle size={20} />,
       label: "Guide Videos",
       href: "/dashboard/guide-videos",
+      key: "client-guide-videos",
     },
     {
       icon: <AlertTriangle size={20} />,
       label: "Register Your Dissatisfaction",
       href: "/dashboard/register-dissatisfaction",
+      key: "client-register-dissatisfaction",
     },
     // Support Policy only for Support & Maintenance clients
     ...(user?.clientType === "support_maintenance_client" ? [{
       icon: <Shield size={20} />,
       label: "Support Policy",
       href: "/dashboard/support-policy",
+      key: "client-support-policy",
     }] : []),
     {
       icon: <Star size={20} />,
       label: "Rate Us",
       href: "/dashboard/rate-us",
+      key: "client-rate-us",
     },
     // Emergency During Off Days only for Support & Maintenance clients
     ...(user?.clientType === "support_maintenance_client" ? [{
       icon: <Phone size={20} />,
       label: "Emergency During Off Days",
       href: "/dashboard/emergency-support",
+      key: "client-emergency-support",
     }] : []),
     // Reach Us only for Project clients
     ...(user?.clientType === "project_client" ? [{
       icon: <MessageSquare size={20} />,
       label: "Reach Us",
       href: "/dashboard/reach-us",
+      key: "client-reach-us",
     }] : []),
   ] : [];
 
@@ -428,6 +472,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <LayoutDashboard size={20} />,
       label: "Dashboard",
       href: "/dashboard",
+      key: "dashboard",
     },
     ...clientMenuItems,           // Client specific items
   ] : [
@@ -442,6 +487,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Memos",
       href: "/dashboard/memos",
       badge: user?.role !== "operations_manager" && user?.specialization !== "operations_manager" && unreadMemoCount > 0 ? unreadMemoCount : undefined,
+      key: "memos",
     },
     ...baseMenuItems.slice(2)     // Direct Messages, Settings
   ];
@@ -466,7 +512,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
         <div className="space-y-1">
           {menuItems.map((item) => (
             <SidebarItem
-              key={item.href}
+              key={item.key || item.href} // Use item.key if available, otherwise fallback to item.href
               {...item}
               active={currentPath === item.href}
               external={item.external}

@@ -81,7 +81,7 @@ function Router() {
       <Route path="/dashboard/projects" component={() => <PrivateRoute component={Projects} />} />
       <Route path="/dashboard/projects/:id" component={() => <PrivateRoute component={ProjectDetails} />} />
       <Route path="/dashboard/projects/:id/tasks" component={() => <PrivateRoute component={ProjectTasks} />} />
-      <Route path="/dashboard/projects/:id/team-chat" component={TeamChat} />
+      <Route path="/dashboard/projects/:id/team-chat" component={() => <PrivateRoute component={TeamChat} />} />
       <Route path="/dashboard/projects/:id/client-chat" component={ClientChat} />
       <Route path="/dashboard/projects/:id/staff-tasks" component={StaffProjectTasks} />
       <Route path="/dashboard/projects/:id/staff" component={StaffProjectDetails} />
