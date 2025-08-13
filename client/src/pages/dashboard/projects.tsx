@@ -156,7 +156,7 @@ export default function Projects() {
                 <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
                 <p className="text-gray-600 mt-1">Manage and track your digital agency projects</p>
               </div>
-              {(user?.role === "project_manager" || user?.role === "product_owner") && (
+              {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-4 py-2 font-medium">
@@ -242,7 +242,7 @@ export default function Projects() {
                                 </span>
                               </div>
                             </div>
-                             {user?.role === "project_manager" && (
+                             {(user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
                               <div className="flex space-x-2">
                                 <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
                                   setIsEditDialogOpen(open);

@@ -49,7 +49,7 @@ const isProjectManager = (req: Express.Request, res: Response, next: NextFunctio
   next();
 };
 
-// Middleware to check if user can manage tasks (project managers, technical support staff, or product owners for Support & Maintenance)
+// Middleware to check if user can manage tasks (project managers, technical support staff, product owners for Support & Maintenance, or operations managers)
 const canManageTasks = async (req: Express.Request, res: Response, next: NextFunction) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Not authenticated" });
@@ -59,8 +59,9 @@ const canManageTasks = async (req: Express.Request, res: Response, next: NextFun
   const isProjectManager = user.role === UserRole.PROJECT_MANAGER;
   const isTechnicalSupport = user.role === UserRole.STAFF && user.specialization === 'technical_support';
   const isProductOwner = user.role === 'product_owner';
+  const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
 
-  if (isProjectManager || isTechnicalSupport) {
+  if (isProjectManager || isTechnicalSupport || isOperationsManager) {
     return next();
   }
 
@@ -96,7 +97,7 @@ const canManageTasks = async (req: Express.Request, res: Response, next: NextFun
     }
   }
 
-  return res.status(403).json({ error: "Only project managers, technical support staff, and product owners (for Support & Maintenance projects) can perform this action" });
+  return res.status(403).json({ error: "Only project managers, technical support staff, product owners (for Support & Maintenance projects), and operations managers can perform this action" });
 };
 
 // Configure multer for file uploads
@@ -774,7 +775,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Update project (Project Manager and Product Owner for Support & Maintenance only)
+  // Update project (Project Manager, Product Owner for Support & Maintenance, and Operations Manager)
   app.put("/api/projects/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -816,8 +817,10 @@ export function registerRoutes(app: Express): Server {
           error: "Product owners cannot change projects away from Support & Maintenance category" 
         });
       }
+    } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+      // Operations managers can edit any project
     } else {
-      return res.status(403).json({ error: "Only project managers and product owners can edit projects" });
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can edit projects" });
     }
     try {
       const projectId = parseInt(req.params.id);
@@ -913,7 +916,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Delete project (Project Manager and Product Owner for Support & Maintenance only)
+  // Delete project (Project Manager, Product Owner for Support & Maintenance, and Operations Manager)
   app.delete("/api/projects/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -948,8 +951,10 @@ export function registerRoutes(app: Express): Server {
           error: "Product owners can only delete Support & Maintenance category projects" 
         });
       }
+    } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+      // Operations managers can delete any project
     } else {
-      return res.status(403).json({ error: "Only project managers and product owners can delete projects" });
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can delete projects" });
     }
 
     try {
@@ -1156,6 +1161,13 @@ export function registerRoutes(app: Express): Server {
           .select()
           .from(projects)
           .orderBy(desc(projects.updatedAt));
+      } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+        // Operations managers see all projects with full access
+        console.log(`Fetching all projects for operations manager user ${user.id} (${user.name})`);
+        projectsList = await db
+          .select()
+          .from(projects)
+          .orderBy(desc(projects.updatedAt));
       } else {
         // Staff see projects they're invited to and have accepted
         console.log(`Fetching projects for staff user ${user.id} (${user.name})`);
@@ -1210,7 +1222,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Create Project (Project Manager and Product Owner for Support & Maintenance only)
+  // Create Project (Project Manager, Product Owner for Support & Maintenance, and Operations Manager)
   app.post("/api/projects", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -1229,8 +1241,10 @@ export function registerRoutes(app: Express): Server {
           error: "Product owners can only create Support & Maintenance category projects" 
         });
       }
+    } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+      // Operations managers can create any project
     } else {
-      return res.status(403).json({ error: "Only project managers and product owners can create projects" });
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can create projects" });
     }
     try {
       const { 
@@ -1293,6 +1307,58 @@ export function registerRoutes(app: Express): Server {
           updatedAt: new Date(),
         })
         .returning();
+
+      // Automatically add operations manager to all projects
+      try {
+        const operationsManagers = await db
+          .select()
+          .from(users)
+          .where(or(
+            eq(users.role, "operations_manager"),
+            eq(users.specialization, "operations_manager")
+          ));
+
+        for (const opsManager of operationsManagers) {
+          await db
+            .insert(projectMembers)
+            .values({
+              projectId: newProject.id,
+              userId: opsManager.id,
+              invitedBy: req.user!.id,
+              invitationStatus: "accepted",
+              joinedAt: new Date()
+            });
+
+          // Create notification for the operations manager
+          const [notification] = await db
+            .insert(notifications)
+            .values({
+              userId: opsManager.id,
+              type: "task_assigned",
+              content: `You have been automatically added to the project: ${newProject.name}`,
+              referenceId: newProject.id,
+              referenceType: "project",
+              createdAt: new Date(),
+            })
+            .returning();
+
+          // Send notification through SSE if user is connected
+          const clientResponse = global.sseClients?.get(opsManager.id);
+          if (clientResponse && !clientResponse.writableEnded) {
+            try {
+              clientResponse.write(`data: ${JSON.stringify({
+                type: "notification",
+                data: notification
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error sending SSE notification to operations manager ${opsManager.id}:`, error);
+              global.sseClients.delete(opsManager.id);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error adding operations managers to project:", error);
+      }
 
       // If team members were specified in the request, invite them and send notifications
       if (teamMembers && Array.isArray(teamMembers)) {
@@ -2424,7 +2490,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Add link resource (Project Manager and Product Owner only)
+  // Add link resource (Project Manager, Product Owner, and Operations Manager)
   app.post("/api/projects/:id/resources/link", async (req, res) => {
     console.log("Link upload endpoint called");
     console.log("Request params:", req.params);
@@ -2439,9 +2505,9 @@ export function registerRoutes(app: Express): Server {
     const user = req.user!;
     console.log("User role:", user.role);
     
-    if (user.role !== "project_manager" && user.role !== "product_owner") {
+    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
       console.log("User role not authorized:", user.role);
-      return res.status(403).json({ error: "Only project managers and product owners can add links" });
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can add links" });
     }
 
     try {
@@ -2541,7 +2607,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Edit link resource (Project Manager and Product Owner only)
+  // Edit link resource (Project Manager, Product Owner, and Operations Manager)
   app.put("/api/projects/:projectId/resources/:resourceId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -2549,8 +2615,8 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
     
-    if (user.role !== "project_manager" && user.role !== "product_owner") {
-      return res.status(403).json({ error: "Only project managers and product owners can edit resources" });
+    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can edit resources" });
     }
 
     try {
@@ -2648,7 +2714,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Delete resource (Project Manager and Product Owner only)
+  // Delete resource (Project Manager, Product Owner, and Operations Manager)
   app.delete("/api/projects/:projectId/resources/:resourceId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -2656,8 +2722,8 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
     
-    if (user.role !== "project_manager" && user.role !== "product_owner") {
-      return res.status(403).json({ error: "Only project managers and product owners can delete resources" });
+    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can delete resources" });
     }
 
     try {
@@ -4365,8 +4431,8 @@ export function registerRoutes(app: Express): Server {
       
       // Get basic technical support requests first
       let basicRequests;
-      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner') {
-        // Technical support staff, project managers, and product owners see all requests
+      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'operations_manager' || user.specialization === 'operations_manager') {
+        // Technical support staff, project managers, product owners, and operations managers see all requests
         console.log(`User ${user.id} (${user.role}) fetching all technical support requests`);
         basicRequests = await db.select()
           .from(technicalSupportRequests)
@@ -5815,8 +5881,8 @@ export function registerRoutes(app: Express): Server {
     }
 
     const user = req.user!;
-    if (user.role !== "project_manager" && user.role !== "product_owner") {
-      return res.status(403).json({ error: "Only project managers and product owners can manage client accounts" });
+    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can manage client accounts" });
     }
 
     next();

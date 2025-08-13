@@ -60,7 +60,7 @@ export default function ProjectDetails() {
   const unreadCount = useProjectUnreadCount(projectId);
   const [showPlanForm, setShowPlanForm] = useState(false); // State to control plan form visibility
 
-  const isProjectManager = user?.role === "project_manager";
+  const isProjectManager = user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager";
 
   const { data: project, isLoading } = useQuery({
     queryKey: [`/api/projects/${id}`],
