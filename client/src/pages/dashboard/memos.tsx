@@ -85,7 +85,7 @@ export default function Memos() {
   const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
 
   // Fetch memos (operations managers see all, others see their own)
-  const { data: memos = [], isLoading: memosLoading } = useQuery({
+  const { data: memos = [], isLoading: memosLoading } = useQuery<Memo[]>({
     queryKey: isOperationsManager ? ["/api/memos"] : ["/api/memos/my-memos"],
   });
 

@@ -5425,6 +5425,300 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Memo API Routes
+
+  // Get all memos (Operations Manager only)
+  app.get("/api/memos", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can view all memos" });
+    }
+
+    try {
+      const result = await db.execute(sql`
+        SELECT m.*, u.name as sender_name 
+        FROM memos m 
+        LEFT JOIN users u ON m.sent_by = u.id 
+        ORDER BY m.created_at DESC
+      `);
+
+      const memosWithSender = result.rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        type: row.type,
+        recipients: row.recipients || [],
+        sentBy: row.sent_by,
+        senderName: row.sender_name,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+
+      res.json(memosWithSender);
+    } catch (error) {
+      console.error("Error fetching memos:", error);
+      res.status(500).json({ error: "Failed to fetch memos" });
+    }
+  });
+
+  // Get memos for current user (Staff members)
+  app.get("/api/memos/my-memos", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+      // Operations managers see all memos they sent
+      try {
+        const result = await db.execute(sql`
+          SELECT m.*, u.name as sender_name,
+                 (SELECT COUNT(*) FROM memo_reads mr WHERE mr.memo_id = m.id) as read_count
+          FROM memos m 
+          LEFT JOIN users u ON m.sent_by = u.id 
+          WHERE m.sent_by = ${user.id}
+          ORDER BY m.created_at DESC
+        `);
+
+        const memosWithReadCount = result.rows.map(row => ({
+          id: row.id,
+          title: row.title,
+          content: row.content,
+          type: row.type,
+          recipients: row.recipients || [],
+          sentBy: row.sent_by,
+          senderName: row.sender_name,
+          readCount: row.read_count || 0,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        }));
+
+        res.json(memosWithReadCount);
+      } catch (error) {
+        console.error("Error fetching sent memos:", error);
+        res.status(500).json({ error: "Failed to fetch sent memos" });
+      }
+    } else {
+      // Staff members see memos targeted to them
+      try {
+        const result = await db.execute(sql`
+          SELECT m.*, u.name as sender_name,
+                 mr.read_at,
+                 CASE WHEN mr.read_at IS NOT NULL THEN true ELSE false END as is_read
+          FROM memos m 
+          LEFT JOIN users u ON m.sent_by = u.id 
+          LEFT JOIN memo_reads mr ON m.id = mr.memo_id AND mr.user_id = ${user.id}
+          WHERE 
+            (m.type = 'staff_members') OR
+            (m.type = 'individual' AND JSON_CONTAINS(m.recipients, ${JSON.stringify([user.id])})) OR
+            (m.type = 'department' AND (
+              JSON_CONTAINS(m.recipients, '"all_staff"') OR
+              (${user.specialization ? `JSON_CONTAINS(m.recipients, ${JSON.stringify(`"${user.specialization}"`)}` : 'false'})
+            ))
+          ORDER BY m.created_at DESC
+        `);
+
+        const userMemos = result.rows.map(row => ({
+          id: row.id,
+          title: row.title,
+          content: row.content,
+          type: row.type,
+          recipients: row.recipients || [],
+          sentBy: row.sent_by,
+          senderName: row.sender_name,
+          isRead: row.is_read,
+          readAt: row.read_at,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        }));
+
+        res.json(userMemos);
+      } catch (error) {
+        console.error("Error fetching user memos:", error);
+        res.status(500).json({ error: "Failed to fetch user memos" });
+      }
+    }
+  });
+
+  // Create memo (Operations Manager only)
+  app.post("/api/memos", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can create memos" });
+    }
+
+    try {
+      const { title, content, type, recipients } = req.body;
+
+      if (!title || !content || !type) {
+        return res.status(400).json({ error: "Title, content, and type are required" });
+      }
+
+      const validTypes = ["individual", "staff_members", "department"];
+      if (!validTypes.includes(type)) {
+        return res.status(400).json({ error: "Invalid memo type" });
+      }
+
+      // Create the memo
+      const result = await db.execute(sql`
+        INSERT INTO memos (title, content, type, recipients, sent_by, created_at, updated_at)
+        VALUES (${title}, ${content}, ${type}, ${JSON.stringify(recipients || [])}::jsonb, ${user.id}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING *
+      `);
+
+      const newMemo = result.rows[0];
+
+      // Determine recipients and send notifications
+      let targetUsers = [];
+
+      if (type === "staff_members") {
+        // Send to all staff members
+        const staffResult = await db.execute(sql`
+          SELECT id, name FROM users WHERE role = 'staff' OR specialization IN ('automation', 'copywriting', 'design', 'media_buying', 'development', 'community_manager', 'technical_support')
+        `);
+        targetUsers = staffResult.rows;
+      } else if (type === "individual") {
+        // Send to specific users
+        if (recipients && recipients.length > 0) {
+          const userIds = recipients.filter(r => typeof r === 'number');
+          const placeholders = userIds.map(() => '?').join(',');
+          const staffResult = await db.execute(sql`
+            SELECT id, name FROM users WHERE id IN (${userIds.join(',')})
+          `);
+          targetUsers = staffResult.rows;
+        }
+      } else if (type === "department") {
+        // Send to department members
+        if (recipients && recipients.length > 0) {
+          let conditions = [];
+          recipients.forEach(dept => {
+            if (dept === 'all_staff') {
+              conditions.push("role = 'staff'");
+            } else if (dept === 'project_managers') {
+              conditions.push("role = 'project_manager'");
+            } else if (dept === 'product_owners') {
+              conditions.push("role = 'product_owner'");
+            } else {
+              conditions.push(`specialization = '${dept}'`);
+            }
+          });
+          
+          if (conditions.length > 0) {
+            const staffResult = await db.execute(sql`
+              SELECT id, name FROM users WHERE ${sql.raw(conditions.join(' OR '))}
+            `);
+            targetUsers = staffResult.rows;
+          }
+        }
+      }
+
+      // Send notifications to target users
+      for (const targetUser of targetUsers) {
+        const [notification] = await db
+          .insert(notifications)
+          .values({
+            userId: targetUser.id,
+            type: "memo_received",
+            content: `New memo: ${title}`,
+            referenceId: newMemo.id,
+            referenceType: "memo",
+            createdAt: new Date(),
+          })
+          .returning();
+
+        // Send real-time notification via SSE if user is connected
+        const clientResponse = global.sseClients?.get(targetUser.id);
+        if (clientResponse && !clientResponse.writableEnded) {
+          try {
+            clientResponse.write(`data: ${JSON.stringify({
+              type: "notification",
+              data: notification
+            })}\n\n`);
+          } catch (error) {
+            console.error(`Error sending SSE notification to user ${targetUser.id}:`, error);
+            global.sseClients?.delete(targetUser.id);
+          }
+        }
+      }
+
+      res.json({ 
+        message: "Memo sent successfully", 
+        memo: newMemo,
+        recipientCount: targetUsers.length 
+      });
+    } catch (error) {
+      console.error("Error creating memo:", error);
+      res.status(500).json({ error: "Failed to create memo" });
+    }
+  });
+
+  // Mark memo as read
+  app.post("/api/memos/:id/mark-read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const memoId = parseInt(req.params.id);
+      const userId = req.user!.id;
+
+      // Insert or update read status (handle potential duplicate)
+      await db.execute(sql`
+        INSERT INTO memo_reads (memo_id, user_id, read_at)
+        VALUES (${memoId}, ${userId}, CURRENT_TIMESTAMP)
+        ON CONFLICT DO NOTHING
+      `);
+
+      res.json({ message: "Memo marked as read" });
+    } catch (error) {
+      console.error("Error marking memo as read:", error);
+      res.status(500).json({ error: "Failed to mark memo as read" });
+    }
+  });
+
+  // Delete memo (Operations Manager only)
+  app.delete("/api/memos/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can delete memos" });
+    }
+
+    try {
+      const memoId = parseInt(req.params.id);
+
+      // Verify the memo exists and was sent by this user
+      const checkResult = await db.execute(sql`
+        SELECT id FROM memos WHERE id = ${memoId} AND sent_by = ${user.id}
+      `);
+
+      if (checkResult.rows.length === 0) {
+        return res.status(404).json({ error: "Memo not found or not authorized" });
+      }
+
+      // Delete the memo (memo_reads will be deleted automatically due to CASCADE)
+      await db.execute(sql`
+        DELETE FROM memos WHERE id = ${memoId}
+      `);
+
+      res.json({ message: "Memo deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting memo:", error);
+      res.status(500).json({ error: "Failed to delete memo" });
+    }
+  });
+
   // Productivity tracking endpoint
   app.get("/api/productivity", async (req: Request, res: Response) => {
     if (!req.isAuthenticated()) {
