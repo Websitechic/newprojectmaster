@@ -167,7 +167,12 @@ export default function DeadlineExtensionRequestsPage() {
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const processedRequests = requests.filter(r => r.status !== 'pending');
 
-  if (user?.role !== "project_manager" && user?.role !== "operations_manager" && user?.specialization !== "operations_manager") {
+  // Check if user has proper access (project managers and operations managers)
+  const hasAccess = user?.role === "project_manager" || 
+                   user?.role === "operations_manager" || 
+                   user?.specialization === "operations_manager";
+
+  if (!hasAccess) {
     return (
       <div className="flex h-screen">
         <Sidebar currentPath={location} />
@@ -177,6 +182,7 @@ export default function DeadlineExtensionRequestsPage() {
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
               <p className="text-gray-600 mt-2">This page is only available to project managers and operations managers.</p>
+              <p className="text-sm text-gray-500 mt-1">Your role: {user?.role}, Specialization: {user?.specialization}</p>
             </div>
           </div>
         </div>

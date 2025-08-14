@@ -4270,17 +4270,21 @@ export function registerRoutes(app: Express): Server {
   // Get unread team message counts for all user's projects
   app.get("/api/projects/unread-counts", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     try {
       const userId = req.user!.id;
       const userRole = req.user!.role;
+      
+      if (!userId || !userRole) {
+        return res.status(400).json({ error: "Invalid user session" });
+      }
 
       let allProjectIds: number[] = [];
 
-      if (userRole === "product_owner") {
-        // Product owners have access to all projects
+      if (userRole === "product_owner" || userRole === "operations_manager" || req.user!.specialization === "operations_manager") {
+        // Product owners and operations managers have access to all projects
         const allProjects = await db
           .select({ id: projects.id })
           .from(projects);
@@ -5888,7 +5892,7 @@ export function registerRoutes(app: Express): Server {
   // Submit client sentiment
   app.post("/api/client-sentiment", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
@@ -5899,8 +5903,14 @@ export function registerRoutes(app: Express): Server {
     try {
       const { sentiment, reason } = req.body;
 
+      console.log("Client sentiment submission:", { userId: user.id, sentiment, reason });
+
       if (!sentiment || !reason) {
         return res.status(400).json({ error: "Sentiment and reason are required" });
+      }
+
+      if (!reason.trim()) {
+        return res.status(400).json({ error: "Reason cannot be empty" });
       }
 
       const validSentiments = ["satisfied", "dissatisfied", "flags"];
@@ -5921,20 +5931,35 @@ export function registerRoutes(app: Express): Server {
       sunday.setHours(23, 59, 59, 999);
 
       // Check if user already submitted for this week
+      const mondayDateStr = monday.toISOString().split('T')[0];
+      console.log("Checking for existing sentiment for user", user.id, "week starting", mondayDateStr);
+      
       const existingResult = await db.execute(sql`
         SELECT id FROM client_sentiment 
         WHERE client_id = ${user.id} 
-        AND week_start = ${monday.toISOString().split('T')[0]}
+        AND week_start = ${mondayDateStr}
       `);
 
       if (existingResult.rows.length > 0) {
+        console.log("User already submitted sentiment for this week");
         return res.status(400).json({ error: "You have already submitted sentiment for this week" });
       }
 
       // Insert new sentiment
+      const mondayStr = monday.toISOString().split('T')[0];
+      const sundayStr = sunday.toISOString().split('T')[0];
+      
+      console.log("Inserting client sentiment:", {
+        client_id: user.id,
+        sentiment,
+        reason: reason.trim(),
+        week_start: mondayStr,
+        week_end: sundayStr
+      });
+
       const result = await db.execute(sql`
         INSERT INTO client_sentiment (client_id, sentiment, reason, week_start, week_end, created_at, updated_at)
-        VALUES (${user.id}, ${sentiment}, ${reason.trim()}, ${monday.toISOString().split('T')[0]}, ${sunday.toISOString().split('T')[0]}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        VALUES (${user.id}, ${sentiment}, ${reason.trim()}, ${mondayStr}, ${sundayStr}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         RETURNING *
       `);
 

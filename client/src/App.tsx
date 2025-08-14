@@ -80,7 +80,12 @@ function Router() {
       <Route path="/">
         {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
       </Route>
-      <Route path="/dashboard" component={() => <PrivateRoute component={user?.role === "client" ? ClientDashboard : Dashboard} />} />
+      <Route path="/dashboard">
+        <PrivateRoute component={() => {
+          const { user } = useAuth();
+          return user?.role === "client" ? <ClientDashboard /> : <Dashboard />;
+        }} />
+      </Route>
       <Route path="/dashboard/projects" component={() => <PrivateRoute component={Projects} />} />
       <Route path="/dashboard/projects/:id" component={() => <PrivateRoute component={ProjectDetails} />} />
       <Route path="/dashboard/projects/:id/tasks" component={() => <PrivateRoute component={ProjectTasks} />} />
