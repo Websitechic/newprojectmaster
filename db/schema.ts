@@ -726,3 +726,27 @@ export const selectTechnicalSupportRequestSchema = createSelectSchema(technicalS
 export type StaffQuery = typeof staffQueries.$inferSelect;
 export const insertStaffQuerySchema = createInsertSchema(staffQueries);
 export const selectStaffQuerySchema = createSelectSchema(staffQueries);
+
+export const clientSentiment = pgTable("client_sentiment", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  sentiment: text("sentiment", { 
+    enum: ["satisfied", "dissatisfied", "flags"] 
+  }).notNull(),
+  reason: text("reason").notNull(),
+  weekStart: timestamp("week_start", { mode: "date" }).notNull(),
+  weekEnd: timestamp("week_end", { mode: "date" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const clientSentimentRelations = relations(clientSentiment, ({ one }) => ({
+  client: one(users, {
+    fields: [clientSentiment.clientId],
+    references: [users.id],
+  }),
+}));
+
+export type ClientSentiment = typeof clientSentiment.$inferSelect;
+export const insertClientSentimentSchema = createInsertSchema(clientSentiment);
+export const selectClientSentimentSchema = createSelectSchema(clientSentiment);
