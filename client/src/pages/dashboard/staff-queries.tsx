@@ -39,7 +39,13 @@ export default function StaffQueries() {
 
   // Fetch all users for staff selection
   const { data: allUsers = [] } = useQuery({
-    queryKey: ["/api/staff"],
+    queryKey: ["/api/users/all"],
+    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager",
+  });
+
+  // Fetch all departments for department selection
+  const { data: departments = [] } = useQuery({
+    queryKey: ["/api/departments"],
     enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager",
   });
 
@@ -57,7 +63,7 @@ export default function StaffQueries() {
     staffUniqueValue: "",
     reason: "",
     whyQuery: "",
-    attachmentPath: "",
+    attachmentFile: null as File | null,
     likelyPenalty: "",
     additionalNote: "",
   });
@@ -65,10 +71,18 @@ export default function StaffQueries() {
   // Create staff query mutation
   const createQueryMutation = useMutation({
     mutationFn: async (queryData: any) => {
+      const formData = new FormData();
+      Object.entries(queryData).forEach(([key, value]) => {
+        if (key === 'attachmentFile' && value) {
+          formData.append('attachment', value as File);
+        } else if (value !== null && value !== undefined && key !== 'attachmentFile') {
+          formData.append(key, value.toString());
+        }
+      });
+
       const response = await fetch("/api/staff-queries", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(queryData),
+        body: formData,
       });
       if (!response.ok) throw new Error("Failed to create staff query");
       return response.json();
@@ -84,7 +98,7 @@ export default function StaffQueries() {
         staffUniqueValue: "",
         reason: "",
         whyQuery: "",
-        attachmentPath: "",
+        attachmentFile: null,
         likelyPenalty: "",
         additionalNote: "",
       });
@@ -232,13 +246,18 @@ export default function StaffQueries() {
 
                 <div>
                   <Label htmlFor="department">Department *</Label>
-                  <Input
-                    id="department"
-                    value={formData.department}
-                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                    placeholder="Department"
-                    required
-                  />
+                  <Select onValueChange={(value) => setFormData(prev => ({ ...prev, department: value }))} value={formData.department}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept: string) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept.charAt(0).toUpperCase() + dept.slice(1).replace('_', ' ')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
@@ -282,13 +301,21 @@ export default function StaffQueries() {
               </div>
 
               <div>
-                <Label htmlFor="attachmentPath">Attach Report/Proof</Label>
+                <Label htmlFor="attachment">Attach Report/Proof</Label>
                 <Input
-                  id="attachmentPath"
-                  value={formData.attachmentPath}
-                  onChange={(e) => setFormData(prev => ({ ...prev, attachmentPath: e.target.value }))}
-                  placeholder="File path or URL to supporting evidence"
+                  id="attachment"
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setFormData(prev => ({ ...prev, attachmentFile: file }));
+                    }
+                  }}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Accepted formats: Images, PDF, Word documents (max 10MB)
+                </p>
               </div>
 
               <div>

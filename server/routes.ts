@@ -145,6 +145,37 @@ const upload = multer({
   }
 });
 
+// Staff query attachments storage
+const staffQueryUploadDir = path.join(process.cwd(), 'uploads', 'staff-query-attachments');
+if (!fs.existsSync(staffQueryUploadDir)) {
+  fs.mkdirSync(staffQueryUploadDir, { recursive: true });
+}
+
+const staffQueryStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, staffQueryUploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const staffQueryUpload = multer({
+  storage: staffQueryStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for documents
+  fileFilter: (req, file, cb) => {
+    // Allow images and documents
+    const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const isAllowed = allowedTypes.some(type => file.mimetype.startsWith(type));
+    if (isAllowed) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images, PDF, and Word documents are allowed'));
+    }
+  }
+});
+
 // Function to broadcast messages to project members
 async function broadcastToProject(projectId: number, message: any) {
   try {
@@ -5707,6 +5738,59 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get memo read receipts (Operations Manager only)
+  app.get("/api/memos/:id/read-receipts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can view read receipts" });
+    }
+
+    try {
+      const memoId = parseInt(req.params.id);
+
+      // Verify the memo exists and was sent by this user
+      const checkResult = await db.execute(sql`
+        SELECT id, title FROM memos WHERE id = ${memoId} AND sent_by = ${user.id}
+      `);
+
+      if (checkResult.rows.length === 0) {
+        return res.status(404).json({ error: "Memo not found or not authorized" });
+      }
+
+      // Get all users who have read this memo
+      const readReceipts = await db.execute(sql`
+        SELECT mr.user_id, mr.read_at, u.name, u.email, u.role, u.specialization
+        FROM memo_reads mr
+        JOIN users u ON mr.user_id = u.id
+        WHERE mr.memo_id = ${memoId}
+        ORDER BY mr.read_at DESC
+      `);
+
+      const readers = readReceipts.rows.map(row => ({
+        userId: row.user_id,
+        name: row.name,
+        email: row.email,
+        role: row.role,
+        specialization: row.specialization,
+        readAt: row.read_at,
+      }));
+
+      res.json({
+        memoId,
+        memoTitle: checkResult.rows[0].title,
+        totalReads: readers.length,
+        readers
+      });
+    } catch (error) {
+      console.error("Error fetching memo read receipts:", error);
+      res.status(500).json({ error: "Failed to fetch read receipts" });
+    }
+  });
+
   // Delete memo (Operations Manager only)
   app.delete("/api/memos/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -6542,6 +6626,73 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get all users for staff selection (Operations Manager only)
+  app.get("/api/users/all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access all users" });
+    }
+
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          specialization: users.specialization,
+        })
+        .from(users)
+        .where(or(
+          eq(users.role, "staff"),
+          eq(users.role, "project_manager"),
+          eq(users.role, "product_owner")
+        ))
+        .orderBy(users.name);
+
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Get all departments for department selection (Operations Manager only)
+  app.get("/api/departments", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access departments" });
+    }
+
+    try {
+      // Get unique departments from users (role and specialization fields)
+      const rolesResult = await db.execute(sql`
+        SELECT DISTINCT role as department 
+        FROM users 
+        WHERE role IS NOT NULL AND role != ''
+        UNION
+        SELECT DISTINCT specialization as department 
+        FROM users 
+        WHERE specialization IS NOT NULL AND specialization != ''
+        ORDER BY department
+      `);
+
+      const departments = rolesResult.rows.map(row => row.department);
+      res.json(departments);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      res.status(500).json({ error: "Failed to fetch departments" });
+    }
+  });
+
   // Staff Queries API
   // Get all staff queries (for operations managers to see sent queries and staff to see received queries)
   app.get("/api/staff-queries", async (req, res) => {
@@ -6623,7 +6774,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Create staff query (Operations Manager only)
-  app.post("/api/staff-queries", async (req, res) => {
+  app.post("/api/staff-queries", staffQueryUpload.single('attachment'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
@@ -6641,10 +6792,15 @@ export function registerRoutes(app: Express): Server {
         staffUniqueValue, 
         reason, 
         whyQuery, 
-        attachmentPath, 
         likelyPenalty, 
         additionalNote 
       } = req.body;
+
+      // Handle uploaded file
+      let attachmentPath = null;
+      if (req.file) {
+        attachmentPath = `/uploads/staff-query-attachments/${req.file.filename}`;
+      }
 
       if (!staffId || !staffName || !department || !staffUniqueValue || !reason || !whyQuery || !likelyPenalty) {
         return res.status(400).json({ 

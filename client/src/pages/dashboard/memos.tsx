@@ -176,6 +176,22 @@ export default function Memos() {
     },
   });
 
+  // State for read receipts modal
+  const [selectedMemoForReceipts, setSelectedMemoForReceipts] = useState<number | null>(null);
+  const [showReadReceipts, setShowReadReceipts] = useState(false);
+
+  // Fetch read receipts query
+  const { data: readReceipts, isLoading: isLoadingReceipts } = useQuery({
+    queryKey: ["/api/memos", selectedMemoForReceipts, "read-receipts"],
+    queryFn: async () => {
+      if (!selectedMemoForReceipts) return null;
+      const response = await fetch(`/api/memos/${selectedMemoForReceipts}/read-receipts`);
+      if (!response.ok) throw new Error("Failed to fetch read receipts");
+      return response.json();
+    },
+    enabled: !!selectedMemoForReceipts && showReadReceipts,
+  });
+
   const resetForm = () => {
     setFormData({
       title: "",
@@ -568,6 +584,61 @@ export default function Memos() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Read Receipts Dialog */}
+      <Dialog open={showReadReceipts} onOpenChange={setShowReadReceipts}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Read Receipts
+            </DialogTitle>
+            <DialogDescription>
+              {readReceipts?.memoTitle && `Memo: ${readReceipts.memoTitle}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {isLoadingReceipts ? (
+              <div className="text-center py-4">Loading read receipts...</div>
+            ) : readReceipts?.readers && readReceipts.readers.length > 0 ? (
+              <div className="space-y-3">
+                <div className="text-sm text-gray-600 mb-3">
+                  Total reads: {readReceipts.totalReads}
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {readReceipts.readers.map((reader: any) => (
+                    <div key={reader.userId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <User className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">{reader.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {reader.role}{reader.specialization && ` • ${reader.specialization}`}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {format(new Date(reader.readAt), "MMM d, h:mm a")}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Eye className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+                <div className="text-sm">No one has read this memo yet</div>
               </div>
             )}
           </div>

@@ -383,6 +383,13 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   // Operations Manager specific menu items
   const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" ? [
     {
+      icon: <FileText size={20} />,
+      label: "Projects",
+      href: "/dashboard/projects",
+      badge: totalUnreadProjectMessages,
+      key: "operations-projects",
+    },
+    {
       icon: <Users size={20} />,
       label: "Staff Report",
       href: "/dashboard/staff-report",
