@@ -197,6 +197,9 @@ export default function Notes() {
   // Access control - only operations managers
   const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
 
+  console.log("Notes page - user:", user);
+  console.log("Notes page - isOperationsManager:", isOperationsManager);
+
   if (!isOperationsManager) {
     return (
       <div className="flex h-screen">
@@ -207,6 +210,7 @@ export default function Notes() {
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
               <p className="text-gray-600 mt-2">This page is only available to operations managers.</p>
+              <p className="text-sm text-gray-500 mt-1">Your role: {user?.role}, Specialization: {user?.specialization || 'none'}</p>
             </div>
           </div>
         </div>
@@ -215,9 +219,11 @@ export default function Notes() {
   }
 
   // Fetch notes
-  const { data: notes = [], isLoading } = useQuery<Note[]>({
+  const { data: notes = [], isLoading, error } = useQuery<Note[]>({
     queryKey: ["/api/notes"],
   });
+
+  console.log("Notes query - isLoading:", isLoading, "error:", error, "notes:", notes);
 
   // Auto-save functionality
   const triggerAutoSave = useCallback((noteData: any) => {
