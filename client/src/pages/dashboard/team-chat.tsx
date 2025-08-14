@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "wouter";
@@ -114,17 +113,19 @@ export default function TeamChat() {
   useEffect(() => {
     if (!user?.id || !projectId) return;
 
-    console.log(`Setting up SSE for team chat in project ${projectId}`);
-    
-    const eventSource = new EventSource("/api/notifications/stream", {
-      withCredentials: true
-    });
+    let isMounted = true;
+    console.log("Setting up SSE connection for team chat");
+    const eventSource = new EventSource("/api/notifications/stream");
 
     eventSource.onopen = () => {
-      console.log("SSE connection opened for team chat");
+      if (isMounted) {
+        console.log("SSE connection opened for team chat");
+      }
     };
 
     eventSource.onmessage = (event) => {
+      if (!isMounted) return;
+
       try {
         const data = JSON.parse(event.data);
         console.log("SSE message received in team chat:", data);
@@ -132,7 +133,7 @@ export default function TeamChat() {
           console.log("Team message received via SSE, invalidating queries");
           queryClient.invalidateQueries({ 
             queryKey: [`/api/projects/${projectId}/team-messages`] 
-          });
+          }).catch(console.error);
         }
       } catch (error) {
         console.error("Error parsing SSE message in team chat:", error);
@@ -140,10 +141,13 @@ export default function TeamChat() {
     };
 
     eventSource.onerror = (error) => {
-      console.error("SSE error in team chat:", error);
+      if (isMounted) {
+        console.error("SSE error in team chat:", error);
+      }
     };
 
     return () => {
+      isMounted = false;
       console.log("Closing SSE connection for team chat");
       eventSource.close();
     };
@@ -166,31 +170,20 @@ export default function TeamChat() {
 
       if (messageIdsToMarkRead.length === 0) return;
 
-      // Delay marking as read to ensure user has time to see the messages
-    const timeoutId = setTimeout(markMessagesAsRead, 1000);
-    return () => clearTimeout(timeoutId);
-
       try {
-        await fetch(`/api/projects/${projectId}/messages/mark-read`, {
+        await fetch(`/api/projects/${projectId}/team-messages/mark-read`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ messageIds: messageIdsToMarkRead }),
-        });
-
-        // Invalidate unread counts after marking as read
-        queryClient.invalidateQueries({ 
-          queryKey: ["/api/projects/unread-counts"] 
         });
       } catch (error) {
         console.error("Error marking messages as read:", error);
       }
     };
 
-    // Mark messages as read after a short delay to ensure user actually viewed them
-    const timeoutId = setTimeout(markMessagesAsRead, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [messages, user?.id, projectId, queryClient]);
+    markMessagesAsRead().catch(console.error);
+  }, [messages, user?.id, projectId]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,14 +211,14 @@ export default function TeamChat() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const position = e.target.selectionStart || 0;
-    
+
     setMessage(value);
     setCursorPosition(position);
-    
+
     // Check for @ mentions
     const beforeCursor = value.substring(0, position);
     const mentionMatch = beforeCursor.match(/@([a-zA-Z0-9_]*)$/);
-    
+
     if (mentionMatch) {
       setMentionQuery(mentionMatch[1]);
       setShowMentionSuggestions(true);
@@ -240,11 +233,11 @@ export default function TeamChat() {
     const beforeMention = message.substring(0, cursorPosition - mentionQuery.length - 1);
     const afterCursor = message.substring(cursorPosition);
     const newMessage = `${beforeMention}@${member.name} ${afterCursor}`;
-    
+
     setMessage(newMessage);
     setShowMentionSuggestions(false);
     setMentionQuery("");
-    
+
     // Focus back to input and set cursor position
     requestAnimationFrame(() => {
       if (inputRef.current) {
@@ -266,10 +259,10 @@ export default function TeamChat() {
   // Render message content with highlighted mentions
   const renderMessageContent = (content: string) => {
     if (!content) return content;
-    
+
     const mentionRegex = /@([a-zA-Z0-9_\s]+)/g;
     const parts = content.split(mentionRegex);
-    
+
     return parts.map((part, index) => {
       if (index % 2 === 1) {
         // This is a mention
@@ -353,7 +346,7 @@ export default function TeamChat() {
                 </Badge>
               </div>
             </CardHeader>
-            
+
             <CardContent className="flex-1 flex flex-col p-0">
               {/* Messages Container */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[60vh]">
@@ -418,7 +411,7 @@ export default function TeamChat() {
                     ))}
                   </div>
                 )}
-                
+
                 <form onSubmit={handleSendMessage} className="flex gap-2">
                   <Input
                     ref={inputRef}
@@ -445,7 +438,7 @@ export default function TeamChat() {
                     )}
                   </Button>
                 </form>
-                
+
                 {/* Typing hint */}
                 <div className="text-xs text-muted-foreground mt-2">
                   Type @ to mention team members

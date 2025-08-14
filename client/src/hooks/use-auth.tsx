@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (credentials: LoginData) => {
       const res = await fetch("/api/login", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
@@ -108,11 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (data: { 
-      username: string; 
-      password: string; 
-      role: string; 
-      name: string; 
+    mutationFn: async (data: {
+      username: string;
+      password: string;
+      role: string;
+      name: string;
       email: string;
       specialization?: string;
       productService?: string;
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }) => {
       const res = await fetch("/api/register", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
@@ -156,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/logout", { 
+      const res = await fetch("/api/logout", {
         method: "POST",
         credentials: "include",
         headers: {
@@ -183,6 +183,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
   });
+
+  // Set up SSE for real-time notifications
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let isMounted = true;
+    console.log("Setting up SSE connection for notifications...");
+    const eventSource = new EventSource("/api/notifications/stream");
+
+    eventSource.onopen = () => {
+      if (isMounted) {
+        console.log("SSE connection opened for notifications");
+      }
+    };
+
+    eventSource.onmessage = (event) => {
+      if (!isMounted) return;
+
+      try {
+        const data = JSON.parse(event.data);
+        console.log("SSE message received:", data);
+
+        if (data.type === "notification") {
+          // Invalidate notifications to refresh the list
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }).catch(console.error);
+        }
+      } catch (error) {
+        console.error("Error parsing SSE message:", error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      if (isMounted) {
+        console.error("SSE error:", error);
+      }
+    };
+
+    return () => {
+      isMounted = false;
+      console.log("Closing SSE connection for notifications");
+      eventSource.close();
+    };
+  }, [user?.id, queryClient]);
+
 
   return (
     <AuthContext.Provider

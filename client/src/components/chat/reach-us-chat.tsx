@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, MessageCircle, Users, Search } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface User {
   id: number;
@@ -50,6 +50,8 @@ export function ReachUsChat() {
   const [view, setView] = useState<"conversations" | "team">("team");
   const { user } = useUser();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  let isMounted = true;
 
   // Fetch available team members for the client
   useEffect(() => {
@@ -58,7 +60,7 @@ export function ReachUsChat() {
         console.log("Fetching team members for reach us page...");
         const response = await fetch("/api/client/team-members");
         console.log("Team members response status:", response.status);
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log("Team members data:", data);
@@ -129,65 +131,38 @@ export function ReachUsChat() {
   useEffect(() => {
     const eventSource = new EventSource("/api/notifications/stream");
 
+    eventSource.onopen = () => {
+      if (isMounted) {
+        console.log("SSE connection opened");
+      }
+    };
+
     eventSource.onmessage = (event) => {
+      if (!isMounted) return;
+
       try {
         const data = JSON.parse(event.data);
         if (data.type === "direct_message") {
-          const message = data.data;
-          
-          // Only process messages from team members
-          const teamMemberIds = availableUsers.map(u => u.id);
-          if (!teamMemberIds.includes(message.senderId)) return;
-          
-          // If the message is from the currently selected user, add it to messages
-          if (selectedUser && message.senderId === selectedUser.id) {
-            setMessages(prev => [...prev, message]);
-          }
-          
-          // Update conversations list
-          setConversations(prev => {
-            const updated = [...prev];
-            const existingIndex = updated.findIndex(conv => conv.user.id === message.senderId);
-            
-            if (existingIndex >= 0) {
-              // Update existing conversation
-              updated[existingIndex] = {
-                ...updated[existingIndex],
-                lastMessage: {
-                  content: message.content,
-                  createdAt: message.createdAt,
-                  senderId: message.senderId,
-                },
-                unreadCount: selectedUser?.id === message.senderId ? 0 : updated[existingIndex].unreadCount + 1,
-              };
-            } else {
-              // Add new conversation with team member
-              const teamMember = availableUsers.find(u => u.id === message.senderId);
-              if (teamMember) {
-                setConversations(prev => [{
-                  user: teamMember,
-                  lastMessage: {
-                    content: message.content,
-                    createdAt: message.createdAt,
-                    senderId: message.senderId,
-                  },
-                  unreadCount: 1,
-                }, ...prev]);
-              }
-            }
-            
-            return updated;
-          });
+          queryClient.invalidateQueries({
+            queryKey: ["/api/direct-messages"]
+          }).catch(console.error);
         }
       } catch (error) {
         console.error("Error parsing SSE message:", error);
       }
     };
 
+    eventSource.onerror = (error) => {
+      if (isMounted) {
+        console.error("SSE error:", error);
+      }
+    };
+
     return () => {
+      isMounted = false;
       eventSource.close();
     };
-  }, [selectedUser, availableUsers]);
+  }, [user?.id, queryClient]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedUser) return;
@@ -208,12 +183,12 @@ export function ReachUsChat() {
         const sentMessage = await response.json();
         setMessages(prev => [...prev, sentMessage]);
         setNewMessage("");
-        
+
         // Update conversations list
         setConversations(prev => {
           const updated = [...prev];
           const existingIndex = updated.findIndex(conv => conv.user.id === selectedUser.id);
-          
+
           if (existingIndex >= 0) {
             updated[existingIndex] = {
               ...updated[existingIndex],
@@ -234,7 +209,7 @@ export function ReachUsChat() {
               unreadCount: 0,
             });
           }
-          
+
           return updated;
         });
       }
@@ -246,16 +221,16 @@ export function ReachUsChat() {
   const handleUserSelect = (selectedUser: User) => {
     setSelectedUser(selectedUser);
     setView("conversations");
-    
+
     // Mark messages as read
     fetch(`/api/direct-messages/${selectedUser.id}/read`, {
       method: "PUT",
     });
-    
+
     // Update unread count in conversations
-    setConversations(prev => 
-      prev.map(conv => 
-        conv.user.id === selectedUser.id 
+    setConversations(prev =>
+      prev.map(conv =>
+        conv.user.id === selectedUser.id
           ? { ...conv, unreadCount: 0 }
           : conv
       )
@@ -315,7 +290,7 @@ export function ReachUsChat() {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full p-4">
             <div className="space-y-4">
@@ -351,7 +326,7 @@ export function ReachUsChat() {
             </div>
           </ScrollArea>
         </CardContent>
-        
+
         <CardFooter className="border-t p-4">
           <div className="flex gap-2 w-full">
             <Input
@@ -403,7 +378,7 @@ export function ReachUsChat() {
           />
         </div>
       </CardHeader>
-      
+
       <CardContent className="flex-1 overflow-hidden p-0">
         <ScrollArea className="h-full">
           {view === "conversations" ? (

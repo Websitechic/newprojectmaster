@@ -4287,7 +4287,8 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user!.id;
       const userRole = req.user!.role;
 
-      if (!userId || !userRole) {
+      if (!userId || !userRole || typeof userId !== 'number' || isNaN(userId) || userId <= 0) {
+        console.error("Invalid user session data:", { userId, userRole, userType: typeof userId });
         return res.status(400).json({ error: "Invalid user session" });
       }
 
