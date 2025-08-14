@@ -44,7 +44,7 @@ import StaffComplaints from "@/pages/dashboard/staff-complaints";
 import StaffQueries from "@/pages/dashboard/staff-queries";
 import Notes from "@/pages/dashboard/notes";
 import { Suspense } from "react";
-
+import CommunicationTracker from "@/pages/dashboard/communication-tracker";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -120,6 +120,9 @@ function Router() {
       <Route path="/dashboard/client-sentiment" component={() => <PrivateRoute component={ClientSentiment} />} />
       <Route path="/dashboard/client-sentiment-tracker" component={() => <PrivateRoute component={ClientSentimentTracker} />} />
       <Route path="/dashboard/notes" component={() => <PrivateRoute component={Notes} />} />
+      <Route path="/dashboard/staff-queries" component={StaffQueries} />
+      <Route path="/dashboard/communication-tracker" component={CommunicationTracker} />
+      <Route path="/technical-management" component={TechnicalManagement} />
     </Switch>
   );
 }

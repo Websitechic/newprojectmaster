@@ -6117,6 +6117,319 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Communication Tracker API Routes
+
+  // Get delayed responses for communication tracker
+  app.get("/api/communication-tracker/delayed-responses", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access communication tracker" });
+    }
+
+    try {
+      const { status, project, date } = req.query;
+      
+      // This would typically query a communication_delays table
+      // For now, we'll create a mock response structure
+      // In a real implementation, you'd need to track team chat message timestamps
+      // and identify when responses are delayed beyond 1 hour
+      
+      const result = await db.execute(sql`
+        SELECT 
+          cd.*,
+          p.name as project_name,
+          u1.name as staff_name,
+          u2.name as project_manager_name
+        FROM communication_delays cd
+        LEFT JOIN projects p ON cd.project_id = p.id
+        LEFT JOIN users u1 ON cd.staff_id = u1.id
+        LEFT JOIN users u2 ON cd.project_manager_id = u2.id
+        WHERE 1=1
+        ${status && status !== 'all' ? sql`AND cd.status = ${status}` : sql``}
+        ${project && project !== 'all' ? sql`AND cd.project_id = ${parseInt(project as string)}` : sql``}
+        ${date === 'today' ? sql`AND DATE(cd.created_at) = CURRENT_DATE` : sql``}
+        ${date === 'yesterday' ? sql`AND DATE(cd.created_at) = CURRENT_DATE - INTERVAL '1 day'` : sql``}
+        ${date === 'week' ? sql`AND cd.created_at >= CURRENT_DATE - INTERVAL '7 days'` : sql``}
+        ${date === 'month' ? sql`AND cd.created_at >= CURRENT_DATE - INTERVAL '30 days'` : sql``}
+        ORDER BY cd.created_at DESC
+      `);
+
+      const delayedResponses = result.rows.map(row => ({
+        id: row.id,
+        projectId: row.project_id,
+        projectName: row.project_name,
+        staffId: row.staff_id,
+        staffName: row.staff_name,
+        lastResponseTime: row.last_response_time,
+        delayHours: row.delay_hours,
+        status: row.status,
+        projectManagerId: row.project_manager_id,
+        projectManagerName: row.project_manager_name,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+
+      res.json(delayedResponses);
+    } catch (error) {
+      console.error("Error fetching delayed responses:", error);
+      res.status(500).json({ error: "Failed to fetch delayed responses" });
+    }
+  });
+
+  // Send warning for delayed response
+  app.post("/api/communication-tracker/send-warning", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can send warnings" });
+    }
+
+    try {
+      const { delayedResponseId, reason, advice, monetaryPenalty, staffId } = req.body;
+
+      // Create warning record
+      const result = await db.execute(sql`
+        INSERT INTO communication_warnings (delayed_response_id, reason, advice, monetary_penalty, staff_id, sent_by)
+        VALUES (${delayedResponseId}, ${reason}, ${advice}, ${monetaryPenalty}, ${staffId}, ${user.id})
+        RETURNING *
+      `);
+
+      // Update the delayed response status
+      await db.execute(sql`
+        UPDATE communication_delays 
+        SET status = 'warned', updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${delayedResponseId}
+      `);
+
+      // Create notification for the staff member
+      const [notification] = await db
+        .insert(notifications)
+        .values({
+          userId: staffId,
+          type: "communication_warning",
+          content: `Communication Warning: ${reason}`,
+          referenceId: delayedResponseId,
+          referenceType: "communication_delay",
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Send real-time notification via SSE
+      const clientResponse = global.sseClients?.get(staffId);
+      if (clientResponse && !clientResponse.writableEnded) {
+        try {
+          clientResponse.write(`data: ${JSON.stringify({
+            type: "notification",
+            data: notification
+          })}\n\n`);
+        } catch (error) {
+          console.error(`Error sending SSE notification to staff ${staffId}:`, error);
+          global.sseClients?.delete(staffId);
+        }
+      }
+
+      res.json({ message: "Warning sent successfully", warning: result.rows[0] });
+    } catch (error) {
+      console.error("Error sending warning:", error);
+      res.status(500).json({ error: "Failed to send warning" });
+    }
+  });
+
+  // Escalate delayed response
+  app.post("/api/communication-tracker/escalate", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can escalate" });
+    }
+
+    try {
+      const { delayedResponseId } = req.body;
+
+      // Create escalation record
+      const result = await db.execute(sql`
+        INSERT INTO communication_escalations (delayed_response_id, escalated_by, escalated_at, report_generated)
+        VALUES (${delayedResponseId}, ${user.id}, CURRENT_TIMESTAMP, true)
+        RETURNING *
+      `);
+
+      // Update the delayed response status
+      await db.execute(sql`
+        UPDATE communication_delays 
+        SET status = 'escalated', updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${delayedResponseId}
+      `);
+
+      res.json({ message: "Response escalated successfully", escalation: result.rows[0] });
+    } catch (error) {
+      console.error("Error escalating response:", error);
+      res.status(500).json({ error: "Failed to escalate response" });
+    }
+  });
+
+  // Discard communication query
+  app.post("/api/communication-tracker/discard", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can discard queries" });
+    }
+
+    try {
+      const { delayedResponseId, dateOfEntry, projectName, hoursLate, reason } = req.body;
+
+      // Get the delayed response details
+      const delayResult = await db.execute(sql`
+        SELECT * FROM communication_delays WHERE id = ${delayedResponseId}
+      `);
+
+      const delay = delayResult.rows[0];
+      if (!delay) {
+        return res.status(404).json({ error: "Delayed response not found" });
+      }
+
+      // Create discard record
+      const discardResult = await db.execute(sql`
+        INSERT INTO communication_discards (delayed_response_id, date_of_entry, project_name, hours_late, reason, discarded_by)
+        VALUES (${delayedResponseId}, ${dateOfEntry}, ${projectName}, ${hoursLate}, ${reason}, ${user.id})
+        RETURNING *
+      `);
+
+      // Update the delayed response status
+      await db.execute(sql`
+        UPDATE communication_delays 
+        SET status = 'discarded', updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${delayedResponseId}
+      `);
+
+      // Notify the staff member
+      const [staffNotification] = await db
+        .insert(notifications)
+        .values({
+          userId: delay.staff_id,
+          type: "communication_query_discarded",
+          content: `Communication query for ${projectName} has been discarded by operations manager: ${reason}`,
+          referenceId: delayedResponseId,
+          referenceType: "communication_delay",
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Notify the project manager
+      const [pmNotification] = await db
+        .insert(notifications)
+        .values({
+          userId: delay.project_manager_id,
+          type: "communication_query_discarded",
+          content: `Communication query for ${projectName} has been discarded by operations manager: ${reason}`,
+          referenceId: delayedResponseId,
+          referenceType: "communication_delay",
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Send real-time notifications
+      [delay.staff_id, delay.project_manager_id].forEach(userId => {
+        const clientResponse = global.sseClients?.get(userId);
+        if (clientResponse && !clientResponse.writableEnded) {
+          try {
+            clientResponse.write(`data: ${JSON.stringify({
+              type: "notification",
+              data: userId === delay.staff_id ? staffNotification : pmNotification
+            })}\n\n`);
+          } catch (error) {
+            console.error(`Error sending SSE notification to user ${userId}:`, error);
+            global.sseClients?.delete(userId);
+          }
+        }
+      });
+
+      res.json({ message: "Communication query discarded successfully", discard: discardResult.rows[0] });
+    } catch (error) {
+      console.error("Error discarding communication query:", error);
+      res.status(500).json({ error: "Failed to discard communication query" });
+    }
+  });
+
+  // Get daily communication report
+  app.get("/api/communication-tracker/daily-report", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access reports" });
+    }
+
+    try {
+      const { date } = req.query;
+      const targetDate = date || new Date().toISOString().split('T')[0];
+
+      // Get total delayed responses for the day
+      const totalResult = await db.execute(sql`
+        SELECT COUNT(*) as total_delayed
+        FROM communication_delays
+        WHERE DATE(created_at) = ${targetDate}
+      `);
+
+      // Get warnings sent for the day
+      const warningsResult = await db.execute(sql`
+        SELECT COUNT(*) as warnings_sent
+        FROM communication_warnings cw
+        JOIN communication_delays cd ON cw.delayed_response_id = cd.id
+        WHERE DATE(cw.created_at) = ${targetDate}
+      `);
+
+      // Get escalations for the day
+      const escalationsResult = await db.execute(sql`
+        SELECT COUNT(*) as escalated
+        FROM communication_escalations ce
+        JOIN communication_delays cd ON ce.delayed_response_id = cd.id
+        WHERE DATE(ce.escalated_at) = ${targetDate}
+      `);
+
+      // Get delays by project
+      const projectDelaysResult = await db.execute(sql`
+        SELECT p.name as project_name, COUNT(*) as count
+        FROM communication_delays cd
+        JOIN projects p ON cd.project_id = p.id
+        WHERE DATE(cd.created_at) = ${targetDate}
+        GROUP BY p.id, p.name
+        ORDER BY count DESC
+      `);
+
+      const report = {
+        date: targetDate,
+        totalDelayed: totalResult.rows[0]?.total_delayed || 0,
+        warningsSent: warningsResult.rows[0]?.warnings_sent || 0,
+        escalated: escalationsResult.rows[0]?.escalated || 0,
+        delayedByProject: projectDelaysResult.rows.map(row => ({
+          projectName: row.project_name,
+          count: row.count
+        }))
+      };
+
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating daily report:", error);
+      res.status(500).json({ error: "Failed to generate daily report" });
+    }
+  });
+
   // Staff Complaint API Routes
 
   // Submit staff complaint

@@ -4,6 +4,7 @@ import { setupWebSocket } from "./websocket";
 import { setupVideoSocket } from "./video-socket";
 import { registerVite, setupVite, serveStatic, log } from "./vite";
 import { breakScheduler } from "./break-scheduler";
+import { communicationMonitor } from "./communication-monitor";
 import { setupAuth } from "./auth";
 import { setupSession } from "./auth";
 import session from "express-session";
@@ -104,7 +105,7 @@ let emailServiceInitialized = false;
 
     // Setup WebSocket server
     log("Setting up WebSocket...");
-    const wss = new WebSocketServer({ 
+    const wss = new WebSocketServer({
       noServer: true,
       path: "/ws"
     });
@@ -176,6 +177,9 @@ let emailServiceInitialized = false;
 
       // Start the break scheduler
       breakScheduler.start();
+
+      // Initialize communication monitor
+      communicationMonitor.start();
     });
   } catch (error) {
     console.error("Fatal server initialization error:", error);

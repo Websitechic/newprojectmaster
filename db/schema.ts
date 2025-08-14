@@ -183,12 +183,12 @@ export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
   type: text("type", { 
-    enum: ["task_assigned", "task_updated", "task_completed", "mention", "technical_support_request"] 
+    enum: ["task_assigned", "task_updated", "task_completed", "mention", "technical_support_request", "communication_warning", "communication_query_discarded"] 
   }).notNull(),
   content: text("content").notNull(),
   referenceId: integer("reference_id"),
   referenceType: text("reference_type", { 
-    enum: ["task", "project", "message", "technical_support_request", "complaint"] 
+    enum: ["task", "project", "message", "technical_support_request", "complaint", "communication_delay"] 
   }),
   read: boolean("read").default(false),
   createdAt: timestamp("created_at").defaultNow(),

@@ -460,6 +460,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/client-sentiment-tracker",
       key: "operations-client-sentiment-tracker",
     },
+    {
+      icon: <MessageSquare size={20} />,
+      label: "Communication Tracker",
+      href: "/dashboard/communication-tracker",
+      key: "operations-communication-tracker",
+    },
   ] : [];
 
   // Client specific menu items based on client type
