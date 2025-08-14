@@ -6694,7 +6694,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Staff Queries API
-  // Get all staff queries (for operations managers to see sent queries and staff to see received queries)
+  // Get all staff queries (all users see all queries)
   app.get("/api/staff-queries", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -6703,70 +6703,37 @@ export function registerRoutes(app: Express): Server {
     const user = req.user!;
 
     try {
-      if (user.role === "operations_manager" || user.specialization === "operations_manager") {
-        // Operations managers see all queries they sent
-        const result = await db.execute(sql`
-          SELECT sq.*, 
-                 u.name as staff_name_full,
-                 sender.name as sender_name
-          FROM staff_queries sq
-          LEFT JOIN users u ON sq.staff_id = u.id
-          LEFT JOIN users sender ON sq.sent_by = sender.id
-          WHERE sq.sent_by = ${user.id}
-          ORDER BY sq.created_at DESC
-        `);
+      // All users (operations managers and staff) see all queries
+      const result = await db.execute(sql`
+        SELECT sq.*, 
+               u.name as staff_name_full,
+               sender.name as sender_name
+        FROM staff_queries sq
+        LEFT JOIN users u ON sq.staff_id = u.id
+        LEFT JOIN users sender ON sq.sent_by = sender.id
+        ORDER BY sq.created_at DESC
+      `);
 
-        const staffQueries = result.rows.map(row => ({
-          id: row.id,
-          staffId: row.staff_id,
-          staffName: row.staff_name,
-          staffNameFull: row.staff_name_full,
-          department: row.department,
-          staffUniqueValue: row.staff_unique_value,
-          reason: row.reason,
-          whyQuery: row.why_query,
-          attachmentPath: row.attachment_path,
-          likelyPenalty: row.likely_penalty,
-          additionalNote: row.additional_note,
-          sentBy: row.sent_by,
-          senderName: row.sender_name,
-          status: row.status,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        }));
+      const staffQueries = result.rows.map(row => ({
+        id: row.id,
+        staffId: row.staff_id,
+        staffName: row.staff_name,
+        staffNameFull: row.staff_name_full,
+        department: row.department,
+        staffUniqueValue: row.staff_unique_value,
+        reason: row.reason,
+        whyQuery: row.why_query,
+        attachmentPath: row.attachment_path,
+        likelyPenalty: row.likely_penalty,
+        additionalNote: row.additional_note,
+        sentBy: row.sent_by,
+        senderName: row.sender_name,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
 
-        res.json(staffQueries);
-      } else {
-        // Staff members see queries sent to them
-        const result = await db.execute(sql`
-          SELECT sq.*, 
-                 sender.name as sender_name
-          FROM staff_queries sq
-          LEFT JOIN users sender ON sq.sent_by = sender.id
-          WHERE sq.staff_id = ${user.id}
-          ORDER BY sq.created_at DESC
-        `);
-
-        const staffQueries = result.rows.map(row => ({
-          id: row.id,
-          staffId: row.staff_id,
-          staffName: row.staff_name,
-          department: row.department,
-          staffUniqueValue: row.staff_unique_value,
-          reason: row.reason,
-          whyQuery: row.why_query,
-          attachmentPath: row.attachment_path,
-          likelyPenalty: row.likely_penalty,
-          additionalNote: row.additional_note,
-          sentBy: row.sent_by,
-          senderName: row.sender_name,
-          status: row.status,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        }));
-
-        res.json(staffQueries);
-      }
+      res.json(staffQueries);
     } catch (error) {
       console.error("Error fetching staff queries:", error);
       res.status(500).json({ error: "Failed to fetch staff queries" });

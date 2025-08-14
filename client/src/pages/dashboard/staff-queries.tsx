@@ -202,12 +202,12 @@ export default function StaffQueries() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {isOperationsManager ? "Staff Queries Management" : "My Queries"}
+            {isOperationsManager ? "Staff Queries Management" : "Staff Queries"}
           </h1>
           <p className="text-gray-600">
             {isOperationsManager 
               ? "Send and manage staff queries and disciplinary actions"
-              : "View queries and disciplinary actions sent to you"
+              : "View all staff queries and disciplinary actions"
             }
           </p>
         </div>
@@ -361,12 +361,12 @@ export default function StaffQueries() {
             <CardContent className="text-center py-8">
               <FileText className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
-                {isOperationsManager ? "No queries sent" : "No queries received"}
+                {isOperationsManager ? "No queries sent" : "No queries available"}
               </h3>
               <p className="mt-1 text-sm text-gray-500">
                 {isOperationsManager 
                   ? "You haven't sent any staff queries yet."
-                  : "You don't have any queries from operations management."
+                  : "No staff queries have been issued yet."
                 }
               </p>
             </CardContent>
@@ -435,7 +435,7 @@ export default function StaffQueries() {
                   </div>
                 )}
 
-                {!isOperationsManager && query.status === "pending" && (
+                {!isOperationsManager && query.status === "pending" && query.staffId === user?.id && (
                   <div className="flex gap-2 pt-4 border-t">
                     <Button
                       size="sm"
