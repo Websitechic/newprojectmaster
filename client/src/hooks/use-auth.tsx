@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (data: {
       username: string;
       password: string;
-      role: string;
+      role: "client" | "project_manager" | "staff" | "intern" | "operations_manager";
       name: string;
       email: string;
       specialization?: string;

@@ -42,7 +42,8 @@ import Memos from "@/pages/dashboard/memos";
 import SendComplaint from "@/pages/send-complaint";
 import StaffComplaints from "@/pages/dashboard/staff-complaints";
 import StaffQueries from "@/pages/dashboard/staff-queries";
-import { lazy } from "react";
+import Notes from "@/pages/dashboard/notes";
+import { Suspense } from "react";
 
 
 function PrivateRoute({ component: Component, ...rest }: any) {
@@ -117,8 +118,8 @@ function Router() {
       <Route path="/dashboard/complaints-management" component={() => <PrivateRoute component={ComplaintsManagement} />} />
       <Route path="/dashboard/client-accounts" component={() => <PrivateRoute component={ClientAccounts} />} />
       <Route path="/dashboard/client-sentiment" component={() => <PrivateRoute component={ClientSentiment} />} />
-      <Route path="/dashboard/client-sentiment-tracker" component={lazy(() => import("./pages/dashboard/client-sentiment-tracker"))} />
-      <Route path="/dashboard/notes" component={lazy(() => import("./pages/dashboard/notes"))} />
+      <Route path="/dashboard/client-sentiment-tracker" component={() => <PrivateRoute component={ClientSentimentTracker} />} />
+      <Route path="/dashboard/notes" component={() => <PrivateRoute component={Notes} />} />
     </Switch>
   );
 }

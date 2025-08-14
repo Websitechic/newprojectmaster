@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
@@ -58,7 +58,7 @@ interface RichTextEditorProps {
 
 function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
-  const textareaRef = useState<HTMLTextAreaElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const applyFormatting = useCallback((format: string) => {
     if (!textareaRef.current) return;
