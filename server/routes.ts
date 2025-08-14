@@ -4269,7 +4269,7 @@ export function registerRoutes(app: Express): Server {
 
   // Get unread team message counts for all user's projects
   app.get("/api/projects/unread-counts", async (req, res) => {
-    if (!req.isAuthenticated()) {
+    if (!req.isAuthenticated() || !req.user || !req.user.id) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
@@ -5844,8 +5844,8 @@ export function registerRoutes(app: Express): Server {
 
   // Get current week sentiment for client
   app.get("/api/client-sentiment/current-week", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
@@ -5866,26 +5866,27 @@ export function registerRoutes(app: Express): Server {
       sunday.setDate(monday.getDate() + 6);
       sunday.setHours(23, 59, 59, 999);
 
-      const result = await db.execute(sql`
-        SELECT * FROM client_sentiment 
-        WHERE client_id = ${user.id} 
-        AND week_start = ${monday.toISOString().split('T')[0]}
-        LIMIT 1
-      `);
+      const [existingSentiment] = await db
+        .select()
+        .from(clientSentiment)
+        .where(and(
+          eq(clientSentiment.clientId, user.id),
+          eq(clientSentiment.weekStart, monday)
+        ))
+        .limit(1);
 
-      if (result.rows.length === 0) {
+      if (!existingSentiment) {
         return res.status(404).json({ message: "No sentiment found for current week" });
       }
 
-      const sentiment = result.rows[0];
       res.json({
-        id: sentiment.id,
-        clientId: sentiment.client_id,
-        sentiment: sentiment.sentiment,
-        reason: sentiment.reason,
-        createdAt: sentiment.created_at,
-        weekStart: sentiment.week_start,
-        weekEnd: sentiment.week_end
+        id: existingSentiment.id,
+        clientId: existingSentiment.clientId,
+        sentiment: existingSentiment.sentiment,
+        reason: existingSentiment.reason,
+        createdAt: existingSentiment.createdAt,
+        weekStart: existingSentiment.weekStart,
+        weekEnd: existingSentiment.weekEnd
       });
     } catch (error) {
       console.error("Error fetching current week sentiment:", error);
@@ -5935,16 +5936,18 @@ export function registerRoutes(app: Express): Server {
       sunday.setHours(23, 59, 59, 999);
 
       // Check if user already submitted for this week
-      const mondayDateStr = monday.toISOString().split('T')[0];
-      console.log("Checking for existing sentiment for user", user.id, "week starting", mondayDateStr);
+      console.log("Checking for existing sentiment for user", user.id, "week starting", monday.toISOString());
       
-      const existingResult = await db.execute(sql`
-        SELECT id FROM client_sentiment 
-        WHERE client_id = ${user.id} 
-        AND week_start = ${mondayDateStr}
-      `);
+      const existingSubmission = await db
+        .select()
+        .from(clientSentiment)
+        .where(and(
+          eq(clientSentiment.clientId, user.id),
+          eq(clientSentiment.weekStart, monday)
+        ))
+        .limit(1);
 
-      if (existingResult.rows.length > 0) {
+      if (existingSubmission.length > 0) {
         console.log("User already submitted sentiment for this week");
         return res.status(400).json({ error: "You have already submitted sentiment for this week" });
       }
@@ -5961,13 +5964,19 @@ export function registerRoutes(app: Express): Server {
         week_end: sundayStr
       });
 
-      const result = await db.execute(sql`
-        INSERT INTO client_sentiment (client_id, sentiment, reason, week_start, week_end, created_at, updated_at)
-        VALUES (${user.id}, ${sentiment}, ${reason.trim()}, ${mondayStr}, ${sundayStr}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        RETURNING *
-      `);
-
-      const newSentiment = result.rows[0];
+      // Use Drizzle ORM instead of raw SQL for better compatibility
+      const [newSentiment] = await db
+        .insert(clientSentiment)
+        .values({
+          clientId: user.id,
+          sentiment,
+          reason: reason.trim(),
+          weekStart: monday,
+          weekEnd: sunday,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
 
       // Notify operations managers
       const operationsManagers = await db

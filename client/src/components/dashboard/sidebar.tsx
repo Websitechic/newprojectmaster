@@ -416,7 +416,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Clock size={20} />,
       label: "Deadline Extension Requests",
       href: "/dashboard/deadline-extension-requests",
-      key: "operations-deadline-extension-requests",
+      key: "operations-deadline-extensions-management",
     },
     {
       icon: <FileText size={20} />,
