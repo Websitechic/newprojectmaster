@@ -414,6 +414,18 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       key: "operations-bookings",
     },
     {
+      icon: <Calendar size={20} />,
+      label: "Leave Management",
+      href: "/dashboard/leave-management",
+      key: "operations-leave-management",
+    },
+    {
+      icon: <Clock size={20} />,
+      label: "Deadline Extension Requests",
+      href: "/dashboard/deadline-extension-requests",
+      key: "operations-deadline-extension-requests",
+    },
+    {
       icon: <FileText size={20} />,
       label: "Memos",
       href: "/dashboard/memos",
