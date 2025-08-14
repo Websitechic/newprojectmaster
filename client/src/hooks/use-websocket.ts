@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,47 +16,65 @@ export function useWebSocket(userId: number | undefined) {
   const connect = useCallback(() => {
     if (!userId || reconnectAttempts.current >= maxReconnectAttempts) return;
 
+    // Use the current window location to construct WebSocket URL
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/ws`;
 
     if (ws.current?.readyState === WebSocket.OPEN) {
       return; // Already connected
     }
 
-    ws.current = new WebSocket(wsUrl);
+    try {
+      ws.current = new WebSocket(wsUrl);
 
-    ws.current.onopen = () => {
-      reconnectAttempts.current = 0; // Reset attempts on successful connection
-      if (ws.current?.readyState === WebSocket.OPEN) {
-        ws.current.send(JSON.stringify({ type: "auth", userId }));
-      }
-    };
+      ws.current.onopen = () => {
+        console.log('WebSocket connection opened');
+        reconnectAttempts.current = 0; // Reset attempts on successful connection
+        if (ws.current?.readyState === WebSocket.OPEN) {
+          ws.current.send(JSON.stringify({ type: "auth", userId }));
+        }
+      };
 
-    ws.current.onclose = () => {
+      ws.current.onclose = () => {
+        console.log('WebSocket connection closed');
+        reconnectAttempts.current++;
+        if (reconnectAttempts.current < maxReconnectAttempts) {
+          setTimeout(connect, 1000 * Math.min(reconnectAttempts.current, 5)); // Exponential backoff
+        }
+      };
+
+      ws.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        // Only show error toast if we've exhausted our reconnection attempts
+        if (reconnectAttempts.current >= maxReconnectAttempts) {
+          toast({
+            title: "Connection Warning",
+            description: "Chat features may be limited. Try refreshing the page.",
+            variant: "destructive",
+          });
+        }
+      };
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
       reconnectAttempts.current++;
       if (reconnectAttempts.current < maxReconnectAttempts) {
-        setTimeout(connect, 1000 * Math.min(reconnectAttempts.current, 5)); // Exponential backoff
+        setTimeout(connect, 1000 * Math.min(reconnectAttempts.current, 5));
       }
-    };
-
-    ws.current.onerror = () => {
-      // Only show error toast if we've exhausted our reconnection attempts
-      if (reconnectAttempts.current >= maxReconnectAttempts) {
-        toast({
-          title: "Connection Warning",
-          description: "Chat features may be limited. Try refreshing the page.",
-          variant: "destructive",
-        });
-      }
-    };
+    }
   }, [userId, toast]);
 
   useEffect(() => {
-    connect();
+    if (userId) {
+      connect();
+    }
     return () => {
-      ws.current?.close();
+      if (ws.current) {
+        ws.current.close();
+        ws.current = null;
+      }
     };
-  }, [connect]);
+  }, [connect, userId]);
 
   const joinProject = useCallback((projectId: number) => {
     if (ws.current?.readyState === WebSocket.OPEN) {

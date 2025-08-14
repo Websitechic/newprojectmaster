@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "./use-auth";
 
@@ -30,6 +31,8 @@ export function useUnreadMessageCounts() {
     retry: false, // Don't retry failed requests
     retryOnMount: false, // Don't retry on mount
     refetchOnWindowFocus: false, // Don't refetch on window focus
+    staleTime: 5000, // Consider data stale after 5 seconds
+    gcTime: 30000, // Keep in cache for 30 seconds
   });
 }
 

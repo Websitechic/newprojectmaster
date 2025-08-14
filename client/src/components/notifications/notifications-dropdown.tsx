@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
@@ -36,18 +37,23 @@ export function NotificationsDropdown() {
       try {
         const res = await fetch("/api/notifications", { credentials: "include" });
         if (!res.ok) {
+          if (res.status === 401) {
+            return []; // Return empty array for unauthorized users
+          }
           throw new Error(`Failed to fetch notifications: ${res.status}`);
         }
         return res.json();
       } catch (error) {
         console.error("Error fetching notifications:", error);
-        return [];
+        return []; // Return empty array on error
       }
     },
     enabled: !!user,
     refetchInterval: 30000,
     retry: false,
     retryOnMount: false,
+    staleTime: 10000,
+    gcTime: 60000,
   });
 
   // Set up SSE connection for real-time notifications
@@ -136,23 +142,31 @@ export function NotificationsDropdown() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleNotificationClick = async (notification: Notification) => {
-    // Mark notification as read
-    await markAsRead(notification.id);
-    
-    // Handle navigation based on notification type and reference
-    if (notification.type === "mention" && notification.referenceType === "project" && notification.referenceId) {
-      // Navigate to team chat for the mentioned project
-      setLocation(`/dashboard/projects/${notification.referenceId}/team-chat`);
+    try {
+      // Mark notification as read
+      await markAsRead(notification.id);
+      
+      // Handle navigation based on notification type and reference
+      if (notification.type === "mention" && notification.referenceType === "project" && notification.referenceId) {
+        // Navigate to team chat for the mentioned project
+        setLocation(`/dashboard/projects/${notification.referenceId}/team-chat`);
+      }
+      // Add more navigation cases here for other notification types as needed
+    } catch (error) {
+      console.error("Error handling notification click:", error);
     }
-    // Add more navigation cases here for other notification types as needed
   };
 
   const markAsRead = async (notificationId: number) => {
     try {
-      await fetch(`/api/notifications/${notificationId}/read`, {
+      const response = await fetch(`/api/notifications/${notificationId}/read`, {
         method: "PUT",
         credentials: "include",
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to mark notification as read: ${response.status}`);
+      }
 
       queryClient.setQueryData(["/api/notifications"], (old: Notification[] = []) =>
         old.map(n => n.id === notificationId ? { ...n, read: true } : n)

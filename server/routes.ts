@@ -4288,7 +4288,7 @@ export function registerRoutes(app: Express): Server {
       const userRole = req.user!.role;
 
       // More lenient validation - just check if userId exists and is a valid number
-      if (!userId || typeof userId !== 'number' || isNaN(userId)) {
+      if (!userId || typeof userId !== 'number' || isNaN(userId) || userId <= 0) {
         console.error("Invalid user ID:", { userId, userType: typeof userId });
         return res.json({}); // Return empty object instead of error
       }
