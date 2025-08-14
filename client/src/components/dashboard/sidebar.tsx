@@ -93,10 +93,10 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     refetchInterval: 30000,
   });
 
-  const unreadMemoCount = unreadMemos.filter((memo: any) => !memo.isRead).length;
+  const unreadMemoCount = Array.isArray(unreadMemos) ? unreadMemos.filter((memo: any) => !memo.isRead).length : 0;
 
   // Calculate total unread project messages
-  const totalUnreadProjectMessages = Object.values(unreadCounts).reduce((total, count) => total + count, 0);
+  const totalUnreadProjectMessages = Object.values(unreadCounts || {}).reduce((total: number, count: unknown) => total + (typeof count === 'number' ? count : 0), 0);
 
   // Fetch initial unread count
   useEffect(() => {
@@ -446,7 +446,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Clock size={20} />,
       label: "Deadline Extension Requests",
       href: "/dashboard/deadline-extension-requests",
-      key: "operations-deadline-extension-requests",
+      key: "operations-deadline-extension-requests-view",
     },
     {
       icon: <TrendingUp size={20} />,

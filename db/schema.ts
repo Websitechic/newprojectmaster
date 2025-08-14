@@ -47,20 +47,20 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
-  role: text("role", { enum: Object.values(UserRole) }).notNull(),
+  role: text("role", { enum: Object.values(UserRole) as [string, ...string[]] }).notNull(),
   name: text("name").notNull(),
   email: text("email").notNull(),
   specialization: text("specialization", { 
-    enum: Object.values(UserSpecialization) 
+    enum: Object.values(UserSpecialization) as [string, ...string[]]
   }),
-  status: text("status", { enum: Object.values(UserStatus) }).default(UserStatus.OFFLINE),
+  status: text("status", { enum: Object.values(UserStatus) as [string, ...string[]] }).default(UserStatus.OFFLINE),
   workStatus: text("work_status", { 
-    enum: Object.values(WorkStatus)
+    enum: Object.values(WorkStatus) as [string, ...string[]]
   }).default(WorkStatus.ACTIVE),
   breakStartTime: timestamp("break_start_time"),
   breakCount: integer("break_count").default(0),
   absenceReason: text("absence_reason", { 
-    enum: Object.values(AbsenceReason)
+    enum: Object.values(AbsenceReason) as [string, ...string[]]
   }).default(AbsenceReason.NOT_APPLICABLE),
   absenceEndDate: timestamp("absence_end_date"),
   breakOneTime: text("break_one_time"), // Format: "HH:mm" (e.g., "10:00")

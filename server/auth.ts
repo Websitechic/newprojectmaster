@@ -9,6 +9,7 @@ import { users, type User as SelectUser, UserStatus } from "@db/schema";
 import { db } from "@db";
 import { eq, and, gt } from "drizzle-orm";
 import { z } from "zod";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./services/email";
 
 const scryptAsync = promisify(scrypt);
 const crypto = {
