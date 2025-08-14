@@ -40,10 +40,9 @@ interface SidebarItemProps {
   active?: boolean;
   badge?: number;
   external?: boolean;
-  key?: string; // Added key prop
 }
 
-function SidebarItem({ icon, label, href, active, badge, external, key }: SidebarItemProps) {
+function SidebarItem({ icon, label, href, active, badge, external }: SidebarItemProps) {
   const content = (
     <div
       className={cn(
