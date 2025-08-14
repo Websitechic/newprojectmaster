@@ -511,14 +511,10 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6">
         <div className="space-y-1">
-          {menuItems.map((item) => (
-            <SidebarItem
-              key={item.key || item.href} // Use item.key if available, otherwise fallback to item.href
-              {...item}
-              active={currentPath === item.href}
-              external={item.external}
-            />
-          ))}
+          {menuItems.map((item) => {
+            const { key, ...itemProps } = item;
+            return <SidebarItem key={key} {...itemProps} />;
+          })}
         </div>
 
 

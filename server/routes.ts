@@ -4286,7 +4286,7 @@ export function registerRoutes(app: Express): Server {
 
       // Validate project IDs are valid numbers
       const validProjectIds = uniqueProjectIds.filter(id =>
-        typeof id === 'number' && !isNaN(id) && Number.isInteger(id) && id > 0
+        id !== null && id !== undefined && typeof id === 'number' && !isNaN(id) && Number.isInteger(id) && id > 0
       );
 
       if (validProjectIds.length === 0) {
@@ -5505,6 +5505,33 @@ export function registerRoutes(app: Express): Server {
     } else {
       // Staff members see memos targeted to them
       try {
+        // Build dynamic WHERE clause conditions
+        let whereConditions = [
+          "m.type = 'general'",
+          `m.type = 'individual' AND m.recipients @> '${JSON.stringify([user.id])}'::jsonb`
+        ];
+
+        // Add department conditions
+        let deptConditions = ["m.recipients @> '[\"all_staff\"]'::jsonb"];
+        
+        if (user.specialization) {
+          deptConditions.push(`m.recipients @> '${JSON.stringify([user.specialization])}'::jsonb`);
+        }
+        
+        if (user.role === 'project_manager') {
+          deptConditions.push(`m.recipients @> '[\"project_managers\"]'::jsonb`);
+        }
+        
+        if (user.role === 'product_owner') {
+          deptConditions.push(`m.recipients @> '[\"product_owners\"]'::jsonb`);
+        }
+        
+        if (user.specialization === 'technical_support') {
+          deptConditions.push(`m.recipients @> '[\"technical_support\"]'::jsonb`);
+        }
+
+        whereConditions.push(`m.type = 'department' AND (${deptConditions.join(' OR ')})`);
+
         const result = await db.execute(sql`
           SELECT m.*, u.name as sender_name,
                  mr.read_at,
@@ -5512,16 +5539,7 @@ export function registerRoutes(app: Express): Server {
           FROM memos m
           LEFT JOIN users u ON m.sent_by = u.id
           LEFT JOIN memo_reads mr ON m.id = mr.memo_id AND mr.user_id = ${user.id}
-          WHERE
-            (m.type = 'general') OR
-            (m.type = 'individual' AND m.recipients @> ${JSON.stringify([user.id])}) OR
-            (m.type = 'department' AND (
-              m.recipients @> '["all_staff"]' OR
-              ${user.specialization ? `m.recipients @> ${JSON.stringify([user.specialization])}` : 'FALSE'} OR
-              ${user.role === 'project_manager' ? `m.recipients @> '["project_managers"]'` : 'FALSE'} OR
-              ${user.role === 'product_owner' ? `m.recipients @> '["product_owners"]'` : 'FALSE'} OR
-              ${user.specialization === 'technical_support' ? `m.recipients @> '["technical_support"]'` : 'FALSE'}
-            ))
+          WHERE ${sql.raw(`(${whereConditions.join(') OR (')})`)}
           ORDER BY m.created_at DESC
         `);
 
