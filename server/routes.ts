@@ -35,6 +35,10 @@ import {
   insertTechnicalSupportRequestSchema,
   memos,
   memoReads,
+  clientSentiment,
+  staffComplaintCategories,
+  staffComplaints,
+  staffQueries,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
