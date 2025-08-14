@@ -305,9 +305,145 @@ export default function RegisterDissatisfaction() {
                 </form>
               </CardContent>
             </Card>
+
+            {/* Complaint History */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Complaint History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ComplaintHistoryTable />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ComplaintHistoryTable() {
+  const { toast } = useToast();
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchComplaints = async () => {
+      try {
+        const response = await fetch('/api/complaints/my-complaints', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setComplaints(data);
+        }
+      } catch (error) {
+        console.error('Error fetching complaints:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load complaint history",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchComplaints();
+  }, [toast]);
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { color: "bg-yellow-100 text-yellow-800", label: "Pending" },
+      reviewed: { color: "bg-blue-100 text-blue-800", label: "Reviewed" },
+      resolved: { color: "bg-green-100 text-green-800", label: "Resolved" },
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+        {config.label}
+      </span>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">Loading your complaint history...</p>
+      </div>
+    );
+  }
+
+  if (complaints.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-500">No complaints submitted yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse border border-gray-200">
+        <thead>
+          <tr className="bg-gray-50">
+            <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-900">
+              Submitted Date
+            </th>
+            <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-900">
+              Status
+            </th>
+            <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-900">
+              Complaint Summary
+            </th>
+            <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-900">
+              Review Comments
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {complaints.map((complaint, index) => (
+            <tr key={complaint.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+              <td className="border border-gray-200 px-4 py-2 text-sm text-gray-900">
+                {formatDate(complaint.createdAt)}
+              </td>
+              <td className="border border-gray-200 px-4 py-2">
+                {getStatusBadge(complaint.status)}
+              </td>
+              <td className="border border-gray-200 px-4 py-2 text-sm text-gray-900 max-w-xs">
+                <p className="truncate" title={complaint.detailedExplanation}>
+                  {complaint.detailedExplanation.length > 100 
+                    ? `${complaint.detailedExplanation.substring(0, 100)}...` 
+                    : complaint.detailedExplanation}
+                </p>
+              </td>
+              <td className="border border-gray-200 px-4 py-2 text-sm text-gray-600 max-w-xs">
+                {complaint.reviewComments ? (
+                  <p className="truncate" title={complaint.reviewComments}>
+                    {complaint.reviewComments.length > 100 
+                      ? `${complaint.reviewComments.substring(0, 100)}...` 
+                      : complaint.reviewComments}
+                  </p>
+                ) : (
+                  <span className="text-gray-400 italic">No review yet</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

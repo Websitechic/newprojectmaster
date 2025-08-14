@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, json } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -585,16 +585,14 @@ export const complaints = pgTable("complaints", {
   productManagerName: text("product_manager_name"),
   developerName: text("developer_name"),
   technicalManagerName: text("technical_manager_name"),
-  valuableThings: jsonb("valuable_things"), // Array of strings
+  valuableThings: json("valuable_things").$type<string[]>().default([]),
   detailedExplanation: text("detailed_explanation").notNull(),
   screenshotUrl: text("screenshot_url"),
-  submittedBy: integer("submitted_by").references(() => users.id),
-  status: text("status", { enum: ["pending", "reviewed", "resolved"] }).default("pending"),
-  reviewedBy: integer("reviewed_by").references(() => users.id),
-  reviewedAt: timestamp("reviewed_at"),
+  status: text("status").notNull().default("pending"),
   reviewComments: text("review_comments"),
+  submitterId: integer("submitter_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
 });
 
 export const complaintsRelations = relations(complaints, ({ one }) => ({

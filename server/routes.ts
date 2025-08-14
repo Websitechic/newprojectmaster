@@ -98,8 +98,8 @@ const canManageTasks = async (req: Express.Request, res: Response, next: NextFun
         }
 
         if (project.category !== "support_maintenance") {
-          return res.status(403).json({ 
-            error: "Product owners can only manage tasks in Support & Maintenance category projects" 
+          return res.status(403).json({
+            error: "Product owners can only manage tasks in Support & Maintenance category projects"
           });
         }
 
@@ -133,7 +133,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
@@ -379,7 +379,7 @@ export function registerRoutes(app: Express): Server {
 
       // Combine and remove duplicates
       const allAllowedContacts = [...allowedContacts, ...operationsManagers];
-      const uniqueContacts = allAllowedContacts.filter((contact, index, self) => 
+      const uniqueContacts = allAllowedContacts.filter((contact, index, self) =>
         index === self.findIndex(c => c.id === contact.id)
       );
 
@@ -539,7 +539,7 @@ export function registerRoutes(app: Express): Server {
         .limit(1);
 
       if (existingMember) {
-        return res.json({ 
+        return res.json({
           message: "Already a member of this project",
           project: firstProject,
           membership: existingMember
@@ -670,8 +670,8 @@ export function registerRoutes(app: Express): Server {
           if (!staff) return null;
 
           // Calculate current session hours (from timer start)
-          const currentSessionHours = task.timerStartTime 
-            ? Math.round((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 36000) / 100 
+          const currentSessionHours = task.timerStartTime
+            ? Math.round((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 36000) / 100
             : 0;
 
           // Calculate total hours spent (including previous sessions)
@@ -708,7 +708,7 @@ export function registerRoutes(app: Express): Server {
         .filter(staff => staff.workStatus === WorkStatus.ON_BREAK && staff.breakStartTime)
         .map(staff => {
           // Calculate break duration in minutes
-          const breakDuration = staff.breakStartTime 
+          const breakDuration = staff.breakStartTime
             ? Math.round((new Date().getTime() - new Date(staff.breakStartTime).getTime()) / 60000)
             : 0;
 
@@ -756,7 +756,7 @@ export function registerRoutes(app: Express): Server {
       res.json(staffReport);
     } catch (error) {
       console.error("Error generating staff report:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to generate staff report",
         details: error instanceof Error ? error.message : String(error)
       });
@@ -817,21 +817,21 @@ export function registerRoutes(app: Express): Server {
     if (user.role === "project_manager") {
       // Project managers can edit any project they manage
       if (existingProject.managerId !== user.id) {
-        return res.status(403).json({ 
-          error: "You don't have permission to edit this project" 
+        return res.status(403).json({
+          error: "You don't have permission to edit this project"
         });
       }
     } else if (user.role === "product_owner") {
       // Product owners can only edit Support & Maintenance projects
       if (existingProject.category !== "support_maintenance") {
-        return res.status(403).json({ 
-          error: "Product owners can only edit Support & Maintenance category projects" 
+        return res.status(403).json({
+          error: "Product owners can only edit Support & Maintenance category projects"
         });
       }
       // Also check if they're trying to change category away from support_maintenance
       if (category && category !== "support_maintenance") {
-        return res.status(403).json({ 
-          error: "Product owners cannot change projects away from Support & Maintenance category" 
+        return res.status(403).json({
+          error: "Product owners cannot change projects away from Support & Maintenance category"
         });
       }
     } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
@@ -843,21 +843,21 @@ export function registerRoutes(app: Express): Server {
       const projectId = parseInt(req.params.id);
       console.log("Updating project:", projectId, "with data:", req.body);
 
-      const { 
-        name, 
-        description, 
-        category, 
-        clientId, 
-        pendingClientEmail, 
-        teamMembers, 
-        startDate, 
-        endDate 
+      const {
+        name,
+        description,
+        category,
+        clientId,
+        pendingClientEmail,
+        teamMembers,
+        startDate,
+        endDate
       } = req.body;
 
       // Validate required fields
       if (!name || !category || !startDate || !endDate) {
-        return res.status(400).json({ 
-          error: "Name, category, start date, and end date are required" 
+        return res.status(400).json({
+          error: "Name, category, start date, and end date are required"
         });
       }
 
@@ -926,7 +926,7 @@ export function registerRoutes(app: Express): Server {
       res.json(updatedProject);
     } catch (error) {
       console.error("Error updating project:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to update project",
         details: error instanceof Error ? error.message : String(error)
       });
@@ -957,15 +957,15 @@ export function registerRoutes(app: Express): Server {
     if (user.role === "project_manager") {
       // Project managers can delete projects they manage
       if (project.managerId !== user.id) {
-        return res.status(403).json({ 
-          error: "You don't have permission to delete this project" 
+        return res.status(403).json({
+          error: "You don't have permission to delete this project"
         });
       }
     } else if (user.role === "product_owner") {
       // Product owners can only delete Support & Maintenance projects
       if (project.category !== "support_maintenance") {
-        return res.status(403).json({ 
-          error: "Product owners can only delete Support & Maintenance category projects" 
+        return res.status(403).json({
+          error: "Product owners can only delete Support & Maintenance category projects"
         });
       }
     } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
@@ -1254,8 +1254,8 @@ export function registerRoutes(app: Express): Server {
     } else if (user.role === "product_owner") {
       // Product owners can only create Support & Maintenance projects
       if (category !== "support_maintenance") {
-        return res.status(403).json({ 
-          error: "Product owners can only create Support & Maintenance category projects" 
+        return res.status(403).json({
+          error: "Product owners can only create Support & Maintenance category projects"
         });
       }
     } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
@@ -1264,15 +1264,15 @@ export function registerRoutes(app: Express): Server {
       return res.status(403).json({ error: "Only project managers, product owners, and operations managers can create projects" });
     }
     try {
-      const { 
-        name, 
-        description, 
+      const {
+        name,
+        description,
         type,
-        category, 
-        clientId, 
-        teamMembers, 
-        startDate, 
-        endDate 
+        category,
+        clientId,
+        teamMembers,
+        startDate,
+        endDate
       } = req.body;
 
       console.log("Creating project with data:", req.body);
@@ -1666,8 +1666,8 @@ export function registerRoutes(app: Express): Server {
 
       // For product owners, check if the project is Support & Maintenance category
       if (isProductOwner && project.category !== "support_maintenance") {
-        return res.status(403).json({ 
-          error: "Product owners can only create tasks in Support & Maintenance category projects" 
+        return res.status(403).json({
+          error: "Product owners can only create tasks in Support & Maintenance category projects"
         });
       }
 
@@ -1805,8 +1805,8 @@ export function registerRoutes(app: Express): Server {
 
     // For product owners, check if the project is Support & Maintenance category
     if (isProductOwner && task.projectCategory !== "support_maintenance") {
-      return res.status(403).json({ 
-        error: "Product owners can only update tasks in Support & Maintenance category projects" 
+      return res.status(403).json({
+        error: "Product owners can only update tasks in Support & Maintenance category projects"
       });
     }
     try {
@@ -1950,8 +1950,8 @@ export function registerRoutes(app: Express): Server {
         .limit(1);
 
       if (runningTask && runningTask.id !== taskId) {
-        return res.status(400).json({ 
-          error: "Stop the current task timer before starting a new one." 
+        return res.status(400).json({
+          error: "Stop the current task timer before starting a new one."
         });
       }
 
@@ -2168,8 +2168,8 @@ export function registerRoutes(app: Express): Server {
 
     // For product owners, check if the project is Support & Maintenance category
     if (isProductOwner && task.projectCategory !== "support_maintenance") {
-      return res.status(403).json({ 
-        error: "Product owners can only delete tasks in Support & Maintenance category projects" 
+      return res.status(403).json({
+        error: "Product owners can only delete tasks in Support & Maintenance category projects"
       });
     }
     try {
@@ -2220,9 +2220,9 @@ export function registerRoutes(app: Express): Server {
 
     // Update user's last active time and status
     db.update(users)
-      .set({ 
+      .set({
         lastActive: new Date(),
-        status: UserStatus.ONLINE 
+        status: UserStatus.ONLINE
       })
       .where(eq(users.id, userId))
       .catch(err => console.error("Error updating user activity status:", err));
@@ -2266,7 +2266,7 @@ export function registerRoutes(app: Express): Server {
 
       // When SSE connection closes, update user status to idle
       db.update(users)
-        .set({ 
+        .set({
           lastActive: new Date(),
           status: UserStatus.IDLE
         })
@@ -2617,8 +2617,8 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error adding link resource:", error);
       console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
-      res.status(500).json({ 
-        error: "Failed to add link resource", 
+      res.status(500).json({
+        error: "Failed to add link resource",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -2724,8 +2724,8 @@ export function registerRoutes(app: Express): Server {
       res.json(resourceWithUploader);
     } catch (error) {
       console.error("Error updating link resource:", error);
-      res.status(500).json({ 
-        error: "Failed to update link resource", 
+      res.status(500).json({
+        error: "Failed to update link resource",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -2794,8 +2794,8 @@ export function registerRoutes(app: Express): Server {
       res.json({ message: "Resource deleted successfully" });
     } catch (error) {
       console.error("Error deleting resource:", error);
-      res.status(500).json({ 
-        error: "Failed to delete resource", 
+      res.status(500).json({
+        error: "Failed to delete resource",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -2828,9 +2828,9 @@ export function registerRoutes(app: Express): Server {
 
     try {
       await db.update(users)
-        .set({ 
+        .set({
           lastActive: new Date(),
-          status: UserStatus.ONLINE 
+          status: UserStatus.ONLINE
         })
         .where(eq(users.id, req.user!.id));
 
@@ -2858,9 +2858,9 @@ export function registerRoutes(app: Express): Server {
         role: users.role,
         workStatus: users.workStatus
       })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
 
       if (!user) {
         return res.status(404).json({ error: "User not found" });
@@ -2902,9 +2902,9 @@ export function registerRoutes(app: Express): Server {
       }
 
       const [updatedUser] = await db.update(users)
-        .set({ 
+        .set({
           status,
-          lastActive: new Date() 
+          lastActive: new Date()
         })
         .where(eq(users.id, req.user!.id))
         .returning();
@@ -3177,7 +3177,7 @@ export function registerRoutes(app: Express): Server {
       res.json(newPlan);
     } catch (error) {
       console.error("Error creating project plan:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to create project plan",
         details: error instanceof Error ? error.message : String(error)
       });
@@ -3281,7 +3281,7 @@ export function registerRoutes(app: Express): Server {
       res.json(updatedPlan);
     } catch (error) {
       console.error("Error updating project plan:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to update project plan",
         details: error instanceof Error ? error.message : String(error)
       });
@@ -3432,8 +3432,8 @@ export function registerRoutes(app: Express): Server {
           .reduce((total, app) => total + app.totalDays, 0);
 
         if (usedDays + totalDays > 14) {
-          return res.status(400).json({ 
-            error: `Leave of absence exceeds annual limit. You have ${14 - usedDays} days remaining.` 
+          return res.status(400).json({
+            error: `Leave of absence exceeds annual limit. You have ${14 - usedDays} days remaining.`
           });
         }
       }
@@ -4046,7 +4046,7 @@ export function registerRoutes(app: Express): Server {
       res.json(teamMessages.reverse());
     } catch (error) {
       console.error("Error fetching team messages:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to fetch team messages",
         details: error instanceof Error ? error.message : String(error)
       });
@@ -4159,7 +4159,7 @@ export function registerRoutes(app: Express): Server {
       while ((match = mentionRegex.exec(content)) !== null) {
         const mentionedName = match[1].trim();
         // Find the mentioned user in project members
-        const mentionedMember = projectMembersData.find(member => 
+        const mentionedMember = projectMembersData.find(member =>
           member.userName && member.userName.toLowerCase() === mentionedName.toLowerCase()
         );
 
@@ -4285,7 +4285,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Validate project IDs are valid numbers
-      const validProjectIds = uniqueProjectIds.filter(id => 
+      const validProjectIds = uniqueProjectIds.filter(id =>
         typeof id === 'number' && !isNaN(id) && Number.isInteger(id) && id > 0
       );
 
@@ -4617,9 +4617,9 @@ export function registerRoutes(app: Express): Server {
         // Continue execution even if notifications fail
       }
 
-      res.status(201).json({ 
+      res.status(201).json({
         message: "Request submitted successfully",
-        request: newRequest 
+        request: newRequest
       });
     } catch (error) {
       console.error("Error creating technical support request:", error);
@@ -4651,7 +4651,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       const [updatedRequest] = await db.update(technicalSupportRequests)
-        .set({ 
+        .set({
           assignedToId: user.id,
           status: 'in_progress',
           updatedAt: new Date()
@@ -4722,9 +4722,9 @@ export function registerRoutes(app: Express): Server {
       }
 
       const request = existingRequest[0];
-      const canUpdate = user.specialization === 'technical_support' && 
-                       (request.assignedToId === user.id || !request.assignedToId) ||
-                       request.requesterId === user.id;
+      const canUpdate = user.specialization === 'technical_support' &&
+        (request.assignedToId === user.id || !request.assignedToId) ||
+        request.requesterId === user.id;
 
       if (!canUpdate) {
         return res.status(403).json({ error: "Not authorized to update this request" });
@@ -4998,7 +4998,7 @@ export function registerRoutes(app: Express): Server {
           })}\n\n`);
         } catch (error) {
           console.error(`Error sending SSE notification to PM ${project.managerId}:`, error);
-          global.sseClients?.delete(project.managerId);
+          global.sseClients.delete(project.managerId);
         }
       }
 
@@ -5107,7 +5107,7 @@ export function registerRoutes(app: Express): Server {
           })}\n\n`);
         } catch (error) {
           console.error(`Error sending SSE notification to user ${request.requesterId}:`, error);
-          global.sseClients?.delete(request.requesterId);
+          global.sseClients.delete(request.requesterId);
         }
       }
 
@@ -5236,7 +5236,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  const complaintUpload = multer({ 
+  const complaintUpload = multer({
     storage: complaintStorage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
     fileFilter: (req, file, cb) => {
@@ -5404,9 +5404,9 @@ export function registerRoutes(app: Express): Server {
       }
 
       const result = await db.execute(sql`
-        UPDATE complaints 
-        SET status = ${status}, 
-            review_comments = ${reviewComments || null}, 
+        UPDATE complaints
+        SET status = ${status},
+            review_comments = ${reviewComments || null},
             reviewed_at = CURRENT_TIMESTAMP
         WHERE id = ${complaintId}
         RETURNING *
@@ -5440,9 +5440,9 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const result = await db.execute(sql`
-        SELECT m.*, u.name as sender_name 
-        FROM memos m 
-        LEFT JOIN users u ON m.sent_by = u.id 
+        SELECT m.*, u.name as sender_name
+        FROM memos m
+        LEFT JOIN users u ON m.sent_by = u.id
         ORDER BY m.created_at DESC
       `);
 
@@ -5478,8 +5478,8 @@ export function registerRoutes(app: Express): Server {
         const result = await db.execute(sql`
           SELECT m.*, u.name as sender_name,
                  (SELECT COUNT(*) FROM memo_reads mr WHERE mr.memo_id = m.id) as read_count
-          FROM memos m 
-          LEFT JOIN users u ON m.sent_by = u.id 
+          FROM memos m
+          LEFT JOIN users u ON m.sent_by = u.id
           WHERE m.sent_by = ${user.id}
           ORDER BY m.created_at DESC
         `);
@@ -5509,10 +5509,10 @@ export function registerRoutes(app: Express): Server {
           SELECT m.*, u.name as sender_name,
                  mr.read_at,
                  CASE WHEN mr.read_at IS NOT NULL THEN true ELSE false END as is_read
-          FROM memos m 
-          LEFT JOIN users u ON m.sent_by = u.id 
+          FROM memos m
+          LEFT JOIN users u ON m.sent_by = u.id
           LEFT JOIN memo_reads mr ON m.id = mr.memo_id AND mr.user_id = ${user.id}
-          WHERE 
+          WHERE
             (m.type = 'general') OR
             (m.type = 'individual' AND m.recipients @> ${JSON.stringify([user.id])}) OR
             (m.type = 'department' AND (
@@ -5582,8 +5582,8 @@ export function registerRoutes(app: Express): Server {
       if (type === "general") {
         // Send to all users (everyone in the system except operations managers)
         const allUsersResult = await db.execute(sql`
-          SELECT id, name FROM users 
-          WHERE role != 'operations_manager' 
+          SELECT id, name FROM users
+          WHERE role != 'operations_manager'
           AND specialization != 'operations_manager'
         `);
         targetUsers = allUsersResult.rows;
@@ -5612,7 +5612,7 @@ export function registerRoutes(app: Express): Server {
               conditions.push(`specialization = '${dept}'`);
             }
           });
-          
+
           if (conditions.length > 0) {
             const staffResult = await db.execute(sql`
               SELECT id, name FROM users WHERE ${sql.raw(conditions.join(' OR '))}
@@ -5651,10 +5651,10 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      res.json({ 
-        message: "Memo sent successfully", 
+      res.json({
+        message: "Memo sent successfully",
         memo: newMemo,
-        recipientCount: targetUsers.length 
+        recipientCount: targetUsers.length
       });
     } catch (error) {
       console.error("Error creating memo:", error);
@@ -5865,9 +5865,9 @@ export function registerRoutes(app: Express): Server {
 
       // Update the complaint
       const result = await db.execute(sql`
-        UPDATE staff_complaints 
-        SET status = ${status}, 
-            review_comments = ${reviewComments || null}, 
+        UPDATE staff_complaints
+        SET status = ${status},
+            review_comments = ${reviewComments || null},
             reviewed_at = CURRENT_TIMESTAMP
         WHERE id = ${complaintId}
         RETURNING *
@@ -5995,7 +5995,7 @@ export function registerRoutes(app: Express): Server {
           isCompleted: task.status === 'completed',
           workingHours: task.workingHours || 8
         })),
-        weeklyBreakdown: [] as { day: string; dayName: string; timeSpent: number; hours: number; taskCount: number; tasks: string[]; }[]
+        weeklyBreakdown: [] as { day: string; dayName: string; timeSpent: number; hours: number; taskCount: number; tasks: string[]; workdayStart: null; workdayEnd: null; totalSpanHours: number; performanceStatus: string; performanceColor: string; }[]
       };
 
       // Generate weekly breakdown (Monday to Friday of current week)
@@ -6121,20 +6121,20 @@ export function registerRoutes(app: Express): Server {
   // Create a new booking (Project Manager only)
   app.post("/api/bookings", isProjectManager, async (req, res) => {
     try {
-      const { 
-        title, 
-        description, 
-        type, 
-        participants, 
-        startTime, 
-        endTime, 
-        meetingLink, 
-        notes 
+      const {
+        title,
+        description,
+        type,
+        participants,
+        startTime,
+        endTime,
+        meetingLink,
+        notes
       } = req.body;
 
       if (!title || !type || !startTime || !endTime || !participants) {
-        return res.status(400).json({ 
-          error: "Title, type, start time, end time, and participants are required" 
+        return res.status(400).json({
+          error: "Title, type, start time, end time, and participants are required"
         });
       }
 
@@ -6174,8 +6174,8 @@ export function registerRoutes(app: Express): Server {
       });
 
       if (participantConflicts.length > 0) {
-        return res.status(400).json({ 
-          error: "One or more participants have conflicting meetings at this time" 
+        return res.status(400).json({
+          error: "One or more participants have conflicting meetings at this time"
         });
       }
 
@@ -6253,9 +6253,9 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      res.json({ 
-        booking: newBooking, 
-        warning: warningMessage 
+      res.json({
+        booking: newBooking,
+        warning: warningMessage
       });
     } catch (error) {
       console.error("Error creating booking:", error);
