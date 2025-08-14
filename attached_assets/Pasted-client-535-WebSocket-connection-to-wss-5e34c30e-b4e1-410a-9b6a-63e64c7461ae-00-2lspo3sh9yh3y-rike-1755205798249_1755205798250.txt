@@ -1,0 +1,116 @@
+client:535 WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/' failed: 
+setupWebSocket @ client:535
+(anonymous) @ client:530
+client:535 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/' is invalid.
+    at setupWebSocket (client:535:19)
+    at fallback (client:508:16)
+    at WebSocket.<anonymous> (client:551:7)
+setupWebSocket @ client:535
+fallback @ client:508
+(anonymous) @ client:551
+chunk-RPCDYKBN.js?v=1c26edc4:14032 The above error occurred in one of your React components:
+
+    at Lazy
+    at Route (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1c26edc4:265:16)
+    at Switch (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1c26edc4:321:17)
+    at Router (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/App.tsx?v=5C7to-hvRNvoKdYOoBoUF:90:31)
+    at AuthProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at QueryClientProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=1c26edc4:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=1c26edc4:14032
+update.callback @ chunk-RPCDYKBN.js?v=1c26edc4:14052
+callCallback @ chunk-RPCDYKBN.js?v=1c26edc4:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=1c26edc4:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=1c26edc4:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=1c26edc4:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=1c26edc4:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=1c26edc4:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=1c26edc4:19353
+commitRoot @ chunk-RPCDYKBN.js?v=1c26edc4:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=1c26edc4:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=1c26edc4:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=1c26edc4:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=1c26edc4:555
+flush @ @tanstack_react-query.js?v=1c26edc4:569
+batch @ @tanstack_react-query.js?v=1c26edc4:587
+dispatch_fn @ @tanstack_react-query.js?v=1c26edc4:996
+setData @ @tanstack_react-query.js?v=1c26edc4:696
+onSuccess @ @tanstack_react-query.js?v=1c26edc4:897
+resolve @ @tanstack_react-query.js?v=1c26edc4:456
+Promise.then
+run @ @tanstack_react-query.js?v=1c26edc4:498
+start @ @tanstack_react-query.js?v=1c26edc4:536
+fetch @ @tanstack_react-query.js?v=1c26edc4:926
+executeFetch_fn @ @tanstack_react-query.js?v=1c26edc4:2211
+onSubscribe @ @tanstack_react-query.js?v=1c26edc4:1898
+subscribe @ @tanstack_react-query.js?v=1c26edc4:24
+(anonymous) @ @tanstack_react-query.js?v=1c26edc4:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=1c26edc4:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=1c26edc4:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=1c26edc4:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=1c26edc4:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=1c26edc4:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=1c26edc4:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=1c26edc4:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=1c26edc4:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=1c26edc4:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=1c26edc4:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=1c26edc4:19432
+commitRoot @ chunk-RPCDYKBN.js?v=1c26edc4:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=1c26edc4:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=1c26edc4:18718
+workLoop @ chunk-RPCDYKBN.js?v=1c26edc4:197
+flushWork @ chunk-RPCDYKBN.js?v=1c26edc4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=1c26edc4:384
+chunk-RPCDYKBN.js?v=1c26edc4:14213 Uncaught Error: A component suspended while responding to synchronous input. This will cause the UI to be replaced with a loading indicator. To fix, updates that suspend should be wrapped with startTransition.
+    at throwException (chunk-RPCDYKBN.js?v=1c26edc4:14213:43)
+    at handleError (chunk-RPCDYKBN.js?v=1c26edc4:19034:15)
+    at renderRootSync (chunk-RPCDYKBN.js?v=1c26edc4:19119:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=1c26edc4:18736:28)
+    at performSyncWorkOnRoot (chunk-RPCDYKBN.js?v=1c26edc4:18879:28)
+    at flushSyncCallbacks (chunk-RPCDYKBN.js?v=1c26edc4:9119:30)
+    at chunk-RPCDYKBN.js?v=1c26edc4:18627:21
+throwException @ chunk-RPCDYKBN.js?v=1c26edc4:14213
+handleError @ chunk-RPCDYKBN.js?v=1c26edc4:19034
+renderRootSync @ chunk-RPCDYKBN.js?v=1c26edc4:19119
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=1c26edc4:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=1c26edc4:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=1c26edc4:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=1c26edc4:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=1c26edc4:555
+flush @ @tanstack_react-query.js?v=1c26edc4:569
+batch @ @tanstack_react-query.js?v=1c26edc4:587
+dispatch_fn @ @tanstack_react-query.js?v=1c26edc4:996
+setData @ @tanstack_react-query.js?v=1c26edc4:696
+onSuccess @ @tanstack_react-query.js?v=1c26edc4:897
+resolve @ @tanstack_react-query.js?v=1c26edc4:456
+Promise.then
+run @ @tanstack_react-query.js?v=1c26edc4:498
+start @ @tanstack_react-query.js?v=1c26edc4:536
+fetch @ @tanstack_react-query.js?v=1c26edc4:926
+executeFetch_fn @ @tanstack_react-query.js?v=1c26edc4:2211
+onSubscribe @ @tanstack_react-query.js?v=1c26edc4:1898
+subscribe @ @tanstack_react-query.js?v=1c26edc4:24
+(anonymous) @ @tanstack_react-query.js?v=1c26edc4:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=1c26edc4:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=1c26edc4:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=1c26edc4:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=1c26edc4:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=1c26edc4:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=1c26edc4:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=1c26edc4:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=1c26edc4:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=1c26edc4:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=1c26edc4:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=1c26edc4:19432
+commitRoot @ chunk-RPCDYKBN.js?v=1c26edc4:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=1c26edc4:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=1c26edc4:18718
+workLoop @ chunk-RPCDYKBN.js?v=1c26edc4:197
+flushWork @ chunk-RPCDYKBN.js?v=1c26edc4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=1c26edc4:384
