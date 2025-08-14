@@ -443,6 +443,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       key: "operations-staff-queries",
     },
     {
+      icon: <Clock size={20} />,
+      label: "Deadline Extension Requests",
+      href: "/dashboard/deadline-extension-requests",
+      key: "operations-deadline-extension-requests",
+    },
+    {
       icon: <TrendingUp size={20} />,
       label: "Client Sentiment Tracker",
       href: "/dashboard/client-sentiment-tracker",

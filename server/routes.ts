@@ -4845,8 +4845,12 @@ export function registerRoutes(app: Express): Server {
       const user = req.user!;
       let requests;
 
-      if (user.role === "project_manager") {
-        // Project managers see all requests for their projects
+      if (user.role === "project_manager" || user.role === "operations_manager" || user.specialization === "operations_manager") {
+        // Project managers see requests for their projects, operations managers see all requests
+        const whereCondition = user.role === "operations_manager" || user.specialization === "operations_manager" 
+          ? undefined // Operations managers see all requests
+          : eq(deadlineExtensionRequests.projectManagerId, user.id); // Project managers see only their projects
+
         requests = await db
           .select({
             id: deadlineExtensionRequests.id,
@@ -4875,7 +4879,7 @@ export function registerRoutes(app: Express): Server {
           .leftJoin(users, eq(deadlineExtensionRequests.requesterId, users.id))
           .leftJoin(tasks, eq(deadlineExtensionRequests.taskId, tasks.id))
           .leftJoin(projects, eq(tasks.projectId, projects.id))
-          .where(eq(deadlineExtensionRequests.projectManagerId, user.id))
+          .where(whereCondition)
           .orderBy(desc(deadlineExtensionRequests.createdAt));
       } else {
         // Staff see only their own requests
