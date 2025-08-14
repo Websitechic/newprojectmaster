@@ -184,7 +184,8 @@ export default function Projects() {
               </div>
             </div>
 
-            {/* Project Status Dashboard Cards */}
+            {/* Project Status Dashboard Cards - Only for Operations Managers and Project Managers */}
+            {(user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {/* Project Overdue Card */}
               <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer ${
@@ -271,9 +272,10 @@ export default function Projects() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Clear Filter Button */}
-            {statusFilter && (
+            {statusFilter && (user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
               <div className="mb-4">
                 <Button 
                   variant="outline" 
