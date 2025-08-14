@@ -184,8 +184,6 @@ export default function Notes() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
-
   // Form state
   const [formData, setFormData] = useState({
     title: "",
@@ -224,21 +222,6 @@ export default function Notes() {
   });
 
   console.log("Notes query - isLoading:", isLoading, "error:", error, "notes:", notes);
-
-  // Auto-save functionality
-  const triggerAutoSave = useCallback((noteData: any) => {
-    if (autoSaveTimer) {
-      clearTimeout(autoSaveTimer);
-    }
-
-    const timer = setTimeout(() => {
-      if (selectedNote) {
-        updateNoteMutation.mutate({ id: selectedNote.id, ...noteData });
-      }
-    }, 2000);
-
-    setAutoSaveTimer(timer);
-  }, [autoSaveTimer, selectedNote]);
 
   // Create note mutation
   const createNoteMutation = useMutation({
@@ -698,10 +681,7 @@ export default function Notes() {
               <Input
                 id="edit-title"
                 value={formData.title}
-                onChange={(e) => {
-                  setFormData(prev => ({ ...prev, title: e.target.value }));
-                  triggerAutoSave({ ...formData, title: e.target.value });
-                }}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="Enter note title"
               />
             </div>
@@ -739,10 +719,7 @@ export default function Notes() {
                 <Label htmlFor="edit-content">Content</Label>
                 <RichTextEditor
                   value={formData.content}
-                  onChange={(value) => {
-                    setFormData(prev => ({ ...prev, content: value }));
-                    triggerAutoSave({ ...formData, content: value });
-                  }}
+                  onChange={(value) => setFormData(prev => ({ ...prev, content: value }))}
                   placeholder="Type your note here... Use the toolbar above for formatting."
                 />
               </div>
@@ -754,17 +731,13 @@ export default function Notes() {
                     <div key={item.id} className="flex items-center gap-2">
                       <Checkbox
                         checked={item.completed}
-                        onCheckedChange={(checked) => {
-                          updateTodoItem(item.id, { completed: checked as boolean });
-                          triggerAutoSave(formData);
-                        }}
+                        onCheckedChange={(checked) =>
+                          updateTodoItem(item.id, { completed: checked as boolean })
+                        }
                       />
                       <Input
                         value={item.text}
-                        onChange={(e) => {
-                          updateTodoItem(item.id, { text: e.target.value });
-                          triggerAutoSave(formData);
-                        }}
+                        onChange={(e) => updateTodoItem(item.id, { text: e.target.value })}
                         placeholder="Todo item"
                         className="flex-1"
                       />
