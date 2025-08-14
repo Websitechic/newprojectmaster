@@ -167,7 +167,7 @@ export default function DeadlineExtensionRequestsPage() {
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const processedRequests = requests.filter(r => r.status !== 'pending');
 
-  if (user?.role !== "project_manager") {
+  if (user?.role !== "project_manager" && user?.role !== "operations_manager" && user?.specialization !== "operations_manager") {
     return (
       <div className="flex h-screen">
         <Sidebar currentPath={location} />
@@ -176,7 +176,7 @@ export default function DeadlineExtensionRequestsPage() {
           <div className="flex-1 overflow-auto p-6">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-              <p className="text-gray-600 mt-2">This page is only available to project managers.</p>
+              <p className="text-gray-600 mt-2">This page is only available to project managers and operations managers.</p>
             </div>
           </div>
         </div>

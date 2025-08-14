@@ -91,8 +91,8 @@ export default function LeaveManagement() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [reviewAction, setReviewAction] = useState<"approved" | "rejected" | null>(null);
 
-  // Check if user is project manager
-  if (!user || user.role !== "project_manager") {
+  // Check if user is project manager or operations manager
+  if (!user || (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager")) {
     return (
       <div className="flex h-screen">
         <Sidebar currentPath="/dashboard/leave-management" />
@@ -100,7 +100,7 @@ export default function LeaveManagement() {
           <Header />
           <div className="flex flex-col items-center justify-center min-h-[400px]">
             <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-            <p className="text-sm text-destructive">Only project managers can access leave management</p>
+            <p className="text-sm text-destructive">Only project managers and operations managers can access leave management</p>
           </div>
         </div>
       </div>

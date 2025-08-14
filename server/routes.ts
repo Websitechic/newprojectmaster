@@ -3539,8 +3539,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get all leave applications (Project Manager only)
-  app.get("/api/leave-applications/all", isProjectManager, async (req, res) => {
+  // Get all leave applications (Project Manager and Operations Manager)
+  app.get("/api/leave-applications/all", isProjectManagerOrOperationsManager, async (req, res) => {
     try {
       const applications = await db
         .select({
@@ -3569,8 +3569,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Review leave application (Project Manager only)
-  app.put("/api/leave-applications/:id/review", isProjectManager, async (req, res) => {
+  // Review leave application (Project Manager and Operations Manager)
+  app.put("/api/leave-applications/:id/review", isProjectManagerOrOperationsManager, async (req, res) => {
     try {
       const applicationId = parseInt(req.params.id);
       const { status, reviewComments } = req.body;
@@ -5041,8 +5041,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Approve/Decline deadline extension request (Project Manager only)
-  app.put("/api/deadline-extension-requests/:id", isProjectManager, async (req, res) => {
+  // Approve/Decline deadline extension request (Project Manager and Operations Manager)
+  app.put("/api/deadline-extension-requests/:id", isProjectManagerOrOperationsManager, async (req, res) => {
     try {
       const requestId = parseInt(req.params.id);
       const { status, decisionReason, approvedDeadline, approvedWorkingHours } = req.body;
