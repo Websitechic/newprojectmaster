@@ -61,14 +61,14 @@ export default function Projects() {
   const filteredProjects = projects?.filter(project => {
     // Apply status filter first
     if (filter !== "all" && project.status !== filter) return false;
-    
+
     // Apply dashboard card filters
     if (statusFilter === "overdue") {
       const now = new Date();
       const endDate = new Date(project.endDate || '');
       return endDate < now && project.status !== 'completed';
     }
-    
+
     if (statusFilter === "completed_week") {
       if (project.status !== 'completed') return false;
       const weekAgo = new Date();
@@ -76,7 +76,7 @@ export default function Projects() {
       const updatedDate = new Date(project.updatedAt || '');
       return updatedDate >= weekAgo;
     }
-    
+
     if (statusFilter === "urgent") {
       if (project.status === 'completed') return false;
       const tenWorkingDaysAgo = new Date();
@@ -84,7 +84,7 @@ export default function Projects() {
       const lastUpdate = new Date(project.updatedAt || '');
       return lastUpdate < tenWorkingDaysAgo;
     }
-    
+
     return true;
   });
 
@@ -224,7 +224,7 @@ export default function Projects() {
                       {(() => {
                         const weekAgo = new Date();
                         weekAgo.setDate(weekAgo.getDate() - 7);
-                        
+
                         return projects?.filter(project => {
                           if (project.status !== 'completed') return false;
                           const updatedDate = new Date(project.updatedAt || '');
@@ -254,7 +254,7 @@ export default function Projects() {
                       {(() => {
                         const tenWorkingDaysAgo = new Date();
                         tenWorkingDaysAgo.setDate(tenWorkingDaysAgo.getDate() - 14);
-                        
+
                         return projects?.filter(project => {
                           if (project.status === 'completed') return false;
                           const lastUpdate = new Date(project.updatedAt || '');
@@ -378,7 +378,8 @@ export default function Projects() {
                                 </span>
                               </div>
                             </div>
-                             {(user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
+                            {/* Check if user can edit projects (project managers, product owners, and operations managers) */}
+                            {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
                               <div className="flex space-x-2">
                                 <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
                                   setIsEditDialogOpen(open);
@@ -543,7 +544,6 @@ export default function Projects() {
           )}
         </div>
       </div>
-    </div>
     </div>
   );
 }

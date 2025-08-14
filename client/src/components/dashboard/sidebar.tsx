@@ -431,6 +431,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       key: "operations-complaints-management",
     },
     {
+      icon: <FileText size={20} />,
+      label: "Notes",
+      href: "/dashboard/notes",
+      key: "operations-notes",
+    },
+    {
       icon: <AlertTriangle size={20} />,
       label: "Staff Complaints",
       href: "/dashboard/staff-complaints",
