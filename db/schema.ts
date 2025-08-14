@@ -9,6 +9,7 @@ export const UserRole = {
   STAFF: "staff",
   INTERN: "intern",
   PRODUCT_OWNER: "product_owner",
+  OPERATIONS_MANAGER: "operations_manager",
 } as const;
 
 export const UserSpecialization = {
@@ -591,13 +592,14 @@ export const complaints = pgTable("complaints", {
   status: text("status").notNull().default("pending"),
   reviewComments: text("review_comments"),
   submitterId: integer("submitter_id").references(() => users.id),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
 });
 
 export const complaintsRelations = relations(complaints, ({ one }) => ({
   submitter: one(users, {
-    fields: [complaints.submittedBy],
+    fields: [complaints.submitterId],
     references: [users.id],
   }),
   reviewer: one(users, {
@@ -610,12 +612,38 @@ export type Complaint = typeof complaints.$inferSelect;
 export const insertComplaintSchema = createInsertSchema(complaints);
 export const selectComplaintSchema = createSelectSchema(complaints);
 
+// Staff complaints table
+export const staffComplaints = pgTable("staff_complaints", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  department: text("department"),
+  detailedExplanation: text("detailed_explanation").notNull(),
+  screenshotUrl: text("screenshot_url"),
+  status: text("status").notNull().default("pending"),
+  reviewComments: text("review_comments"),
+  submitterId: integer("submitter_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const staffComplaintsRelations = relations(staffComplaints, ({ one }) => ({
+  submitter: one(users, {
+    fields: [staffComplaints.submitterId],
+    references: [users.id],
+  }),
+}));
+
+export type StaffComplaint = typeof staffComplaints.$inferSelect;
+export const insertStaffComplaintSchema = createInsertSchema(staffComplaints);
+export const selectStaffComplaintSchema = createSelectSchema(staffComplaints);
+
 export const memos = pgTable("memos", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
   type: text("type", { 
-    enum: ["individual", "staff_members", "department"] 
+    enum: ["individual", "general", "department"] 
   }).notNull(),
   recipients: jsonb("recipients").notNull(), // Array of user IDs or department names
   sentBy: integer("sent_by").references(() => users.id).notNull(),
