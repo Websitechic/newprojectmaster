@@ -5832,6 +5832,240 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Client Sentiment API Routes
+
+  // Get current week sentiment for client
+  app.get("/api/client-sentiment/current-week", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "client") {
+      return res.status(403).json({ error: "Only clients can access this endpoint" });
+    }
+
+    try {
+      // Get current week start (Monday) and end (Sunday)
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const monday = new Date(now);
+      monday.setDate(diff);
+      monday.setHours(0, 0, 0, 0);
+      
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+
+      const result = await db.execute(sql`
+        SELECT * FROM client_sentiment 
+        WHERE client_id = ${user.id} 
+        AND week_start = ${monday.toISOString().split('T')[0]}
+        LIMIT 1
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "No sentiment found for current week" });
+      }
+
+      const sentiment = result.rows[0];
+      res.json({
+        id: sentiment.id,
+        clientId: sentiment.client_id,
+        sentiment: sentiment.sentiment,
+        reason: sentiment.reason,
+        createdAt: sentiment.created_at,
+        weekStart: sentiment.week_start,
+        weekEnd: sentiment.week_end
+      });
+    } catch (error) {
+      console.error("Error fetching current week sentiment:", error);
+      res.status(500).json({ error: "Failed to fetch current week sentiment" });
+    }
+  });
+
+  // Submit client sentiment
+  app.post("/api/client-sentiment", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "client") {
+      return res.status(403).json({ error: "Only clients can submit sentiment" });
+    }
+
+    try {
+      const { sentiment, reason } = req.body;
+
+      if (!sentiment || !reason) {
+        return res.status(400).json({ error: "Sentiment and reason are required" });
+      }
+
+      const validSentiments = ["satisfied", "dissatisfied", "flags"];
+      if (!validSentiments.includes(sentiment)) {
+        return res.status(400).json({ error: "Invalid sentiment value" });
+      }
+
+      // Get current week start (Monday) and end (Sunday)
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const monday = new Date(now);
+      monday.setDate(diff);
+      monday.setHours(0, 0, 0, 0);
+      
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+
+      // Check if user already submitted for this week
+      const existingResult = await db.execute(sql`
+        SELECT id FROM client_sentiment 
+        WHERE client_id = ${user.id} 
+        AND week_start = ${monday.toISOString().split('T')[0]}
+      `);
+
+      if (existingResult.rows.length > 0) {
+        return res.status(400).json({ error: "You have already submitted sentiment for this week" });
+      }
+
+      // Insert new sentiment
+      const result = await db.execute(sql`
+        INSERT INTO client_sentiment (client_id, sentiment, reason, week_start, week_end, created_at, updated_at)
+        VALUES (${user.id}, ${sentiment}, ${reason.trim()}, ${monday.toISOString().split('T')[0]}, ${sunday.toISOString().split('T')[0]}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING *
+      `);
+
+      const newSentiment = result.rows[0];
+
+      // Notify operations managers
+      const operationsManagers = await db
+        .select()
+        .from(users)
+        .where(or(
+          eq(users.specialization, "operations_manager"),
+          eq(users.role, "operations_manager")
+        ));
+
+      for (const manager of operationsManagers) {
+        const [notification] = await db
+          .insert(notifications)
+          .values({
+            userId: manager.id,
+            type: "client_sentiment",
+            content: `${user.name} submitted ${sentiment} sentiment: ${reason.substring(0, 100)}${reason.length > 100 ? '...' : ''}`,
+            referenceId: newSentiment.id,
+            referenceType: "client_sentiment",
+            createdAt: new Date(),
+          })
+          .returning();
+
+        // Send real-time notification via SSE
+        const clientResponse = global.sseClients?.get(manager.id);
+        if (clientResponse && !clientResponse.writableEnded) {
+          try {
+            clientResponse.write(`data: ${JSON.stringify({
+              type: "notification",
+              data: notification
+            })}\n\n`);
+          } catch (error) {
+            console.error(`Error sending SSE notification to operations manager ${manager.id}:`, error);
+            global.sseClients?.delete(manager.id);
+          }
+        }
+      }
+
+      res.json({
+        id: newSentiment.id,
+        clientId: newSentiment.client_id,
+        sentiment: newSentiment.sentiment,
+        reason: newSentiment.reason,
+        createdAt: newSentiment.created_at,
+        weekStart: newSentiment.week_start,
+        weekEnd: newSentiment.week_end
+      });
+    } catch (error) {
+      console.error("Error submitting client sentiment:", error);
+      res.status(500).json({ error: "Failed to submit client sentiment" });
+    }
+  });
+
+  // Get all client sentiments (Operations Manager only)
+  app.get("/api/client-sentiment/all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access all client sentiments" });
+    }
+
+    try {
+      const { week } = req.query;
+      let weekCondition = "";
+
+      if (week && week !== "current") {
+        const now = new Date();
+        let targetDate = new Date();
+
+        if (week === "last") {
+          targetDate.setDate(now.getDate() - 7);
+        } else {
+          const weeksBack = parseInt(week as string);
+          if (!isNaN(weeksBack)) {
+            targetDate.setDate(now.getDate() - (weeksBack * 7));
+          }
+        }
+
+        const dayOfWeek = targetDate.getDay();
+        const diff = targetDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        const monday = new Date(targetDate);
+        monday.setDate(diff);
+        monday.setHours(0, 0, 0, 0);
+
+        weekCondition = `AND cs.week_start = '${monday.toISOString().split('T')[0]}'`;
+      } else {
+        // Current week
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        const monday = new Date(now);
+        monday.setDate(diff);
+        monday.setHours(0, 0, 0, 0);
+
+        weekCondition = `AND cs.week_start = '${monday.toISOString().split('T')[0]}'`;
+      }
+
+      const result = await db.execute(sql`
+        SELECT cs.*, u.name as client_name, u.email as client_email
+        FROM client_sentiment cs
+        JOIN users u ON cs.client_id = u.id
+        WHERE 1=1 ${sql.raw(weekCondition)}
+        ORDER BY cs.created_at DESC
+      `);
+
+      const sentiments = result.rows.map(row => ({
+        id: row.id,
+        clientId: row.client_id,
+        clientName: row.client_name,
+        clientEmail: row.client_email,
+        sentiment: row.sentiment,
+        reason: row.reason,
+        createdAt: row.created_at,
+        weekStart: row.week_start,
+        weekEnd: row.week_end
+      }));
+
+      res.json(sentiments);
+    } catch (error) {
+      console.error("Error fetching all client sentiments:", error);
+      res.status(500).json({ error: "Failed to fetch client sentiments" });
+    }
+  });
+
   // Staff Complaint API Routes
 
   // Submit staff complaint

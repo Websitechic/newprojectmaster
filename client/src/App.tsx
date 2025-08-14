@@ -35,6 +35,8 @@ import RateUs from "@/pages/dashboard/rate-us";
 import ClientDashboard from "@/pages/dashboard/client-dashboard";
 import ComplaintsManagement from "@/pages/dashboard/complaints-management";
 import ClientAccounts from "@/pages/dashboard/client-accounts";
+import ClientSentiment from "@/pages/dashboard/client-sentiment";
+import ClientSentimentTracker from "@/pages/dashboard/client-sentiment-tracker";
 
 import Memos from "@/pages/dashboard/memos";
 import SendComplaint from "@/pages/send-complaint";
@@ -107,11 +109,8 @@ function Router() {
       <Route path="/dashboard/rate-us" component={() => <PrivateRoute component={RateUs} />} />
       <Route path="/dashboard/complaints-management" component={() => <PrivateRoute component={ComplaintsManagement} />} />
       <Route path="/dashboard/client-accounts" component={() => <PrivateRoute component={ClientAccounts} />} />
-
-      <Route path="/dashboard/memos" component={Memos} />
-      <Route path="/send-complaint" component={() => <PrivateRoute component={SendComplaint} />} />
-      <Route path="/dashboard/staff-complaints" component={() => <PrivateRoute component={StaffComplaints} />} />
-      <Route path="/dashboard/staff-queries" component={() => <PrivateRoute component={StaffQueries} />} />
+      <Route path="/dashboard/client-sentiment" component={() => <PrivateRoute component={ClientSentiment} />} />
+      <Route path="/dashboard/client-sentiment-tracker" component={() => <PrivateRoute component={ClientSentimentTracker} />} />
       <Route component={NotFound} />
     </Switch>
   );

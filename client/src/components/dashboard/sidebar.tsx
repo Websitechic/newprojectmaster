@@ -383,13 +383,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   // Operations Manager specific menu items
   const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" ? [
     {
-      icon: <FileText size={20} />,
-      label: "Projects",
-      href: "/dashboard/projects",
-      badge: totalUnreadProjectMessages,
-      key: "operations-projects",
-    },
-    {
       icon: <Users size={20} />,
       label: "Staff Report",
       href: "/dashboard/staff-report",
@@ -449,6 +442,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/staff-queries",
       key: "operations-staff-queries",
     },
+    {
+      icon: <TrendingUp size={20} />,
+      label: "Client Sentiment Tracker",
+      href: "/dashboard/client-sentiment-tracker",
+      key: "operations-client-sentiment-tracker",
+    },
   ] : [];
 
   // Client specific menu items based on client type
@@ -466,6 +465,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Guide Videos",
       href: "/dashboard/guide-videos",
       key: "client-guide-videos",
+    },
+    {
+      icon: <ThumbsUp size={20} />,
+      label: "Client Sentiment",
+      href: "/dashboard/client-sentiment",
+      key: "client-sentiment",
     },
     {
       icon: <AlertTriangle size={20} />,
