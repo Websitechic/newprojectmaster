@@ -67,55 +67,56 @@ const isProjectManagerOrOperationsManager = (req: Express.Request, res: Response
 };
 
 // Middleware to check if user can manage tasks (project managers, technical support staff, product owners for Support & Maintenance, or operations managers)
-const canManageTasks = async (req: Express.Request, res: Response, next: NextFunction) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
+  const canManageTasks = async (req: Express.Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
 
-  const user = req.user!;
-  const isProjectManager = user.role === UserRole.PROJECT_MANAGER;
-  const isTechnicalSupport = user.role === UserRole.STAFF && user.specialization === 'technical_support';
-  const isProductOwner = user.role === 'product_owner';
-  const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+    const user = req.user!;
+    const isProjectManager = user.role === UserRole.PROJECT_MANAGER;
+    const isTechnicalSupport = user.role === UserRole.STAFF && user.specialization === 'technical_support';
+    const isProductOwner = user.role === 'product_owner';
+    const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
 
-  if (isProjectManager || isTechnicalSupport || isOperationsManager) {
-    return next();
-  }
-
-  if (isProductOwner) {
-    // For product owners, check if the project is Support & Maintenance category
-    const { projectId } = req.body;
-    if (projectId) {
-      try {
-        const [project] = await db
-          .select()
-          .from(projects)
-          .where(eq(projects.id, projectId))
-          .limit(1);
-
-        if (!project) {
-          return res.status(404).json({ error: "Project not found" });
-        }
-
-        if (project.category !== "support_maintenance") {
-          return res.status(403).json({
-            error: "Product owners can only manage tasks in Support & Maintenance category projects"
-          });
-        }
-
-        return next();
-      } catch (error) {
-        console.error("Error checking project category:", error);
-        return res.status(500).json({ error: "Failed to verify project permissions" });
-      }
-    } else {
-      // Allow product owners to proceed if no projectId in body (they'll select project in form)
+    // Operations managers have full access to all tasks
+    if (isProjectManager || isTechnicalSupport || isOperationsManager) {
       return next();
     }
-  }
 
-  return res.status(403).json({ error: "Only project managers, technical support staff, product owners (for Support & Maintenance projects), and operations managers can perform this action" });
-};
+    if (isProductOwner) {
+      // For product owners, check if the project is Support & Maintenance category
+      const { projectId } = req.body;
+      if (projectId) {
+        try {
+          const [project] = await db
+            .select()
+            .from(projects)
+            .where(eq(projects.id, projectId))
+            .limit(1);
+
+          if (!project) {
+            return res.status(404).json({ error: "Project not found" });
+          }
+
+          if (project.category !== "support_maintenance") {
+            return res.status(403).json({
+              error: "Product owners can only manage tasks in Support & Maintenance category projects"
+            });
+          }
+
+          return next();
+        } catch (error) {
+          console.error("Error checking project category:", error);
+          return res.status(500).json({ error: "Failed to verify project permissions" });
+        }
+      } else {
+        // Allow product owners to proceed if no projectId in body (they'll select project in form)
+        return next();
+      }
+    }
+
+    return res.status(403).json({ error: "Only project managers, technical support staff, product owners (for Support & Maintenance projects), and operations managers can perform this action" });
+  };
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), 'uploads', 'leave-proof');
@@ -3601,7 +3602,7 @@ export function registerRoutes(app: Express): Server {
         const leaveEnd = new Date(updatedApplication.endDate);
 
         if (now >= leaveStart && now <= leaveEnd) {
-          // Staff should be on leave now
+          // Staff should be on leave
           await db
             .update(users)
             .set({
@@ -5169,10 +5170,15 @@ export function registerRoutes(app: Express): Server {
           id: users.id,
           name: users.name,
           email: users.email,
-          status: users.status,
-          lastActive: users.lastActive,
-          createdAt: users.createdAt,
+          username: users.username,
+          role: users.role,
+          productService: users.productService,
+          clientType: users.clientType,
           onboardingStatus: users.onboardingStatus,
+          emailVerified: users.emailVerified,
+          createdAt: users.createdAt,
+          lastActive: users.lastActive,
+          gender: users.gender,
         })
         .from(users)
         .where(eq(users.role, "client"))
@@ -5544,19 +5550,19 @@ export function registerRoutes(app: Express): Server {
 
         // Add department conditions
         let deptConditions = ["m.recipients @> '[\"all_staff\"]'::jsonb"];
-        
+
         if (user.specialization) {
           deptConditions.push(`m.recipients @> '${JSON.stringify([user.specialization])}'::jsonb`);
         }
-        
+
         if (user.role === 'project_manager') {
           deptConditions.push(`m.recipients @> '[\"project_managers\"]'::jsonb`);
         }
-        
+
         if (user.role === 'product_owner') {
           deptConditions.push(`m.recipients @> '[\"product_owners\"]'::jsonb`);
         }
-        
+
         if (user.specialization === 'technical_support') {
           deptConditions.push(`m.recipients @> '[\"technical_support\"]'::jsonb`);
         }
@@ -6847,7 +6853,7 @@ export function registerRoutes(app: Express): Server {
         "disrespectful_communication",
         "disregard_company_policy"
       ];
-      
+
       if (!validReasons.includes(reason)) {
         return res.status(400).json({ error: "Invalid reason" });
       }
