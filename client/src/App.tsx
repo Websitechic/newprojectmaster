@@ -39,6 +39,7 @@ import ClientAccounts from "@/pages/dashboard/client-accounts";
 import Memos from "@/pages/dashboard/memos";
 import SendComplaint from "@/pages/send-complaint";
 import StaffComplaints from "@/pages/dashboard/staff-complaints";
+import StaffQueries from "@/pages/dashboard/staff-queries";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -110,6 +111,7 @@ function Router() {
       <Route path="/dashboard/memos" component={Memos} />
       <Route path="/send-complaint" component={() => <PrivateRoute component={SendComplaint} />} />
       <Route path="/dashboard/staff-complaints" component={() => <PrivateRoute component={StaffComplaints} />} />
+      <Route path="/dashboard/staff-queries" component={() => <PrivateRoute component={StaffQueries} />} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -306,6 +306,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Send Your Complaint",
       href: "/send-complaint",
       key: "send-complaint",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "My Queries",
+      href: "/dashboard/staff-queries",
+      key: "staff-queries",
     }
   ] : user?.role === "product_owner" ? [
     // Product owners can apply for leave
@@ -326,6 +332,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Client Accounts",
       href: "/dashboard/client-accounts",
       key: "client-accounts",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "My Queries",
+      href: "/dashboard/staff-queries",
+      key: "product-owner-queries",
     }
   ] : [];
 
@@ -411,6 +423,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Staff Complaints",
       href: "/dashboard/staff-complaints",
       key: "operations-staff-complaints",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Staff Queries",
+      href: "/dashboard/staff-queries",
+      key: "operations-staff-queries",
     },
   ] : [];
 

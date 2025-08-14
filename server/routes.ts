@@ -6542,5 +6542,221 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Staff Queries API
+  // Get all staff queries (for operations managers to see sent queries and staff to see received queries)
+  app.get("/api/staff-queries", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+        // Operations managers see all queries they sent
+        const result = await db.execute(sql`
+          SELECT sq.*, 
+                 u.name as staff_name_full,
+                 sender.name as sender_name
+          FROM staff_queries sq
+          LEFT JOIN users u ON sq.staff_id = u.id
+          LEFT JOIN users sender ON sq.sent_by = sender.id
+          WHERE sq.sent_by = ${user.id}
+          ORDER BY sq.created_at DESC
+        `);
+
+        const staffQueries = result.rows.map(row => ({
+          id: row.id,
+          staffId: row.staff_id,
+          staffName: row.staff_name,
+          staffNameFull: row.staff_name_full,
+          department: row.department,
+          staffUniqueValue: row.staff_unique_value,
+          reason: row.reason,
+          whyQuery: row.why_query,
+          attachmentPath: row.attachment_path,
+          likelyPenalty: row.likely_penalty,
+          additionalNote: row.additional_note,
+          sentBy: row.sent_by,
+          senderName: row.sender_name,
+          status: row.status,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        }));
+
+        res.json(staffQueries);
+      } else {
+        // Staff members see queries sent to them
+        const result = await db.execute(sql`
+          SELECT sq.*, 
+                 sender.name as sender_name
+          FROM staff_queries sq
+          LEFT JOIN users sender ON sq.sent_by = sender.id
+          WHERE sq.staff_id = ${user.id}
+          ORDER BY sq.created_at DESC
+        `);
+
+        const staffQueries = result.rows.map(row => ({
+          id: row.id,
+          staffId: row.staff_id,
+          staffName: row.staff_name,
+          department: row.department,
+          staffUniqueValue: row.staff_unique_value,
+          reason: row.reason,
+          whyQuery: row.why_query,
+          attachmentPath: row.attachment_path,
+          likelyPenalty: row.likely_penalty,
+          additionalNote: row.additional_note,
+          sentBy: row.sent_by,
+          senderName: row.sender_name,
+          status: row.status,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        }));
+
+        res.json(staffQueries);
+      }
+    } catch (error) {
+      console.error("Error fetching staff queries:", error);
+      res.status(500).json({ error: "Failed to fetch staff queries" });
+    }
+  });
+
+  // Create staff query (Operations Manager only)
+  app.post("/api/staff-queries", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can create staff queries" });
+    }
+
+    try {
+      const { 
+        staffId, 
+        staffName, 
+        department, 
+        staffUniqueValue, 
+        reason, 
+        whyQuery, 
+        attachmentPath, 
+        likelyPenalty, 
+        additionalNote 
+      } = req.body;
+
+      if (!staffId || !staffName || !department || !staffUniqueValue || !reason || !whyQuery || !likelyPenalty) {
+        return res.status(400).json({ 
+          error: "Staff ID, staff name, department, staff unique value, reason, why query, and likely penalty are required" 
+        });
+      }
+
+      const validReasons = [
+        "wrongly_using_work_app",
+        "substandard_delivery", 
+        "repeatedly_missed_deadlines",
+        "disrespectful_communication",
+        "disregard_company_policy"
+      ];
+      
+      if (!validReasons.includes(reason)) {
+        return res.status(400).json({ error: "Invalid reason" });
+      }
+
+      // Create the staff query
+      const result = await db.execute(sql`
+        INSERT INTO staff_queries (
+          staff_id, staff_name, department, staff_unique_value, reason, 
+          why_query, attachment_path, likely_penalty, additional_note, sent_by, 
+          created_at, updated_at
+        )
+        VALUES (
+          ${staffId}, ${staffName}, ${department}, ${staffUniqueValue}, ${reason},
+          ${whyQuery}, ${attachmentPath || null}, ${likelyPenalty}, ${additionalNote || null}, ${user.id},
+          CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+        RETURNING *
+      `);
+
+      const newQuery = result.rows[0];
+
+      // Send notification to the staff member
+      try {
+        await db.execute(sql`
+          INSERT INTO notifications (user_id, title, message, type, created_at)
+          VALUES (${staffId}, 'New Staff Query', 'You have received a new staff query from Operations Management', 'staff_query', CURRENT_TIMESTAMP)
+        `);
+      } catch (notifError) {
+        console.error("Error sending notification:", notifError);
+        // Don't fail the entire request if notification fails
+      }
+
+      res.status(201).json({
+        id: newQuery.id,
+        staffId: newQuery.staff_id,
+        staffName: newQuery.staff_name,
+        department: newQuery.department,
+        staffUniqueValue: newQuery.staff_unique_value,
+        reason: newQuery.reason,
+        whyQuery: newQuery.why_query,
+        attachmentPath: newQuery.attachment_path,
+        likelyPenalty: newQuery.likely_penalty,
+        additionalNote: newQuery.additional_note,
+        sentBy: newQuery.sent_by,
+        status: newQuery.status,
+        createdAt: newQuery.created_at,
+        updatedAt: newQuery.updated_at,
+      });
+    } catch (error) {
+      console.error("Error creating staff query:", error);
+      res.status(500).json({ error: "Failed to create staff query" });
+    }
+  });
+
+  // Update staff query status (for staff to acknowledge)
+  app.patch("/api/staff-queries/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const queryId = parseInt(req.params.id);
+    const { status } = req.body;
+
+    if (!status || !["acknowledged", "resolved"].includes(status)) {
+      return res.status(400).json({ error: "Valid status is required (acknowledged or resolved)" });
+    }
+
+    try {
+      // Check if the query exists and belongs to the user
+      const checkResult = await db.execute(sql`
+        SELECT * FROM staff_queries WHERE id = ${queryId} AND staff_id = ${user.id}
+      `);
+
+      if (checkResult.rows.length === 0) {
+        return res.status(404).json({ error: "Staff query not found or not authorized" });
+      }
+
+      // Update the status
+      const result = await db.execute(sql`
+        UPDATE staff_queries 
+        SET status = ${status}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${queryId} AND staff_id = ${user.id}
+        RETURNING *
+      `);
+
+      const updatedQuery = result.rows[0];
+      res.json({
+        id: updatedQuery.id,
+        status: updatedQuery.status,
+        updatedAt: updatedQuery.updated_at,
+      });
+    } catch (error) {
+      console.error("Error updating staff query:", error);
+      res.status(500).json({ error: "Failed to update staff query" });
+    }
+  });
+
   return server;
 }

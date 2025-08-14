@@ -677,6 +677,42 @@ export const memoReadsRelations = relations(memoReads, ({ one }) => ({
   }),
 }));
 
+export const staffQueries = pgTable("staff_queries", {
+  id: serial("id").primaryKey(),
+  staffId: integer("staff_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  staffName: text("staff_name").notNull(),
+  department: text("department").notNull(),
+  staffUniqueValue: text("staff_unique_value").notNull(),
+  reason: text("reason", {
+    enum: [
+      "wrongly_using_work_app",
+      "substandard_delivery", 
+      "repeatedly_missed_deadlines",
+      "disrespectful_communication",
+      "disregard_company_policy"
+    ]
+  }).notNull(),
+  whyQuery: text("why_query").notNull(),
+  attachmentPath: text("attachment_path"),
+  likelyPenalty: text("likely_penalty").notNull(),
+  additionalNote: text("additional_note"),
+  sentBy: integer("sent_by").references(() => users.id).notNull(),
+  status: text("status", { enum: ["pending", "acknowledged", "resolved"] }).default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const staffQueriesRelations = relations(staffQueries, ({ one }) => ({
+  staff: one(users, {
+    fields: [staffQueries.staffId],
+    references: [users.id],
+  }),
+  sender: one(users, {
+    fields: [staffQueries.sentBy],
+    references: [users.id],
+  }),
+}));
+
 export type Memo = typeof memos.$inferSelect;
 export type MemoRead = typeof memoReads.$inferSelect;
 export const insertMemoSchema = createInsertSchema(memos);
@@ -686,3 +722,7 @@ export const selectMemoReadSchema = createSelectSchema(memoReads);
 
 export const insertTechnicalSupportRequestSchema = createInsertSchema(technicalSupportRequests);
 export const selectTechnicalSupportRequestSchema = createSelectSchema(technicalSupportRequests);
+
+export type StaffQuery = typeof staffQueries.$inferSelect;
+export const insertStaffQuerySchema = createInsertSchema(staffQueries);
+export const selectStaffQuerySchema = createSelectSchema(staffQueries);
