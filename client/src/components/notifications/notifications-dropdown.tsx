@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
@@ -137,7 +136,7 @@ export function NotificationsDropdown() {
       eventSourceRef.current = null;
       setIsConnecting(false);
     };
-  }, [user, queryClient]);
+  }, [user, queryClient, isConnecting]); // Added isConnecting to dependency array to prevent multiple connections
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -145,7 +144,7 @@ export function NotificationsDropdown() {
     try {
       // Mark notification as read
       await markAsRead(notification.id);
-      
+
       // Handle navigation based on notification type and reference
       if (notification.type === "mention" && notification.referenceType === "project" && notification.referenceId) {
         // Navigate to team chat for the mentioned project
@@ -182,8 +181,8 @@ export function NotificationsDropdown() {
         <Button variant="ghost" size="icon" className="relative">
           <Bell size={20} />
           {unreadCount > 0 && (
-            <Badge 
-              variant="destructive" 
+            <Badge
+              variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
             >
               {unreadCount}

@@ -45,6 +45,7 @@ import {
   clientSentiment,
   staffComplaints,
   staffQueries,
+  notes,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
@@ -7045,6 +7046,158 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching departments:", error);
       res.status(500).json({ error: "Failed to fetch departments" });
+    }
+  });
+
+  // Notes API Routes (Operations Manager only)
+  
+  // Get all notes (Operations Manager only)
+  app.get("/api/notes", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access notes" });
+    }
+
+    try {
+      const userNotes = await db
+        .select()
+        .from(notes)
+        .where(eq(notes.createdBy, user.id))
+        .orderBy(desc(notes.updatedAt));
+
+      res.json(userNotes);
+    } catch (error) {
+      console.error("Error fetching notes:", error);
+      res.status(500).json({ error: "Failed to fetch notes" });
+    }
+  });
+
+  // Create note (Operations Manager only)
+  app.post("/api/notes", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can create notes" });
+    }
+
+    try {
+      const { title, content, type, todoItems } = req.body;
+
+      if (!content && (!todoItems || todoItems.length === 0)) {
+        return res.status(400).json({ error: "Content or todo items are required" });
+      }
+
+      const [newNote] = await db
+        .insert(notes)
+        .values({
+          title: title || "",
+          content: content || "",
+          type: type || "freetext",
+          todoItems: todoItems || [],
+          createdBy: user.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(newNote);
+    } catch (error) {
+      console.error("Error creating note:", error);
+      res.status(500).json({ error: "Failed to create note" });
+    }
+  });
+
+  // Update note (Operations Manager only)
+  app.put("/api/notes/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can update notes" });
+    }
+
+    try {
+      const noteId = parseInt(req.params.id);
+      const { title, content, type, todoItems } = req.body;
+
+      // Verify note exists and belongs to user
+      const [existingNote] = await db
+        .select()
+        .from(notes)
+        .where(and(
+          eq(notes.id, noteId),
+          eq(notes.createdBy, user.id)
+        ))
+        .limit(1);
+
+      if (!existingNote) {
+        return res.status(404).json({ error: "Note not found" });
+      }
+
+      const [updatedNote] = await db
+        .update(notes)
+        .set({
+          title: title || "",
+          content: content || "",
+          type: type || "freetext",
+          todoItems: todoItems || [],
+          updatedAt: new Date(),
+        })
+        .where(eq(notes.id, noteId))
+        .returning();
+
+      res.json(updatedNote);
+    } catch (error) {
+      console.error("Error updating note:", error);
+      res.status(500).json({ error: "Failed to update note" });
+    }
+  });
+
+  // Delete note (Operations Manager only)
+  app.delete("/api/notes/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can delete notes" });
+    }
+
+    try {
+      const noteId = parseInt(req.params.id);
+
+      // Verify note exists and belongs to user
+      const [existingNote] = await db
+        .select()
+        .from(notes)
+        .where(and(
+          eq(notes.id, noteId),
+          eq(notes.createdBy, user.id)
+        ))
+        .limit(1);
+
+      if (!existingNote) {
+        return res.status(404).json({ error: "Note not found" });
+      }
+
+      await db
+        .delete(notes)
+        .where(eq(notes.id, noteId));
+
+      res.json({ message: "Note deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting note:", error);
+      res.status(500).json({ error: "Failed to delete note" });
     }
   });
 
