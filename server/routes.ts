@@ -5901,6 +5901,71 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get user's own complaints
+  app.get("/api/complaints/my-complaints", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM complaints WHERE submitter_id = ${req.user!.id} ORDER BY created_at DESC
+      `);
+
+      const userComplaints = result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        productManagerName: row.product_manager_name,
+        developerName: row.developer_name,
+        technicalManagerName: row.technical_manager_name,
+        valuableThings: row.valuable_things || [],
+        detailedExplanation: row.detailed_explanation,
+        screenshotUrl: row.screenshot_url,
+        status: row.status || 'pending',
+        reviewComments: row.review_comments,
+        createdAt: row.created_at,
+        reviewedAt: row.reviewed_at
+      }));
+
+      res.json(userComplaints);
+    } catch (error) {
+      console.error("Error fetching user complaints:", error);
+      res.status(500).json({ error: "Failed to fetch user complaints" });
+    }
+  });
+
+  // Get user's own staff complaints
+  app.get("/api/staff-complaints/my-complaints", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM staff_complaints WHERE submitter_id = ${req.user!.id} ORDER BY created_at DESC
+      `);
+
+      const userComplaints = result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        department: row.department,
+        detailedExplanation: row.detailed_explanation,
+        screenshotUrl: row.screenshot_url,
+        status: row.status || 'pending',
+        reviewComments: row.review_comments,
+        createdAt: row.created_at,
+        reviewedAt: row.reviewed_at
+      }));
+
+      res.json(userComplaints);
+    } catch (error) {
+      console.error("Error fetching user staff complaints:", error);
+      res.status(500).json({ error: "Failed to fetch user staff complaints" });
+    }
+  });
+
   // Get all staff complaints (Operations Manager only)
   app.get("/api/staff-complaints", async (req, res) => {
     if (!req.isAuthenticated()) {

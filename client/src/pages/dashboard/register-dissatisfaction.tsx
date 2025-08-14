@@ -336,6 +336,8 @@ function ComplaintHistoryTable() {
         if (response.ok) {
           const data = await response.json();
           setComplaints(data);
+        } else {
+          console.error('Failed to fetch complaints:', response.status);
         }
       } catch (error) {
         console.error('Error fetching complaints:', error);
