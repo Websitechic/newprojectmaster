@@ -750,3 +750,31 @@ export const clientSentimentRelations = relations(clientSentiment, ({ one }) => 
 export type ClientSentiment = typeof clientSentiment.$inferSelect;
 export const insertClientSentimentSchema = createInsertSchema(clientSentiment);
 export const selectClientSentimentSchema = createSelectSchema(clientSentiment);
+
+export const notes = pgTable("notes", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull().default(""),
+  content: text("content").notNull().default(""),
+  type: text("type", { 
+    enum: ["freetext", "todo"] 
+  }).notNull().default("freetext"),
+  todoItems: jsonb("todo_items").$type<{
+    id: string;
+    text: string;
+    completed: boolean;
+  }[]>().default([]),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const notesRelations = relations(notes, ({ one }) => ({
+  creator: one(users, {
+    fields: [notes.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export type Note = typeof notes.$inferSelect;
+export const insertNoteSchema = createInsertSchema(notes);
+export const selectNoteSchema = createSelectSchema(notes);

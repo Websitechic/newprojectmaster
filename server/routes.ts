@@ -89,7 +89,7 @@ const isProjectManagerOrOperationsManager = (req: Express.Request, res: Response
 
     if (isProductOwner) {
       // For product owners, check if the project is Support & Maintenance category
-      const { projectId } = req.body;
+      const {projectId} = req.body;
       if (projectId) {
         try {
           const [project] = await db
@@ -140,7 +140,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: {fileSize: 5 * 1024 * 1024}, // 5MB limit
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
@@ -168,7 +168,7 @@ const staffQueryStorage = multer.diskStorage({
 
 const staffQueryUpload = multer({
   storage: staffQueryStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for documents
+  limits: {fileSize: 10 * 1024 * 1024}, // 10MB limit for documents
   fileFilter: (req, file, cb) => {
     // Allow images and documents
     const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -289,7 +289,7 @@ export function registerRoutes(app: Express): Server {
     try {
       // Get client's projects
       const clientProjects = await db
-        .select({ id: projects.id, managerId: projects.managerId })
+        .select({id: projects.id, managerId: projects.managerId})
         .from(projects)
         .where(eq(projects.clientId, user.id));
 
@@ -460,18 +460,18 @@ export function registerRoutes(app: Express): Server {
     try {
       // Update specific users' break times
       await db.update(users)
-        .set({ breakOneTime: "22:00", breakTwoTime: "12:00" })
+        .set({breakOneTime: "22:00", breakTwoTime: "12:00"})
         .where(eq(users.username, "testpm"));
 
       await db.update(users)
-        .set({ breakOneTime: "12:30", breakTwoTime: "15:00" })
+        .set({breakOneTime: "12:30", breakTwoTime: "15:00"})
         .where(eq(users.username, "testuser"));
 
       await db.update(users)
-        .set({ breakOneTime: "13:00", breakTwoTime: "16:00" })
+        .set({breakOneTime: "13:00", breakTwoTime: "16:00"})
         .where(eq(users.username, "Staff1"));
 
-      res.json({ message: "Break times updated successfully for existing users" });
+      res.json({message: "Break times updated successfully for existing users"});
     } catch (error) {
       console.error("Error updating break times:", error);
       res.status(500).json({ error: "Failed to update break times" });
@@ -488,7 +488,7 @@ export function registerRoutes(app: Express): Server {
     if (req.user!.role !== "project_manager" && req.user!.role !== "product_owner") {
       return res.status(403).send("Access denied");
     }
-    const { specialization } = req.query;
+    const {specialization} = req.query;
 
     // Get both staff and product owners
     let query = db
@@ -836,7 +836,7 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
     const projectId = parseInt(req.params.id);
-    const { category } = req.body;
+    const {category} = req.body;
 
     // Verify the project exists first
     const [existingProject] = await db
@@ -1262,7 +1262,7 @@ export function registerRoutes(app: Express): Server {
           console.log(`Total projects in database: ${totalProjects.length}`);
 
           if (totalProjects.length > 0) {
-            console.log("Available projects:", totalProjects.map(p => ({ id: p.id, name: p.name })));
+            console.log("Available projects:", totalProjects.map(p => ({id: p.id, name: p.name})));
             console.log("Hint: Use POST /api/debug/add-me-to-project to join the first project");
           }
         }
@@ -1282,7 +1282,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const user = req.user!;
-    const { category } = req.body;
+    const {category} = req.body;
 
     // Check permissions
     if (user.role === "project_manager") {
@@ -1473,7 +1473,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/projects/:id/invite", isProjectManager, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
-      const { userId } = req.body;
+      const {userId} = req.body;
 
       // Verify user is a staff member or product owner
       const [staff] = await db
@@ -1565,7 +1565,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const projectId = parseInt(req.params.id);
-      const { accept } = req.body;
+      const {accept} = req.body;
 
       const [invitation] = await db
         .update(projectMembers)
@@ -1645,7 +1645,7 @@ export function registerRoutes(app: Express): Server {
       } else if (req.user!.role === "client" && req.user!.clientType === "support_maintenance_client") {
         // Support maintenance clients see tasks in their projects
         const clientProjects = await db
-          .select({ projectId: projectMembers.projectId })
+          .select({projectId: projectMembers.projectId})
           .from(projectMembers)
           .where(eq(projectMembers.userId, req.user!.id));
 
@@ -1673,7 +1673,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const user = req.user!;
-    const { title, description, status, assigneeId, deadline, projectId, startDate, workingHours } = req.body;
+    const {title, description, status, assigneeId, deadline, projectId, startDate, workingHours} = req.body;
 
     if (!title || !projectId) {
       return res.status(400).json({ error: "Title and project ID are required" });
@@ -1847,7 +1847,7 @@ export function registerRoutes(app: Express): Server {
     }
     try {
       const taskId = parseInt(req.params.id);
-      const { title, description, status, assigneeId, deadline, startDate, workingHours } = req.body;
+      const {title, description, status, assigneeId, deadline, startDate, workingHours} = req.body;
 
       if (!title) {
         return res.status(400).json({ error: "Title is required" });
@@ -2111,7 +2111,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const taskId = parseInt(req.params.id);
-      const { status } = req.body;
+      const {status} = req.body;
 
       // Validate status
       const validStatuses = ["todo", "in_progress", "review", "completed", "technical_support"];
@@ -2265,7 +2265,7 @@ export function registerRoutes(app: Express): Server {
 
     // Send initial connection message
     try {
-      res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+      res.write(`data: ${JSON.stringify({type: "connected"})}\n\n`);
     } catch (error) {
       console.error(`Error sending initial SSE message to user ${userId}:`, error);
       return;
@@ -2351,7 +2351,7 @@ export function registerRoutes(app: Express): Server {
 
       const [updatedNotification] = await db
         .update(notifications)
-        .set({ read: true })
+        .set({read: true})
         .where(and(
           eq(notifications.id, notificationId),
           eq(notifications.userId, req.user!.id)
@@ -2377,7 +2377,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const projectId = parseInt(req.params.id);
-    const { type } = req.query;
+    const {type} = req.query;
 
     try {
       // Get messages with user information
@@ -2420,7 +2420,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const projectId = parseInt(req.params.id);
-    const { content, type } = req.body;
+    const {content, type} = req.body;
 
     try {
       console.log(`Sending message to project ${projectId}, type: ${type}, from user: ${req.user!.id}`);
@@ -2565,9 +2565,9 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const projectId = parseInt(req.params.id);
-      const { name, link, category } = req.body;
+      const {name, link, category} = req.body;
 
-      console.log("Adding link resource:", { projectId, name, link, category, userId: user.id });
+      console.log("Adding link resource:", {projectId, name, link, category, userId: user.id});
 
       if (!name || !link || !category) {
         console.log("Missing name, link, or category");
@@ -2675,7 +2675,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const projectId = parseInt(req.params.projectId);
       const resourceId = parseInt(req.params.resourceId);
-      const { name, link, category } = req.body;
+      const {name, link, category} = req.body;
 
       if (!name || !link || !category) {
         return res.status(400).json({ error: "Name, link, and category are required" });
@@ -2870,7 +2870,7 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(users.id, req.user!.id));
 
-      return res.json({ status: "success" });
+      return res.json({status: "success"});
     } catch (error) {
       console.error("Error updating user heartbeat:", error);
       return res.status(500).json({ error: "Failed to update user status" });
@@ -2909,7 +2909,7 @@ export function registerRoutes(app: Express): Server {
         if (new Date(user.lastActive) < tenMinutesAgo) {
           // Update user status to idle
           await db.update(users)
-            .set({ status: UserStatus.IDLE })
+            .set({status: UserStatus.IDLE})
             .where(eq(users.id, userId));
 
           user.status = UserStatus.IDLE;
@@ -2930,7 +2930,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { status } = req.body;
+      const {status} = req.body;
 
       // Validate status
       if (!Object.values(UserStatus).includes(status)) {
@@ -3014,10 +3014,10 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/project-plans/:id", isProjectManager, async (req, res) => {
     try {
       const planId = parseInt(req.params.id);
-      const { name, description, startDate, endDate, deliverables: planDeliverables } = req.body;
+      const {name, description, startDate, endDate, deliverables: planDeliverables} = req.body;
 
       console.log("Updating project plan:", planId);
-      console.log("Plan data:", { name, description, startDate, endDate, deliverables: planDeliverables });
+      console.log("Plan data:", {name, description, startDate, endDate, deliverables: planDeliverables});
 
       if (!name) {
         return res.status(400).json({ error: "Plan name is required" });
@@ -3109,7 +3109,7 @@ export function registerRoutes(app: Express): Server {
         .where(eq(deliverables.projectPlanId, planId))
         .orderBy(asc(deliverables.order));
 
-      res.json({ ...updatedPlan, deliverables: updatedDeliverables });
+      res.json({...updatedPlan, deliverables: updatedDeliverables});
     } catch (error) {
       console.error("Error updating project plan:", error);
       res.status(500).json({ error: "Failed to update project plan" });
@@ -3120,10 +3120,10 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/projects/:id/plans", isProjectManager, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
-      const { name, description, startDate, endDate, deliverables: createPlanDeliverables } = req.body;
+      const {name, description, startDate, endDate, deliverables: createPlanDeliverables} = req.body;
 
       console.log("Creating project plan for project:", projectId);
-      console.log("Plan data:", { name, description, startDate, endDate, deliverables: createPlanDeliverables });
+      console.log("Plan data:", {name, description, startDate, endDate, deliverables: createPlanDeliverables});
 
       if (!name) {
         return res.status(400).json({ error: "Plan name is required" });
@@ -3224,7 +3224,7 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/project-plans/:id", isProjectManager, async (req, res) => {
     try {
       const planId = parseInt(req.params.id);
-      const { name, description, startDate, endDate, status, deliverables: updatePlanDeliverables } = req.body;
+      const {name, description, startDate, endDate, status, deliverables: updatePlanDeliverables} = req.body;
 
       if (!name) {
         return res.status(400).json({ error: "Plan name is required" });
@@ -3365,7 +3365,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const deliverableId = parseInt(req.params.id);
-      const { status } = req.body;
+      const {status} = req.body;
 
       const validStatuses = ["pending", "in_progress", "completed", "overdue"];
       if (!validStatuses.includes(status)) {
@@ -3432,7 +3432,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { leaveType, reason, startDate, endDate } = req.body;
+      const {leaveType, reason, startDate, endDate} = req.body;
 
       if (!leaveType || !reason || !startDate || !endDate) {
         return res.status(400).json({ error: "All fields are required" });
@@ -3528,7 +3528,7 @@ export function registerRoutes(app: Express): Server {
               })}\n\n`);
             } catch (error) {
               console.error(`Error sending SSE notification to PM ${pm.id}:`, error);
-              global.sseClients.delete(pm.id);
+              global.sseClients?.delete(pm.id);
             }
           }
         } catch (error) {
@@ -3577,7 +3577,7 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/leave-applications/:id/review", isProjectManagerOrOperationsManager, async (req, res) => {
     try {
       const applicationId = parseInt(req.params.id);
-      const { status, reviewComments } = req.body;
+      const {status, reviewComments} = req.body;
 
       if (!["approved", "rejected"].includes(status)) {
         return res.status(400).json({ error: "Invalid status" });
@@ -3642,7 +3642,7 @@ export function registerRoutes(app: Express): Server {
           })}\n\n`);
         } catch (error) {
           console.error(`Error sending SSE notification to user ${updatedApplication.userId}:`, error);
-          global.sseClients.delete(updatedApplication.userId);
+          global.sseClients?.delete(updatedApplication.userId);
         }
       }
 
@@ -3699,7 +3699,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       const result = await db
-        .select({ count: sql<number>`count(*)` })
+        .select({count: sql<number>`count(*)`})
         .from(directMessages)
         .where(
           and(
@@ -3709,7 +3709,7 @@ export function registerRoutes(app: Express): Server {
         );
 
       const count = result[0]?.count || 0;
-      res.json({ count });
+      res.json({count});
     } catch (error) {
       console.error("Error fetching unread messages count:", error);
       res.status(500).json({ error: "Failed to fetch unread count" });
@@ -3852,7 +3852,7 @@ export function registerRoutes(app: Express): Server {
       // Mark messages from the other user as read
       await db
         .update(directMessages)
-        .set({ read: true })
+        .set({read: true})
         .where(
           and(
             eq(directMessages.senderId, otherUserId),
@@ -3875,7 +3875,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { receiverId, content } = req.body;
+      const {receiverId, content} = req.body;
       const senderId = req.user!.id;
 
       if (!receiverId || !content?.trim()) {
@@ -3975,7 +3975,7 @@ export function registerRoutes(app: Express): Server {
 
       await db
         .update(directMessages)
-        .set({ read: true })
+        .set({read: true})
         .where(
           and(
             eq(directMessages.senderId, otherUserId),
@@ -3984,7 +3984,7 @@ export function registerRoutes(app: Express): Server {
           )
         );
 
-      res.json({ success: true });
+      res.json({success: true});
     } catch (error) {
       console.error("Error marking messages as read:", error);
       res.status(500).json({ error: "Failed to mark messages as read" });
@@ -4097,7 +4097,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const projectId = parseInt(req.params.projectId);
-      const { content } = req.body;
+      const {content} = req.body;
       const userId = req.user!.id;
 
       if (isNaN(projectId)) {
@@ -4280,7 +4280,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const userId = req.user!.id;
       const userRole = req.user!.role;
-      
+
       if (!userId || !userRole) {
         return res.status(400).json({ error: "Invalid user session" });
       }
@@ -4290,19 +4290,19 @@ export function registerRoutes(app: Express): Server {
       if (userRole === "product_owner" || userRole === "operations_manager" || req.user!.specialization === "operations_manager") {
         // Product owners and operations managers have access to all projects
         const allProjects = await db
-          .select({ id: projects.id })
+          .select({id: projects.id})
           .from(projects);
         allProjectIds = allProjects.map(p => p.id);
       } else {
         // Get user's managed projects
         const managedProjects = await db
-          .select({ id: projects.id })
+          .select({id: projects.id})
           .from(projects)
           .where(eq(projects.managerId, userId));
 
         // Get user's member projects
         const memberProjects = await db
-          .select({ projectId: projectMembers.projectId })
+          .select({projectId: projectMembers.projectId})
           .from(projectMembers)
           .where(
             and(
@@ -4340,7 +4340,7 @@ export function registerRoutes(app: Express): Server {
         try {
           // Get all team messages for this project that are not from current user
           const teamMessagesList = await db
-            .select({ id: projectMessages.id })
+            .select({id: projectMessages.id})
             .from(projectMessages)
             .where(
               and(
@@ -4356,7 +4356,7 @@ export function registerRoutes(app: Express): Server {
 
           // Get message IDs that the user has already read (for team messages)
           const readMessageIds = await db
-            .select({ messageId: messageReadReceipts.messageId })
+            .select({messageId: messageReadReceipts.messageId})
             .from(messageReadReceipts)
             .where(eq(messageReadReceipts.userId, userId));
 
@@ -4387,7 +4387,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const projectId = parseInt(req.params.projectId);
       const userId = req.user!.id;
-      const { messageIds } = req.body;
+      const {messageIds} = req.body;
 
       if (!Array.isArray(messageIds) || messageIds.length === 0) {
         return res.status(400).json({ error: "Message IDs are required" });
@@ -4401,7 +4401,7 @@ export function registerRoutes(app: Express): Server {
 
       await db.insert(messageReadReceipts).values(readReceipts).onConflictDoNothing();
 
-      res.json({ success: true });
+      res.json({success: true});
     } catch (error) {
       console.error("Error marking team messages as read:", error);
       res.status(500).json({ error: "Failed to mark messages as read" });
@@ -4417,7 +4417,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const projectId = parseInt(req.params.projectId);
       const userId = req.user!.id;
-      const { messageIds } = req.body;
+      const {messageIds} = req.body;
 
       if (!Array.isArray(messageIds) || messageIds.length === 0) {
         return res.status(400).json({ error: "Message IDs are required" });
@@ -4433,7 +4433,7 @@ export function registerRoutes(app: Express): Server {
         .values(readReceiptsToInsert)
         .onConflictDoNothing();
 
-      res.json({ success: true });
+      res.json({success: true});
     } catch (error) {
       console.error("Error marking messages as read:", error);
       res.status(500).json({ error: "Failed to mark messages as read" });
@@ -4452,7 +4452,7 @@ export function registerRoutes(app: Express): Server {
 
       // Get all message IDs for this project that are not from current user
       const projectMessagesList = await db
-        .select({ id: projectMessages.id })
+        .select({id: projectMessages.id})
         .from(projectMessages)
         .where(
           and(
@@ -4462,12 +4462,12 @@ export function registerRoutes(app: Express): Server {
         );
 
       if (projectMessagesList.length === 0) {
-        return res.json({ success: true });
+        return res.json({success: true});
       }
 
       // Get message IDs that user hasn't read yet
       const readMessageIds = await db
-        .select({ messageId: messageReadReceipts.messageId })
+        .select({messageId: messageReadReceipts.messageId})
         .from(messageReadReceipts)
         .where(eq(messageReadReceipts.userId, userId));
 
@@ -4487,7 +4487,7 @@ export function registerRoutes(app: Express): Server {
           .onConflictDoNothing();
       }
 
-      res.json({ success: true });
+      res.json({success: true});
     } catch (error) {
       console.error("Error marking all messages as read:", error);
       res.status(500).json({ error: "Failed to mark all messages as read" });
@@ -4524,7 +4524,7 @@ export function registerRoutes(app: Express): Server {
       // Enrich requests with additional data
       const requests = await Promise.all(basicRequests.map(async (request) => {
         // Get requester info
-        const [requester] = await db.select({ id: users.id, name: users.name, email: users.email })
+        const [requester] = await db.select({id: users.id, name: users.name, email: users.email})
           .from(users)
           .where(eq(users.id, request.requesterId))
           .limit(1);
@@ -4532,7 +4532,7 @@ export function registerRoutes(app: Express): Server {
         // Get assigned user info if assigned
         let assignedTo = null;
         if (request.assignedToId) {
-          const [assigned] = await db.select({ id: users.id, name: users.name, email: users.email })
+          const [assigned] = await db.select({id: users.id, name: users.name, email: users.email})
             .from(users)
             .where(eq(users.id, request.assignedToId))
             .limit(1);
@@ -4543,14 +4543,14 @@ export function registerRoutes(app: Express): Server {
         let task = null;
         let project = null;
         if (request.taskId) {
-          const [taskInfo] = await db.select({ id: tasks.id, title: tasks.title, projectId: tasks.projectId })
+          const [taskInfo] = await db.select({id: tasks.id, title: tasks.title, projectId: tasks.projectId})
             .from(tasks)
             .where(eq(tasks.id, request.taskId))
             .limit(1);
           task = taskInfo || null;
 
           if (task?.projectId) {
-            const [projectInfo] = await db.select({ id: projects.id, name: projects.name })
+            const [projectInfo] = await db.select({id: projects.id, name: projects.name})
               .from(projects)
               .where(eq(projects.id, task.projectId))
               .limit(1);
@@ -4586,7 +4586,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ error: "Technical support staff cannot create requests" });
       }
 
-      const { title, description, taskId, priority } = req.body;
+      const {title, description, taskId, priority} = req.body;
 
       if (!title || !description) {
         return res.status(400).json({ error: "Title and description are required" });
@@ -4607,7 +4607,7 @@ export function registerRoutes(app: Express): Server {
       // Update task status to "technical_support" if taskId is provided
       if (taskId) {
         await db.update(tasks)
-          .set({ status: 'technical_support' })
+          .set({status: 'technical_support'})
           .where(eq(tasks.id, taskId));
       }
 
@@ -4616,7 +4616,7 @@ export function registerRoutes(app: Express): Server {
         // Get technical support staff and create notifications
         const techSupportUsers = await db.query.users.findMany({
           where: eq(users.specialization, 'technical_support'),
-          columns: { id: true, name: true, email: true }
+          columns: {id: true, name: true, email: true}
         });
 
         if (techSupportUsers.length > 0) {
@@ -4703,14 +4703,14 @@ export function registerRoutes(app: Express): Server {
       if (requestDetails.taskId) {
         try {
           // Get task details to find project
-          const [taskDetails] = await db.select({ id: tasks.id, projectId: tasks.projectId })
+          const [taskDetails] = await db.select({id: tasks.id, projectId: tasks.projectId})
             .from(tasks)
             .where(eq(tasks.id, requestDetails.taskId))
             .limit(1);
 
           if (taskDetails?.projectId) {
             // Check if user is already a member of the project
-            const existingMembership = await db.select({ id: projectMembers.id })
+            const existingMembership = await db.select({id: projectMembers.id})
               .from(projectMembers)
               .where(and(
                 eq(projectMembers.projectId, taskDetails.projectId),
@@ -4770,7 +4770,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ error: "Not authorized to update this request" });
       }
 
-      const updateData: any = { ...req.body, updatedAt: new Date() };
+      const updateData: any = {...req.body, updatedAt: new Date()};
 
       if (req.body.status === 'resolved') {
         updateData.resolvedAt = new Date();
@@ -4826,7 +4826,7 @@ export function registerRoutes(app: Express): Server {
       // If there was a related task, update its status back to the previous status
       if (request.taskId) {
         await db.update(tasks)
-          .set({ status: 'in_progress' }) // Reset to in_progress or another appropriate status
+          .set({status: 'in_progress'}) // Reset to in_progress or another appropriate status
           .where(eq(tasks.id, request.taskId));
       }
 
@@ -4851,7 +4851,7 @@ export function registerRoutes(app: Express): Server {
 
       if (user.role === "project_manager" || user.role === "operations_manager" || user.specialization === "operations_manager") {
         // Project managers see requests for their projects, operations managers see all requests
-        const whereCondition = user.role === "operations_manager" || user.specialization === "operations_manager" 
+        const whereCondition = user.role === "operations_manager" || user.specialization === "operations_manager"
           ? undefined // Operations managers see all requests
           : eq(deadlineExtensionRequests.projectManagerId, user.id); // Project managers see only their projects
 
@@ -4940,7 +4940,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { taskId, reason, requestedDeadline } = req.body;
+      const {taskId, reason, requestedDeadline} = req.body;
 
       if (!taskId || !reason) {
         return res.status(400).json({ error: "Task ID and reason are required" });
@@ -5042,7 +5042,7 @@ export function registerRoutes(app: Express): Server {
           })}\n\n`);
         } catch (error) {
           console.error(`Error sending SSE notification to PM ${project.managerId}:`, error);
-          global.sseClients.delete(project.managerId);
+          global.sseClients?.delete(project.managerId);
         }
       }
 
@@ -5057,7 +5057,7 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/deadline-extension-requests/:id", isProjectManagerOrOperationsManager, async (req, res) => {
     try {
       const requestId = parseInt(req.params.id);
-      const { status, decisionReason, approvedDeadline, approvedWorkingHours } = req.body;
+      const {status, decisionReason, approvedDeadline, approvedWorkingHours} = req.body;
 
       if (!["approved", "declined"].includes(status)) {
         return res.status(400).json({ error: "Invalid status. Must be 'approved' or 'declined'" });
@@ -5151,7 +5151,7 @@ export function registerRoutes(app: Express): Server {
           })}\n\n`);
         } catch (error) {
           console.error(`Error sending SSE notification to user ${request.requesterId}:`, error);
-          global.sseClients.delete(request.requesterId);
+          global.sseClients?.delete(request.requesterId);
         }
       }
 
@@ -5200,7 +5200,7 @@ export function registerRoutes(app: Express): Server {
       const clientsWithProjects = await Promise.all(
         clients.map(async (client) => {
           const projectCount = await db
-            .select({ count: sql<number>`count(*)` })
+            .select({count: sql<number>`count(*)`})
             .from(projects)
             .where(eq(projects.clientId, client.id));
 
@@ -5231,7 +5231,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const clientId = parseInt(req.params.id);
-      const { onboardingStatus } = req.body;
+      const {onboardingStatus} = req.body;
 
       const validStatuses = ["onboarded", "not_onboarded", "onboarding_in_progress", "onboarding_pending"];
       if (!validStatuses.includes(onboardingStatus)) {
@@ -5287,7 +5287,7 @@ export function registerRoutes(app: Express): Server {
 
   const complaintUpload = multer({
     storage: complaintStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    limits: {fileSize: 5 * 1024 * 1024}, // 5MB limit
     fileFilter: (req, file, cb) => {
       if (file.mimetype.startsWith('image/')) {
         cb(null, true);
@@ -5310,9 +5310,9 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { name, email, productManagerName, developerName, technicalManagerName, valuableThings, detailedExplanation } = req.body;
+      const {name, email, productManagerName, developerName, technicalManagerName, valuableThings, detailedExplanation} = req.body;
 
-      console.log("Complaint submission data:", { name, email, productManagerName, developerName, technicalManagerName, valuableThings, detailedExplanation });
+      console.log("Complaint submission data:", {name, email, productManagerName, developerName, technicalManagerName, valuableThings, detailedExplanation});
 
       if (!name?.trim() || !email?.trim() || !detailedExplanation?.trim()) {
         return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
@@ -5445,7 +5445,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const complaintId = parseInt(req.params.id);
-      const { status, reviewComments } = req.body;
+      const {status, reviewComments} = req.body;
 
       const validStatuses = ["pending", "reviewed", "resolved"];
       if (!validStatuses.includes(status)) {
@@ -5626,7 +5626,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { title, content, type, recipients } = req.body;
+      const {title, content, type, recipients} = req.body;
 
       if (!title || !content || !type) {
         return res.status(400).json({ error: "Title, content, and type are required" });
@@ -5848,7 +5848,7 @@ export function registerRoutes(app: Express): Server {
 
   // Get current week sentiment for client
   app.get("/api/client-sentiment/current-week", async (req, res) => {
-    if (!req.isAuthenticated() || !req.user) {
+    if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
@@ -5865,7 +5865,7 @@ export function registerRoutes(app: Express): Server {
       const monday = new Date(now);
       monday.setDate(diff);
       monday.setHours(0, 0, 0, 0);
-      
+
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       sunday.setHours(23, 59, 59, 999);
@@ -5910,9 +5910,9 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { sentiment, reason } = req.body;
+      const {sentiment, reason} = req.body;
 
-      console.log("Client sentiment submission:", { userId: user.id, sentiment, reason });
+      console.log("Client sentiment submission:", {userId: user.id, sentiment, reason});
 
       if (!sentiment || !reason) {
         return res.status(400).json({ error: "Sentiment and reason are required" });
@@ -5934,14 +5934,14 @@ export function registerRoutes(app: Express): Server {
       const monday = new Date(now);
       monday.setDate(diff);
       monday.setHours(0, 0, 0, 0);
-      
+
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       sunday.setHours(23, 59, 59, 999);
 
       // Check if user already submitted for this week
       console.log("Checking for existing sentiment for user", user.id, "week starting", monday.toISOString());
-      
+
       const existingSubmission = await db
         .select()
         .from(clientSentiment)
@@ -5959,7 +5959,7 @@ export function registerRoutes(app: Express): Server {
       // Insert new sentiment
       const mondayStr = monday.toISOString().split('T')[0];
       const sundayStr = sunday.toISOString().split('T')[0];
-      
+
       console.log("Inserting client sentiment:", {
         client_id: user.id,
         sentiment,
@@ -6046,7 +6046,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { week } = req.query;
+      const {week} = req.query;
       let weekCondition = "";
 
       if (week && week !== "current") {
@@ -6117,7 +6117,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { name, email, department, detailedExplanation } = req.body;
+      const {name, email, department, detailedExplanation} = req.body;
 
       if (!name || !email || !detailedExplanation) {
         return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
@@ -6297,7 +6297,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const complaintId = parseInt(req.params.id);
-      const { status, reviewComments } = req.body;
+      const {status, reviewComments} = req.body;
 
       const validStatuses = ["pending", "reviewed", "resolved"];
       if (!validStatuses.includes(status)) {
@@ -6356,10 +6356,874 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      res.json(updatedComplaint);
+      res.json(updatedComplant);
     } catch (error) {
       console.error("Error updating staff complaint:", error);
       res.status(500).json({ error: "Failed to update staff complaint" });
+    }
+  });
+
+  // Productivity tracking endpoint
+  app.get("/api/productivity", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const user = req.user as Express.User;
+      const dateParam = req.query.date as string;
+      const targetDate = dateParam ? new Date(dateParam) : new Date();
+
+      // Set target date to start of day
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Get yesterday's date for comparison
+      const yesterday = new Date(targetDate);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const startOfYesterday = new Date(yesterday);
+      startOfYesterday.setHours(0, 0, 0, 0);
+      const endOfYesterday = new Date(yesterday);
+      endOfYesterday.setHours(23, 59, 59, 999);
+
+      // Get start of week (Monday)
+      const startOfWeek = new Date(targetDate);
+      const dayOfWeek = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      // Get all tasks for the user
+      const userTasks = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          status: tasks.status,
+          projectId: tasks.projectId,
+          timeSpent: tasks.timeSpent,
+          updatedAt: tasks.updatedAt,
+          workingHours: tasks.workingHours,
+          projectName: projects.name
+        })
+        .from(tasks)
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(eq(tasks.assigneeId, user.id));
+
+      // Filter tasks that were worked on today (have time spent and updated today)
+      const todayTasks = userTasks.filter(task => {
+        if (!task.updatedAt) return false;
+        const taskUpdated = new Date(task.updatedAt);
+        return taskUpdated >= startOfDay && taskUpdated <= endOfDay && (task.timeSpent || 0) > 0;
+      });
+
+      // Filter tasks worked on yesterday
+      const yesterdayTasks = userTasks.filter(task => {
+        if (!task.updatedAt) return false;
+        const taskUpdated = new Date(task.updatedAt);
+        return taskUpdated >= startOfYesterday && taskUpdated <= endOfYesterday && (task.timeSpent || 0) > 0;
+      });
+
+      // Filter tasks for this week
+      const weekTasks = userTasks.filter(task => {
+        if (!task.updatedAt) return false;
+        const taskUpdated = new Date(task.updatedAt);
+        return taskUpdated >= startOfWeek && (task.timeSpent || 0) > 0;
+      });
+
+      // Calculate today's data
+      const todayData = {
+        totalTasksWorkedOn: todayTasks.length,
+        totalTasksCompleted: todayTasks.filter(task => task.status === 'completed').length,
+        totalTimeWorked: todayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0),
+        taskBreakdown: todayTasks.map(task => ({
+          taskId: task.id,
+          title: task.title,
+          projectName: task.projectName || 'Unknown Project',
+          timeSpent: task.timeSpent || 0,
+          status: task.status,
+          isCompleted: task.status === 'completed',
+          workingHours: task.workingHours || 8
+        })),
+        weeklyBreakdown: [] as { day: string; dayName: string; timeSpent: number; hours: number; taskCount: number; tasks: string[]; workdayStart: null; workdayEnd: null; totalSpanHours: number; performanceStatus: string; performanceColor: string; }[]
+      };
+
+      // Generate weekly breakdown (Monday to Friday of current week)
+      const currentWeekStart = new Date(startOfWeek);
+
+      for (let i = 0; i < 5; i++) { // Monday to Friday only
+        const currentDay = new Date(currentWeekStart);
+        currentDay.setDate(currentWeekStart.getDate() + i);
+
+        const dayStart = new Date(currentDay);
+        dayStart.setHours(0, 0, 0, 0);
+
+        const dayEnd = new Date(currentDay);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        // Get tasks worked on this specific day
+        const dayTasks = userTasks.filter(task => {
+          if (!task.updatedAt) return false;
+          const taskUpdated = new Date(task.updatedAt);
+          return taskUpdated >= dayStart && taskUpdated <= dayEnd && (task.timeSpent || 0) > 0;
+        });
+
+        const dayTimeSpent = dayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0);
+        const dayHours = dayTimeSpent / 3600; // Convert seconds to hours
+
+        // Calculate performance status and color based on hours worked
+        let performanceStatus = 'poor';
+        let performanceColor = '#EF4444'; // Red
+
+        if (dayHours >= 4) {
+          performanceStatus = 'good';
+          performanceColor = '#22C55E'; // Green
+        } else if (dayHours >= 2) {
+          performanceStatus = 'fair';
+          performanceColor = '#EAB308'; // Yellow
+        }
+
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+        todayData.weeklyBreakdown.push({
+          day: currentDay.toISOString().split('T')[0], // YYYY-MM-DD format
+          dayName: dayNames[i],
+          timeSpent: dayTimeSpent,
+          hours: Math.round(dayHours * 100) / 100, // Round to 2 decimal places
+          taskCount: dayTasks.length,
+          tasks: dayTasks.map(task => task.title),
+          workdayStart: null, // Will be set by timer tracking if available
+          workdayEnd: null, // Will be set by timer tracking if available
+          totalSpanHours: Math.round(dayHours * 100) / 100,
+          performanceStatus,
+          performanceColor
+        });
+      }
+
+      // Calculate yesterday's data
+      const yesterdayData = {
+        totalTasksWorkedOn: yesterdayTasks.length,
+        totalTasksCompleted: yesterdayTasks.filter(task => task.status === 'completed').length,
+        totalTimeWorked: yesterdayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0),
+        taskBreakdown: yesterdayTasks.map(task => ({
+          taskId: task.id,
+          title: task.title,
+          projectName: task.projectName || 'Unknown Project',
+          timeSpent: task.timeSpent || 0,
+          status: task.status,
+          isCompleted: task.status === 'completed'
+        })),
+        hourlyBreakdown: []
+      };
+
+      // Calculate week data
+      const weekData = {
+        totalTasks: weekTasks.length,
+        completedTasks: weekTasks.filter(task => task.status === 'completed').length,
+        totalTime: weekTasks.reduce((total, task) => total + (task.timeSpent || 0), 0)
+      };
+
+      const response = {
+        today: todayData,
+        yesterday: yesterdayData,
+        thisWeek: weekData
+      };
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error fetching productivity data:", error);
+      res.status(500).json({ error: "Failed to fetch productivity data" });
+    }
+  });
+
+  // Bookings API Routes
+
+  // Get all bookings (Project Manager only)
+  app.get("/api/bookings", isProjectManager, async (req, res) => {
+    try {
+      const allBookings = await db
+        .select({
+          id: bookings.id,
+          title: bookings.title,
+          description: bookings.description,
+          type: bookings.type,
+          scheduledBy: bookings.scheduledBy,
+          participants: bookings.participants,
+          startTime: bookings.startTime,
+          endTime: bookings.endTime,
+          status: bookings.status,
+          meetingLink: bookings.meetingLink,
+          notes: bookings.notes,
+          createdAt: bookings.createdAt,
+          schedulerName: users.name,
+        })
+        .from(bookings)
+        .innerJoin(users, eq(bookings.scheduledBy, users.id))        .orderBy(desc(bookings.startTime));
+
+      res.json(allBookings);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      res.status(500).json({ error: "Failed to fetch bookings" });
+    }
+  });
+
+  // Create a new booking (Project Manager only)
+  app.post("/api/bookings", isProjectManager, async (req, res) => {
+    try {
+      const {
+        title,
+        description,
+        type,
+        participants,
+        startTime,
+        endTime,
+        meetingLink,
+        notes
+      } = req.body;
+
+      if (!title || !type || !startTime || !endTime || !participants) {
+        return res.status(400).json({
+          error: "Title, type, start time, end time, and participants are required"
+        });
+      }
+
+      // Parse dates
+      const parsedStartTime = new Date(startTime);
+      const parsedEndTime = new Date(endTime);
+
+      if (isNaN(parsedStartTime.getTime()) || isNaN(parsedEndTime.getTime())) {
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+
+      if (parsedStartTime >= parsedEndTime) {
+        return res.status(400).json({ error: "End time must be after start time" });
+      }
+
+      // Check for time conflicts with existing bookings
+      const conflictingBookings = await db
+        .select()
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.status, "scheduled"),
+            or(
+              and(
+                sql`${bookings.startTime} < ${parsedEndTime}`,
+                sql`${bookings.endTime} > ${parsedStartTime}`
+              )
+            )
+          )
+        );
+
+      // Check if any participants have conflicting bookings
+      const participantConflicts = conflictingBookings.filter(booking => {
+        const bookingParticipants = booking.participants as number[];
+        const newParticipants = participants as number[];
+        return bookingParticipants.some(p => newParticipants.includes(p));
+      });
+
+      if (participantConflicts.length > 0) {
+        return res.status(400).json({
+          error: "One or more participants have conflicting meetings at this time"
+        });
+      }
+
+      // Check for task conflicts
+      const conflictingTasks = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          assigneeId: tasks.assigneeId,
+        })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.isTimerRunning, true),
+            inArray(tasks.assigneeId, participants)
+          )
+        );
+
+      let warningMessage = null;
+      if (conflictingTasks.length > 0) {
+        const conflictingUsers = conflictingTasks.map(task => task.assigneeId);
+        warningMessage = `Warning: ${conflictingUsers.length} participant(s) have running tasks during this meeting time.`;
+      }
+
+      // Create the booking
+      const [newBooking] = await db
+        .insert(bookings)
+        .values({
+          title,
+          description: description || null,
+          type,
+          scheduledBy: req.user!.id,
+          participants,
+          startTime: parsedStartTime,
+          endTime: parsedEndTime,
+          meetingLink: meetingLink || null,
+          notes: notes || null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      // Create notifications for participants
+      for (const participantId of participants) {
+        if (participantId !== req.user!.id) {
+          try {
+            const [notification] = await db
+              .insert(notifications)
+              .values({
+                userId: participantId,
+                type: "task_assigned", // Using existing type
+                content: `You have been invited to a meeting: ${title}`,
+                referenceId: newBooking.id,
+                referenceType: "project", // Using existing type
+                createdAt: new Date(),
+              })
+              .returning();
+
+            // Send notification through SSE if user is connected
+            const clientResponse = global.sseClients?.get(participantId);
+            if (clientResponse && !clientResponse.writableEnded) {
+              try {
+                clientResponse.write(`data: ${JSON.stringify({
+                  type: "notification",
+                  data: notification
+                })}\n\n`);
+              } catch (error) {
+                console.error(`Error sending SSE notification to user ${participantId}:`, error);
+                global.sseClients?.delete(participantId);
+              }
+            }
+          } catch (error) {
+            console.error(`Error creating notification for participant ${participantId}:`, error);
+          }
+        }
+      }
+
+      res.json({
+        booking: newBooking,
+        warning: warningMessage
+      });
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      res.status(500).json({ error: "Failed to create booking" });
+    }
+  });
+
+  // Update booking status (Project Manager only)
+  app.put("/api/bookings/:id", isProjectManager, async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.id);
+      const {status, notes} = req.body;
+
+      const validStatuses = ["scheduled", "completed", "cancelled"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+
+      const [updatedBooking] = await db
+        .update(bookings)
+        .set({
+          status,
+          notes: notes || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, bookingId))
+        .returning();
+
+      if (!updatedBooking) {
+        return res.status(404).json({ error: "Booking not found" });
+      }
+
+      res.json(updatedBooking);
+    } catch (error) {
+      console.error("Error updating booking:", error);
+      res.status(500).json({ error: "Failed to update booking" });
+    }
+  });
+
+  // Delete booking (Project Manager only)
+  app.delete("/api/bookings/:id", isProjectManager, async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.id);
+
+      await db
+        .delete(bookings)
+        .where(eq(bookings.id, bookingId));
+
+      res.json({ message: "Booking deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+      res.status(500).json({ error: "Failed to delete booking" });
+    }
+  });
+
+  // Get user's upcoming bookings (for persistent alerts)
+  app.get("/api/bookings/my-upcoming", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const userId = req.user!.id;
+      const now = new Date();
+
+      console.log(`Fetching upcoming bookings for user ${userId} after ${now.toISOString()}`);
+
+      // First get all scheduled future bookings, then filter in JavaScript
+      const allBookings = await db
+        .select({
+          id: bookings.id,
+          title: bookings.title,
+          description: bookings.description,
+          type: bookings.type,
+          scheduledBy: bookings.scheduledBy,
+          participants: bookings.participants,
+          startTime: bookings.startTime,
+          endTime: bookings.endTime,
+          status: bookings.status,
+          meetingLink: bookings.meetingLink,
+          notes: bookings.notes,
+          createdAt: bookings.createdAt,
+          schedulerName: users.name,
+        })
+        .from(bookings)
+        .innerJoin(users, eq(bookings.scheduledBy, users.id))
+        .where(
+          and(
+            eq(bookings.status, "scheduled"),
+            sql`${bookings.startTime} >= ${now.toISOString()}`
+          )
+        )
+        .orderBy(bookings.startTime);
+
+      console.log(`Retrieved ${allBookings.length} total scheduled bookings`);
+
+      // Filter bookings where user is a participant
+      const upcomingBookings = allBookings.filter(booking => {
+        try {
+          if (!booking.participants) {
+            console.log(`Booking ${booking.id} has no participants`);
+            return false;
+          }
+
+          let participants;
+          if (Array.isArray(booking.participants)) {
+            participants = booking.participants;
+          } else if (typeof booking.participants === 'string') {
+            participants = JSON.parse(booking.participants);
+          } else {
+            console.log(`Booking ${booking.id} has invalid participants format:`, typeof booking.participants);
+            return false;
+          }
+
+          if (!Array.isArray(participants)) {
+            console.log(`Booking ${booking.id} participants is not an array:`, participants);
+            return false;
+          }
+
+          console.log(`Booking ${booking.id} participants:`, participants, `User ${userId} included:`, participants.includes(userId));
+          return participants.includes(userId);
+        } catch (error) {
+          console.error(`Error parsing participants for booking ${booking.id}:`, error);
+          return false;
+        }
+      });
+
+      console.log(`Found ${upcomingBookings.length} upcoming bookings for user ${userId}`);
+      res.json(upcomingBookings);
+    } catch (error) {
+      console.error("Error fetching upcoming bookings:", error);
+      res.status(500).json({ error: "Failed to fetch upcoming bookings" });
+    }
+  });
+
+  // Client Account Management API Routes
+
+  // Middleware to check if user can manage client accounts
+  const canManageClientAccounts = (req: Express.Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can manage client accounts" });
+    }
+
+    next();
+  };
+
+  // Get all client accounts
+  app.get("/api/client-accounts", canManageClientAccounts, async (req, res) => {
+    try {
+      const clientAccounts = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          username: users.username,
+          role: users.role,
+          productService: users.productService,
+          clientType: users.clientType,
+          onboardingStatus: users.onboardingStatus,
+          emailVerified: users.emailVerified,
+          createdAt: users.createdAt,
+          lastActive: users.lastActive,
+          gender: users.gender,
+        })
+        .from(users)
+        .where(eq(users.role, "client"))
+        .orderBy(desc(users.createdAt));
+
+      res.json(clientAccounts);
+    } catch (error) {
+      console.error("Error fetching client accounts:", error);
+      res.status(500).json({ error: "Failed to fetch client accounts" });
+    }
+  });
+
+  // Create a new client account
+  app.post("/api/client-accounts", canManageClientAccounts, async (req, res) => {
+    try {
+      const {name, email, username, password, productService, clientType} = req.body;
+
+      // Validate required fields
+      if (!name || !email || !username || !password || !productService || !clientType) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+
+      // Check if username already exists
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+
+      // Check if email already exists
+      const [existingEmail] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (existingEmail) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+
+      // Hash password (using same method as auth.ts)
+      const { scrypt, randomBytes } = await import("crypto");
+      const { promisify } = await import("util");
+      const scryptAsync = promisify(scrypt);
+
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+
+      // Create the client account
+      const [newClient] = await db
+        .insert(users)
+        .values({
+          name,
+          email,
+          username,
+          password: hashedPassword,
+          role: "client",
+          productService,
+          clientType,
+          onboardingStatus: "not_onboarded",
+          emailVerified: false,
+          status: "offline",
+          workStatus: "active",
+          absenceReason: "not_applicable",
+          breakCount: 0,
+          createdAt: new Date(),
+          lastActive: new Date(),
+        })
+        .returning();
+
+      // Remove password from response
+      const { password: _, ...clientResponse } = newClient;
+
+      // Create notification for the client
+      await db
+        .insert(notifications)
+        .values({
+          userId: newClient.id,
+          type: "task_updated", // Using existing type
+          content: `Welcome! Your account has been created. You can now log in to access your dashboard.`,
+          referenceId: newClient.id,
+          referenceType: "project", // Using existing type
+          createdAt: new Date(),
+        });
+
+      res.status(201).json(clientResponse);
+    } catch (error) {
+      console.error("Error creating client account:", error);
+      res.status(500).json({ error: "Failed to create client account" });
+    }
+  });
+
+  // Get all users for staff selection (Operations Manager only)
+  app.get("/api/users/all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access all users" });
+    }
+
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          specialization: users.specialization,
+        })
+        .from(users)
+        .where(or(
+          eq(users.role, "staff"),
+          eq(users.role, "project_manager"),
+          eq(users.role, "product_owner")
+        ))
+        .orderBy(users.name);
+
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Get all departments for department selection (Operations Manager only)
+  app.get("/api/departments", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access departments" });
+    }
+
+    try {
+      // Get unique departments from users (role and specialization fields)
+      const rolesResult = await db.execute(sql`
+        SELECT DISTINCT role as department
+        FROM users
+        WHERE role IS NOT NULL AND role != ''
+        UNION
+        SELECT DISTINCT specialization as department
+        FROM users
+        WHERE specialization IS NOT NULL AND specialization != ''
+        ORDER BY department
+      `);
+
+      const departments = rolesResult.rows.map(row => row.department);
+      res.json(departments);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      res.status(500).json({ error: "Failed to fetch departments" });
+    }
+  });
+
+  // Staff Queries API
+  // Get all staff queries (all users see all queries)
+  app.get("/api/staff-queries", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      // All users (operations managers and staff) see all queries
+      const result = await db.execute(sql`
+        SELECT sq.*,
+               u.name as staff_name_full,
+               sender.name as sender_name
+        FROM staff_queries sq
+        LEFT JOIN users u ON sq.staff_id = u.id
+        LEFT JOIN users sender ON sq.sent_by = sender.id
+        ORDER BY sq.created_at DESC
+      `);
+
+      const staffQueries = result.rows.map(row => ({
+        id: row.id,
+        staffId: row.staff_id,
+        staffName: row.staff_name,
+        staffNameFull: row.staff_name_full,
+        department: row.department,
+        staffUniqueValue: row.staff_unique_value,
+        reason: row.reason,
+        whyQuery: row.why_query,
+        attachmentPath: row.attachment_path,
+        likelyPenalty: row.likely_penalty,
+        additionalNote: row.additional_note,
+        sentBy: row.sent_by,
+        senderName: row.sender_name,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+
+      res.json(staffQueries);
+    } catch (error) {
+      console.error("Error fetching staff queries:", error);
+      res.status(500).json({ error: "Failed to fetch staff queries" });
+    }
+  });
+
+  // Create staff query (Operations Manager only)
+  app.post("/api/staff-queries", staffQueryUpload.single('attachment'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can create staff queries" });
+    }
+
+    try {
+      const {
+        staffId,
+        staffName,
+        department,
+        staffUniqueValue,
+        reason,
+        whyQuery,
+        likelyPenalty,
+        additionalNote
+      } = req.body;
+
+      // Handle uploaded file
+      let attachmentPath = null;
+      if (req.file) {
+        attachmentPath = `/uploads/staff-query-attachments/${req.file.filename}`;
+      }
+
+      if (!staffId || !staffName || !department || !staffUniqueValue || !reason || !whyQuery || !likelyPenalty) {
+        return res.status(400).json({
+          error: "Staff ID, staff name, department, staff unique value, reason, why query, and likely penalty are required"
+        });
+      }
+
+      const validReasons = [
+        "wrongly_using_work_app",
+        "substandard_delivery",
+        "repeatedly_missed_deadlines",
+        "disrespectful_communication",
+        "disregard_company_policy"
+      ];
+
+      if (!validReasons.includes(reason)) {
+        return res.status(400).json({ error: "Invalid reason" });
+      }
+
+      // Create the staff query
+      const result = await db.execute(sql`
+        INSERT INTO staff_queries (
+          staff_id, staff_name, department, staff_unique_value, reason,
+          why_query, attachment_path, likely_penalty, additional_note, sent_by,
+          created_at, updated_at
+        )
+        VALUES (
+          ${staffId}, ${staffName}, ${department}, ${staffUniqueValue}, ${reason},
+          ${whyQuery}, ${attachmentPath || null}, ${likelyPenalty}, ${additionalNote || null}, ${user.id},
+          CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+        RETURNING *
+      `);
+
+      const newQuery = result.rows[0];
+
+      // Send notification to the staff member
+      try {
+        await db.execute(sql`
+          INSERT INTO notifications (user_id, title, message, type, created_at)
+          VALUES (${staffId}, 'New Staff Query', 'You have received a new staff query from Operations Management', 'staff_query', CURRENT_TIMESTAMP)
+        `);
+      } catch (notifError) {
+        console.error("Error sending notification:", notifError);
+        // Don't fail the entire request if notification fails
+      }
+
+      res.status(201).json({
+        id: newQuery.id,
+        staffId: newQuery.staff_id,
+        staffName: newQuery.staff_name,
+        department: newQuery.department,
+        staffUniqueValue: newQuery.staff_unique_value,
+        reason: newQuery.reason,
+        whyQuery: newQuery.why_query,
+        attachmentPath: newQuery.attachment_path,
+        likelyPenalty: newQuery.likely_penalty,
+        additionalNote: newQuery.additional_note,
+        sentBy: newQuery.sent_by,
+        status: newQuery.status,
+        createdAt: newQuery.created_at,
+        updatedAt: newQuery.updated_at,
+      });
+    } catch (error) {
+      console.error("Error creating staff query:", error);
+      res.status(500).json({ error: "Failed to create staff query" });
+    }
+  });
+
+  // Update staff query status (for staff to acknowledge)
+  app.patch("/api/staff-queries/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const queryId = parseInt(req.params.id);
+    const {status} = req.body;
+
+    if (!status || !["acknowledged", "resolved"].includes(status)) {
+      return res.status(400).json({ error: "Valid status is required (acknowledged or resolved)" });
+    }
+
+    try {
+      // Check if the query exists and belongs to the user
+      const checkResult = await db.execute(sql`
+        SELECT * FROM staff_queries WHERE id = ${queryId} AND staff_id = ${user.id}
+      `);
+
+      if (checkResult.rows.length === 0) {
+        return res.status(404).json({ error: "Staff query not found or not authorized" });
+      }
+
+      // Update the status
+      const result = await db.execute(sql`
+        UPDATE staff_queries
+        SET status = ${status}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${queryId} AND staff_id = ${user.id}
+        RETURNING *
+      `);
+
+      const updatedQuery = result.rows[0];
+      res.json({
+        id: updatedQuery.id,
+        status: updatedQuery.status,
+        updatedAt: updatedQuery.updated_at,
+      });
+    } catch (error) {
+      console.error("Error updating staff query:", error);
+      res.status(500).json({ error: "Failed to update staff query" });
     }
   });
 
@@ -6696,7 +7560,7 @@ export function registerRoutes(app: Express): Server {
                 })}\n\n`);
               } catch (error) {
                 console.error(`Error sending SSE notification to user ${participantId}:`, error);
-                global.sseClients.delete(participantId);
+                global.sseClients?.delete(participantId);
               }
             }
           } catch (error) {
@@ -6719,7 +7583,7 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/bookings/:id", isProjectManager, async (req, res) => {
     try {
       const bookingId = parseInt(req.params.id);
-      const { status, notes } = req.body;
+      const {status, notes} = req.body;
 
       const validStatuses = ["scheduled", "completed", "cancelled"];
       if (!validStatuses.includes(status)) {
@@ -6891,7 +7755,7 @@ export function registerRoutes(app: Express): Server {
   // Create a new client account
   app.post("/api/client-accounts", canManageClientAccounts, async (req, res) => {
     try {
-      const { name, email, username, password, productService, clientType } = req.body;
+      const {name, email, username, password, productService, clientType} = req.body;
 
       // Validate required fields
       if (!name || !email || !username || !password || !productService || !clientType) {
@@ -7022,12 +7886,12 @@ export function registerRoutes(app: Express): Server {
     try {
       // Get unique departments from users (role and specialization fields)
       const rolesResult = await db.execute(sql`
-        SELECT DISTINCT role as department 
-        FROM users 
+        SELECT DISTINCT role as department
+        FROM users
         WHERE role IS NOT NULL AND role != ''
         UNION
-        SELECT DISTINCT specialization as department 
-        FROM users 
+        SELECT DISTINCT specialization as department
+        FROM users
         WHERE specialization IS NOT NULL AND specialization != ''
         ORDER BY department
       `);
@@ -7052,7 +7916,7 @@ export function registerRoutes(app: Express): Server {
     try {
       // All users (operations managers and staff) see all queries
       const result = await db.execute(sql`
-        SELECT sq.*, 
+        SELECT sq.*,
                u.name as staff_name_full,
                sender.name as sender_name
         FROM staff_queries sq
@@ -7099,15 +7963,15 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { 
-        staffId, 
-        staffName, 
-        department, 
-        staffUniqueValue, 
-        reason, 
-        whyQuery, 
-        likelyPenalty, 
-        additionalNote 
+      const {
+        staffId,
+        staffName,
+        department,
+        staffUniqueValue,
+        reason,
+        whyQuery,
+        likelyPenalty,
+        additionalNote
       } = req.body;
 
       // Handle uploaded file
@@ -7117,14 +7981,14 @@ export function registerRoutes(app: Express): Server {
       }
 
       if (!staffId || !staffName || !department || !staffUniqueValue || !reason || !whyQuery || !likelyPenalty) {
-        return res.status(400).json({ 
-          error: "Staff ID, staff name, department, staff unique value, reason, why query, and likely penalty are required" 
+        return res.status(400).json({
+          error: "Staff ID, staff name, department, staff unique value, reason, why query, and likely penalty are required"
         });
       }
 
       const validReasons = [
         "wrongly_using_work_app",
-        "substandard_delivery", 
+        "substandard_delivery",
         "repeatedly_missed_deadlines",
         "disrespectful_communication",
         "disregard_company_policy"
@@ -7137,8 +8001,8 @@ export function registerRoutes(app: Express): Server {
       // Create the staff query
       const result = await db.execute(sql`
         INSERT INTO staff_queries (
-          staff_id, staff_name, department, staff_unique_value, reason, 
-          why_query, attachment_path, likely_penalty, additional_note, sent_by, 
+          staff_id, staff_name, department, staff_unique_value, reason,
+          why_query, attachment_path, likely_penalty, additional_note, sent_by,
           created_at, updated_at
         )
         VALUES (
@@ -7192,7 +8056,7 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
     const queryId = parseInt(req.params.id);
-    const { status } = req.body;
+    const {status} = req.body;
 
     if (!status || !["acknowledged", "resolved"].includes(status)) {
       return res.status(400).json({ error: "Valid status is required (acknowledged or resolved)" });
@@ -7210,7 +8074,7 @@ export function registerRoutes(app: Express): Server {
 
       // Update the status
       const result = await db.execute(sql`
-        UPDATE staff_queries 
+        UPDATE staff_queries
         SET status = ${status}, updated_at = CURRENT_TIMESTAMP
         WHERE id = ${queryId} AND staff_id = ${user.id}
         RETURNING *

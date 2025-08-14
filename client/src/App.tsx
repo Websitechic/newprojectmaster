@@ -42,6 +42,8 @@ import Memos from "@/pages/dashboard/memos";
 import SendComplaint from "@/pages/send-complaint";
 import StaffComplaints from "@/pages/dashboard/staff-complaints";
 import StaffQueries from "@/pages/dashboard/staff-queries";
+import { lazy } from "react";
+
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -115,8 +117,8 @@ function Router() {
       <Route path="/dashboard/complaints-management" component={() => <PrivateRoute component={ComplaintsManagement} />} />
       <Route path="/dashboard/client-accounts" component={() => <PrivateRoute component={ClientAccounts} />} />
       <Route path="/dashboard/client-sentiment" component={() => <PrivateRoute component={ClientSentiment} />} />
-      <Route path="/dashboard/client-sentiment-tracker" component={() => <PrivateRoute component={ClientSentimentTracker} />} />
-      <Route component={NotFound} />
+      <Route path="/dashboard/client-sentiment-tracker" component={lazy(() => import("./pages/dashboard/client-sentiment-tracker"))} />
+      <Route path="/dashboard/notes" component={lazy(() => import("./pages/dashboard/notes"))} />
     </Switch>
   );
 }
