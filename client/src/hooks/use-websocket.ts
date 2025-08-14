@@ -93,6 +93,14 @@ export function useWebSocket(userId: number | undefined) {
         console.error('Failed to parse WebSocket message:', error);
       }
     };
+
+    ws.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.current.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
   }, []);
 
   return {

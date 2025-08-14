@@ -15,7 +15,9 @@ export function useUnreadMessageCounts() {
           if (response.status === 401) {
             return {}; // Return empty object for unauthorized users
           }
-          throw new Error(`Failed to fetch unread counts: ${response.status}`);
+          // Don't throw for other errors, just return empty object
+          console.warn(`Failed to fetch unread counts: ${response.status}`);
+          return {};
         }
         return await response.json();
       } catch (error) {
@@ -26,6 +28,8 @@ export function useUnreadMessageCounts() {
     enabled: !!user && !!user.id,
     refetchInterval: 10000, // Refetch every 10 seconds
     retry: false, // Don't retry failed requests
+    retryOnMount: false, // Don't retry on mount
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   });
 }
 

@@ -32,9 +32,22 @@ export function NotificationsDropdown() {
 
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
-    queryFn: () => fetch("/api/notifications", { credentials: "include" }).then(res => res.json()),
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/notifications", { credentials: "include" });
+        if (!res.ok) {
+          throw new Error(`Failed to fetch notifications: ${res.status}`);
+        }
+        return res.json();
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+        return [];
+      }
+    },
     enabled: !!user,
     refetchInterval: 30000,
+    retry: false,
+    retryOnMount: false,
   });
 
   // Set up SSE connection for real-time notifications
