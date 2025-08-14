@@ -5517,7 +5517,10 @@ export function registerRoutes(app: Express): Server {
             (m.type = 'individual' AND m.recipients @> ${JSON.stringify([user.id])}) OR
             (m.type = 'department' AND (
               m.recipients @> '["all_staff"]' OR
-              ${user.specialization ? `m.recipients @> ${JSON.stringify([user.specialization])}` : 'FALSE'}
+              ${user.specialization ? `m.recipients @> ${JSON.stringify([user.specialization])}` : 'FALSE'} OR
+              ${user.role === 'project_manager' ? `m.recipients @> '["project_managers"]'` : 'FALSE'} OR
+              ${user.role === 'product_owner' ? `m.recipients @> '["product_owners"]'` : 'FALSE'} OR
+              ${user.specialization === 'technical_support' ? `m.recipients @> '["technical_support"]'` : 'FALSE'}
             ))
           ORDER BY m.created_at DESC
         `);

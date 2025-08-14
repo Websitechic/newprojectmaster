@@ -482,13 +482,14 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     ...technicalSupportMenuItems, // Technical support menu items
     ...extensionMenuItems,        // Extension requests menu items
     ...operationsManagerMenuItems,
-    {
+    // Only show memos for non-operations managers (operations managers already have it in their specific menu)
+    ...(user?.role !== "operations_manager" && user?.specialization !== "operations_manager" ? [{
       icon: <FileText size={20} />,
       label: "Memos",
       href: "/dashboard/memos",
-      badge: user?.role !== "operations_manager" && user?.specialization !== "operations_manager" && unreadMemoCount > 0 ? unreadMemoCount : undefined,
+      badge: unreadMemoCount > 0 ? unreadMemoCount : undefined,
       key: "memos",
-    },
+    }] : []),
     ...baseMenuItems.slice(2)     // Direct Messages, Settings
   ];
 
