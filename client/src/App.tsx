@@ -84,45 +84,42 @@ function Router() {
         {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
       </Route>
       <Route path="/dashboard">
-        <PrivateRoute component={() => {
-          const { user } = useAuth();
-          return user?.role === "client" ? <ClientDashboard /> : <Dashboard />;
-        }} />
+        {user?.role === "client" ? <ClientDashboard /> : <Dashboard />}
       </Route>
-      <Route path="/dashboard/projects" component={() => <PrivateRoute component={Projects} />} />
-      <Route path="/dashboard/projects/:id" component={() => <PrivateRoute component={ProjectDetails} />} />
-      <Route path="/dashboard/projects/:id/tasks" component={() => <PrivateRoute component={ProjectTasks} />} />
-      <Route path="/dashboard/projects/:id/team-chat" component={() => <PrivateRoute component={TeamChat} />} />
+      <Route path="/dashboard/projects" component={Projects} />
+      <Route path="/dashboard/projects/:id" component={ProjectDetails} />
+      <Route path="/dashboard/projects/:id/tasks" component={ProjectTasks} />
+      <Route path="/dashboard/projects/:id/team-chat" component={TeamChat} />
       <Route path="/dashboard/projects/:id/client-chat" component={ClientChat} />
       <Route path="/dashboard/projects/:id/staff-tasks" component={StaffProjectTasks} />
       <Route path="/dashboard/projects/:id/staff" component={StaffProjectDetails} />
       <Route path="/dashboard/projects/:id/resources" component={ProjectResources} />
-      <Route path="/dashboard/staff-report" component={() => <PrivateRoute component={StaffReport} />} />
-      <Route path="/dashboard/tasks" component={() => <PrivateRoute component={Tasks} />} />
-      <Route path="/dashboard/leave-application" component={() => <PrivateRoute component={LeaveApplication} />} />
-      <Route path="/dashboard/leave-management" component={() => <PrivateRoute component={LeaveManagement} />} />
-      <Route path="/dashboard/bookings" component={() => <PrivateRoute component={Bookings} />} />
-      <Route path="/dashboard/productivity" component={() => <PrivateRoute component={Productivity} />} />
-      <Route path="/dashboard/direct-messages" component={() => <PrivateRoute component={DirectMessages} />} />
-      <Route path="/dashboard/technical-support" component={() => <PrivateRoute component={TechnicalSupport} />} />
-      <Route path="/dashboard/technical-management" component={() => <PrivateRoute component={TechnicalManagementFixed} />} />
-      <Route path="/dashboard/extension-requests" component={() => <PrivateRoute component={ExtensionRequestsPage} />} />
-      <Route path="/dashboard/deadline-extension-requests" component={() => <PrivateRoute component={DeadlineExtensionRequests} />} />
+      <Route path="/dashboard/staff-report" component={StaffReport} />
+      <Route path="/dashboard/tasks" component={Tasks} />
+      <Route path="/dashboard/leave-application" component={LeaveApplication} />
+      <Route path="/dashboard/leave-management" component={LeaveManagement} />
+      <Route path="/dashboard/bookings" component={Bookings} />
+      <Route path="/dashboard/productivity" component={Productivity} />
+      <Route path="/dashboard/direct-messages" component={DirectMessages} />
+      <Route path="/dashboard/technical-support" component={TechnicalSupport} />
+      <Route path="/dashboard/technical-management" component={TechnicalManagementFixed} />
+      <Route path="/dashboard/extension-requests" component={ExtensionRequestsPage} />
+      <Route path="/dashboard/deadline-extension-requests" component={DeadlineExtensionRequests} />
       <Route path="/dashboard/client-management" component={ClientManagement} />
-      <Route path="/dashboard/guide-videos" component={() => <PrivateRoute component={GuideVideos} />} />
-      <Route path="/dashboard/register-dissatisfaction" component={() => <PrivateRoute component={RegisterDissatisfaction} />} />
-      <Route path="/dashboard/support-policy" component={() => <PrivateRoute component={SupportPolicy} />} />
-      <Route path="/dashboard/emergency-support" component={() => <PrivateRoute component={EmergencySupport} />} />
-      <Route path="/dashboard/reach-us" component={() => <PrivateRoute component={ReachUsPage} />} />
-      <Route path="/dashboard/rate-us" component={() => <PrivateRoute component={RateUs} />} />
-      <Route path="/dashboard/complaints-management" component={() => <PrivateRoute component={ComplaintsManagement} />} />
-      <Route path="/dashboard/client-accounts" component={() => <PrivateRoute component={ClientAccounts} />} />
-      <Route path="/dashboard/client-sentiment" component={() => <PrivateRoute component={ClientSentiment} />} />
-      <Route path="/dashboard/client-sentiment-tracker" component={() => <PrivateRoute component={ClientSentimentTracker} />} />
-      <Route path="/dashboard/notes" component={() => <PrivateRoute component={Notes} />} />
+      <Route path="/dashboard/guide-videos" component={GuideVideos} />
+      <Route path="/dashboard/register-dissatisfaction" component={RegisterDissatisfaction} />
+      <Route path="/dashboard/support-policy" component={SupportPolicy} />
+      <Route path="/dashboard/emergency-support" component={EmergencySupport} />
+      <Route path="/dashboard/reach-us" component={ReachUsPage} />
+      <Route path="/dashboard/rate-us" component={RateUs} />
+      <Route path="/dashboard/complaints-management" component={ComplaintsManagement} />
+      <Route path="/dashboard/client-accounts" component={ClientAccounts} />
+      <Route path="/dashboard/client-sentiment" component={ClientSentiment} />
+      <Route path="/dashboard/client-sentiment-tracker" component={ClientSentimentTracker} />
+      <Route path="/dashboard/notes" component={Notes} />
       <Route path="/dashboard/staff-queries" component={StaffQueries} />
       <Route path="/dashboard/communication-tracker" component={CommunicationTracker} />
-      <Route path="/technical-management" component={TechnicalManagement} />
+      <Route path="/technical-management" component={TechnicalManagementFixed} />
     </Switch>
   );
 }

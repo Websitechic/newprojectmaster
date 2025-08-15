@@ -57,10 +57,10 @@ export function NotificationsDropdown() {
 
   // Set up SSE connection for real-time notifications
   useEffect(() => {
-    if (!user || isConnecting) return;
+    if (!user?.id || isConnecting) return;
 
     const connectSSE = () => {
-      if (isConnecting) return;
+      if (isConnecting || !user?.id) return;
 
       console.log("Setting up SSE connection for notifications...");
       setIsConnecting(true);

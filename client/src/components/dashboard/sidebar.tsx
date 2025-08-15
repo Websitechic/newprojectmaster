@@ -117,14 +117,14 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
 
   // Set up SSE connection for real-time updates (direct messages only)
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     let eventSource: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout | null = null;
     let isConnecting = false;
 
     const connectSSE = () => {
-      if (isConnecting || !user) return;
+      if (isConnecting || !user?.id) return;
 
       isConnecting = true;
 
@@ -161,7 +161,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
           eventSource = null;
 
           // Only reconnect if user is still authenticated and no pending reconnection
-          if (user && !reconnectTimeout) {
+          if (user?.id && !reconnectTimeout) {
             reconnectTimeout = setTimeout(() => {
               reconnectTimeout = null;
               connectSSE();
