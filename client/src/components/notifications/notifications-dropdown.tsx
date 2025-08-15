@@ -57,24 +57,22 @@ export function NotificationsDropdown() {
 
   // Set up SSE connection for real-time notifications
   useEffect(() => {
-    if (!user?.id || isConnecting) return;
+    if (!user?.id) return;
 
     const connectSSE = () => {
-      if (isConnecting || !user?.id) return;
+      if (isConnecting) return;
 
-      console.log("Setting up SSE connection for notifications...");
       setIsConnecting(true);
+      console.log("Setting up SSE connection for notifications...");
 
       try {
-        const eventSource = new EventSource("/api/notifications/stream", {
-          withCredentials: true
+        const eventSource = new EventSource(`/api/notifications/stream?userId=${user.id}`, {
+          withCredentials: true,
         });
-        eventSourceRef.current = eventSource;
 
         eventSource.onopen = () => {
           console.log("SSE connection opened for notifications");
           setIsConnecting(false);
-          // Clear any pending reconnection attempts
           if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
             reconnectTimeoutRef.current = null;
@@ -83,60 +81,51 @@ export function NotificationsDropdown() {
 
         eventSource.onmessage = (event) => {
           try {
-            const data = JSON.parse(event.data);
-            console.log("SSE message received:", data);
-
-            if (data.type === "notification") {
-              queryClient.setQueryData(["/api/notifications"], (old: Notification[] = []) => {
-                return [data.data, ...old];
-              });
-            }
+            const notification = JSON.parse(event.data);
+            queryClient.setQueryData(["/api/notifications"], (oldData: Notification[] = []) => {
+              return [notification, ...oldData];
+            });
           } catch (error) {
-            console.error("Failed to parse SSE message:", error);
+            console.error("Error parsing notification:", error);
           }
         };
 
         eventSource.onerror = (error) => {
-          console.error("SSE connection error:", error);
+          console.error("SSE error:", error);
           setIsConnecting(false);
+          eventSource.close();
 
-          if (eventSource.readyState !== EventSource.CLOSED) {
-            eventSource.close();
-          }
-          eventSourceRef.current = null;
-
-          // Attempt to reconnect after a delay if user is still authenticated
-          if (user && !reconnectTimeoutRef.current) {
+          // Only reconnect if we still have a user and no existing connection
+          if (user?.id && !eventSourceRef.current && !reconnectTimeoutRef.current) {
             reconnectTimeoutRef.current = setTimeout(() => {
               reconnectTimeoutRef.current = null;
               connectSSE();
             }, 5000);
           }
         };
+
+        eventSourceRef.current = eventSource;
       } catch (error) {
         console.error("Failed to create SSE connection:", error);
         setIsConnecting(false);
       }
     };
 
-    // Delay initial connection to ensure authentication is complete
-    const connectionTimeout = setTimeout(() => {
-      connectSSE();
-    }, 2000);
+    // Only connect once per user session
+    connectSSE();
 
     return () => {
-      clearTimeout(connectionTimeout);
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
-      if (eventSourceRef.current && eventSourceRef.current.readyState !== EventSource.CLOSED) {
-        eventSourceRef.current.close();
-      }
-      eventSourceRef.current = null;
       setIsConnecting(false);
     };
-  }, [user, queryClient, isConnecting]); // Added isConnecting to dependency array to prevent multiple connections
+  }, [user?.id]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 

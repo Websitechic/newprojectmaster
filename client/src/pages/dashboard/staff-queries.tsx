@@ -273,7 +273,7 @@ export default function StaffQueries() {
 
                 <div>
                   <Label htmlFor="reason">Reason for Query *</Label>
-                  <Select onValueChange={(value) => setFormData(prev => ({ ...prev, reason: value }))} value={formData.reason}>
+                  <Select onValueChange={(value) => setFormData(prev => ({ ...prev, reason: value }))} value={formData.reason || ""}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select reason" />
                     </SelectTrigger>
