@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Users, AlertTriangle, Plus, Edit, Trash2, FileText, Eye } from "lucide-react";
+import { Calendar, Clock, Users, AlertTriangle, Plus, Edit, Trash2, FileText, Eye, User as UserIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,11 +87,26 @@ export default function Memos() {
   // Fetch memos (operations managers see all, others see their own)
   const { data: memos = [], isLoading: memosLoading } = useQuery<Memo[]>({
     queryKey: isOperationsManager ? ["/api/memos"] : ["/api/memos/my-memos"],
+    queryFn: async () => {
+      const endpoint = isOperationsManager ? "/api/memos" : "/api/memos/my-memos";
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        throw new Error("Failed to fetch memos");
+      }
+      return response.json();
+    },
   });
 
   // Fetch all users for individual/staff member selection
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    queryFn: async () => {
+      const response = await fetch("/api/users");
+      if (!response.ok) {
+        throw new Error("Failed to fetch users");
+      }
+      return response.json();
+    },
     enabled: isOperationsManager,
   });
 
@@ -616,7 +631,7 @@ export default function Memos() {
                     <div key={reader.userId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <User className="w-4 h-4 text-blue-600" />
+                          <UserIcon className="w-4 h-4 text-blue-600" />
                         </div>
                         <div>
                           <div className="font-medium text-sm">{reader.name}</div>

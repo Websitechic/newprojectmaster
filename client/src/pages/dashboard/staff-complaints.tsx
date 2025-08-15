@@ -49,6 +49,13 @@ export default function StaffComplaints() {
   // Fetch staff complaints
   const { data: complaints = [], isLoading } = useQuery<StaffComplaint[]>({
     queryKey: ["/api/staff-complaints"],
+    queryFn: async () => {
+      const response = await fetch("/api/staff-complaints");
+      if (!response.ok) {
+        throw new Error("Failed to fetch staff complaints");
+      }
+      return response.json();
+    },
     enabled: isOperationsManager,
   });
 
