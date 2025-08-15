@@ -118,6 +118,7 @@ function Router() {
       <Route path="/dashboard/client-sentiment-tracker" component={ClientSentimentTracker} />
       <Route path="/dashboard/memos" component={Memos} />
       <Route path="/dashboard/notes" component={Notes} />
+      <Route path="/dashboard/staff-complaints" component={StaffComplaints} />
       <Route path="/dashboard/staff-queries" component={StaffQueries} />
       <Route path="/dashboard/communication-tracker" component={CommunicationTracker} />
       <Route path="/technical-management" component={TechnicalManagementFixed} />
