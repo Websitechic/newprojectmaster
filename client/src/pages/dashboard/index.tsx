@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Project, Task } from "@db/schema";
 
 export default function Dashboard() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user } = useUser();
   const { updateStatus } = useWebSocket(user?.id);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -345,7 +345,11 @@ export default function Dashboard() {
                         return (
                           <div className="space-y-2">
                             {activeProjects.map(project => (
-                              <div key={project.id} className="p-2 bg-green-50 rounded-md border border-green-200">
+                              <div 
+                                key={project.id} 
+                                className="p-2 bg-green-50 rounded-md border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
+                                onClick={() => setLocation(`/dashboard/projects/${project.id}`)}
+                              >
                                 <p className="font-medium text-sm text-green-900">{project.name}</p>
                                 <p className="text-xs text-green-700">{project.category?.replace('_', ' ')}</p>
                               </div>
@@ -384,7 +388,11 @@ export default function Dashboard() {
                         return (
                           <div className="space-y-2">
                             {pendingProjects.map(project => (
-                              <div key={project.id} className="p-2 bg-yellow-50 rounded-md border border-yellow-200">
+                              <div 
+                                key={project.id} 
+                                className="p-2 bg-yellow-50 rounded-md border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
+                                onClick={() => setLocation(`/dashboard/projects/${project.id}`)}
+                              >
                                 <p className="font-medium text-sm text-yellow-900">{project.name}</p>
                                 <p className="text-xs text-yellow-700">{project.category?.replace('_', ' ')}</p>
                               </div>
@@ -442,7 +450,11 @@ export default function Dashboard() {
                         return (
                           <div className="space-y-2">
                             {completedProjects.map(project => (
-                              <div key={project.id} className="p-2 bg-blue-50 rounded-md border border-blue-200">
+                              <div 
+                                key={project.id} 
+                                className="p-2 bg-blue-50 rounded-md border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
+                                onClick={() => setLocation(`/dashboard/projects/${project.id}`)}
+                              >
                                 <p className="font-medium text-sm text-blue-900">{project.name}</p>
                                 <p className="text-xs text-blue-700">{project.category?.replace('_', ' ')}</p>
                               </div>
