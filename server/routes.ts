@@ -5671,7 +5671,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Title, content, and type are required" });
       }
 
-      const validTypes = ["individual", ""general", "department"];
+      const validTypes = ["individual", "general", "department"];
       if (!validTypes.includes(type)) {
         return res.status(400).json({ error: "Invalid memo type" });
       }
