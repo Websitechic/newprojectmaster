@@ -434,15 +434,19 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get available clients (for project managers and product owners)
+  // Get available clients (for project managers, product owners, and operations managers)
   app.get("/api/clients", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    if (user.role !== "project_manager" && user.role !== "product_owner") {
-      return res.status(403).json({ error: "Only project managers and product owners can access clients" });
+    const isProjectManager = user.role === "project_manager";
+    const isProductOwner = user.role === "product_owner";
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    
+    if (!isProjectManager && !isProductOwner && !isOperationsManager) {
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can access clients" });
     }
     try {
       const clients = await db
@@ -485,14 +489,19 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get available staff by specialization (for project managers and product owners)
+  // Get available staff by specialization (for project managers, product owners, and operations managers)
   app.get("/api/staff", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
-    // Only project managers and product owners can view staff
-    if (req.user!.role !== "project_manager" && req.user!.role !== "product_owner") {
+    const user = req.user!;
+    const isProjectManager = user.role === "project_manager";
+    const isProductOwner = user.role === "product_owner";
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    
+    // Only project managers, product owners, and operations managers can view staff
+    if (!isProjectManager && !isProductOwner && !isOperationsManager) {
       return res.status(403).send("Access denied");
     }
     const {specialization} = req.query;
@@ -1292,16 +1301,20 @@ export function registerRoutes(app: Express): Server {
     const {category} = req.body;
 
     // Check permissions
-    if (user.role === "project_manager") {
+    const isProjectManager = user.role === "project_manager";
+    const isProductOwner = user.role === "product_owner";
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+
+    if (isProjectManager) {
       // Project managers can create any project
-    } else if (user.role === "product_owner") {
+    } else if (isProductOwner) {
       // Product owners can only create Support & Maintenance projects
       if (category !== "support_maintenance") {
         return res.status(403).json({
           error: "Product owners can only create Support & Maintenance category projects"
         });
       }
-    } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+    } else if (isOperationsManager) {
       // Operations managers can create any project
     } else {
       return res.status(403).json({ error: "Only project managers, product owners, and operations managers can create projects" });
