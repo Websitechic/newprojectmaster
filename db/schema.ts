@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, json, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -689,38 +689,7 @@ export const notes = pgTable("notes", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const notesRelations = relations(notes, ({ one }) => ({
-  user: one(users, {
-    fields: [notes.userId],
-    references: [users.id],
-  }),
-}));
-
-export const memoReads = pgTable("memo_reads", {
-  id: serial("id").primaryKey(),
-  memoId: integer("memo_id").references(() => memos.id, { onDelete: "cascade" }).notNull(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  readAt: timestamp("read_at").defaultNow(),
-});
-
-export const memosRelations = relations(memos, ({ one, many }) => ({
-  sender: one(users, {
-    fields: [memos.sentBy],
-    references: [users.id],
-  }),
-  reads: many(memoReads),
-}));
-
-export const memoReadsRelations = relations(memoReads, ({ one }) => ({
-  memo: one(memos, {
-    fields: [memoReads.memoId],
-    references: [memos.id],
-  }),
-  user: one(users, {
-    fields: [memoReads.userId],
-    references: [users.id],
-  }),
-}));
+// Removed duplicate declarations - keeping the earlier definitions
 
 export const staffQueries = pgTable("staff_queries", {
   id: serial("id").primaryKey(),
@@ -796,29 +765,7 @@ export type ClientSentiment = typeof clientSentiment.$inferSelect;
 export const insertClientSentimentSchema = createInsertSchema(clientSentiment);
 export const selectClientSentimentSchema = createSelectSchema(clientSentiment);
 
-export const notes = pgTable("notes", {
-  id: serial("id").primaryKey(),
-  title: text("title").notNull().default(""),
-  content: text("content").notNull().default(""),
-  type: text("type", { 
-    enum: ["freetext", "todo"] 
-  }).notNull().default("freetext"),
-  todoItems: jsonb("todo_items").$type<{
-    id: string;
-    text: string;
-    completed: boolean;
-  }[]>().default([]),
-  createdBy: integer("created_by").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const notesRelations = relations(notes, ({ one }) => ({
-  creator: one(users, {
-    fields: [notes.createdBy],
-    references: [users.id],
-  }),
-}));
+// Removed duplicate notes declaration - keeping the earlier definition
 
 export type Note = typeof notes.$inferSelect;
 export const insertNoteSchema = createInsertSchema(notes);

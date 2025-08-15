@@ -1,10 +1,8 @@
 import { Express, Response, Request, NextFunction } from "express";
 
-// Extend Express Request interface to include authenticated user and body
+// Extend Express Request interface to include authenticated user
 interface AuthenticatedRequest extends Request {
   user?: any;
-  body: any;
-  isAuthenticated(): boolean;
 }
 import express from "express";
 import { createServer, Server } from "http";
@@ -96,7 +94,7 @@ const isProjectManagerOrOperationsManager = (req: Express.Request, res: Response
 
     if (isProductOwner) {
       // For product owners, check if the project is Support & Maintenance category
-      const {projectId} = req.body;
+      const {projectId} = (req as any).body;
       if (projectId) {
         try {
           const [project] = await db
@@ -507,36 +505,31 @@ export function registerRoutes(app: Express): Server {
     const {specialization} = req.query;
 
     // Get both staff and product owners
-    let query = db
-      .select()
-      .from(users)
-      .where(or(
-        eq(users.role, "staff"),
-        eq(users.role, "product_owner")
-      ));
-
+    let whereCondition;
+    
     // Only apply specialization filter to staff members, not product owners
     if (specialization) {
-      query = query.where(and(
+      whereCondition = or(
+        and(
+          eq(users.role, "staff"),
+          eq(users.specialization, specialization as string)
+        ),
+        eq(users.role, "product_owner")
+      );
+    } else {
+      whereCondition = or(
         eq(users.role, "staff"),
-        eq(users.specialization, specialization as string)
-      ));
-
-      // Also include all product owners regardless of specialization filter
-      const productOwners = await db
-        .select()
-        .from(users)
-        .where(eq(users.role, "product_owner"))
-        .orderBy(desc(users.lastActive));
-
-      const staffWithSpecialization = await query.orderBy(desc(users.lastActive));
-
-      const combined = [...staffWithSpecialization, ...productOwners];
-      return res.json(combined);
+        eq(users.role, "product_owner")
+      );
     }
+    
+    const query = db
+      .select()
+      .from(users)
+      .where(whereCondition);
 
-    const staff = await query.orderBy(desc(users.lastActive));
-    res.json(staff);
+    const staffAndProductOwners = await query.orderBy(desc(users.lastActive));
+    res.json(staffAndProductOwners);
   });
 
   // Debug endpoint to check project memberships
@@ -2405,7 +2398,6 @@ export function registerRoutes(app: Express): Server {
         .select({
           id: messages.id,
           content: messages.content,
-          type: messages.type,
           projectId: messages.projectId,
           userId: messages.userId,
           createdAt: messages.createdAt,
@@ -2420,9 +2412,7 @@ export function registerRoutes(app: Express): Server {
         .innerJoin(users, eq(messages.userId, users.id))
         .where(eq(messages.projectId, projectId));
 
-      if (type) {
-        query = query.where(eq(messages.type, type as string));
-      }
+      // Type filtering removed as messages table doesn't have type column
 
       const projectMessages = await query.orderBy(asc(messages.createdAt));
       console.log(`Returning ${projectMessages.length} messages for project ${projectId}, type: ${type}`);
@@ -3076,7 +3066,7 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      if (parsedStartDate && parsedEndDate && parsedStartDate > parsedParsedEndDate) {
+      if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
         return res.status(400).json({ error: "Start date cannot be after end date" });
       }
 
@@ -5220,7 +5210,7 @@ export function registerRoutes(app: Express): Server {
           emailVerified: users.emailVerified,
           createdAt: users.createdAt,
           lastActive: users.lastActive,
-          gender: users.gender,
+          // gender field removed as it doesn't exist in users table
         })
         .from(users)
         .where(eq(users.role, "client"))
@@ -6047,7 +6037,7 @@ export function registerRoutes(app: Express): Server {
             userId: manager.id,
             type: "client_sentiment",
             content: `${user.name} submitted ${sentiment} sentiment: ${reason.substring(0, 100)}${reason.length > 100 ? '...' : ''}`,
-            referenceId: newSentiment.id,
+            referenceId: newsentiment.id,
             referenceType: "client_sentiment",
             createdAt: new Date(),
           })
@@ -6069,13 +6059,13 @@ export function registerRoutes(app: Express): Server {
       }
 
       res.json({
-        id: newSentiment.id,
-        clientId: newSentiment.client_id,
-        sentiment: newSentiment.sentiment,
-        reason: newSentiment.reason,
-        createdAt: newSentiment.created_at,
-        weekStart: newSentiment.week_start,
-        weekEnd: newSentiment.week_end
+        id: newsentiment.id,
+        clientId: newsentiment.clientId,
+        sentiment: newsentiment.sentiment,
+        reason: newsentiment.reason,
+        createdAt: newsentiment.createdAt,
+        weekStart: newsentiment.weekStart,
+        weekEnd: newsentiment.weekEnd
       });
     } catch (error) {
       console.error("Error submitting client sentiment:", error);
