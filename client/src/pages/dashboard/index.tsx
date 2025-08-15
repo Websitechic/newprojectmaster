@@ -301,6 +301,96 @@ export default function Dashboard() {
           ) : (
             <>
               {/* Manager/Admin Dashboard */}
+              {/* Operations Manager Project Status Cards */}
+              {(user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  {/* Active Projects */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-green-700">
+                          <Play className="h-5 w-5" />
+                          Active Projects
+                        </div>
+                        <Badge variant="secondary">
+                          {projects?.filter(project => {
+                            // Projects with tasks currently being worked on (in_progress or timer running)
+                            const projectTasks = tasks?.filter(task => task.projectId === project.id) || [];
+                            return projectTasks.some(task => 
+                              task.status === "in_progress" || task.isTimerRunning
+                            );
+                          }).length || 0}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center text-gray-500 py-4">
+                        <p className="text-sm">Projects with active tasks</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Pending Projects */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-yellow-700">
+                          <Clock className="h-5 w-5" />
+                          Pending Projects
+                        </div>
+                        <Badge variant="secondary">
+                          {projects?.filter(project => {
+                            // Projects with no task activity for the past 1 week
+                            const oneWeekAgo = new Date();
+                            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                            
+                            const projectTasks = tasks?.filter(task => task.projectId === project.id) || [];
+                            if (projectTasks.length === 0) return true; // No tasks at all
+                            
+                            // Check if all tasks haven't been updated in the past week
+                            return projectTasks.every(task => {
+                              const lastUpdated = new Date(task.updatedAt || task.createdAt);
+                              return lastUpdated < oneWeekAgo;
+                            });
+                          }).length || 0}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center text-gray-500 py-4">
+                        <p className="text-sm">No activity for 1+ week</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Completed Projects */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-blue-700">
+                          <CheckCircle className="h-5 w-5" />
+                          Completed Projects
+                        </div>
+                        <Badge variant="secondary">
+                          {projects?.filter(project => {
+                            // Projects where all tasks are completed
+                            const projectTasks = tasks?.filter(task => task.projectId === project.id) || [];
+                            if (projectTasks.length === 0) return false; // No tasks means not completed
+                            
+                            return projectTasks.every(task => task.status === "completed");
+                          }).length || 0}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center text-gray-500 py-4">
+                        <p className="text-sm">All tasks completed</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                 {/* Tasks in Progress */}
                 <Card>
