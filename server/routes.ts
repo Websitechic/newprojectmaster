@@ -3093,7 +3093,7 @@ export function registerRoutes(app: Express): Server {
           const deliverableStartDate = new Date(deliverable.startDate);
           const deliverableEndDate = new Date(deliverable.endDate);
 
-          if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableEndDate.getTime())) {
+          if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableDeliverableEndDate.getTime())) {
             throw new Error(`Invalid date format in deliverable ${index + 1}`);
           }
 
