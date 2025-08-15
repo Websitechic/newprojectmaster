@@ -3076,7 +3076,7 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+      if (parsedStartDate && parsedEndDate && parsedStartDate > parsedParsedEndDate) {
         return res.status(400).json({ error: "Start date cannot be after end date" });
       }
 
@@ -6018,7 +6018,7 @@ export function registerRoutes(app: Express): Server {
       });
 
       // Use Drizzle ORM instead of raw SQL for better compatibility
-      const [newSentiment] = await db
+      const [newsentiment] = await db
         .insert(clientSentiment)
         .values({
           clientId: user.id,

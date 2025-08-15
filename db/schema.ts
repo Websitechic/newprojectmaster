@@ -656,6 +656,51 @@ export const memoReads = pgTable("memo_reads", {
   memoId: integer("memo_id").references(() => memos.id, { onDelete: "cascade" }).notNull(),
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   readAt: timestamp("read_at").defaultNow(),
+}, (table) => ({
+  uniqueMemoUser: unique().on(table.memoId, table.userId),
+}));
+
+export const memosRelations = relations(memos, ({ one, many }) => ({
+  sender: one(users, {
+    fields: [memos.sentBy],
+    references: [users.id],
+  }),
+  reads: many(memoReads),
+}));
+
+export const memoReadsRelations = relations(memoReads, ({ one }) => ({
+  memo: one(memos, {
+    fields: [memoReads.memoId],
+    references: [memos.id],
+  }),
+  user: one(users, {
+    fields: [memoReads.userId],
+    references: [users.id],
+  }),
+}));
+
+export const notes = pgTable("notes", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  category: text("category").default("general"),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const notesRelations = relations(notes, ({ one }) => ({
+  user: one(users, {
+    fields: [notes.userId],
+    references: [users.id],
+  }),
+}));
+
+export const memoReads = pgTable("memo_reads", {
+  id: serial("id").primaryKey(),
+  memoId: integer("memo_id").references(() => memos.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  readAt: timestamp("read_at").defaultNow(),
 });
 
 export const memosRelations = relations(memos, ({ one, many }) => ({
