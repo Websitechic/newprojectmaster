@@ -504,10 +504,9 @@ export function registerRoutes(app: Express): Server {
     }
     const {specialization} = req.query;
 
-    // Get both staff and product owners
+    // Only apply specialization filter to staff members, not product owners
     let whereCondition;
 
-    // Only apply specialization filter to staff members, not product owners
     if (specialization) {
       whereCondition = or(
         and(
