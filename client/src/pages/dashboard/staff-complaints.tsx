@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { Header } from "@/components/dashboard/header";
+import { Sidebar } from "@/components/dashboard/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +32,7 @@ interface StaffComplaint {
 }
 
 export default function StaffComplaints() {
+  const [location] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -130,16 +134,22 @@ export default function StaffComplaints() {
 
   if (!isOperationsManager) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-10">
-            <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
-            <p className="text-gray-500 text-center">
-              Only operations managers can access staff complaints.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="flex h-screen">
+        <Sidebar currentPath={location} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <div className="flex-1 overflow-auto p-6">
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-10">
+                <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
+                <p className="text-gray-500 text-center">
+                  Only operations managers can access staff complaints.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -149,13 +159,17 @@ export default function StaffComplaints() {
   const resolvedComplaints = complaints.filter(c => c.status === 'resolved');
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Staff Complaints Management</h1>
-        <p className="text-gray-600">
-          Review and manage complaints submitted by staff members.
-        </p>
-      </div>
+    <div className="flex h-screen">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <div className="flex-1 overflow-auto p-6">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Staff Complaints Management</h1>
+            <p className="text-gray-600">
+              Review and manage complaints submitted by staff members.
+            </p>
+          </div>
 
       <Tabs defaultValue="pending" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
@@ -326,6 +340,8 @@ export default function StaffComplaints() {
           )}
         </DialogContent>
       </Dialog>
+        </div>
+      </div>
     </div>
   );
 }
