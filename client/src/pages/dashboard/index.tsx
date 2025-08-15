@@ -301,7 +301,6 @@ export default function Dashboard() {
           ) : (
             <>
               {/* Manager/Admin Dashboard */}
-              {/* Operations Manager Project Status Cards */}
               {(user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   {/* Active Projects */}
@@ -313,20 +312,47 @@ export default function Dashboard() {
                           Active Projects
                         </div>
                         <Badge variant="secondary">
-                          {projects?.filter(project => {
-                            // Projects with tasks currently being worked on (in_progress or timer running)
-                            const projectTasks = tasks?.filter(task => task.projectId === project.id) || [];
-                            return projectTasks.some(task => 
-                              task.status === "in_progress" || task.isTimerRunning
-                            );
-                          }).length || 0}
+                          {(() => {
+                            const activeProjects = projects?.filter(project => {
+                              // Projects with tasks currently being worked on (in_progress or timer running)
+                              return tasks?.some(task => 
+                                task.projectId === project.id && 
+                                (task.status === 'in_progress' || task.isTimerRunning)
+                              );
+                            }) || [];
+                            return activeProjects.length;
+                          })()}
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-center text-gray-500 py-4">
-                        <p className="text-sm">Projects with active tasks</p>
-                      </div>
+                    <CardContent className="max-h-48 overflow-y-auto">
+                      {(() => {
+                        const activeProjects = projects?.filter(project => {
+                          return tasks?.some(task => 
+                            task.projectId === project.id && 
+                            (task.status === 'in_progress' || task.isTimerRunning)
+                          );
+                        }) || [];
+
+                        if (activeProjects.length === 0) {
+                          return (
+                            <p className="text-sm text-muted-foreground">
+                              No active projects currently
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-2">
+                            {activeProjects.map(project => (
+                              <div key={project.id} className="p-2 bg-green-50 rounded-md border border-green-200">
+                                <p className="font-medium text-sm text-green-900">{project.name}</p>
+                                <p className="text-xs text-green-700">{project.category?.replace('_', ' ')}</p>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
 
@@ -339,27 +365,33 @@ export default function Dashboard() {
                           Pending Projects
                         </div>
                         <Badge variant="secondary">
-                          {projects?.filter(project => {
-                            // Projects with no task activity for the past 1 week
-                            const oneWeekAgo = new Date();
-                            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                            
-                            const projectTasks = tasks?.filter(task => task.projectId === project.id) || [];
-                            if (projectTasks.length === 0) return true; // No tasks at all
-                            
-                            // Check if all tasks haven't been updated in the past week
-                            return projectTasks.every(task => {
-                              const lastUpdated = new Date(task.updatedAt || task.createdAt);
-                              return lastUpdated < oneWeekAgo;
-                            });
-                          }).length || 0}
+                          {projects?.filter(project => project.status === 'pending').length || 0}
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-center text-gray-500 py-4">
-                        <p className="text-sm">No activity for 1+ week</p>
-                      </div>
+                    <CardContent className="max-h-48 overflow-y-auto">
+                      {(() => {
+                        const pendingProjects = projects?.filter(project => project.status === 'pending') || [];
+
+                        if (pendingProjects.length === 0) {
+                          return (
+                            <p className="text-sm text-muted-foreground">
+                              No pending projects
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-2">
+                            {pendingProjects.map(project => (
+                              <div key={project.id} className="p-2 bg-yellow-50 rounded-md border border-yellow-200">
+                                <p className="font-medium text-sm text-yellow-900">{project.name}</p>
+                                <p className="text-xs text-yellow-700">{project.category?.replace('_', ' ')}</p>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
 
@@ -372,20 +404,52 @@ export default function Dashboard() {
                           Completed Projects
                         </div>
                         <Badge variant="secondary">
-                          {projects?.filter(project => {
-                            // Projects where all tasks are completed
-                            const projectTasks = tasks?.filter(task => task.projectId === project.id) || [];
-                            if (projectTasks.length === 0) return false; // No tasks means not completed
-                            
-                            return projectTasks.every(task => task.status === "completed");
-                          }).length || 0}
+                          {(() => {
+                            const oneMonthAgo = new Date();
+                            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+                            return projects?.filter(project => {
+                              // Projects completed in the last month
+                              return project.status === 'completed' || 
+                                     (project.progress === 100 && 
+                                      project.updatedAt && 
+                                      new Date(project.updatedAt) >= oneMonthAgo);
+                            }).length || 0;
+                          })()}
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-center text-gray-500 py-4">
-                        <p className="text-sm">All tasks completed</p>
-                      </div>
+                    <CardContent className="max-h-48 overflow-y-auto">
+                      {(() => {
+                        const oneMonthAgo = new Date();
+                        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+                        const completedProjects = projects?.filter(project => {
+                          return project.status === 'completed' || 
+                                 (project.progress === 100 && 
+                                  project.updatedAt && 
+                                  new Date(project.updatedAt) >= oneMonthAgo);
+                        }) || [];
+
+                        if (completedProjects.length === 0) {
+                          return (
+                            <p className="text-sm text-muted-foreground">
+                              No projects completed this month
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-2">
+                            {completedProjects.map(project => (
+                              <div key={project.id} className="p-2 bg-blue-50 rounded-md border border-blue-200">
+                                <p className="font-medium text-sm text-blue-900">{project.name}</p>
+                                <p className="text-xs text-blue-700">{project.category?.replace('_', ' ')}</p>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 </div>
