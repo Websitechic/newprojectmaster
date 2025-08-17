@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { formatDistanceToNow } from "date-fns"; // Assuming formatDistanceToNow is needed and imported from date-fns
 
 interface Notification {
   id: number;
@@ -188,7 +189,7 @@ export function NotificationsDropdown() {
           notifications.slice(0, 5).map((notification) => (
             <DropdownMenuItem
               key={notification.id}
-              className={`cursor-pointer ${!notification.read ? 'bg-muted' : ''}`}
+              className="cursor-pointer"
               onClick={() => handleNotificationClick(notification)}
             >
               <div className="flex flex-col space-y-1">
