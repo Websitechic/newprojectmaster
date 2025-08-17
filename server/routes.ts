@@ -6864,6 +6864,233 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // KPI Report API Routes
+
+  // Get productivity data for KPI report
+  app.get("/api/kpi-report/productivity", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access KPI reports" });
+    }
+
+    try {
+      const { staffId, startDate, endDate } = req.query;
+
+      if (!staffId || !startDate || !endDate) {
+        return res.status(400).json({ error: "Staff ID, start date, and end date are required" });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+
+      // Get staff member info
+      const [staffMember] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parseInt(staffId as string)))
+        .limit(1);
+
+      if (!staffMember) {
+        return res.status(404).json({ error: "Staff member not found" });
+      }
+
+      // Get tasks worked on during the date range
+      const workedTasks = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          timeSpent: tasks.timeSpent,
+          updatedAt: tasks.updatedAt,
+          projectName: projects.name,
+        })
+        .from(tasks)
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(
+          and(
+            eq(tasks.assigneeId, parseInt(staffId as string)),
+            gte(tasks.updatedAt, start),
+            sql`${tasks.updatedAt} <= ${end}`,
+            sql`${tasks.timeSpent} > 0`
+          )
+        );
+
+      // Generate daily breakdown
+      const dailyData = [];
+      const weeklyData = [];
+      let totalDays = 0;
+      let totalHours = 0;
+      let goodDays = 0;
+      let fairDays = 0;
+      let poorDays = 0;
+
+      // Generate data for each day in range
+      const currentDate = new Date(start);
+      while (currentDate <= end) {
+        const dayStart = new Date(currentDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(currentDate);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        // Skip weekends
+        if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
+          const dayTasks = workedTasks.filter(task => {
+            const taskDate = new Date(task.updatedAt);
+            return taskDate >= dayStart && taskDate <= dayEnd;
+          });
+
+          const dayTimeSpent = dayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0);
+          const dayHours = dayTimeSpent / 3600; // Convert seconds to hours
+
+          let performanceStatus = 'poor';
+          let performanceColor = '#EF4444';
+
+          if (dayHours >= 4) {
+            performanceStatus = 'good';
+            performanceColor = '#22C55E';
+            goodDays++;
+          } else if (dayHours >= 2) {
+            performanceStatus = 'fair';
+            performanceColor = '#EAB308';
+            fairDays++;
+          } else {
+            poorDays++;
+          }
+
+          const dayData = {
+            date: currentDate.toISOString().split('T')[0],
+            totalSpanHours: dayHours, // Simplified for now
+            actualWorkHours: dayHours,
+            performanceStatus,
+            performanceColor,
+            taskCount: dayTasks.length,
+            tasks: dayTasks.map(t => t.title),
+          };
+
+          dailyData.push(dayData);
+
+          // Add to weekly data if it's a weekday
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          weeklyData.push({
+            day: currentDate.toISOString().split('T')[0],
+            dayName: dayNames[currentDate.getDay()],
+            hours: Math.round(dayHours * 100) / 100,
+            totalSpanHours: Math.round(dayHours * 100) / 100,
+            performanceStatus,
+            performanceColor,
+          });
+
+          totalDays++;
+          totalHours += dayHours;
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      const avgHoursPerDay = totalDays > 0 ? totalHours / totalDays : 0;
+
+      const response = {
+        dailyData,
+        weeklyData,
+        summary: {
+          totalDays,
+          avgHoursPerDay: Math.round(avgHoursPerDay * 100) / 100,
+          goodDays,
+          fairDays,
+          poorDays,
+        }
+      };
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error fetching KPI productivity data:", error);
+      res.status(500).json({ error: "Failed to fetch productivity data" });
+    }
+  });
+
+  // Export KPI report in different formats
+  app.post("/api/kpi-report/export", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can export KPI reports" });
+    }
+
+    try {
+      const { format, staffId, staffName, department, dateRange, productivityData } = req.body;
+
+      if (!format || !staffName || !productivityData) {
+        return res.status(400).json({ error: "Missing required export data" });
+      }
+
+      const filename = `kpi-report-${staffName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}`;
+
+      if (format === 'csv') {
+        // Generate CSV content
+        let csvContent = "Date,Total Hours,Performance Status,Task Count,Tasks\n";
+        
+        productivityData.dailyData.forEach((day: any) => {
+          const tasks = day.tasks.join('; ');
+          csvContent += `${day.date},${day.actualWorkHours.toFixed(2)},${day.performanceStatus},${day.taskCount},"${tasks}"\n`;
+        });
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+        res.send(csvContent);
+
+      } else if (format === 'excel') {
+        // For Excel, we'll create a simple CSV with Excel MIME type
+        // In a production environment, you'd use a library like exceljs
+        let csvContent = "Date,Total Hours,Performance Status,Task Count,Tasks\n";
+        
+        productivityData.dailyData.forEach((day: any) => {
+          const tasks = day.tasks.join('; ');
+          csvContent += `${day.date},${day.actualWorkHours.toFixed(2)},${day.performanceStatus},${day.taskCount},"${tasks}"\n`;
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
+        res.send(csvContent);
+
+      } else if (format === 'pdf') {
+        // For PDF, we'll create a simple text-based report
+        // In a production environment, you'd use a library like puppeteer or jsPDF
+        let pdfContent = `KPI REPORT\n\n`;
+        pdfContent += `Employee: ${staffName}\n`;
+        pdfContent += `Department: ${department}\n`;
+        pdfContent += `Date Range: Last ${dateRange} days\n\n`;
+        pdfContent += `SUMMARY:\n`;
+        pdfContent += `Total Days: ${productivityData.summary.totalDays}\n`;
+        pdfContent += `Average Hours/Day: ${productivityData.summary.avgHoursPerDay}\n`;
+        pdfContent += `Good Days: ${productivityData.summary.goodDays}\n`;
+        pdfContent += `Fair Days: ${productivityData.summary.fairDays}\n`;
+        pdfContent += `Poor Days: ${productivityData.summary.poorDays}\n\n`;
+        pdfContent += `DAILY BREAKDOWN:\n`;
+        
+        productivityData.dailyData.forEach((day: any) => {
+          pdfContent += `${day.date}: ${day.actualWorkHours.toFixed(2)} hours (${day.performanceStatus}) - ${day.taskCount} tasks\n`;
+        });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.pdf"`);
+        res.send(pdfContent);
+
+      } else {
+        return res.status(400).json({ error: "Invalid export format" });
+      }
+
+    } catch (error) {
+      console.error("Error exporting KPI report:", error);
+      res.status(500).json({ error: "Failed to export report" });
+    }
+  });
+
   // Productivity tracking endpoint
   app.get("/api/productivity", async (req: Request, res: Response) => {
     if (!req.isAuthenticated()) {
