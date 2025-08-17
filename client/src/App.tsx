@@ -122,7 +122,7 @@ function Router() {
       <Route path="/dashboard/staff-complaints" component={StaffComplaints} />
       <Route path="/dashboard/staff-queries" component={StaffQueries} />
       <Route path="/dashboard/communication-tracker" component={CommunicationTrackerPage} />
-      <Route path="/dashboard/kpi-report" element={<KPIReportPage />} />
+      <Route path="/dashboard/kpi-report" component={KPIReportPage} />
       <Route path="/technical-management" component={TechnicalManagementFixed} />
     </Switch>
   );

@@ -299,7 +299,7 @@ export function registerRoutes(app: Express): Server {
         .where(eq(projects.clientId, user.id));
 
       const projectIds = clientProjects.map(p => p.id);
-      const projectManagerIds = [...new Set(clientProjects.map(p => p.managerId).filter(Boolean))];
+      const projectManagerIds = Array.from(new Set(clientProjects.map(p => p.managerId).filter(Boolean)));
 
       let allowedContacts: any[] = [];
 
@@ -629,7 +629,7 @@ export function registerRoutes(app: Express): Server {
       // Update staff status based on current leave applications
       for (const leave of approvedLeaves) {
         const leaveStart = new Date(leave.startDate);
-        const leaveEnd = new new Date(leave.endDate);
+        const leaveEnd = new Date(leave.endDate);
         const leaveStartDate = new Date(leaveStart.getFullYear(), leaveStart.getMonth(), leaveStart.getDate());
         const leaveEndDate = new Date(leaveEnd.getFullYear(), leaveEnd.getMonth(), leaveEnd.getDate());
 
