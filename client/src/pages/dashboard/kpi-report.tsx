@@ -1,0 +1,470 @@
+
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { Header } from "@/components/dashboard/header";
+import { Sidebar } from "@/components/dashboard/sidebar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Download, FileText, FileSpreadsheet, FileDown, Calendar, User, Building2, TrendingUp } from "lucide-react";
+import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
+
+interface StaffMember {
+  id: number;
+  name: string;
+  email: string;
+  specialization: string;
+  role: string;
+}
+
+interface DailyProductivity {
+  date: string;
+  totalSpanHours: number;
+  actualWorkHours: number;
+  performanceStatus: 'poor' | 'fair' | 'good';
+  performanceColor: string;
+  taskCount: number;
+  tasks: string[];
+}
+
+interface WeeklyData {
+  day: string;
+  hours: number;
+  totalSpanHours: number;
+  performanceStatus: string;
+  performanceColor: string;
+}
+
+interface ProductivityData {
+  dailyData: DailyProductivity[];
+  weeklyData: WeeklyData[];
+  summary: {
+    totalDays: number;
+    avgHoursPerDay: number;
+    goodDays: number;
+    fairDays: number;
+    poorDays: number;
+  };
+}
+
+const departments = [
+  { value: "technical_support", label: "Technical Support" },
+  { value: "developer", label: "Development" },
+  { value: "design", label: "Design" },
+  { value: "media_buying", label: "Media Buying" },
+  { value: "copywriting", label: "Copywriting" },
+  { value: "automation", label: "Automation" },
+  { value: "community_manager", label: "Community Manager" },
+  { value: "project_manager", label: "Project Manager" },
+  { value: "product_owner", label: "Product Owner" }
+];
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'good': return 'bg-green-100 text-green-800';
+    case 'fair': return 'bg-yellow-100 text-yellow-800';
+    case 'poor': return 'bg-red-100 text-red-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const formatTime = (hours: number) => {
+  const h = Math.floor(hours);
+  const m = Math.floor((hours - h) * 60);
+  return `${h}h ${m}m`;
+};
+
+export default function KPIReportPage() {
+  const { user } = useAuth();
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+  const [selectedStaff, setSelectedStaff] = useState<string>("");
+  const [dateRange, setDateRange] = useState<number>(30); // Last 30 days
+
+  // Check if user is operations manager
+  if (user?.role !== "operations_manager" && user?.specialization !== "operations_manager") {
+    return (
+      <div className="flex h-screen">
+        <Sidebar currentPath="/dashboard/kpi-report" />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+              <p className="text-gray-600">Only operations managers can access KPI reports.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Get staff members for selected department
+  const { data: staffMembers = [] } = useQuery<StaffMember[]>({
+    queryKey: ["/api/staff", selectedDepartment],
+    queryFn: async () => {
+      if (!selectedDepartment) return [];
+      const response = await fetch(`/api/staff?specialization=${selectedDepartment}`);
+      if (!response.ok) throw new Error("Failed to fetch staff");
+      return response.json();
+    },
+    enabled: !!selectedDepartment,
+  });
+
+  // Get productivity data for selected staff
+  const { data: productivityData, isLoading: isLoadingProductivity } = useQuery<ProductivityData>({
+    queryKey: ["/api/kpi-report/productivity", selectedStaff, dateRange],
+    queryFn: async () => {
+      if (!selectedStaff) return null;
+      
+      const endDate = new Date();
+      const startDate = subDays(endDate, dateRange);
+      
+      const response = await fetch(
+        `/api/kpi-report/productivity?staffId=${selectedStaff}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch productivity data");
+      return response.json();
+    },
+    enabled: !!selectedStaff,
+  });
+
+  const handleExport = async (format: 'pdf' | 'excel' | 'csv') => {
+    if (!selectedStaff || !productivityData) return;
+
+    try {
+      const staffMember = staffMembers.find(s => s.id.toString() === selectedStaff);
+      const response = await fetch('/api/kpi-report/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          format,
+          staffId: selectedStaff,
+          staffName: staffMember?.name,
+          department: selectedDepartment,
+          dateRange,
+          productivityData,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Export failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kpi-report-${staffMember?.name}-${format === 'excel' ? 'xlsx' : format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Export error:', error);
+    }
+  };
+
+  const selectedStaffMember = staffMembers.find(s => s.id.toString() === selectedStaff);
+
+  return (
+    <div className="flex h-screen">
+      <Sidebar currentPath="/dashboard/kpi-report" />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <div className="flex-1 overflow-auto p-6">
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">KPI Report</h1>
+                <p className="text-gray-600 mt-1">Employee performance and productivity tracking</p>
+              </div>
+              {selectedStaff && productivityData && (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleExport('csv')}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    CSV
+                  </Button>
+                  <Button
+                    onClick={() => handleExport('excel')}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Excel
+                  </Button>
+                  <Button
+                    onClick={() => handleExport('pdf')}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    PDF
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Filters */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Filter & Selection
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
+                      Department
+                    </label>
+                    <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.value} value={dept.value}>
+                            {dept.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
+                      Employee
+                    </label>
+                    <Select 
+                      value={selectedStaff} 
+                      onValueChange={setSelectedStaff}
+                      disabled={!selectedDepartment}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select employee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {staffMembers.map((staff) => (
+                          <SelectItem key={staff.id} value={staff.id.toString()}>
+                            {staff.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
+                      Date Range
+                    </label>
+                    <Select value={dateRange.toString()} onValueChange={(value) => setDateRange(parseInt(value))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7">Last 7 days</SelectItem>
+                        <SelectItem value="14">Last 14 days</SelectItem>
+                        <SelectItem value="30">Last 30 days</SelectItem>
+                        <SelectItem value="60">Last 60 days</SelectItem>
+                        <SelectItem value="90">Last 90 days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedStaffMember && (
+                    <div className="flex flex-col justify-end">
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-blue-600" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-900">{selectedStaffMember.name}</p>
+                            <p className="text-xs text-blue-600">{selectedStaffMember.specialization}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Productivity Summary */}
+            {productivityData && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Days</p>
+                        <p className="text-2xl font-bold">{productivityData.summary.totalDays}</p>
+                      </div>
+                      <Calendar className="h-8 w-8 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Avg Hours/Day</p>
+                        <p className="text-2xl font-bold">{productivityData.summary.avgHoursPerDay.toFixed(1)}h</p>
+                      </div>
+                      <TrendingUp className="h-8 w-8 text-orange-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Good Days</p>
+                        <p className="text-2xl font-bold text-green-600">{productivityData.summary.goodDays}</p>
+                      </div>
+                      <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <div className="h-4 w-4 bg-green-500 rounded-full"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Poor Days</p>
+                        <p className="text-2xl font-bold text-red-600">{productivityData.summary.poorDays}</p>
+                      </div>
+                      <div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center">
+                        <div className="h-4 w-4 bg-red-500 rounded-full"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Weekly Activity Chart */}
+            {productivityData?.weeklyData && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Weekly Activity Tracking</CardTitle>
+                  <CardDescription>
+                    Daily productivity trend for {selectedStaffMember?.name}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={productivityData.weeklyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis label={{ value: 'Hours', angle: -90, position: 'insideLeft' }} />
+                      <Tooltip 
+                        formatter={(value: number, name: string) => [
+                          `${value.toFixed(2)} hours`,
+                          name === "hours" ? "Actual Work" : "Total Span"
+                        ]}
+                        labelFormatter={(label) => `Day: ${label}`}
+                      />
+                      <Bar dataKey="totalSpanHours" fill="#E5E7EB" name="Total Span" />
+                      <Bar dataKey="hours" fill="#3b82f6" name="Actual Work" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Daily Productivity Table */}
+            {productivityData?.dailyData && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Daily Productivity Details</CardTitle>
+                  <CardDescription>
+                    Detailed breakdown of daily work performance
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingProductivity ? (
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Total Span</TableHead>
+                          <TableHead>Actual Work</TableHead>
+                          <TableHead>Tasks</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {productivityData.dailyData.map((day, index) => (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">
+                              {format(new Date(day.date), "MMM dd, yyyy")}
+                            </TableCell>
+                            <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
+                            <TableCell className="font-medium">
+                              {formatTime(day.actualWorkHours)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-600">{day.taskCount} tasks</span>
+                                {day.tasks.length > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    {day.tasks.slice(0, 2).join(", ")}
+                                    {day.tasks.length > 2 && ` +${day.tasks.length - 2} more`}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(day.performanceStatus)}>
+                                {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* No Data State */}
+            {!selectedStaff && (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8">
+                    <User className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Select an Employee</h3>
+                    <p className="text-gray-600">
+                      Choose a department and employee to view their KPI report and productivity data.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

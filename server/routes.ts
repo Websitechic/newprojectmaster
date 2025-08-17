@@ -629,7 +629,7 @@ export function registerRoutes(app: Express): Server {
       // Update staff status based on current leave applications
       for (const leave of approvedLeaves) {
         const leaveStart = new Date(leave.startDate);
-        const leaveEnd = new Date(leave.endDate);
+        const leaveEnd = new new Date(leave.endDate);
         const leaveStartDate = new Date(leaveStart.getFullYear(), leaveStart.getMonth(), leaveStart.getDate());
         const leaveEndDate = new Date(leaveEnd.getFullYear(), leaveEnd.getMonth(), leaveEnd.getDate());
 
@@ -3093,7 +3093,7 @@ export function registerRoutes(app: Express): Server {
           const deliverableStartDate = new Date(deliverable.startDate);
           const deliverableEndDate = new Date(deliverable.endDate);
 
-          if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableDeliverableEndDate.getTime())) {
+          if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableEndDate.getTime())) {
             throw new Error(`Invalid date format in deliverable ${index + 1}`);
           }
 
@@ -4914,7 +4914,8 @@ export function registerRoutes(app: Express): Server {
       const requestId = parseInt(req.params.id);
 
       // Check if user has permission to update this request
-      const existingRequest = await db.select().from(technicalSupportRequests)
+      const existingRequest = await db.select()
+        .from(technicalSupportRequests)
         .where(eq(technicalSupportRequests.id, requestId))
         .limit(1);
 
@@ -5776,7 +5777,7 @@ export function registerRoutes(app: Express): Server {
           FROM memos m
           LEFT JOIN users u ON m.sent_by = u.id
           LEFT JOIN memo_reads mr ON m.id = mr.memo_id AND mr.user_id = ${user.id}
-          WHERE ${sql.raw(`(${whereConditions.join(') OR (')})`)}
+                    WHERE ${sql.raw(`(${whereConditions.join(') OR (')})`)}
           ORDER BY m.created_at DESC
         `);
 
@@ -7344,5 +7345,201 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // KPI Report API Routes
+
+  // Get productivity data for KPI report (Operations Manager only)
+  app.get("/api/kpi-report/productivity", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access KPI reports" });
+    }
+
+    try {
+      const { staffId, startDate, endDate } = req.query;
+
+      if (!staffId || !startDate || !endDate) {
+        return res.status(400).json({ error: "Staff ID, start date, and end date are required" });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+
+      // Get all tasks for the staff member within the date range
+      const staffTasks = await db
+        .select()
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.assigneeId, parseInt(staffId as string)),
+            gte(tasks.updatedAt, start),
+            eq(tasks.isTimerRunning, false) // Only completed timer sessions
+          )
+        )
+        .orderBy(desc(tasks.updatedAt));
+
+      // Process daily productivity data
+      const dailyMap = new Map();
+      const dateRange = [];
+
+      // Create date range
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dateRange.push(new Date(d));
+      }
+
+      // Initialize daily data
+      dateRange.forEach(date => {
+        const dateKey = date.toISOString().split('T')[0];
+        dailyMap.set(dateKey, {
+          date: dateKey,
+          totalSpanHours: 0,
+          actualWorkHours: 0,
+          performanceStatus: 'poor',
+          performanceColor: '#EF4444',
+          taskCount: 0,
+          tasks: []
+        });
+      });
+
+      // Process tasks and calculate daily data
+      for (const task of staffTasks) {
+        const taskDate = new Date(task.updatedAt);
+        const dateKey = taskDate.toISOString().split('T')[0];
+
+        if (dailyMap.has(dateKey)) {
+          const dayData = dailyMap.get(dateKey);
+          const workHours = (task.timeSpent || 0) / 3600; // Convert seconds to hours
+
+          dayData.actualWorkHours += workHours;
+          dayData.taskCount++;
+          dayData.tasks.push(task.title);
+
+          // Update performance status based on total work hours
+          if (dayData.actualWorkHours >= 4) {
+            dayData.performanceStatus = 'good';
+            dayData.performanceColor = '#22C55E';
+          } else if (dayData.actualWorkHours >= 2) {
+            dayData.performanceStatus = 'fair';
+            dayData.performanceColor = '#EAB308';
+          }
+
+          // For total span, we'll estimate based on work pattern
+          dayData.totalSpanHours = Math.max(dayData.actualWorkHours, dayData.actualWorkHours * 1.2);
+        }
+      }
+
+      const dailyData = Array.from(dailyMap.values()).reverse();
+
+      // Prepare weekly data (last 7 days from end date)
+      const weeklyData = dailyData.slice(-7).map(day => {
+        const dayName = new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' });
+        return {
+          day: dayName,
+          hours: day.actualWorkHours,
+          totalSpanHours: day.totalSpanHours,
+          performanceStatus: day.performanceStatus,
+          performanceColor: day.performanceColor
+        };
+      });
+
+      // Calculate summary statistics
+      const workingDays = dailyData.filter(day => day.actualWorkHours > 0);
+      const totalHours = workingDays.reduce((sum, day) => sum + day.actualWorkHours, 0);
+      const avgHoursPerDay = workingDays.length > 0 ? totalHours / workingDays.length : 0;
+
+      const goodDays = dailyData.filter(day => day.performanceStatus === 'good').length;
+      const fairDays = dailyData.filter(day => day.performanceStatus === 'fair').length;
+      const poorDays = dailyData.filter(day => day.performanceStatus === 'poor' && day.actualWorkHours > 0).length;
+
+      const summary = {
+        totalDays: workingDays.length,
+        avgHoursPerDay,
+        goodDays,
+        fairDays,
+        poorDays
+      };
+
+      res.json({
+        dailyData,
+        weeklyData,
+        summary
+      });
+    } catch (error) {
+      console.error("Error fetching KPI productivity data:", error);
+      res.status(500).json({ error: "Failed to fetch productivity data" });
+    }
+  });
+
+  // Export KPI report (Operations Manager only)
+  app.post("/api/kpi-report/export", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can export KPI reports" });
+    }
+
+    try {
+      const { format, staffName, department, dateRange, productivityData } = req.body;
+
+      if (format === 'csv') {
+        // Generate CSV
+        const csvHeader = 'Date,Total Span Hours,Actual Work Hours,Task Count,Performance Status\n';
+        const csvRows = productivityData.dailyData.map((day: any) => 
+          `${day.date},${day.totalSpanHours.toFixed(2)},${day.actualWorkHours.toFixed(2)},${day.taskCount},${day.performanceStatus}`
+        ).join('\n');
+
+        const csvContent = csvHeader + csvRows;
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="kpi-report-${staffName}-${Date.now()}.csv"`);
+        res.send(csvContent);
+      } else if (format === 'excel') {
+        // For Excel, we'll return JSON data that the frontend can convert
+        // In a real implementation, you'd use a library like xlsx
+        const excelData = {
+          staffName,
+          department,
+          dateRange,
+          summary: productivityData.summary,
+          dailyData: productivityData.dailyData
+        };
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="kpi-report-${staffName}-${Date.now()}.json"`);
+        res.json(excelData);
+      } else if (format === 'pdf') {
+        // For PDF, we'll return structured data
+        // In a real implementation, you'd use a library like puppeteer or pdfkit
+        const pdfData = {
+          title: `KPI Report - ${staffName}`,
+          department,
+          dateRange,
+          generatedAt: new Date().toISOString(),
+          summary: productivityData.summary,
+          dailyData: productivityData.dailyData,
+          weeklyData: productivityData.weeklyData
+        };
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="kpi-report-${staffName}-${Date.now()}.json"`);
+        res.json(pdfData);
+      } else {
+        return res.status(400).json({ error: "Invalid export format" });
+      }
+    } catch (error) {
+      console.error("Error exporting KPI report:", error);
+      res.status(500).json({ error: "Failed to export report" });
+    }
+  });
+
   return server;
+}
+ 
+return server;
 }

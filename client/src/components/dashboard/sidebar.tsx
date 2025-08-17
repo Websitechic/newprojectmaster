@@ -25,6 +25,7 @@ import {
   TrendingUp, // Imported TrendingUp icon
   ThumbsUp, // Imported ThumbsUp icon
   LifeBuoy, // Imported LifeBuoy icon
+  BarChart3, // Imported BarChart3 icon
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -383,64 +384,28 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   // Operations Manager specific menu items
   const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" ? [
     {
-      icon: <Users size={20} />,
-      label: "Staff Report",
-      href: "/dashboard/staff-report",
-      key: "operations-staff-report",
-    },
-    {
-      icon: <Building2 size={20} />,
-      label: "Client Accounts",
-      href: "/dashboard/client-accounts",
-      key: "operations-client-accounts",
-    },
-    {
-      icon: <Wrench size={20} />,
-      label: "Technical Management",
-      href: "/dashboard/technical-management",
-      key: "operations-technical-management",
-    },
-    {
-      icon: <Calendar size={20} />,
-      label: "Bookings",
-      href: "/dashboard/bookings",
-      key: "operations-bookings",
-    },
-    {
-      icon: <Calendar size={20} />,
-      label: "Leave Management",
-      href: "/dashboard/leave-management",
-      key: "operations-leave-management",
-    },
-    {
-      icon: <Clock size={20} />,
-      label: "Deadline Extension Requests",
-      href: "/dashboard/deadline-extension-requests",
-      key: "operations-deadline-extensions-management",
-    },
-    {
       icon: <FileText size={20} />,
       label: "Memos",
       href: "/dashboard/memos",
       key: "operations-memos",
     },
     {
-      icon: <MessageSquareX size={20} />,
-      label: "Clients complain",
-      href: "/dashboard/complaints-management",
-      key: "operations-complaints-management",
-    },
-    {
-      icon: <FileText size={20} />,
+      icon: <StickyNote size={20} />,
       label: "Notes",
       href: "/dashboard/notes",
       key: "operations-notes",
     },
     {
-      icon: <AlertTriangle size={20} />,
-      label: "Staff Complaints",
-      href: "/dashboard/staff-complaints",
-      key: "operations-staff-complaints",
+      icon: <Users size={20} />,
+      label: "Staff Report",
+      href: "/dashboard/staff-report",
+      key: "operations-staff-report",
+    },
+    {
+      icon: <BarChart3 size={20} />,
+      label: "KPI Report",
+      href: "/dashboard/kpi-report",
+      key: "operations-kpi-report",
     },
     {
       icon: <FileText size={20} />,
@@ -449,13 +414,31 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       key: "operations-staff-queries",
     },
     {
+      icon: <MessageSquare size={20} />,
+      label: "Complaints",
+      href: "/dashboard/complaints-management",
+      key: "operations-complaints-management",
+    },
+    {
+      icon: <Calendar size={20} />,
+      label: "Leave Management",
+      href: "/dashboard/leave-management",
+      key: "operations-leave-management",
+    },
+    {
+      icon: <Users size={20} />,
+      label: "Client Accounts",
+      href: "/dashboard/client-accounts",
+      key: "operations-client-accounts",
+    },
+    {
       icon: <TrendingUp size={20} />,
-      label: "Client Sentiment Tracker",
-      href: "/dashboard/client-sentiment-tracker",
+      label: "Client Sentiment",
+      href: "/dashboard/client-sentiment",
       key: "operations-client-sentiment-tracker",
     },
     {
-      icon: <MessageSquare size={20} />,
+      icon: <MessageCircle size={20} />,
       label: "Communication Tracker",
       href: "/dashboard/communication-tracker",
       key: "operations-communication-tracker",
