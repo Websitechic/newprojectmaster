@@ -1464,7 +1464,7 @@ export function registerRoutes(app: Express): Server {
                 console.log(`Project addition notification sent to user ${memberId} via SSE`);
               } catch (error) {
                 console.error(`Error sending SSE notification to user ${memberId}:`, error);
-                global.sseClients.delete(memberId);
+                global.sseClients?.delete(memberId);
               }
             }
           } catch (error) {
@@ -1556,7 +1556,7 @@ export function registerRoutes(app: Express): Server {
           console.log(`Project invitation notification sent to user ${userId} via SSE`);
         } catch (error) {
           console.error(`Error sending SSE notification to user ${userId}:`, error);
-          global.sseClients.delete(userId);
+          global.sseClients?.delete(userId);
         }
       } else {
         console.log(`User ${userId} not connected via SSE for project invitation`);
@@ -5528,7 +5528,7 @@ export function registerRoutes(app: Express): Server {
         screenshotUrl = `/uploads/complaint-screenshots/${req.file.filename}`;
       }
 
-      // Create complaint record using raw SQL since we don't have Drizzle schema for complaints table
+      // Create complaint record using raw SQL since we don't have a Drizzle schema for complaints table
       const result = await db.execute(sql`
         INSERT INTO complaints (name, email, product_manager_name, developer_name, technical_manager_name, valuable_things, detailed_explanation, screenshot_url, submitter_id)
         VALUES (${name.trim()}, ${email.trim()}, ${productManagerName?.trim() || null}, ${developerName?.trim() || null}, ${technicalManagerName?.trim() || null}, ${JSON.stringify(parsedValuableThings)}::jsonb, ${detailedExplanation.trim()}, ${screenshotUrl || null}, ${req.user!.id})
@@ -6492,8 +6492,7 @@ export function registerRoutes(app: Express): Server {
       await db.execute(sql`
         UPDATE communication_delays 
         SET status = 'discarded', updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${delayedResponseId}
-      `);
+        WHERE id = ${delayedResponseId}      `);
 
       // Notify the staff member
       const [staffNotification] = await db
@@ -7437,7 +7436,7 @@ export function registerRoutes(app: Express): Server {
       const weeklyData = dailyData.slice(-7).map(day => {
         const dayName = new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' });
         return {
-          day: dayName,
+          day: day.date,
           hours: day.actualWorkHours,
           totalSpanHours: day.totalSpanHours,
           performanceStatus: day.performanceStatus,
@@ -7540,6 +7539,6 @@ export function registerRoutes(app: Express): Server {
 
   return server;
 }
- 
+
 return server;
 }
