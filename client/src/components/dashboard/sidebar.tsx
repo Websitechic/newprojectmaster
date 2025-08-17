@@ -21,6 +21,14 @@ import {
   StickyNote,
   PlayCircle,
   LogOut,
+  CheckSquare,
+  CalendarDays,
+  AlertTriangle,
+  Star,
+  Shield,
+  Phone,
+  Building2,
+  MessageSquare,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
