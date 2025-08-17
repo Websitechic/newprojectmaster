@@ -182,11 +182,11 @@ export function NotificationsDropdown() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         {notifications.length === 0 ? (
-          <DropdownMenuItem disabled>
-            No notifications
+          <DropdownMenuItem key="no-notifications" disabled>
+            <span className="text-sm text-muted-foreground">No notifications</span>
           </DropdownMenuItem>
         ) : (
-          notifications.slice(0, 5).map((notification) => (
+          notifications.slice(0, 5).map((notification, index) => (
             <DropdownMenuItem
               key={notification.id}
               className="cursor-pointer"
