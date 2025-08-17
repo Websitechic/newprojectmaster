@@ -2,26 +2,19 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
+  CheckSquare,
   FolderOpen,
-  Users,
-  Calendar,
-  MessageCircle,
-  Settings,
-  Bell,
-  BookOpen,
-  FileText,
-  BarChart3,
   Clock,
   Wrench,
   MessageSquareX,
   Home,
+  MessageCircle,
   TrendingUp,
   ThumbsUp,
   LifeBuoy,
   StickyNote,
   PlayCircle,
   LogOut,
-  CheckSquare,
   CalendarDays,
   AlertTriangle,
   Star,
@@ -29,6 +22,7 @@ import {
   Phone,
   Building2,
   MessageSquare,
+  BarChart3,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";

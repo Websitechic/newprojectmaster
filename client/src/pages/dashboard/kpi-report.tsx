@@ -170,6 +170,33 @@ export default function KPIReportPage() {
 
   const selectedStaffMember = staffMembers.find(s => s.id.toString() === selectedStaff);
 
+  // Calculate productivity score
+  const calculateProductivityScore = (data: ProductivityData) => {
+    if (!data || data.summary.totalDays === 0) return 0;
+    
+    const totalDays = data.summary.totalDays;
+    const goodDaysWeight = data.summary.goodDays * 100;
+    const fairDaysWeight = data.summary.fairDays * 70;
+    const poorDaysWeight = data.summary.poorDays * 30;
+    
+    const weightedScore = (goodDaysWeight + fairDaysWeight + poorDaysWeight) / totalDays;
+    return Math.round(weightedScore);
+  };
+
+  const productivityScore = productivityData ? calculateProductivityScore(productivityData) : 0;
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getScoreBgColor = (score: number) => {
+    if (score >= 80) return 'bg-green-100';
+    if (score >= 60) return 'bg-yellow-100';
+    return 'bg-red-100';
+  };
+
   return (
     <div className="flex h-screen">
       <Sidebar currentPath="/dashboard/kpi-report" />
@@ -303,7 +330,30 @@ export default function KPIReportPage() {
 
             {/* Productivity Summary */}
             {productivityData && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <>
+                {/* Productivity Score Card */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center mb-4">
+                        <div className={`w-20 h-20 rounded-full ${getScoreBgColor(productivityScore)} flex items-center justify-center`}>
+                          <span className={`text-2xl font-bold ${getScoreColor(productivityScore)}`}>
+                            {productivityScore}%
+                          </span>
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Daily Productivity Score</h3>
+                      <p className="text-sm text-gray-600">
+                        Based on {productivityData.summary.totalDays} working days
+                      </p>
+                      <Badge className={`mt-2 ${getScoreColor(productivityScore)} ${getScoreBgColor(productivityScore)} border-0`}>
+                        {productivityScore >= 80 ? 'Excellent' : productivityScore >= 60 ? 'Good' : 'Needs Improvement'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
@@ -355,7 +405,8 @@ export default function KPIReportPage() {
                     </div>
                   </CardContent>
                 </Card>
-              </div>
+                </div>
+              </>
             )}
 
             {/* Weekly Activity Chart */}
