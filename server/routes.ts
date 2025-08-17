@@ -7539,6 +7539,3 @@ export function registerRoutes(app: Express): Server {
 
   return server;
 }
-
-return server;
-}
