@@ -20,6 +20,7 @@ import {
   LifeBuoy,
   StickyNote,
   PlayCircle,
+  LogOut,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
