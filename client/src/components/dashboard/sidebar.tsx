@@ -19,14 +19,14 @@ import {
   Clock,
   Wrench,
   MessageSquareX,
-  Home, // Imported Home icon
-  FolderOpen, // Imported FolderOpen icon
-  MessageCircle, // Imported MessageCircle icon
-  TrendingUp, // Imported TrendingUp icon
-  ThumbsUp, // Imported ThumbsUp icon
-  LifeBuoy, // Imported LifeBuoy icon
-  BarChart3, // Imported BarChart3 icon
-  StickyNote, // Imported StickyNote icon
+  Home,
+  FolderOpen,
+  MessageCircle,
+  TrendingUp,
+  ThumbsUp,
+  LifeBuoy,
+  BarChart3,
+  StickyNote,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
