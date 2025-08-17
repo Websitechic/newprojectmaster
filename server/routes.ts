@@ -7036,50 +7036,103 @@ export function registerRoutes(app: Express): Server {
         let csvContent = "Date,Total Hours,Performance Status,Task Count,Tasks\n";
         
         productivityData.dailyData.forEach((day: any) => {
-          const tasks = day.tasks.join('; ');
-          csvContent += `${day.date},${day.actualWorkHours.toFixed(2)},${day.performanceStatus},${day.taskCount},"${tasks}"\n`;
+          const tasks = (day.tasks || []).join('; ');
+          csvContent += `${day.date},${(day.actualWorkHours || 0).toFixed(2)},${day.performanceStatus || 'N/A'},${day.taskCount || 0},"${tasks}"\n`;
         });
 
-        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+        res.setHeader('Cache-Control', 'no-cache');
         res.send(csvContent);
 
       } else if (format === 'excel') {
-        // For Excel, we'll create a simple CSV with Excel MIME type
-        // In a production environment, you'd use a library like exceljs
+        // Generate CSV content with proper Excel formatting
         let csvContent = "Date,Total Hours,Performance Status,Task Count,Tasks\n";
         
         productivityData.dailyData.forEach((day: any) => {
-          const tasks = day.tasks.join('; ');
-          csvContent += `${day.date},${day.actualWorkHours.toFixed(2)},${day.performanceStatus},${day.taskCount},"${tasks}"\n`;
+          const tasks = (day.tasks || []).join('; ');
+          csvContent += `${day.date},${(day.actualWorkHours || 0).toFixed(2)},${day.performanceStatus || 'N/A'},${day.taskCount || 0},"${tasks}"\n`;
         });
 
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
+        // Use CSV format with .xls extension for better Excel compatibility
+        res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.xls"`);
+        res.setHeader('Cache-Control', 'no-cache');
         res.send(csvContent);
 
       } else if (format === 'pdf') {
-        // For PDF, we'll create a simple text-based report
-        // In a production environment, you'd use a library like puppeteer or jsPDF
-        let pdfContent = `KPI REPORT\n\n`;
-        pdfContent += `Employee: ${staffName}\n`;
-        pdfContent += `Department: ${department}\n`;
-        pdfContent += `Date Range: Last ${dateRange} days\n\n`;
-        pdfContent += `SUMMARY:\n`;
-        pdfContent += `Total Days: ${productivityData.summary.totalDays}\n`;
-        pdfContent += `Average Hours/Day: ${productivityData.summary.avgHoursPerDay}\n`;
-        pdfContent += `Good Days: ${productivityData.summary.goodDays}\n`;
-        pdfContent += `Fair Days: ${productivityData.summary.fairDays}\n`;
-        pdfContent += `Poor Days: ${productivityData.summary.poorDays}\n\n`;
-        pdfContent += `DAILY BREAKDOWN:\n`;
+        // Generate HTML content that browsers can print to PDF
+        let htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KPI Report - ${staffName}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .summary { margin: 20px 0; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .good { background-color: #d4edda; }
+        .fair { background-color: #fff3cd; }
+        .poor { background-color: #f8d7da; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>KPI REPORT</h1>
+        <h2>${staffName}</h2>
+        <p>Department: ${department || 'N/A'}</p>
+        <p>Date Range: Last ${dateRange} days</p>
+        <p>Generated on: ${new Date().toLocaleDateString()}</p>
+    </div>
+    
+    <div class="summary">
+        <h3>SUMMARY</h3>
+        <p><strong>Total Days:</strong> ${productivityData.summary?.totalDays || 0}</p>
+        <p><strong>Average Hours/Day:</strong> ${(productivityData.summary?.avgHoursPerDay || 0).toFixed(2)}</p>
+        <p><strong>Good Days:</strong> ${productivityData.summary?.goodDays || 0}</p>
+        <p><strong>Fair Days:</strong> ${productivityData.summary?.fairDays || 0}</p>
+        <p><strong>Poor Days:</strong> ${productivityData.summary?.poorDays || 0}</p>
+    </div>
+    
+    <h3>DAILY BREAKDOWN</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Total Hours</th>
+                <th>Performance Status</th>
+                <th>Task Count</th>
+                <th>Tasks</th>
+            </tr>
+        </thead>
+        <tbody>`;
         
         productivityData.dailyData.forEach((day: any) => {
-          pdfContent += `${day.date}: ${day.actualWorkHours.toFixed(2)} hours (${day.performanceStatus}) - ${day.taskCount} tasks\n`;
+          const tasks = (day.tasks || []).join(', ');
+          const statusClass = day.performanceStatus || 'poor';
+          htmlContent += `
+            <tr class="${statusClass}">
+                <td>${day.date}</td>
+                <td>${(day.actualWorkHours || 0).toFixed(2)}</td>
+                <td>${day.performanceStatus || 'N/A'}</td>
+                <td>${day.taskCount || 0}</td>
+                <td>${tasks}</td>
+            </tr>`;
         });
 
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}.pdf"`);
-        res.send(pdfContent);
+        htmlContent += `
+        </tbody>
+    </table>
+</body>
+</html>`;
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.html"`);
+        res.setHeader('Cache-Control', 'no-cache');
+        res.send(htmlContent);
 
       } else {
         return res.status(400).json({ error: "Invalid export format" });
