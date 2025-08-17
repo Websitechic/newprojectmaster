@@ -26,6 +26,7 @@ import {
   ThumbsUp, // Imported ThumbsUp icon
   LifeBuoy, // Imported LifeBuoy icon
   BarChart3, // Imported BarChart3 icon
+  StickyNote, // Imported StickyNote icon
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
