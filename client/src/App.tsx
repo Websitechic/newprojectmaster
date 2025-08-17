@@ -46,6 +46,7 @@ import Notes from "@/pages/dashboard/notes";
 import { Suspense } from "react";
 import CommunicationTrackerPage from "@/pages/dashboard/communication-tracker";
 import KPIReportPage from "@/pages/dashboard/kpi-report";
+import { lazy } from "react";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -118,9 +119,9 @@ function Router() {
       <Route path="/dashboard/client-sentiment" component={ClientSentiment} />
       <Route path="/dashboard/client-sentiment-tracker" component={ClientSentimentTracker} />
       <Route path="/dashboard/memos" component={Memos} />
-      <Route path="/dashboard/notes" component={Notes} />
-      <Route path="/dashboard/staff-complaints" component={StaffComplaints} />
-      <Route path="/dashboard/staff-queries" component={StaffQueries} />
+      <Route path="/dashboard/notes" component={lazy(() => import("./pages/dashboard/notes"))} />
+      <Route path="/dashboard/staff-queries" component={lazy(() => import("./pages/dashboard/staff-queries"))} />
+      <Route path="/dashboard/sop" component={lazy(() => import("./pages/dashboard/sop"))} />
       <Route path="/dashboard/communication-tracker" component={CommunicationTrackerPage} />
       <Route path="/dashboard/kpi-report" component={KPIReportPage} />
       <Route path="/technical-management" component={TechnicalManagementFixed} />

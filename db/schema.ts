@@ -765,6 +765,49 @@ export type ClientSentiment = typeof clientSentiment.$inferSelect;
 export const insertClientSentimentSchema = createInsertSchema(clientSentiment);
 export const selectClientSentimentSchema = createSelectSchema(clientSentiment);
 
+// SOP Tables
+export const sops = pgTable("sops", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  department: text("department").notNull(),
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const sopSegments = pgTable("sop_segments", {
+  id: serial("id").primaryKey(),
+  sopId: integer("sop_id").references(() => sops.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  fileUrl: text("file_url"),
+  segmentOrder: integer("segment_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const sopsRelations = relations(sops, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [sops.createdBy],
+    references: [users.id],
+  }),
+  segments: many(sopSegments),
+}));
+
+export const sopSegmentsRelations = relations(sopSegments, ({ one }) => ({
+  sop: one(sops, {
+    fields: [sopSegments.sopId],
+    references: [sops.id],
+  }),
+}));
+
+export type Sop = typeof sops.$inferSelect;
+export type SopSegment = typeof sopSegments.$inferSelect;
+export const insertSopSchema = createInsertSchema(sops);
+export const selectSopSchema = createSelectSchema(sops);
+export const insertSopSegmentSchema = createInsertSchema(sopSegments);
+export const selectSopSegmentSchema = createSelectSchema(sopSegments);
+
 // Removed duplicate notes declaration - keeping the earlier definition
 
 export type Note = typeof notes.$inferSelect;

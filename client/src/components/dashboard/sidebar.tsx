@@ -399,52 +399,10 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       key: "operations-notes",
     },
     {
-      icon: <Users size={20} />,
-      label: "Staff Report",
-      href: "/dashboard/staff-report",
-      key: "operations-staff-report",
-    },
-    {
-      icon: <BarChart3 size={20} />,
-      label: "KPI Report",
-      href: "/dashboard/kpi-report",
-      key: "operations-kpi-report",
-    },
-    {
-      icon: <FileText size={20} />,
-      label: "Staff Queries",
-      href: "/dashboard/staff-queries",
-      key: "operations-staff-queries",
-    },
-    {
-      icon: <MessageSquare size={20} />,
-      label: "Complaints",
-      href: "/dashboard/complaints-management",
-      key: "operations-complaints-management",
-    },
-    {
-      icon: <Calendar size={20} />,
-      label: "Leave Management",
-      href: "/dashboard/leave-management",
-      key: "operations-leave-management",
-    },
-    {
-      icon: <Users size={20} />,
-      label: "Client Accounts",
-      href: "/dashboard/client-accounts",
-      key: "operations-client-accounts",
-    },
-    {
-      icon: <TrendingUp size={20} />,
-      label: "Client Sentiment Tracker",
-      href: "/dashboard/client-sentiment-tracker",
-      key: "operations-client-sentiment-tracker",
-    },
-    {
-      icon: <MessageCircle size={20} />,
-      label: "Communication Tracker",
-      href: "/dashboard/communication-tracker",
-      key: "operations-communication-tracker",
+      icon: <BookOpen size={20} />,
+      label: "SOP",
+      href: "/dashboard/sop",
+      key: "operations-sop",
     },
   ] : [];
 
