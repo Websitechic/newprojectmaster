@@ -596,29 +596,14 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      // Get all staff members with their current work status
+      // Get all staff members with their current work status - using only existing fields
       const staffMembers = await db
-        .select({
-          id: users.id,
-          name: users.name,
-          username: users.username,
-          email: users.email,
-          specialization: users.specialization,
-          status: users.status,
-          workStatus: users.workStatus,
-          breakStartTime: users.breakStartTime,
-          breakCount: users.breakCount,
-          absenceReason: users.absenceReason,
-          absenceEndDate: users.absenceEndDate,
-          currentTaskId: users.currentTaskId,
-          taskStartTime: users.taskStartTime,
-          lastActive: users.lastActive,
-        })
+        .select()
         .from(users)
         .where(eq(users.role, "staff"))
         .orderBy(desc(users.lastActive));
 
-      // Get all tasks for these staff members
+      // Get all tasks for these staff members - using actual schema fields
       const allTasks = await db
         .select({
           id: tasks.id,
@@ -633,8 +618,6 @@ export function registerRoutes(app: Express): Server {
           updatedAt: tasks.updatedAt,
           isTimerRunning: tasks.isTimerRunning,
           timerStartTime: tasks.timerStartTime,
-          timerDuration: tasks.timerDuration,
-          assignedHours: tasks.assignedHours,
           priority: tasks.priority,
           progress: tasks.progress,
           startDate: tasks.startDate,
@@ -658,8 +641,8 @@ export function registerRoutes(app: Express): Server {
         // Calculate engagement info
         let engagedTaskInfo = null;
         if (engagedTask) {
-          const totalHoursSpent = engagedTask.timerDuration ? engagedTask.timerDuration / 3600 : 0;
-          const assignedHours = engagedTask.assignedHours || 0;
+          const totalHoursSpent = engagedTask.timeSpent ? engagedTask.timeSpent / 3600 : 0;
+          const assignedHours = engagedTask.workingHours || 0;
           const remainingHours = Math.max(0, assignedHours - totalHoursSpent);
 
           engagedTaskInfo = {
