@@ -21,15 +21,18 @@ interface ExtendedRequest extends Request {
 export function setupWebSocket(wss: WebSocketServer) {
   // Set up ping interval to keep connections alive
   const interval = setInterval(() => {
-    wss.clients.forEach((ws: ExtendedWebSocket) => {
-      if (!ws.isAlive) {
-        console.log(`Terminating inactive connection for user ${ws.userId}`);
-        return ws.terminate();
-      }
+    if (wss && wss.clients) {
+      wss.clients.forEach((ws) => {
+        const extWs = ws as ExtendedWebSocket;
+        if (!extWs.isAlive) {
+          console.log(`Terminating inactive connection for user ${extWs.userId}`);
+          return extWs.terminate();
+        }
 
-      ws.isAlive = false;
-      ws.ping();
-    });
+        extWs.isAlive = false;
+        extWs.ping();
+      });
+    }
   }, 30000);
 
   wss.on('close', () => {
@@ -56,7 +59,7 @@ export function setupWebSocket(wss: WebSocketServer) {
       if (!global.connectedClients) {
         global.connectedClients = new Map();
       }
-      global.connectedClients.set(userId, ws);
+      global.connectedClients.set(userId, ws as any);
       console.log(`WebSocket authenticated for user ${userId}`);
 
       // Send authentication success message
@@ -100,10 +103,11 @@ export function setupWebSocket(wss: WebSocketServer) {
               message: newMessage,
             });
 
-            wss.clients.forEach((client: ExtendedWebSocket) => {
-              if (client.projectId === ws.projectId && 
-                  client.readyState === WebSocket.OPEN) {
-                client.send(messageData);
+            wss.clients.forEach((client) => {
+              const extClient = client as ExtendedWebSocket;
+              if (extClient.projectId === ws.projectId && 
+                  extClient.readyState === WebSocket.OPEN) {
+                extClient.send(messageData);
               }
             });
           }
