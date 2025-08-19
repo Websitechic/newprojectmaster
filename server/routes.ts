@@ -415,6 +415,8 @@ export function registerRoutes(app: Express): Server {
           currentTaskId: users.currentTaskId,
           taskStartTime: users.taskStartTime,
           lastActive: users.lastActive,
+          createdAt: users.createdAt,
+          role: users.role,
         })
         .from(users)
         .where(eq(users.role, "staff"))
@@ -429,6 +431,7 @@ export function registerRoutes(app: Express): Server {
           status: tasks.status,
           projectId: tasks.projectId,
           assigneeId: tasks.assigneeId,
+          assignedBy: tasks.assignedBy,
           deadline: tasks.deadline,
           createdAt: tasks.createdAt,
           updatedAt: tasks.updatedAt,
@@ -436,6 +439,12 @@ export function registerRoutes(app: Express): Server {
           timerStartTime: tasks.timerStartTime,
           timerDuration: tasks.timerDuration,
           assignedHours: tasks.assignedHours,
+          priority: tasks.priority,
+          progress: tasks.progress,
+          startDate: tasks.startDate,
+          workingHours: tasks.workingHours,
+          timeSpent: tasks.timeSpent,
+          hasBeenStarted: tasks.hasBeenStarted,
           projectName: projects.name,
         })
         .from(tasks)
