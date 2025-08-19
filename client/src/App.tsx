@@ -44,10 +44,9 @@ import StaffComplaints from "@/pages/dashboard/staff-complaints";
 import StaffQueries from "@/pages/dashboard/staff-queries";
 import Notes from "@/pages/dashboard/notes";
 import SOPPage from "@/pages/dashboard/sop";
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import CommunicationTrackerPage from "@/pages/dashboard/communication-tracker";
 import KPIReportPage from "@/pages/dashboard/kpi-report";
-import { lazy } from "react";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -79,7 +78,12 @@ function Router() {
   }
 
   return (
-    <Switch>
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    }>
+      <Switch>
       <Route path="/auth">
         {user ? <Redirect to="/dashboard" /> : <AuthPage />}
       </Route>
@@ -122,11 +126,14 @@ function Router() {
       <Route path="/dashboard/memos" component={Memos} />
       <Route path="/dashboard/notes" component={lazy(() => import("./pages/dashboard/notes"))} />
       <Route path="/dashboard/staff-queries" component={lazy(() => import("./pages/dashboard/staff-queries"))} />
+      <Route path="/dashboard/staff-complaints" component={lazy(() => import("./pages/dashboard/staff-complaints"))} />
+      <Route path="/dashboard/client-complaints" component={ComplaintsManagement} />
       <Route path="/dashboard/sop" component={SOPPage} />
       <Route path="/dashboard/communication-tracker" component={CommunicationTrackerPage} />
       <Route path="/dashboard/kpi-report" component={KPIReportPage} />
       <Route path="/technical-management" component={TechnicalManagementFixed} />
-    </Switch>
+      </Switch>
+    </Suspense>
   );
 }
 
