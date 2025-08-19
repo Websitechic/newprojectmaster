@@ -1511,7 +1511,6 @@ export function registerRoutes(app: Express): Server {
         .values({
           title,
           content,
-          category: category || "personal",
           userId: user.id,
         })
         .returning();
@@ -1554,7 +1553,6 @@ export function registerRoutes(app: Express): Server {
         .set({
           title,
           content,
-          category: category || "personal",
           updatedAt: new Date(),
         })
         .where(and(eq(notes.id, noteId), eq(notes.userId, user.id)))
