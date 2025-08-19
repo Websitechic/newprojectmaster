@@ -1909,7 +1909,24 @@ export function registerRoutes(app: Express): Server {
     const projectId = parseInt(req.params.id);
     const { name, link, category } = req.body;
 
+    // Operations managers can add resource links
+    const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+
     try {
+      // Check if user has access to add resources
+      const project = await db.projects.findFirst({ where: { id: projectId } });
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const hasAccess = isOperationsManager || 
+                       (user.role === 'project_manager' && project.managerId === user.id) ||
+                       (user.role === 'client' && project.clientId === user.id);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       if (!name || !link || !category) {
         return res.status(400).json({ error: "Name, link, and category are required" });
       }
