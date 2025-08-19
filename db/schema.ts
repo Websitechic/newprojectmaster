@@ -749,8 +749,8 @@ export const clientSentiment = pgTable("client_sentiment", {
     enum: ["satisfied", "dissatisfied", "flags"] 
   }).notNull(),
   reason: text("reason").notNull(),
-  weekStart: timestamp("week_start", { mode: "date" }).notNull(),
-  weekEnd: timestamp("week_end", { mode: "date" }).notNull(),
+  weekStart: text("week_start").notNull(),
+  weekEnd: text("week_end").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
