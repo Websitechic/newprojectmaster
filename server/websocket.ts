@@ -19,7 +19,10 @@ interface ExtendedRequest extends Request {
 }
 
 export function setupWebSocket(wss: WebSocketServer) {
-  // WebSocket upgrade is now handled in server/index.ts to avoid duplication
+  // Initialize global connected clients map
+  if (!global.connectedClients) {
+    global.connectedClients = new Map();
+  }
 
   // Set up ping interval to keep connections alive
   const interval = setInterval(() => {
@@ -28,11 +31,15 @@ export function setupWebSocket(wss: WebSocketServer) {
         const extWs = ws as ExtendedWebSocket;
         if (!extWs.isAlive) {
           console.log(`Terminating inactive connection for user ${extWs.userId}`);
-          return extWs.terminate();
+          if (extWs.readyState === WebSocket.OPEN) {
+            extWs.terminate();
+          }
+          return;
         }
-
         extWs.isAlive = false;
-        extWs.ping();
+        if (extWs.readyState === WebSocket.OPEN) {
+          extWs.ping();
+        }
       });
     }
   }, 30000);
@@ -43,35 +50,20 @@ export function setupWebSocket(wss: WebSocketServer) {
 
   // Authentication middleware
   wss.on('connection', (ws, req) => {
-    console.log('New WebSocket connection, checking session');
     const extWs = ws as ExtendedWebSocket;
     extWs.isAlive = true;
 
     try {
-      // Safely check if request has session data from the upgrade
-      const extReq = req as any;
+      // Get session from request (passed during upgrade)
+      const session = (req as any).session;
       
-      // More defensive session checking to prevent undefined errors
-      const hasSession = extReq && typeof extReq === 'object' && extReq.session;
-      const hasPassport = hasSession && extReq.session.passport;
-      const hasUser = hasPassport && extReq.session.passport.user;
-      
-      console.log('WebSocket connection - session debug:', {
-        hasSession: !!hasSession,
-        hasPassport: !!hasPassport,
-        hasUser: !!hasUser,
-        userId: hasUser ? extReq.session.passport.user : 'undefined'
-      });
-
-      if (hasUser) {
-        const user = extReq.session.passport.user;
-        console.log(`WebSocket authenticated user: ${user}`);
-        extWs.userId = user;
+      if (session && session.passport && session.passport.user) {
+        const userId = session.passport.user;
+        console.log(`WebSocket authenticated user: ${userId}`);
+        extWs.userId = userId;
 
         // Add to global connected clients
-        if (global.connectedClients) {
-          global.connectedClients.set(user, extWs);
-        }
+        global.connectedClients.set(userId, extWs);
 
         // Send initial connection success message
         if (extWs.readyState === WebSocket.OPEN) {
@@ -79,14 +71,13 @@ export function setupWebSocket(wss: WebSocketServer) {
             type: 'connected',
             message: 'WebSocket connection established',
             authenticated: true,
-            userId: user
+            userId: userId
           }));
         }
       } else {
-        // Allow unauthenticated connections but mark them appropriately
-        console.log('WebSocket connection without authentication - allowing for potential later auth');
+        console.log('WebSocket connection without session - will wait for auth message');
         
-        // Send connection established message anyway - authentication can happen later
+        // Send connection established message for unauthenticated connections
         if (extWs.readyState === WebSocket.OPEN) {
           extWs.send(JSON.stringify({
             type: 'connected',
@@ -97,8 +88,6 @@ export function setupWebSocket(wss: WebSocketServer) {
       }
     } catch (error) {
       console.error('WebSocket connection error:', error);
-      // Don't close connection on errors - just log them and continue
-      console.log('Continuing with WebSocket connection despite error');
       
       // Send basic connection message even if there's an error
       try {
@@ -121,26 +110,43 @@ export function setupWebSocket(wss: WebSocketServer) {
     });
 
     // Handle connection close
-    extWs.on('close', () => {
+    extWs.on('close', (code, reason) => {
       if (extWs.userId && global.connectedClients) {
         global.connectedClients.delete(extWs.userId);
       }
-      console.log(`WebSocket connection closed for user ${extWs.userId}`);
+      console.log(`WebSocket connection closed for user ${extWs.userId}, code: ${code}, reason: ${reason}`);
     });
 
     // Handle messages
     extWs.on('message', (data) => {
       try {
         const message = JSON.parse(data.toString());
-        console.log('WebSocket message received:', message);
-
-        // Handle different message types here if needed
-        if (message.type === 'ping') {
-          extWs.send(JSON.stringify({ type: 'pong' }));
+        
+        // Handle auth message
+        if (message.type === 'auth' && message.userId) {
+          extWs.userId = message.userId;
+          global.connectedClients.set(message.userId, extWs);
+          console.log(`WebSocket user authenticated via message: ${message.userId}`);
+          
+          if (extWs.readyState === WebSocket.OPEN) {
+            extWs.send(JSON.stringify({
+              type: 'auth_success',
+              userId: message.userId
+            }));
+          }
+        } else if (message.type === 'ping') {
+          if (extWs.readyState === WebSocket.OPEN) {
+            extWs.send(JSON.stringify({ type: 'pong' }));
+          }
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
       }
+    });
+
+    // Handle WebSocket errors
+    extWs.on('error', (error) => {
+      console.error('WebSocket error:', error);
     });
   });
 

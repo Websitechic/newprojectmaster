@@ -127,67 +127,49 @@ let emailServiceInitialized = false;
         }
       }, 10000);
 
-      try {
-        // Parse session and attach to request
-        sessionParser(request as any, {} as any, (err: any) => {
+      // Parse session for WebSocket connection
+      sessionParser(request, {} as any, (err) => {
+        if (err) {
+          console.error('Session parsing error during WebSocket upgrade:', err);
           clearTimeout(upgradeTimeout);
-
-          if (err) {
-            console.log('Session parsing error during upgrade:', err);
-            if (socket && !socket.destroyed) {
-              socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-              socket.destroy();
-            }
-            return;
+          if (socket && !socket.destroyed) {
+            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+            socket.destroy();
           }
+          return;
+        }
 
+        try {
+          clearTimeout(upgradeTimeout);
           console.log('Session parsed for WebSocket upgrade');
 
-          // Log session state for debugging
-          const extRequest = request as any;
-          try {
-            if (extRequest && extRequest.session) {
-              console.log('Session exists:', !!extRequest.session);
-              console.log('Session passport:', !!(extRequest.session.passport));
-              console.log('Session user:', extRequest.session.passport?.user || 'none');
-            } else {
-              console.log('No session found in request');
-            }
-          } catch (sessionLogError) {
-            console.error('Error logging session state:', sessionLogError);
-          }
+          // Log session info for debugging
+          const session = (request as any).session;
+          console.log('Session exists:', !!session);
+          console.log('Session passport:', !!(session && session.passport));
+          console.log('Session user:', session && session.passport && session.passport.user);
 
-          // Allow connections - authentication will be verified in websocket.ts
-          try {
-            wss.handleUpgrade(request, socket, head, (ws) => {
-              console.log('WebSocket upgrade completed, emitting connection');
-              // Wrap the connection emission in a try-catch to prevent crashes
-              try {
-                wss.emit('connection', ws, request);
-              } catch (connectionError) {
-                console.error('Error emitting WebSocket connection:', connectionError);
-                // Close the WebSocket connection gracefully
-                if (ws && ws.readyState === ws.OPEN) {
-                  ws.close(1011, 'Server error during connection setup');
-                }
+          wss.handleUpgrade(request, socket, head, (ws) => {
+            console.log('WebSocket upgrade completed, emitting connection');
+            // Wrap the connection emission in a try-catch to prevent crashes
+            try {
+              wss.emit('connection', ws, request);
+            } catch (connectionError) {
+              console.error('Error emitting WebSocket connection:', connectionError);
+              // Close the WebSocket connection gracefully
+              if (ws && ws.readyState === ws.OPEN) {
+                ws.close(1011, 'Server error during connection setup');
               }
-            });
-          } catch (upgradeError) {
-            console.error('Error in handleUpgrade:', upgradeError);
-            if (socket && !socket.destroyed) {
-              socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-              socket.destroy();
             }
+          });
+        } catch (error) {
+          console.error('WebSocket upgrade error:', error);
+          if (socket && !socket.destroyed) {
+            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+            socket.destroy();
           }
-        });
-      } catch (error) {
-        clearTimeout(upgradeTimeout);
-        console.error('Error during WebSocket upgrade:', error);
-        if (socket && !socket.destroyed) {
-          socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-          socket.destroy();
         }
-      }
+      });
     });
 
     setupWebSocket(wss);

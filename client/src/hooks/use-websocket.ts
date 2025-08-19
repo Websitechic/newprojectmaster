@@ -14,20 +14,14 @@ export function useWebSocket(userId: number | undefined) {
   const { toast } = useToast();
 
   const connect = useCallback(() => {
-    // Check if userId is available and we haven't exceeded max reconnect attempts
-    if (!userId || reconnectAttempts.current >= maxReconnectAttempts) {
-      if (userId === undefined && reconnectAttempts.current === 0) {
-        // If userId is not yet available, don't log as an error or try to reconnect
-        // console.log("User ID not available, skipping WebSocket connection.");
-      } else if (reconnectAttempts.current >= maxReconnectAttempts) {
-        console.error('Max WebSocket reconnect attempts reached.');
-        // Optionally show a toast for persistent connection failures
-        toast({
-          title: "Connection Warning",
-          description: "Chat features may be limited. Try refreshing the page.",
-          variant: "destructive",
-        });
-      }
+    // Don't try to connect if we've exceeded max attempts
+    if (reconnectAttempts.current >= maxReconnectAttempts) {
+      console.error('Max WebSocket reconnect attempts reached.');
+      toast({
+        title: "Connection Warning",
+        description: "Chat features may be limited. Try refreshing the page.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -41,6 +35,12 @@ export function useWebSocket(userId: number | undefined) {
       return;
     }
 
+    // Close existing connection if it's in connecting or closing state
+    if (ws.current && ws.current.readyState !== WebSocket.CLOSED) {
+      ws.current.close();
+      ws.current = null;
+    }
+
     try {
       ws.current = new WebSocket(wsUrl);
 
@@ -48,8 +48,8 @@ export function useWebSocket(userId: number | undefined) {
       ws.current.onopen = () => {
         console.log('WebSocket connection opened');
         reconnectAttempts.current = 0; // Reset reconnect attempts on successful connection
-        // Send authentication message with userId
-        if (ws.current?.readyState === WebSocket.OPEN) {
+        // Send authentication message with userId if available
+        if (ws.current?.readyState === WebSocket.OPEN && userId) {
           ws.current.send(JSON.stringify({ type: "auth", userId }));
         }
       };
