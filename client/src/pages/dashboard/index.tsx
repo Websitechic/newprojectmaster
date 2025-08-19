@@ -31,14 +31,10 @@ export default function Dashboard() {
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
-    queryFn: () => fetch("/api/projects", { credentials: 'include' }).then(res => res.json()),
-    enabled: !!user,
   });
 
   const { data: tasks } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
-    queryFn: () => fetch("/api/tasks", { credentials: 'include' }).then(res => res.json()),
-    enabled: !!user,
   });
 
   useEffect(() => {
@@ -52,13 +48,13 @@ export default function Dashboard() {
 
   // Filter tasks for staff user or all tasks for managers and support maintenance clients
   const staffTasks = user?.role === "staff" 
-    ? (tasks?.filter(task => task.assigneeId === user?.id) || [])
-    : (tasks || []);
+    ? tasks?.filter(task => task.assigneeId === user?.id) || []
+    : tasks || [];
 
   // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
   const userTasks = user?.role === "staff" ? staffTasks : 
-                   user?.role === "client" && user?.clientType === "support_maintenance_client" ? (tasks || []) :
-                   (tasks || []);
+                   user?.role === "client" && user?.clientType === "support_maintenance_client" ? tasks || [] :
+                   tasks || [];
 
   // Categorize tasks
   const activeTask = staffTasks.find(task => task.isTimerRunning);
@@ -290,25 +286,14 @@ export default function Dashboard() {
               {/* Full Task List */}
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">All Your Tasks</h2>
-                {staffTasks && staffTasks.length > 0 ? (
+                {staffTasks.length > 0 ? (
                   <StaffTaskList 
-                    tasks={staffTasks} 
+                    tasks={tasks || []} 
                     projectId={staffTasks[0]?.projectId || 0}
                   />
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
-                    <div className="mb-4">
-                      <svg className="h-12 w-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      <p className="text-lg font-medium">No tasks assigned to you yet</p>
-                      <p className="text-sm text-gray-500 mt-2">Your project manager will assign tasks to you when they're ready.</p>
-                      {tasks && tasks.length > 0 && (
-                        <p className="text-xs text-blue-600 mt-2">
-                          There are {tasks.length} total tasks in the system, but none are assigned to you specifically.
-                        </p>
-                      )}
-                    </div>
+                    No tasks assigned to you yet.
                   </div>
                 )}
               </div>
@@ -673,19 +658,13 @@ export default function Dashboard() {
                 <h2 className="text-2xl font-bold">All Tasks</h2>
                 {tasks && tasks.length > 0 ? (
                   <TaskList 
-                    tasks={tasks.slice(0, 10)} 
+                    tasks={tasks?.slice(0, 5) || []} 
                     projectId={tasks[0]?.projectId || 0}
                     showNewTaskButton={false}
                   />
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
-                    <div className="mb-4">
-                      <svg className="h-12 w-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinecap="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      <p className="text-lg font-medium">No tasks available</p>
-                      <p className="text-sm text-gray-500 mt-2">Create some projects and tasks to get started.</p>
-                    </div>
+                    No tasks available.
                   </div>
                 )}
               </div>
