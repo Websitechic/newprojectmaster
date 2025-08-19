@@ -387,10 +387,82 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   // Operations Manager specific menu items
   const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" ? [
     {
+      icon: <Users size={20} />,
+      label: "Staff Report",
+      href: "/dashboard/staff-report",
+      key: "operations-staff-report",
+    },
+    {
+      icon: <BarChart3 size={20} />,
+      label: "KPI Report",
+      href: "/dashboard/kpi-report",
+      key: "operations-kpi-report",
+    },
+    {
+      icon: <Building2 size={20} />,
+      label: "Client Accounts",
+      href: "/dashboard/client-accounts",
+      key: "operations-client-accounts",
+    },
+    {
       icon: <FileText size={20} />,
       label: "Memos",
       href: "/dashboard/memos",
       key: "operations-memos",
+    },
+    {
+      icon: <Wrench size={20} />,
+      label: "Technical Management",
+      href: "/dashboard/technical-management",
+      key: "operations-technical-management",
+    },
+    {
+      icon: <CalendarDays size={20} />,
+      label: "Bookings",
+      href: "/dashboard/bookings",
+      key: "operations-bookings",
+    },
+    {
+      icon: <Calendar size={20} />,
+      label: "Leave Management",
+      href: "/dashboard/leave-management",
+      key: "operations-leave-management",
+    },
+    {
+      icon: <Clock size={20} />,
+      label: "Deadline Extension Requests",
+      href: "/dashboard/deadline-extension-requests",
+      key: "operations-deadline-extension-requests",
+    },
+    {
+      icon: <TrendingUp size={20} />,
+      label: "Client Sentiment Tracker",
+      href: "/dashboard/client-sentiment",
+      key: "operations-client-sentiment-tracker",
+    },
+    {
+      icon: <MessageSquare size={20} />,
+      label: "Staff Queries",
+      href: "/dashboard/staff-queries",
+      key: "operations-staff-queries",
+    },
+    {
+      icon: <Phone size={20} />,
+      label: "Communication Tracker",
+      href: "/dashboard/communication-tracker",
+      key: "operations-communication-tracker",
+    },
+    {
+      icon: <MessageSquareX size={20} />,
+      label: "Client Complaints",
+      href: "/dashboard/client-complaints",
+      key: "operations-client-complaints",
+    },
+    {
+      icon: <AlertTriangle size={20} />,
+      label: "Staff Complaints",
+      href: "/dashboard/staff-complaints",
+      key: "operations-staff-complaints",
     },
     {
       icon: <StickyNote size={20} />,
