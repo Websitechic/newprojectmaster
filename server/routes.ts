@@ -249,7 +249,7 @@ export function registerRoutes(app: Express): Server {
     if (!isProjectManager && !isProductOwner && !isOperationsManager) {
       return res.status(403).send("Access denied");
     }
-    
+
     const {specialization} = req.query;
 
     // Only apply specialization filter to staff members, not product owners
@@ -419,15 +419,15 @@ export function registerRoutes(app: Express): Server {
         if (task.timerStartTime && task.timerDuration) {
           const taskDate = new Date(task.timerStartTime);
           const dateKey = taskDate.toISOString().split('T')[0];
-          
+
           if (dailyMap.has(dateKey)) {
             const dailyData = dailyMap.get(dateKey);
             const hoursWorked = task.timerDuration / 3600; // Convert seconds to hours
-            
+
             dailyData.actualWorkHours += hoursWorked;
             dailyData.taskCount += 1;
             dailyData.tasks.push(task.title);
-            
+
             // Calculate performance status
             if (dailyData.actualWorkHours >= 7) {
               dailyData.performanceStatus = 'good';
@@ -441,7 +441,7 @@ export function registerRoutes(app: Express): Server {
       });
 
       const dailyData = Array.from(dailyMap.values());
-      
+
       // Calculate weekly data for chart
       const weeklyData = dailyData.map(day => ({
         day: new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }),
@@ -509,9 +509,9 @@ export function registerRoutes(app: Express): Server {
             day.performanceStatus
           ])
         ];
-        
+
         const csvContent = csvRows.map(row => row.join(',')).join('\n');
-        
+
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
         res.send(csvContent);
@@ -624,17 +624,17 @@ export function registerRoutes(app: Express): Server {
       const staffReport = staffMembers.map(staff => {
         const staffTasks = allTasks.filter(task => task.assigneeId === staff.id);
         const activeTasks = staffTasks.filter(task => task.status !== 'completed').length;
-        
+
         // Find currently engaged task (timer running)
         const engagedTask = staffTasks.find(task => task.isTimerRunning);
-        
+
         // Calculate engagement info
         let engagedTaskInfo = null;
         if (engagedTask) {
           const totalHoursSpent = engagedTask.timerDuration ? engagedTask.timerDuration / 3600 : 0;
           const assignedHours = engagedTask.assignedHours || 0;
           const remainingHours = Math.max(0, assignedHours - totalHoursSpent);
-          
+
           engagedTaskInfo = {
             staffId: staff.id,
             taskId: engagedTask.id,
@@ -656,7 +656,7 @@ export function registerRoutes(app: Express): Server {
           const breakStart = new Date(staff.breakStartTime);
           const now = new Date();
           const breakDuration = Math.floor((now.getTime() - breakStart.getTime()) / 60000); // minutes
-          
+
           breakInfo = {
             staffId: staff.id,
             breakStartTime: staff.breakStartTime,
@@ -797,7 +797,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // SOP API Routes (Operations Manager only)
-  
+
   // Get all SOPs with optional filtering
   app.get("/api/sops", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -811,13 +811,13 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const { department, search } = req.query;
-      
+
       let whereConditions = [];
-      
+
       if (department && department !== "all") {
         whereConditions.push(eq(sops.department, department as string));
       }
-      
+
       if (search) {
         whereConditions.push(sql`${sops.title} ILIKE ${'%' + search + '%'}`);
       }
@@ -836,7 +836,7 @@ export function registerRoutes(app: Express): Server {
             .from(sopSegments)
             .where(eq(sopSegments.sopId, sop.id))
             .orderBy(asc(sopSegments.segmentOrder));
-          
+
           return {
             ...sop,
             segments
@@ -1036,7 +1036,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       let queries;
-      
+
       if (isOperationsManager) {
         // Operations managers can see all queries
         queries = await db
@@ -1105,7 +1105,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       let complaints;
-      
+
       if (isOperationsManager) {
         // Operations managers can see all complaints
         complaints = await db
@@ -1397,7 +1397,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       let requests;
-      
+
       if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'operations_manager' || user.specialization === 'operations_manager') {
         // Technical support staff, project managers, product owners, and operations managers see all requests
         requests = await db
@@ -1661,7 +1661,7 @@ export function registerRoutes(app: Express): Server {
       const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
       const monday = new Date(now.setDate(diff));
       monday.setHours(0, 0, 0, 0);
-      
+
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       sunday.setHours(23, 59, 59, 999);
@@ -1767,6 +1767,39 @@ export function registerRoutes(app: Express): Server {
       console.error("Error fetching leave applications:", error);
       res.status(500).json({ error: "Failed to fetch leave applications" });
     }
+  });
+
+  // SSE endpoint for real-time notifications
+  app.get("/api/notifications/stream", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    // Set headers for SSE
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    // Send initial connection event
+    res.write('data: {"type":"connected"}\n\n');
+
+    // Keep connection alive with periodic heartbeat
+    const heartbeat = setInterval(() => {
+      res.write('data: {"type":"heartbeat"}\n\n');
+    }, 30000);
+
+    // Clean up on connection close
+    req.on('close', () => {
+      clearInterval(heartbeat);
+    });
+
+    req.on('aborted', () => {
+      clearInterval(heartbeat);
+    });
   });
 
   const wss = setupWebSocket(server);
