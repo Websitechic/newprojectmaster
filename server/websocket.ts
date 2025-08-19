@@ -42,120 +42,42 @@ export function setupWebSocket(wss: WebSocketServer) {
   });
 
   // Authentication middleware
-  wss.on("connection", async (ws: ExtendedWebSocket, request: any) => {
+  wss.on('connection', (ws, req) => {
+    console.log('New WebSocket connection, checking session');
+
     try {
-      console.log("New WebSocket connection, checking session");
-      ws.isAlive = true;
+      // Check if request has session data from the upgrade
+      if (req.session && req.session.passport && req.session.passport.user) {
+        const user = req.session.passport.user;
+        console.log(`WebSocket authenticated user: ${user}`);
+        ws.userId = user;
 
-      // Handle authentication properly
-      let userId = null;
-      
-      try {
-        userId = request.session?.passport?.user;
-        if (userId) {
-          console.log(`WebSocket authenticated for user ${userId}`);
-        } else {
-          console.log('WebSocket connection without authentication - will authenticate per message');
-          userId = null; // Keep as null instead of 'anonymous'
+        // Send initial connection success message
+        if (ws.readyState === ws.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'connected',
+            message: 'WebSocket connection established'
+          }));
         }
-      } catch (sessionError) {
-        console.log('Session access error:', sessionError.message);
-        userId = null;
-      }
-
-      // Store authenticated user's WebSocket connection
-      ws.userId = userId;
-      if (!global.connectedClients) {
-        global.connectedClients = new Map();
-      }
-      
-      // Only store if we have a valid userId
-      if (userId) {
-        global.connectedClients.set(userId, ws as any);
-      }
-
-      // Send authentication success message
-      ws.send(JSON.stringify({
-        type: "auth_success",
-        userId: userId
-      }));
-
-      // Set up WebSocket event handlers
-      ws.on('pong', () => {
-        ws.isAlive = true;
-      });
-
-      ws.on("message", async (data: string) => {
-        try {
-          const message = JSON.parse(data);
-          console.log('Received WebSocket message:', message);
-
-          // Handle authentication message
-          if (message.type === "auth" && message.userId) {
-            ws.userId = message.userId;
-            if (!global.connectedClients) {
-              global.connectedClients = new Map();
-            }
-            global.connectedClients.set(message.userId, ws as any);
-            console.log(`WebSocket re-authenticated for user ${message.userId}`);
-            return;
-          }
-
-          if (message.type === "join_project") {
-            ws.projectId = message.projectId;
-            console.log(`User ${ws.userId} joined project ${message.projectId}`);
-          } else if (message.type === "chat_message") {
-            if (!ws.userId || !ws.projectId) {
-              console.error("Missing userId or projectId for chat message");
-              return;
-            }
-
-            const [newMessage] = await db
-              .insert(messages)
-              .values({
-                content: message.content,
-                projectId: ws.projectId,
-                userId: ws.userId,
-                createdAt: new Date()
-              })
-              .returning();
-
-            // Broadcast to all clients in the same project
-            const messageData = JSON.stringify({
-              type: "new_message",
-              message: newMessage,
-            });
-
-            wss.clients.forEach((client) => {
-              const extClient = client as ExtendedWebSocket;
-              if (extClient.projectId === ws.projectId &&
-                  extClient.readyState === WebSocket.OPEN) {
-                extClient.send(messageData);
-              }
-            });
-          }
-        } catch (error) {
-          console.error("Error processing WebSocket message:", error);
+      } else {
+        console.log('WebSocket connection not authenticated - no session data');
+        if (ws.readyState === ws.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Authentication required'
+          }));
         }
-      });
-
-      ws.on("close", () => {
-        if (ws.userId) {
-          global.connectedClients.delete(ws.userId);
-          console.log(`User ${ws.userId} disconnected from WebSocket`);
-        }
-      });
-
-      ws.on("error", (error) => {
-        console.error(`WebSocket error for user ${ws.userId}:`, error);
-        ws.close(1011, "Internal server error");
-      });
-
+        ws.close(1008, 'Not authenticated');
+      }
     } catch (error) {
-      console.error("WebSocket connection error:", error);
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close(1011, "Internal server error");
+      console.error('WebSocket connection error:', error.message);
+      if (ws.readyState === ws.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Authentication failed'
+        }));
       }
+      ws.close(1008, 'Authentication failed');
     }
   });
 

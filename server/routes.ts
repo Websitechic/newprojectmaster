@@ -1941,6 +1941,79 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get all client sentiments (Operations Manager only)
+  app.get("/api/client-sentiment/all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access all client sentiments" });
+    }
+
+    try {
+      const { week } = req.query;
+      let whereConditions = [];
+
+      if (week && week !== "current") {
+        const now = new Date();
+        let targetDate = new Date();
+
+        if (week === "last") {
+          targetDate.setDate(now.getDate() - 7);
+        } else {
+          const weeksBack = parseInt(week as string);
+          if (!isNaN(weeksBack)) {
+            targetDate.setDate(now.getDate() - (weeksBack * 7));
+          }
+        }
+
+        // Get Monday of target week
+        const dayOfWeek = targetDate.getDay();
+        const diff = targetDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        const monday = new Date(targetDate.setDate(diff));
+        monday.setHours(0, 0, 0, 0);
+        
+        const mondayStr = monday.toISOString().split('T')[0];
+        whereConditions.push(eq(clientSentiment.weekStart, mondayStr));
+      } else if (week === "current") {
+        // Get current week's Monday
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        const monday = new Date(now.setDate(diff));
+        monday.setHours(0, 0, 0, 0);
+        
+        const mondayStr = monday.toISOString().split('T')[0];
+        whereConditions.push(eq(clientSentiment.weekStart, mondayStr));
+      }
+
+      // Get sentiments with client information
+      const sentiments = await db
+        .select({
+          id: clientSentiment.id,
+          clientId: clientSentiment.clientId,
+          clientName: users.name,
+          clientEmail: users.email,
+          sentiment: clientSentiment.sentiment,
+          reason: clientSentiment.reason,
+          createdAt: clientSentiment.createdAt,
+          weekStart: clientSentiment.weekStart,
+          weekEnd: clientSentiment.weekEnd,
+        })
+        .from(clientSentiment)
+        .leftJoin(users, eq(clientSentiment.clientId, users.id))
+        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+        .orderBy(desc(clientSentiment.createdAt));
+
+      res.json(sentiments);
+    } catch (error) {
+      console.error("Error fetching client sentiments:", error);
+      res.status(500).json({ error: "Failed to fetch client sentiments" });
+    }
+  });
+
   app.post("/api/client-sentiment", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
