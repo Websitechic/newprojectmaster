@@ -135,6 +135,57 @@ export function registerRoutes(app: Express): Server {
     res.json(staffAndProductOwners);
   });
 
+  // Get all users (for staff queries dropdown)
+  app.get("/api/users/all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          specialization: users.specialization,
+        })
+        .from(users)
+        .where(eq(users.role, "staff"))
+        .orderBy(asc(users.name));
+
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Get departments (for staff queries dropdown)
+  app.get("/api/departments", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      // Get unique specializations from staff members
+      const departments = await db
+        .selectDistinct({ department: users.specialization })
+        .from(users)
+        .where(and(eq(users.role, "staff"), isNotNull(users.specialization)))
+        .orderBy(asc(users.specialization));
+
+      const departmentList = departments
+        .map(d => d.department)
+        .filter(Boolean);
+
+      res.json(departmentList);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      res.status(500).json({ error: "Failed to fetch departments" });
+    }
+  });
+
   // KPI Report API Routes
 
   // Get productivity data for KPI report (Operations Manager only)
@@ -332,6 +383,223 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error exporting KPI report:", error);
       res.status(500).json({ error: "Failed to export report" });
+    }
+  });
+
+  // Staff Report API Route (Project Managers and Operations Managers only)
+  app.get("/api/staff-report", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).send("Access denied - Project Manager or Operations Manager role required");
+    }
+
+    try {
+      // Get all staff members with their current work status
+      const staffMembers = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "staff"))
+        .orderBy(desc(users.lastActive));
+
+      // Get all tasks for these staff members
+      const allTasks = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          description: tasks.description,
+          status: tasks.status,
+          projectId: tasks.projectId,
+          assigneeId: tasks.assigneeId,
+          deadline: tasks.deadline,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+          isTimerRunning: tasks.isTimerRunning,
+          timerStartTime: tasks.timerStartTime,
+          timerDuration: tasks.timerDuration,
+          assignedHours: tasks.assignedHours,
+          projectName: projects.name,
+        })
+        .from(tasks)
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(inArray(tasks.assigneeId, staffMembers.map(s => s.id)));
+
+      // Process staff data
+      const staffReport = staffMembers.map(staff => {
+        const staffTasks = allTasks.filter(task => task.assigneeId === staff.id);
+        const activeTasks = staffTasks.filter(task => task.status !== 'completed').length;
+        
+        // Find currently engaged task (timer running)
+        const engagedTask = staffTasks.find(task => task.isTimerRunning);
+        
+        // Calculate engagement info
+        let engagedTaskInfo = null;
+        if (engagedTask) {
+          const totalHoursSpent = engagedTask.timerDuration ? engagedTask.timerDuration / 3600 : 0;
+          const assignedHours = engagedTask.assignedHours || 0;
+          const remainingHours = Math.max(0, assignedHours - totalHoursSpent);
+          
+          engagedTaskInfo = {
+            staffId: staff.id,
+            taskId: engagedTask.id,
+            taskTitle: engagedTask.title,
+            projectId: engagedTask.projectId,
+            projectName: engagedTask.projectName || "Unknown Project",
+            assignedHours,
+            totalHoursSpent,
+            currentSessionHours: 0, // Would need to calculate from timer start time
+            remainingHours,
+            timerStartTime: engagedTask.timerStartTime,
+            isTimerRunning: engagedTask.isTimerRunning,
+          };
+        }
+
+        // Calculate break info if on break
+        let breakInfo = null;
+        if (staff.workStatus === 'on_break' && staff.breakStartTime) {
+          const breakStart = new Date(staff.breakStartTime);
+          const now = new Date();
+          const breakDuration = Math.floor((now.getTime() - breakStart.getTime()) / 60000); // minutes
+          
+          breakInfo = {
+            staffId: staff.id,
+            breakStartTime: staff.breakStartTime,
+            breakDuration,
+            breakCount: staff.breakCount || 0,
+            breakOvertime: breakDuration > 60, // 1 hour break limit
+          };
+        }
+
+        // Calculate absence info
+        let absentDaysRemaining = null;
+        if (staff.workStatus === 'absent' && staff.absenceEndDate) {
+          const endDate = new Date(staff.absenceEndDate);
+          const today = new Date();
+          absentDaysRemaining = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+        }
+
+        return {
+          id: staff.id,
+          name: staff.name,
+          username: staff.username,
+          email: staff.email,
+          specialization: staff.specialization,
+          status: staff.status,
+          workStatus: staff.workStatus,
+          breakStartTime: staff.breakStartTime,
+          breakCount: staff.breakCount || 0,
+          absenceReason: staff.absenceReason,
+          absenceEndDate: staff.absenceEndDate,
+          currentTaskId: staff.currentTaskId,
+          taskStartTime: staff.taskStartTime,
+          lastActive: staff.lastActive,
+          tasks: staffTasks.map(task => ({
+            id: task.id,
+            title: task.title,
+            description: task.description,
+            status: task.status,
+            projectId: task.projectId,
+            projectName: task.projectName || "Unknown Project",
+            assigneeId: task.assigneeId,
+            deadline: task.deadline,
+            createdAt: task.createdAt,
+            updatedAt: task.updatedAt,
+          })),
+          taskCount: staffTasks.length,
+          activeTasks,
+          isCurrentlyEngaged: !!engagedTask,
+          engagedTask: engagedTaskInfo,
+          breakInfo,
+          absentDaysRemaining,
+        };
+      });
+
+      res.json(staffReport);
+    } catch (error) {
+      console.error("Error fetching staff report:", error);
+      res.status(500).json({ error: "Failed to fetch staff report" });
+    }
+  });
+
+  // Client Accounts API Routes (Project Managers, Product Owners, and Operations Managers only)
+  app.get("/api/client-accounts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const clients = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "client"))
+        .orderBy(desc(users.createdAt));
+
+      res.json(clients);
+    } catch (error) {
+      console.error("Error fetching client accounts:", error);
+      res.status(500).json({ error: "Failed to fetch client accounts" });
+    }
+  });
+
+  // Create Client Account API Route
+  app.post("/api/client-accounts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const { name, email, username, password, productService, clientType } = req.body;
+
+      if (!name || !email || !username || !password || !productService || !clientType) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+
+      // Check if user already exists
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(or(eq(users.email, email), eq(users.username, username)))
+        .limit(1);
+
+      if (existingUser.length > 0) {
+        return res.status(400).json({ error: "User with this email or username already exists" });
+      }
+
+      // Create new client
+      const [newClient] = await db
+        .insert(users)
+        .values({
+          name,
+          email,
+          username,
+          password, // In production, this should be hashed
+          role: "client" as UserRole,
+          productService,
+          clientType,
+          onboardingStatus: "onboarding_pending",
+          emailVerified: false,
+          status: "active" as UserStatus,
+          workStatus: "active" as WorkStatus,
+        })
+        .returning();
+
+      res.json({ success: true, clientId: newClient.id });
+    } catch (error) {
+      console.error("Error creating client account:", error);
+      res.status(500).json({ error: "Failed to create client account" });
     }
   });
 
@@ -561,6 +829,273 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error uploading file:", error);
       res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
+  // Staff Queries API Routes
+  app.get("/api/staff-queries", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+
+    try {
+      let queries;
+      
+      if (isOperationsManager) {
+        // Operations managers can see all queries
+        queries = await db
+          .select()
+          .from(staffQueries)
+          .orderBy(desc(staffQueries.createdAt));
+      } else {
+        // Regular users can only see their own queries
+        queries = await db
+          .select()
+          .from(staffQueries)
+          .where(eq(staffQueries.submitterId, user.id))
+          .orderBy(desc(staffQueries.createdAt));
+      }
+
+      res.json(queries);
+    } catch (error) {
+      console.error("Error fetching staff queries:", error);
+      res.status(500).json({ error: "Failed to fetch staff queries" });
+    }
+  });
+
+  app.post("/api/staff-queries", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const { staffId, staffName, department, reason, explanation, attachmentUrl } = req.body;
+
+      if (!staffId || !staffName || !reason || !explanation) {
+        return res.status(400).json({ error: "All required fields must be filled" });
+      }
+
+      const [newQuery] = await db
+        .insert(staffQueries)
+        .values({
+          staffId: parseInt(staffId),
+          staffName,
+          department,
+          reason,
+          explanation,
+          attachmentUrl,
+          submitterId: user.id,
+          status: "pending",
+        })
+        .returning();
+
+      res.json({ success: true, queryId: newQuery.id });
+    } catch (error) {
+      console.error("Error creating staff query:", error);
+      res.status(500).json({ error: "Failed to create staff query" });
+    }
+  });
+
+  // Staff Complaints API Routes
+  app.get("/api/staff-complaints", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+
+    try {
+      let complaints;
+      
+      if (isOperationsManager) {
+        // Operations managers can see all complaints
+        complaints = await db
+          .select()
+          .from(staffComplaints)
+          .orderBy(desc(staffComplaints.createdAt));
+      } else {
+        // Regular users can only see their own complaints
+        complaints = await db
+          .select()
+          .from(staffComplaints)
+          .where(eq(staffComplaints.submitterId, user.id))
+          .orderBy(desc(staffComplaints.createdAt));
+      }
+
+      res.json(complaints);
+    } catch (error) {
+      console.error("Error fetching staff complaints:", error);
+      res.status(500).json({ error: "Failed to fetch staff complaints" });
+    }
+  });
+
+  app.post("/api/staff-complaints", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const { name, email, department, detailedExplanation, screenshotUrl } = req.body;
+
+      if (!name || !email || !detailedExplanation) {
+        return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
+      }
+
+      const [newComplaint] = await db
+        .insert(staffComplaints)
+        .values({
+          name,
+          email,
+          department,
+          detailedExplanation,
+          screenshotUrl,
+          submitterId: user.id,
+          status: "pending",
+        })
+        .returning();
+
+      res.json({ success: true, complaintId: newComplaint.id });
+    } catch (error) {
+      console.error("Error creating staff complaint:", error);
+      res.status(500).json({ error: "Failed to create staff complaint" });
+    }
+  });
+
+  // Notes API Routes
+  app.get("/api/notes", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      // Users can only see their own notes
+      const userNotes = await db
+        .select()
+        .from(notes)
+        .where(eq(notes.userId, user.id))
+        .orderBy(desc(notes.updatedAt));
+
+      res.json(userNotes);
+    } catch (error) {
+      console.error("Error fetching notes:", error);
+      res.status(500).json({ error: "Failed to fetch notes" });
+    }
+  });
+
+  app.post("/api/notes", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const { title, content, category } = req.body;
+
+      if (!title || !content) {
+        return res.status(400).json({ error: "Title and content are required" });
+      }
+
+      const [newNote] = await db
+        .insert(notes)
+        .values({
+          title,
+          content,
+          category: category || "personal",
+          userId: user.id,
+        })
+        .returning();
+
+      res.json({ success: true, noteId: newNote.id, note: newNote });
+    } catch (error) {
+      console.error("Error creating note:", error);
+      res.status(500).json({ error: "Failed to create note" });
+    }
+  });
+
+  app.put("/api/notes/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const noteId = parseInt(req.params.id);
+      const { title, content, category } = req.body;
+
+      if (!title || !content) {
+        return res.status(400).json({ error: "Title and content are required" });
+      }
+
+      // Check if note belongs to user
+      const existingNote = await db
+        .select()
+        .from(notes)
+        .where(and(eq(notes.id, noteId), eq(notes.userId, user.id)))
+        .limit(1);
+
+      if (existingNote.length === 0) {
+        return res.status(404).json({ error: "Note not found or access denied" });
+      }
+
+      const [updatedNote] = await db
+        .update(notes)
+        .set({
+          title,
+          content,
+          category: category || "personal",
+          updatedAt: new Date(),
+        })
+        .where(and(eq(notes.id, noteId), eq(notes.userId, user.id)))
+        .returning();
+
+      res.json({ success: true, note: updatedNote });
+    } catch (error) {
+      console.error("Error updating note:", error);
+      res.status(500).json({ error: "Failed to update note" });
+    }
+  });
+
+  app.delete("/api/notes/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const noteId = parseInt(req.params.id);
+
+      // Check if note belongs to user
+      const existingNote = await db
+        .select()
+        .from(notes)
+        .where(and(eq(notes.id, noteId), eq(notes.userId, user.id)))
+        .limit(1);
+
+      if (existingNote.length === 0) {
+        return res.status(404).json({ error: "Note not found or access denied" });
+      }
+
+      await db
+        .delete(notes)
+        .where(and(eq(notes.id, noteId), eq(notes.userId, user.id)));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting note:", error);
+      res.status(500).json({ error: "Failed to delete note" });
     }
   });
 
