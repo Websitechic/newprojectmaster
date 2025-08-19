@@ -216,7 +216,10 @@ export function NotificationsDropdown() {
               <div className="flex flex-col space-y-1">
                 <p className="text-sm">{notification.content}</p>
                 <div className="text-xs text-muted-foreground">
-                {notification.createdAt ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true }) : 'Just now'}
+                {notification.createdAt && !isNaN(new Date(notification.createdAt).getTime()) 
+                  ? format(new Date(notification.createdAt), 'MMM d, h:mm a')
+                  : 'Invalid date'
+                }
               </div>
               </div>
             </DropdownMenuItem>
