@@ -42,7 +42,7 @@ export function setupWebSocket(wss: WebSocketServer) {
       console.log("New WebSocket connection, checking session");
       ws.isAlive = true;
 
-      const userId = request.session?.passport?.user;
+      const userId = request.session && request.session.passport ? request.session.passport.user : null;
       console.log("WebSocket connection - Session user ID:", userId);
 
       if (!userId) {
