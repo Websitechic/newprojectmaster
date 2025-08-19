@@ -686,8 +686,10 @@ export const notes = pgTable("notes", {
   type: text("type", { enum: ["freetext", "todo"] }).default("freetext"),
   todoItems: jsonb("todo_items").$type<Array<{id: string; text: string; completed: boolean}>>(),
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "cascade" }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  category: text("category").default("general"),
 });
 
 // Removed duplicate declarations - keeping the earlier definitions

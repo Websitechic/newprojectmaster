@@ -1512,6 +1512,8 @@ export function registerRoutes(app: Express): Server {
           title,
           content,
           userId: user.id,
+          createdBy: user.id,
+          category: category || "general",
         })
         .returning();
 
