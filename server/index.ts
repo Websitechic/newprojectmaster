@@ -109,53 +109,33 @@ let emailServiceInitialized = false;
       path: "/ws"
     });
 
-    // Handle upgrade events for WebSocket connections
-    server.on("upgrade", (request: any, socket, head) => {
-      const pathname = new URL(request.url || "", "http://localhost").pathname;
+    // Session parser middleware for WebSocket upgrades
+    const sessionParser = (req: any, res: any, next: any) => {
+      sessionMiddleware(req, res, next);
+    };
 
-      // Skip Vite HMR connections
-      if (request.headers["sec-websocket-protocol"]?.includes("vite-hmr")) {
-        socket.destroy();
-        return;
-      }
+    // Handle WebSocket upgrade with proper session handling
+    server.on('upgrade', (request, socket, head) => {
+      console.log('WebSocket upgrade - Session:', request.headers.cookie);
 
-      // Only handle our WebSocket path
-      if (pathname === "/ws") {
-        // Apply session middleware to the upgrade request
-        sessionMiddleware(request, {} as Response, async (err) => {
-          if (err) {
-            console.error("WebSocket session middleware error:", err);
-            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-            socket.destroy();
-            return;
-          }
+      sessionParser(request as any, {} as any, () => {
+        const session = (request as any).session;
+        const user = session?.passport?.user;
 
-          console.log("WebSocket upgrade - Session:", request.session?.id);
-          console.log("WebSocket upgrade - User:", request.session?.passport?.user);
+        console.log('WebSocket upgrade - User:', user);
 
-          // Ensure authenticated
-          if (!request.session?.passport?.user) {
-            console.error("WebSocket upgrade - No authenticated user found");
-            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-            socket.destroy();
-            return;
-          }
+        // Check if this socket is already being handled
+        if ((socket as any)._wsHandled) {
+          console.log('Socket already handled, skipping');
+          return;
+        }
+        (socket as any)._wsHandled = true;
 
-          try {
-            wss.handleUpgrade(request, socket, head, (ws) => {
-              // Attach user data to the WebSocket instance
-              (ws as any).userId = request.session.passport.user;
-              wss.emit("connection", ws, request);
-            });
-          } catch (error) {
-            console.error("WebSocket upgrade error:", error);
-            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-            socket.destroy();
-          }
+        // Allow upgrade - authentication will be checked per message
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request);
         });
-      } else {
-        socket.destroy();
-      }
+      });
     });
 
     setupWebSocket(wss);

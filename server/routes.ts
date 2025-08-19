@@ -1172,6 +1172,289 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Memo API Routes
+  app.get("/api/memos", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+
+    try {
+      if (isOperationsManager) {
+        // Operations managers see all memos they sent
+        const sentMemos = await db
+          .select({
+            id: memos.id,
+            title: memos.title,
+            content: memos.content,
+            type: memos.type,
+            recipients: memos.recipients,
+            sentBy: memos.sentBy,
+            createdAt: memos.createdAt,
+            updatedAt: memos.updatedAt,
+            senderName: users.name,
+          })
+          .from(memos)
+          .leftJoin(users, eq(memos.sentBy, users.id))
+          .where(eq(memos.sentBy, user.id))
+          .orderBy(desc(memos.createdAt));
+
+        // Get read count for each memo
+        const memosWithReadCount = await Promise.all(
+          sentMemos.map(async (memo) => {
+            const readCount = await db
+              .select({ count: sql<number>`count(*)` })
+              .from(memoReads)
+              .where(eq(memoReads.memoId, memo.id));
+
+            return {
+              ...memo,
+              readCount: readCount[0]?.count || 0,
+            };
+          })
+        );
+
+        res.json(memosWithReadCount);
+      } else {
+        return res.status(403).json({ error: "Only operations managers can access this endpoint" });
+      }
+    } catch (error) {
+      console.error("Error fetching memos:", error);
+      res.status(500).json({ error: "Failed to fetch memos" });
+    }
+  });
+
+  app.get("/api/memos/my-memos", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      // Get memos for this user based on type and recipients
+      let userMemos = [];
+
+      // General memos (sent to everyone)
+      const generalMemos = await db
+        .select({
+          id: memos.id,
+          title: memos.title,
+          content: memos.content,
+          type: memos.type,
+          recipients: memos.recipients,
+          sentBy: memos.sentBy,
+          createdAt: memos.createdAt,
+          updatedAt: memos.updatedAt,
+          senderName: users.name,
+        })
+        .from(memos)
+        .leftJoin(users, eq(memos.sentBy, users.id))
+        .where(eq(memos.type, "general"))
+        .orderBy(desc(memos.createdAt));
+
+      userMemos.push(...generalMemos);
+
+      // Individual memos where user is in recipients
+      const individualMemos = await db
+        .select({
+          id: memos.id,
+          title: memos.title,
+          content: memos.content,
+          type: memos.type,
+          recipients: memos.recipients,
+          sentBy: memos.sentBy,
+          createdAt: memos.createdAt,
+          updatedAt: memos.updatedAt,
+          senderName: users.name,
+        })
+        .from(memos)
+        .leftJoin(users, eq(memos.sentBy, users.id))
+        .where(
+          and(
+            eq(memos.type, "individual"),
+            sql`${memos.recipients} @> ${JSON.stringify([user.id])}`
+          )
+        )
+        .orderBy(desc(memos.createdAt));
+
+      userMemos.push(...individualMemos);
+
+      // Department memos based on user's role/specialization
+      let deptConditions = [sql`${memos.recipients} @> ${JSON.stringify(["all_staff"])}`];
+
+      if (user.specialization) {
+        deptConditions.push(sql`${memos.recipients} @> ${JSON.stringify([user.specialization])}`);
+      }
+
+      if (user.role === 'project_manager') {
+        deptConditions.push(sql`${memos.recipients} @> ${JSON.stringify(["project_managers"])}`);
+      }
+
+      if (user.role === 'product_owner') {
+        deptConditions.push(sql`${memos.recipients} @> ${JSON.stringify(["product_owners"])}`);
+      }
+
+      const departmentMemos = await db
+        .select({
+          id: memos.id,
+          title: memos.title,
+          content: memos.content,
+          type: memos.type,
+          recipients: memos.recipients,
+          sentBy: memos.sentBy,
+          createdAt: memos.createdAt,
+          updatedAt: memos.updatedAt,
+          senderName: users.name,
+        })
+        .from(memos)
+        .leftJoin(users, eq(memos.sentBy, users.id))
+        .where(
+          and(
+            eq(memos.type, "department"),
+            or(...deptConditions)
+          )
+        )
+        .orderBy(desc(memos.createdAt));
+
+      userMemos.push(...departmentMemos);
+
+      // Remove duplicates and add read status
+      const uniqueMemos = userMemos.filter((memo, index, self) => 
+        index === self.findIndex(m => m.id === memo.id)
+      );
+
+      // Check read status for each memo
+      const memosWithReadStatus = await Promise.all(
+        uniqueMemos.map(async (memo) => {
+          const readRecord = await db
+            .select()
+            .from(memoReads)
+            .where(
+              and(
+                eq(memoReads.memoId, memo.id),
+                eq(memoReads.userId, user.id)
+              )
+            )
+            .limit(1);
+
+          return {
+            ...memo,
+            isRead: readRecord.length > 0,
+            readAt: readRecord[0]?.readAt || null,
+          };
+        })
+      );
+
+      res.json(memosWithReadStatus);
+    } catch (error) {
+      console.error("Error fetching user memos:", error);
+      res.status(500).json({ error: "Failed to fetch memos" });
+    }
+  });
+
+  app.post("/api/memos", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can create memos" });
+    }
+
+    try {
+      const { title, content, type, recipients } = req.body;
+
+      if (!title || !content || !type) {
+        return res.status(400).json({ error: "Title, content, and type are required" });
+      }
+
+      const validTypes = ["individual", "general", "department"];
+      if (!validTypes.includes(type)) {
+        return res.status(400).json({ error: "Invalid memo type" });
+      }
+
+      // Create the memo
+      const [newMemo] = await db
+        .insert(memos)
+        .values({
+          title,
+          content,
+          type,
+          recipients: recipients || [],
+          sentBy: user.id,
+        })
+        .returning();
+
+      res.json({ success: true, memoId: newMemo.id });
+    } catch (error) {
+      console.error("Error creating memo:", error);
+      res.status(500).json({ error: "Failed to create memo" });
+    }
+  });
+
+  app.post("/api/memos/:id/mark-read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const memoId = parseInt(req.params.id);
+      const userId = req.user!.id;
+
+      // Insert read record (ignore if already exists)
+      await db
+        .insert(memoReads)
+        .values({
+          memoId,
+          userId,
+        })
+        .onConflictDoNothing();
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking memo as read:", error);
+      res.status(500).json({ error: "Failed to mark memo as read" });
+    }
+  });
+
+  app.delete("/api/memos/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can delete memos" });
+    }
+
+    try {
+      const memoId = parseInt(req.params.id);
+
+      // Verify the memo exists and was sent by this user
+      const [existingMemo] = await db
+        .select()
+        .from(memos)
+        .where(and(eq(memos.id, memoId), eq(memos.sentBy, user.id)))
+        .limit(1);
+
+      if (!existingMemo) {
+        return res.status(404).json({ error: "Memo not found or not authorized" });
+      }
+
+      // Delete the memo (memo reads will be deleted automatically due to CASCADE)
+      await db.delete(memos).where(eq(memos.id, memoId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting memo:", error);
+      res.status(500).json({ error: "Failed to delete memo" });
+    }
+  });
+
   // Notes API Routes
   app.get("/api/notes", async (req, res) => {
     if (!req.isAuthenticated()) {
