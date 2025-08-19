@@ -114,40 +114,67 @@ let emailServiceInitialized = false;
       sessionMiddleware(req, res, next);
     };
 
-    // WebSocket upgrade handling
+    // WebSocket upgrade handling with improved error handling
     server.on('upgrade', (request, socket, head) => {
       console.log('WebSocket upgrade request received');
 
-      // Parse session from upgrade request with error handling
+      // Add timeout for upgrade process
+      const upgradeTimeout = setTimeout(() => {
+        console.log('WebSocket upgrade timeout');
+        if (socket && !socket.destroyed) {
+          socket.write('HTTP/1.1 408 Request Timeout\r\n\r\n');
+          socket.destroy();
+        }
+      }, 10000); // 10 second timeout
+
+      // Parse session from upgrade request with comprehensive error handling
       try {
         sessionParser(request as any, {} as any, (err: any) => {
+          clearTimeout(upgradeTimeout);
+          
           if (err) {
             console.log('Session parsing error during upgrade:', err);
-            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-            socket.destroy();
+            if (socket && !socket.destroyed) {
+              socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+              socket.destroy();
+            }
             return;
           }
 
           console.log('Session parsed for WebSocket upgrade');
 
-          // Ensure request has session property
+          // Check for session existence more safely
           const extRequest = request as any;
-          if (!extRequest.session || !extRequest.session.passport) {
-            console.log('No valid session found in upgrade request');
-            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-            socket.destroy();
+          if (!extRequest || !extRequest.session) {
+            console.log('No session found in upgrade request');
+            if (socket && !socket.destroyed) {
+              socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+              socket.destroy();
+            }
             return;
           }
 
-          wss.handleUpgrade(request, socket, head, (ws) => {
-            console.log('WebSocket upgrade completed, emitting connection');
-            wss.emit('connection', ws, request);
-          });
+          // Allow connections with session, authentication will be checked in websocket.ts
+          try {
+            wss.handleUpgrade(request, socket, head, (ws) => {
+              console.log('WebSocket upgrade completed, emitting connection');
+              wss.emit('connection', ws, request);
+            });
+          } catch (upgradeError) {
+            console.error('Error in handleUpgrade:', upgradeError);
+            if (socket && !socket.destroyed) {
+              socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+              socket.destroy();
+            }
+          }
         });
       } catch (error) {
+        clearTimeout(upgradeTimeout);
         console.error('Error during WebSocket upgrade:', error);
-        socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-        socket.destroy();
+        if (socket && !socket.destroyed) {
+          socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+          socket.destroy();
+        }
       }
     });
 

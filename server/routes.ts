@@ -84,22 +84,34 @@ export function registerRoutes(app: Express): Server {
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
-  // Add middleware to ensure API routes return JSON
+  // Add middleware to ensure API routes return JSON and don't fall through to static serving
   app.use('/api', (req, res, next) => {
+    // Set JSON content type for all API routes
     res.setHeader('Content-Type', 'application/json');
-    
-    // Ensure API routes don't fall through to static file serving
-    if (!req.path.startsWith('/api/')) {
-      return next();
-    }
     
     // Override res.send to ensure JSON responses
     const originalSend = res.send;
     res.send = function(data: any) {
-      if (typeof data === 'string' && !data.startsWith('{"') && !data.startsWith('[')) {
+      // Ensure content type is still JSON
+      if (!res.getHeader('Content-Type')) {
+        res.setHeader('Content-Type', 'application/json');
+      }
+      
+      // If data is a plain string and not JSON, wrap it
+      if (typeof data === 'string' && !data.startsWith('{"') && !data.startsWith('[') && !data.startsWith('"')) {
         return originalSend.call(this, JSON.stringify({ message: data }));
       }
       return originalSend.call(this, data);
+    };
+    
+    // Override res.end to prevent HTML fallthrough
+    const originalEnd = res.end;
+    res.end = function(chunk?: any, encoding?: BufferEncoding) {
+      // If no content type set and we have content, ensure it's JSON
+      if (chunk && !res.getHeader('Content-Type')) {
+        res.setHeader('Content-Type', 'application/json');
+      }
+      return originalEnd.call(this, chunk, encoding);
     };
     
     next();

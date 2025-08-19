@@ -50,9 +50,24 @@ export function setupWebSocket(wss: WebSocketServer) {
     try {
       // Safely check if request has session data from the upgrade
       const extReq = req as any;
-      const hasSession = extReq && extReq.session && extReq.session.passport && extReq.session.passport.user;
+      
+      // Check for session existence more safely
+      if (!extReq || !extReq.session) {
+        console.log('WebSocket connection failed - no session object');
+        if (extWs.readyState === WebSocket.OPEN) {
+          extWs.send(JSON.stringify({
+            type: 'error',
+            message: 'No session found'
+          }));
+          extWs.close(1008, 'No session');
+        }
+        return;
+      }
 
-      if (hasSession) {
+      // Check for authenticated user
+      const hasValidSession = extReq.session.passport && extReq.session.passport.user;
+      
+      if (hasValidSession) {
         const user = extReq.session.passport.user;
         console.log(`WebSocket authenticated user: ${user}`);
         extWs.userId = user;
@@ -70,26 +85,32 @@ export function setupWebSocket(wss: WebSocketServer) {
           }));
         }
       } else {
-        console.log('WebSocket connection not authenticated - no session data');
+        console.log('WebSocket connection not authenticated - no valid user in session');
         if (extWs.readyState === WebSocket.OPEN) {
           extWs.send(JSON.stringify({
             type: 'error',
             message: 'Authentication required'
           }));
+          extWs.close(1008, 'Not authenticated');
         }
-        extWs.close(1008, 'Not authenticated');
         return;
       }
     } catch (error) {
       console.error('WebSocket connection error:', error);
-      if (extWs.readyState === WebSocket.OPEN) {
-        extWs.send(JSON.stringify({
-          type: 'error',
-          message: 'Authentication failed'
-        }));
-        extWs.close(1008, 'Authentication failed');
-      } else {
-        extWs.terminate();
+      try {
+        if (extWs.readyState === WebSocket.OPEN) {
+          extWs.send(JSON.stringify({
+            type: 'error',
+            message: 'Authentication failed'
+          }));
+          extWs.close(1008, 'Authentication failed');
+        }
+      } catch (closeError) {
+        console.error('Error closing WebSocket:', closeError);
+        // Force terminate if close fails
+        if (typeof extWs.terminate === 'function') {
+          extWs.terminate();
+        }
       }
       return;
     }
