@@ -681,9 +681,10 @@ export const memoReadsRelations = relations(memoReads, ({ one }) => ({
 
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
-  title: text("title").notNull(),
+  title: text("title"),
   content: text("content").notNull(),
-  category: text("category").default("general"),
+  type: text("type", { enum: ["freetext", "todo"] }).default("freetext"),
+  todoItems: jsonb("todo_items").$type<Array<{id: string; text: string; completed: boolean}>>(),
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
