@@ -598,7 +598,22 @@ export function registerRoutes(app: Express): Server {
     try {
       // Get all staff members with their current work status
       const staffMembers = await db
-        .select()
+        .select({
+          id: users.id,
+          name: users.name,
+          username: users.username,
+          email: users.email,
+          specialization: users.specialization,
+          status: users.status,
+          workStatus: users.workStatus,
+          breakStartTime: users.breakStartTime,
+          breakCount: users.breakCount,
+          absenceReason: users.absenceReason,
+          absenceEndDate: users.absenceEndDate,
+          currentTaskId: users.currentTaskId,
+          taskStartTime: users.taskStartTime,
+          lastActive: users.lastActive,
+        })
         .from(users)
         .where(eq(users.role, "staff"))
         .orderBy(desc(users.lastActive));
