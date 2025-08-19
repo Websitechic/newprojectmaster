@@ -39,6 +39,8 @@ import {
   staffComplaints,
   staffQueries,
   notes,
+  sops,
+  sopSegments,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
@@ -330,6 +332,235 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error exporting KPI report:", error);
       res.status(500).json({ error: "Failed to export report" });
+    }
+  });
+
+  // SOP API Routes (Operations Manager only)
+  
+  // Get all SOPs with optional filtering
+  app.get("/api/sops", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access SOPs" });
+    }
+
+    try {
+      const { department, search } = req.query;
+      
+      let whereConditions = [];
+      
+      if (department && department !== "all") {
+        whereConditions.push(eq(sops.department, department as string));
+      }
+      
+      if (search) {
+        whereConditions.push(sql`${sops.title} ILIKE ${'%' + search + '%'}`);
+      }
+
+      const sopList = await db
+        .select()
+        .from(sops)
+        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+        .orderBy(desc(sops.updatedAt));
+
+      // Get segments for each SOP
+      const sopsWithSegments = await Promise.all(
+        sopList.map(async (sop) => {
+          const segments = await db
+            .select()
+            .from(sopSegments)
+            .where(eq(sopSegments.sopId, sop.id))
+            .orderBy(asc(sopSegments.segmentOrder));
+          
+          return {
+            ...sop,
+            segments
+          };
+        })
+      );
+
+      res.json(sopsWithSegments);
+    } catch (error) {
+      console.error("Error fetching SOPs:", error);
+      res.status(500).json({ error: "Failed to fetch SOPs" });
+    }
+  });
+
+  // Get unique departments for SOPs
+  app.get("/api/sops/departments", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can access SOPs" });
+    }
+
+    try {
+      const departments = await db
+        .selectDistinct({ department: sops.department })
+        .from(sops)
+        .orderBy(asc(sops.department));
+
+      res.json(departments.map(d => d.department));
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      res.status(500).json({ error: "Failed to fetch departments" });
+    }
+  });
+
+  // Create new SOP
+  app.post("/api/sops", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can create SOPs" });
+    }
+
+    try {
+      const { title, department, segments } = req.body;
+
+      if (!title || !department || !segments || segments.length === 0) {
+        return res.status(400).json({ error: "Title, department, and at least one segment are required" });
+      }
+
+      // Create SOP
+      const [newSop] = await db
+        .insert(sops)
+        .values({
+          title,
+          department,
+          createdBy: user.id,
+        })
+        .returning();
+
+      // Create segments
+      const segmentData = segments.map((segment: any, index: number) => ({
+        sopId: newSop.id,
+        title: segment.title,
+        content: segment.content,
+        fileUrl: segment.fileUrl || null,
+        segmentOrder: segment.segmentOrder || index,
+      }));
+
+      await db.insert(sopSegments).values(segmentData);
+
+      res.json({ success: true, sopId: newSop.id });
+    } catch (error) {
+      console.error("Error creating SOP:", error);
+      res.status(500).json({ error: "Failed to create SOP" });
+    }
+  });
+
+  // Update SOP
+  app.put("/api/sops/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can update SOPs" });
+    }
+
+    try {
+      const sopId = parseInt(req.params.id);
+      const { title, department, segments } = req.body;
+
+      if (!title || !department || !segments || segments.length === 0) {
+        return res.status(400).json({ error: "Title, department, and at least one segment are required" });
+      }
+
+      // Update SOP
+      await db
+        .update(sops)
+        .set({
+          title,
+          department,
+          updatedAt: new Date(),
+        })
+        .where(eq(sops.id, sopId));
+
+      // Delete existing segments
+      await db.delete(sopSegments).where(eq(sopSegments.sopId, sopId));
+
+      // Create new segments
+      const segmentData = segments.map((segment: any, index: number) => ({
+        sopId,
+        title: segment.title,
+        content: segment.content,
+        fileUrl: segment.fileUrl || null,
+        segmentOrder: segment.segmentOrder || index,
+      }));
+
+      await db.insert(sopSegments).values(segmentData);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating SOP:", error);
+      res.status(500).json({ error: "Failed to update SOP" });
+    }
+  });
+
+  // Delete SOP
+  app.delete("/api/sops/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can delete SOPs" });
+    }
+
+    try {
+      const sopId = parseInt(req.params.id);
+
+      // Delete SOP (segments will be deleted automatically due to CASCADE)
+      await db.delete(sops).where(eq(sops.id, sopId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting SOP:", error);
+      res.status(500).json({ error: "Failed to delete SOP" });
+    }
+  });
+
+  // Upload file for SOP segments
+  app.post("/api/sops/upload-file", upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers can upload files" });
+    }
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const fileUrl = `/uploads/leave-proof/${req.file.filename}`;
+      const fileName = req.file.originalname;
+
+      res.json({ 
+        success: true, 
+        fileUrl,
+        fileName 
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ error: "Failed to upload file" });
     }
   });
 
