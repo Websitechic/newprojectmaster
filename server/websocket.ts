@@ -18,20 +18,8 @@ interface ExtendedRequest extends Request {
   };
 }
 
-export function setupWebSocket(server: any) {
-  const wss = new WebSocketServer({ 
-    noServer: true,
-    path: '/ws'
-  });
-
-  // Handle WebSocket upgrade manually to prevent double handling
-  server.on('upgrade', (request: any, socket: any, head: any) => {
-    if (request.url === '/ws') {
-      wss.handleUpgrade(request, socket, head, (ws: any) => {
-        wss.emit('connection', ws, request);
-      });
-    }
-  });
+export function setupWebSocket(wss: WebSocketServer) {
+  // WebSocket upgrade is now handled in server/index.ts to avoid duplication
 
   // Set up ping interval to keep connections alive
   const interval = setInterval(() => {
@@ -59,19 +47,20 @@ export function setupWebSocket(server: any) {
       console.log("New WebSocket connection, checking session");
       ws.isAlive = true;
 
-      // More lenient authentication for development
-      // Allow connections and handle authentication at the application level
+      // Handle authentication properly
       let userId = null;
       
       try {
         userId = request.session?.passport?.user;
+        if (userId) {
+          console.log(`WebSocket authenticated for user ${userId}`);
+        } else {
+          console.log('WebSocket connection without authentication - will authenticate per message');
+          userId = null; // Keep as null instead of 'anonymous'
+        }
       } catch (sessionError) {
-        console.log('Session access error, allowing connection:', sessionError.message);
-      }
-      
-      if (!userId) {
-        console.log('WebSocket connection allowed without session - will authenticate per message');
-        userId = 'anonymous'; // Allow connection but mark as anonymous
+        console.log('Session access error:', sessionError.message);
+        userId = null;
       }
 
       // Store authenticated user's WebSocket connection
@@ -79,8 +68,11 @@ export function setupWebSocket(server: any) {
       if (!global.connectedClients) {
         global.connectedClients = new Map();
       }
-      global.connectedClients.set(userId, ws as any);
-      console.log(`WebSocket authenticated for user ${userId}`);
+      
+      // Only store if we have a valid userId
+      if (userId) {
+        global.connectedClients.set(userId, ws as any);
+      }
 
       // Send authentication success message
       ws.send(JSON.stringify({
@@ -98,9 +90,20 @@ export function setupWebSocket(server: any) {
           const message = JSON.parse(data);
           console.log('Received WebSocket message:', message);
 
+          // Handle authentication message
+          if (message.type === "auth" && message.userId) {
+            ws.userId = message.userId;
+            if (!global.connectedClients) {
+              global.connectedClients = new Map();
+            }
+            global.connectedClients.set(message.userId, ws as any);
+            console.log(`WebSocket re-authenticated for user ${message.userId}`);
+            return;
+          }
+
           if (message.type === "join_project") {
             ws.projectId = message.projectId;
-            console.log(`User ${userId} joined project ${message.projectId}`);
+            console.log(`User ${ws.userId} joined project ${message.projectId}`);
           } else if (message.type === "chat_message") {
             if (!ws.userId || !ws.projectId) {
               console.error("Missing userId or projectId for chat message");
