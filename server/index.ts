@@ -132,8 +132,8 @@ let emailServiceInitialized = false;
 
           // Ensure request has session property
           const extRequest = request as any;
-          if (!extRequest.session) {
-            console.log('No session found in upgrade request');
+          if (!extRequest.session || !extRequest.session.passport) {
+            console.log('No valid session found in upgrade request');
             socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
             socket.destroy();
             return;

@@ -87,15 +87,35 @@ export function registerRoutes(app: Express): Server {
   // Add middleware to ensure API routes return JSON
   app.use('/api', (req, res, next) => {
     res.setHeader('Content-Type', 'application/json');
+    
+    // Ensure API routes don't fall through to static file serving
+    if (!req.path.startsWith('/api/')) {
+      return next();
+    }
+    
+    // Override res.send to ensure JSON responses
+    const originalSend = res.send;
+    res.send = function(data: any) {
+      if (typeof data === 'string' && !data.startsWith('{"') && !data.startsWith('[')) {
+        return originalSend.call(this, JSON.stringify({ message: data }));
+      }
+      return originalSend.call(this, data);
+    };
+    
     next();
   });
 
   // User endpoint for authentication
   app.get("/api/user", (req, res) => {
-    if (req.isAuthenticated()) {
-      res.json(req.user);
-    } else {
-      res.status(401).send("Not authenticated");
+    try {
+      if (req.isAuthenticated() && req.user) {
+        res.json(req.user);
+      } else {
+        res.status(401).json({ error: "Not authenticated" });
+      }
+    } catch (error) {
+      console.error("Error in /api/user:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
@@ -2933,6 +2953,21 @@ export function registerRoutes(app: Express): Server {
       console.error("Error creating task:", error);
       res.status(500).json({ error: "Failed to create task" });
     }
+  });
+
+  // Global error handler for API routes
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    console.error('API Error:', err);
+    
+    // If response already sent, delegate to default Express error handler
+    if (res.headersSent) {
+      return next(err);
+    }
+    
+    // Send JSON error response
+    res.status(500).json({
+      error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+    });
   });
 
   // WebSocket setup

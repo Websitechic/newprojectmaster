@@ -51,7 +51,7 @@ export function setupWebSocket(wss: WebSocketServer) {
       // Safely check if request has session data from the upgrade
       const extReq = req as any;
       const hasSession = extReq && extReq.session && extReq.session.passport && extReq.session.passport.user;
-      
+
       if (hasSession) {
         const user = extReq.session.passport.user;
         console.log(`WebSocket authenticated user: ${user}`);
@@ -87,8 +87,10 @@ export function setupWebSocket(wss: WebSocketServer) {
           type: 'error',
           message: 'Authentication failed'
         }));
+        extWs.close(1008, 'Authentication failed');
+      } else {
+        extWs.terminate();
       }
-      extWs.close(1008, 'Authentication failed');
       return;
     }
 
@@ -110,7 +112,7 @@ export function setupWebSocket(wss: WebSocketServer) {
       try {
         const message = JSON.parse(data.toString());
         console.log('WebSocket message received:', message);
-        
+
         // Handle different message types here if needed
         if (message.type === 'ping') {
           extWs.send(JSON.stringify({ type: 'pong' }));

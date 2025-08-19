@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell } from "lucide-react";
+import { Bell, Clock, CheckSquare, MessageSquare, AlertTriangle } from "lucide-react"; // Imported necessary icons
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,7 +94,14 @@ export function NotificationsDropdown() {
         eventSource.onerror = (error) => {
           console.error("SSE error:", error);
           setIsConnecting(false);
-          eventSource.close();
+          // The original code had eventSource.close() here, which is correct.
+          // However, to prevent potential race conditions or double closing,
+          // it's safer to ensure it's not already null or closed.
+          if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
+          }
+
 
           // Only reconnect if we still have a user and no existing connection
           if (user?.id && !eventSourceRef.current && !reconnectTimeoutRef.current) {
@@ -186,16 +193,30 @@ export function NotificationsDropdown() {
             <span className="text-sm text-muted-foreground">No notifications</span>
           </DropdownMenuItem>
         ) : (
-          notifications.slice(0, 5).map((notification) => (
+          notifications.slice(0, 5).map((notification, index) => (
             <DropdownMenuItem
-              key={notification.id}
+              key={`notification-${notification.id}-${index}`}
               className="flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50"
               onClick={() => handleNotificationClick(notification)}
             >
+              <div className="flex-shrink-0">
+                {notification.type === "break_reminder" && (
+                  <Clock className="h-4 w-4 text-orange-500" />
+                )}
+                {notification.type === "task_assignment" && (
+                  <CheckSquare className="h-4 w-4 text-blue-500" />
+                )}
+                {notification.type === "message" && (
+                  <MessageSquare className="h-4 w-4 text-green-500" />
+                )}
+                {notification.type === "deadline" && (
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                )}
+              </div>
               <div className="flex flex-col space-y-1">
                 <p className="text-sm">{notification.content}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(notification.createdAt).toLocaleString()}
+                  {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                 </p>
               </div>
             </DropdownMenuItem>
