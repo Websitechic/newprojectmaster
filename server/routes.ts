@@ -1769,6 +1769,404 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Project-specific API Routes
+
+  // Get project by ID
+  app.get("/api/projects/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+
+    try {
+      const [project] = await db
+        .select({
+          id: projects.id,
+          name: projects.name,
+          description: projects.description,
+          status: projects.status,
+          progress: projects.progress,
+          category: projects.category,
+          type: projects.type,
+          startDate: projects.startDate,
+          endDate: projects.endDate,
+          clientId: projects.clientId,
+          managerId: projects.managerId,
+          createdAt: projects.createdAt,
+          updatedAt: projects.updatedAt,
+          client: {
+            id: users.id,
+            name: users.name,
+            email: users.email,
+          },
+        })
+        .from(projects)
+        .leftJoin(users, eq(projects.clientId, users.id))
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check if user has access to this project
+      const hasAccess = 
+        user.role === "operations_manager" || 
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        project.managerId === user.id ||
+        project.clientId === user.id ||
+        (user.role === "staff" && await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .limit(1)
+          .then(members => members.length > 0)
+        );
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json(project);
+    } catch (error) {
+      console.error("Error fetching project:", error);
+      res.status(500).json({ error: "Failed to fetch project" });
+    }
+  });
+
+  // Get project tasks
+  app.get("/api/projects/:id/tasks", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+
+    try {
+      const projectTasks = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.projectId, projectId))
+        .orderBy(desc(tasks.createdAt));
+
+      res.json(projectTasks);
+    } catch (error) {
+      console.error("Error fetching project tasks:", error);
+      res.status(500).json({ error: "Failed to fetch project tasks" });
+    }
+  });
+
+  // Get project resources
+  app.get("/api/projects/:id/resources", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const projectId = parseInt(req.params.id);
+
+    try {
+      const projectResources = await db
+        .select({
+          id: resources.id,
+          name: resources.name,
+          type: resources.type,
+          size: resources.size,
+          path: resources.path,
+          link: resources.link,
+          uploadedBy: resources.uploadedBy,
+          createdAt: resources.createdAt,
+          uploaderName: users.name,
+        })
+        .from(resources)
+        .leftJoin(users, eq(resources.uploadedBy, users.id))
+        .where(eq(resources.projectId, projectId))
+        .orderBy(desc(resources.createdAt));
+
+      res.json(projectResources);
+    } catch (error) {
+      console.error("Error fetching project resources:", error);
+      res.status(500).json({ error: "Failed to fetch project resources" });
+    }
+  });
+
+  // Add resource link to project
+  app.post("/api/projects/:id/resources/link", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+    const { name, link, category } = req.body;
+
+    try {
+      if (!name || !link || !category) {
+        return res.status(400).json({ error: "Name, link, and category are required" });
+      }
+
+      const [newResource] = await db
+        .insert(resources)
+        .values({
+          name,
+          type: category,
+          link,
+          projectId,
+          uploadedBy: user.id,
+        })
+        .returning();
+
+      res.json({ success: true, resourceId: newResource.id });
+    } catch (error) {
+      console.error("Error adding resource link:", error);
+      res.status(500).json({ error: "Failed to add resource link" });
+    }
+  });
+
+  // Update resource
+  app.put("/api/projects/:projectId/resources/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const resourceId = parseInt(req.params.id);
+    const { name, link, category } = req.body;
+
+    try {
+      if (!name || !link || !category) {
+        return res.status(400).json({ error: "Name, link, and category are required" });
+      }
+
+      await db
+        .update(resources)
+        .set({
+          name,
+          type: category,
+          link,
+          updatedAt: new Date(),
+        })
+        .where(eq(resources.id, resourceId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating resource:", error);
+      res.status(500).json({ error: "Failed to update resource" });
+    }
+  });
+
+  // Delete resource
+  app.delete("/api/projects/:projectId/resources/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const resourceId = parseInt(req.params.id);
+
+    try {
+      await db.delete(resources).where(eq(resources.id, resourceId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting resource:", error);
+      res.status(500).json({ error: "Failed to delete resource" });
+    }
+  });
+
+  // Get project members
+  app.get("/api/projects/:id/members", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const projectId = parseInt(req.params.id);
+
+    try {
+      const members = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          specialization: users.specialization,
+        })
+        .from(projectMembers)
+        .innerJoin(users, eq(projectMembers.userId, users.id))
+        .where(
+          and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.invitationStatus, "accepted")
+          )
+        )
+        .orderBy(asc(users.name));
+
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching project members:", error);
+      res.status(500).json({ error: "Failed to fetch project members" });
+    }
+  });
+
+  // Get project team messages
+  app.get("/api/projects/:id/team-messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const projectId = parseInt(req.params.id);
+
+    try {
+      const messages = await db
+        .select({
+          id: projectMessages.id,
+          content: projectMessages.content,
+          createdAt: projectMessages.createdAt,
+          senderId: projectMessages.senderId,
+          sender: {
+            id: users.id,
+            name: users.name,
+            email: users.email,
+          },
+        })
+        .from(projectMessages)
+        .leftJoin(users, eq(projectMessages.senderId, users.id))
+        .where(eq(projectMessages.projectId, projectId))
+        .orderBy(asc(projectMessages.createdAt));
+
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching team messages:", error);
+      res.status(500).json({ error: "Failed to fetch team messages" });
+    }
+  });
+
+  // Send team message
+  app.post("/api/projects/:id/team-messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+    const { content } = req.body;
+
+    try {
+      if (!content || !content.trim()) {
+        return res.status(400).json({ error: "Message content is required" });
+      }
+
+      const [newMessage] = await db
+        .insert(projectMessages)
+        .values({
+          content: content.trim(),
+          projectId,
+          senderId: user.id,
+        })
+        .returning();
+
+      res.json({ success: true, messageId: newMessage.id });
+    } catch (error) {
+      console.error("Error sending team message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Mark team messages as read
+  app.post("/api/projects/:id/team-messages/mark-read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const { messageIds } = req.body;
+
+    try {
+      if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
+        return res.json({ success: true }); // No messages to mark
+      }
+
+      // Insert read receipts for messages that don't already have them
+      const readReceiptsData = messageIds.map(messageId => ({
+        messageId: parseInt(messageId),
+        userId: user.id,
+      }));
+
+      await db.insert(messageReadReceipts).values(readReceiptsData).onConflictDoNothing();
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
+  // Get project plans
+  app.get("/api/projects/:id/plans", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const projectId = parseInt(req.params.id);
+
+    try {
+      const plans = await db
+        .select()
+        .from(projectPlans)
+        .where(eq(projectPlans.projectId, projectId))
+        .orderBy(desc(projectPlans.createdAt));
+
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching project plans:", error);
+      res.status(500).json({ error: "Failed to fetch project plans" });
+    }
+  });
+
+  // Get project plan details
+  app.get("/api/project-plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const planId = parseInt(req.params.id);
+
+    try {
+      const [plan] = await db
+        .select()
+        .from(projectPlans)
+        .where(eq(projectPlans.id, planId))
+        .limit(1);
+
+      if (!plan) {
+        return res.status(404).json({ error: "Project plan not found" });
+      }
+
+      // Get deliverables for this plan
+      const planDeliverables = await db
+        .select()
+        .from(deliverables)
+        .where(eq(deliverables.projectPlanId, planId))
+        .orderBy(asc(deliverables.startDate));
+
+      const planWithDeliverables = {
+        ...plan,
+        deliverables: planDeliverables,
+      };
+
+      res.json(planWithDeliverables);
+    } catch (error) {
+      console.error("Error fetching project plan:", error);
+      res.status(500).json({ error: "Failed to fetch project plan" });
+    }
+  });
+
   // SSE endpoint for real-time notifications
   app.get("/api/notifications/stream", (req, res) => {
     if (!req.isAuthenticated()) {

@@ -45,12 +45,17 @@ export function setupWebSocket(wss: WebSocketServer) {
       console.log("New WebSocket connection, checking session");
       ws.isAlive = true;
 
-      const userId = request.session && request.session.passport ? request.session.passport.user : null;
-      console.log("WebSocket connection - Session user ID:", userId);
+      // Check if request has session property
+      if (!request || !request.session) {
+        console.log('WebSocket connection rejected - no session available');
+        ws.close(1008, 'Session required');
+        return;
+      }
 
+      const userId = request.session?.passport?.user;
       if (!userId) {
-        console.error("No authenticated user found in session");
-        ws.close(1008, "Authentication required");
+        console.log('WebSocket connection rejected - user not authenticated');
+        ws.close(1008, 'Authentication required');
         return;
       }
 
@@ -105,7 +110,7 @@ export function setupWebSocket(wss: WebSocketServer) {
 
             wss.clients.forEach((client) => {
               const extClient = client as ExtendedWebSocket;
-              if (extClient.projectId === ws.projectId && 
+              if (extClient.projectId === ws.projectId &&
                   extClient.readyState === WebSocket.OPEN) {
                 extClient.send(messageData);
               }
