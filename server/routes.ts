@@ -1917,13 +1917,15 @@ export function registerRoutes(app: Express): Server {
       const monday = new Date(now.setDate(diff));
       monday.setHours(0, 0, 0, 0);
 
+      const mondayStr = monday.toISOString().split('T')[0];
+
       const [existingSentiment] = await db
         .select()
         .from(clientSentiment)
         .where(
           and(
             eq(clientSentiment.clientId, user.id),
-            gte(clientSentiment.createdAt, monday)
+            eq(clientSentiment.weekStart, mondayStr)
           )
         )
         .limit(1);
@@ -1965,8 +1967,8 @@ export function registerRoutes(app: Express): Server {
           clientId: user.id,
           sentiment,
           reason,
-          weekStart: monday.toISOString(),
-          weekEnd: sunday.toISOString(),
+          weekStart: monday.toISOString().split('T')[0],
+          weekEnd: sunday.toISOString().split('T')[0],
         })
         .returning();
 
