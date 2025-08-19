@@ -1922,7 +1922,7 @@ export function registerRoutes(app: Express): Server {
       const hasAccess = isOperationsManager || 
                        (user.role === 'project_manager' && project.managerId === user.id) ||
                        (user.role === 'client' && project.clientId === user.id);
-      
+
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied" });
       }
@@ -2215,6 +2215,44 @@ export function registerRoutes(app: Express): Server {
     req.on('aborted', () => {
       clearInterval(heartbeat);
     });
+  });
+
+  // Create task
+  app.post("/api/tasks", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const { title, description, projectId, assigneeId, deadline, priority, workingHours, assignedHours } = req.body;
+
+    try {
+      if (!title || !projectId) {
+        return res.status(400).json({ error: "Title and project ID are required" });
+      }
+
+      const [newTask] = await db
+        .insert(tasks)
+        .values({
+          title,
+          description: description || "",
+          projectId: parseInt(projectId),
+          assigneeId: assigneeId ? parseInt(assigneeId) : null,
+          assignedBy: user.id,
+          deadline: deadline ? new Date(deadline) : null,
+          priority: priority || "medium",
+          status: "not_started",
+          progress: 0,
+          workingHours: workingHours ? parseInt(workingHours) : null,
+          assignedHours: assignedHours ? parseFloat(assignedHours) : null,
+        })
+        .returning();
+
+      res.json({ success: true, taskId: newTask.id, task: newTask });
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ error: "Failed to create task" });
+    }
   });
 
   const wss = setupWebSocket(server);
