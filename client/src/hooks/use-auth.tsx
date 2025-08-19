@@ -59,7 +59,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (res.status === 401) return null;
-        if (!res.ok) throw new Error("Failed to fetch user");
+        if (!res.ok) {
+          console.error(`Failed to fetch user: ${res.status} ${res.statusText}`);
+          return null;
+        }
+
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          console.error("Expected JSON response but got:", contentType);
+          return null;
+        }
 
         return res.json();
       } catch (err) {

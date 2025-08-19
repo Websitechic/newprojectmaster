@@ -76,46 +76,19 @@ const upload = multer({
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Serve uploaded files
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
   const server = createServer(app);
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
-  // Add middleware to ensure API routes return JSON and don't fall through to static serving
+  // Add middleware to ensure API routes return JSON - BEFORE static files
   app.use('/api', (req, res, next) => {
-    // Set JSON content type for all API routes
     res.setHeader('Content-Type', 'application/json');
-    
-    // Override res.send to ensure JSON responses
-    const originalSend = res.send;
-    res.send = function(data: any) {
-      // Ensure content type is still JSON
-      if (!res.getHeader('Content-Type')) {
-        res.setHeader('Content-Type', 'application/json');
-      }
-      
-      // If data is a plain string and not JSON, wrap it
-      if (typeof data === 'string' && !data.startsWith('{"') && !data.startsWith('[') && !data.startsWith('"')) {
-        return originalSend.call(this, JSON.stringify({ message: data }));
-      }
-      return originalSend.call(this, data);
-    };
-    
-    // Override res.end to prevent HTML fallthrough
-    const originalEnd = res.end;
-    res.end = function(chunk?: any, encoding?: BufferEncoding) {
-      // If no content type set and we have content, ensure it's JSON
-      if (chunk && !res.getHeader('Content-Type')) {
-        res.setHeader('Content-Type', 'application/json');
-      }
-      return originalEnd.call(this, chunk, encoding);
-    };
-    
     next();
   });
+
+  // Static file serving AFTER API middleware
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // User endpoint for authentication
   app.get("/api/user", (req, res) => {
@@ -2970,12 +2943,12 @@ export function registerRoutes(app: Express): Server {
   // Global error handler for API routes
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     console.error('API Error:', err);
-    
+
     // If response already sent, delegate to default Express error handler
     if (res.headersSent) {
       return next(err);
     }
-    
+
     // Send JSON error response
     res.status(500).json({
       error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'

@@ -50,23 +50,8 @@ export function setupWebSocket(wss: WebSocketServer) {
     try {
       // Safely check if request has session data from the upgrade
       const extReq = req as any;
-      
-      // Check for session existence more safely
-      if (!extReq || !extReq.session) {
-        console.log('WebSocket connection failed - no session object');
-        if (extWs.readyState === WebSocket.OPEN) {
-          extWs.send(JSON.stringify({
-            type: 'error',
-            message: 'No session found'
-          }));
-          extWs.close(1008, 'No session');
-        }
-        return;
-      }
+      const hasValidSession = extReq && extReq.session && extReq.session.passport && extReq.session.passport.user;
 
-      // Check for authenticated user
-      const hasValidSession = extReq.session.passport && extReq.session.passport.user;
-      
       if (hasValidSession) {
         const user = extReq.session.passport.user;
         console.log(`WebSocket authenticated user: ${user}`);
@@ -103,14 +88,10 @@ export function setupWebSocket(wss: WebSocketServer) {
             type: 'error',
             message: 'Authentication failed'
           }));
-          extWs.close(1008, 'Authentication failed');
         }
+        extWs.close(1008, 'Authentication failed');
       } catch (closeError) {
         console.error('Error closing WebSocket:', closeError);
-        // Force terminate if close fails
-        if (typeof extWs.terminate === 'function') {
-          extWs.terminate();
-        }
       }
       return;
     }
