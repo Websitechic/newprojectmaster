@@ -30,9 +30,13 @@ export function setupWebSocket(wss: WebSocketServer) {
       wss.clients.forEach((ws) => {
         const extWs = ws as ExtendedWebSocket;
         if (!extWs.isAlive) {
-          console.log(`Terminating inactive connection for user ${extWs.userId}`);
-          if (extWs.readyState === WebSocket.OPEN) {
-            extWs.terminate();
+          console.log(`Terminating inactive connection for user ${extWs.userId || 'unknown'}`);
+          try {
+            if (extWs.readyState === WebSocket.OPEN || extWs.readyState === WebSocket.CONNECTING) {
+              extWs.terminate();
+            }
+          } catch (error) {
+            console.error('Error terminating WebSocket:', error);
           }
           return;
         }
@@ -54,15 +58,18 @@ export function setupWebSocket(wss: WebSocketServer) {
     extWs.isAlive = true;
 
     try {
-      // Get session from request (passed during upgrade)
-      const session = (req as any).session;
+      // Safely get session from request
+      const session = (req as any)?.session;
       
-      if (session && session.passport && session.passport.user) {
+      if (session?.passport?.user) {
         const userId = session.passport.user;
         console.log(`WebSocket authenticated user: ${userId}`);
         extWs.userId = userId;
 
         // Add to global connected clients
+        if (!global.connectedClients) {
+          global.connectedClients = new Map();
+        }
         global.connectedClients.set(userId, extWs);
 
         // Send initial connection success message
@@ -75,7 +82,7 @@ export function setupWebSocket(wss: WebSocketServer) {
           }));
         }
       } else {
-        console.log('WebSocket connection without session - will wait for auth message');
+        console.log('WebSocket connection without authenticated session - will wait for auth message');
         
         // Send connection established message for unauthenticated connections
         if (extWs.readyState === WebSocket.OPEN) {
@@ -114,7 +121,7 @@ export function setupWebSocket(wss: WebSocketServer) {
       if (extWs.userId && global.connectedClients) {
         global.connectedClients.delete(extWs.userId);
       }
-      console.log(`WebSocket connection closed for user ${extWs.userId}, code: ${code}, reason: ${reason}`);
+      console.log(`WebSocket connection closed for user ${extWs.userId || 'unknown'}, code: ${code}, reason: ${reason?.toString() || 'no reason'}`);
     });
 
     // Handle messages
@@ -125,6 +132,9 @@ export function setupWebSocket(wss: WebSocketServer) {
         // Handle auth message
         if (message.type === 'auth' && message.userId) {
           extWs.userId = message.userId;
+          if (!global.connectedClients) {
+            global.connectedClients = new Map();
+          }
           global.connectedClients.set(message.userId, extWs);
           console.log(`WebSocket user authenticated via message: ${message.userId}`);
           

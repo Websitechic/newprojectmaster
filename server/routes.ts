@@ -84,6 +84,17 @@ export function registerRoutes(app: Express): Server {
   // Add middleware to ensure API routes return JSON - BEFORE static files
   app.use('/api', (req, res, next) => {
     res.setHeader('Content-Type', 'application/json');
+    
+    // Override res.send to ensure JSON for API routes
+    const originalSend = res.send;
+    res.send = function(data) {
+      if (typeof data === 'string' && !data.startsWith('{') && !data.startsWith('[')) {
+        // If it's a plain string that's not JSON, wrap it
+        return originalSend.call(this, JSON.stringify({ message: data }));
+      }
+      return originalSend.call(this, data);
+    };
+    
     next();
   });
 
