@@ -305,6 +305,35 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get clients for project form
+  app.get("/api/clients", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const isProjectManager = user.role === "project_manager";
+    const isProductOwner = user.role === "product_owner";
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+
+    if (!isProjectManager && !isProductOwner && !isOperationsManager) {
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can access clients" });
+    }
+
+    try {
+      const clients = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "client"))
+        .orderBy(desc(users.createdAt));
+
+      res.json(clients);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      res.status(500).json({ error: "Failed to fetch clients" });
+    }
+  });
+
   // Get all users (for bookings participant selection)
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -2324,6 +2353,200 @@ export function registerRoutes(app: Express): Server {
     req.on('aborted', () => {
       clearInterval(heartbeat);
     });
+  });
+
+  // Create project
+  app.post("/api/projects", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const { name, description, type, category, startDate, endDate, clientId, teamMembers } = req.body;
+
+    try {
+      if (!name || !category || !startDate || !endDate) {
+        return res.status(400).json({ error: "Name, category, start date, and end date are required" });
+      }
+
+      const [newProject] = await db
+        .insert(projects)
+        .values({
+          name,
+          description: description || "",
+          type: type || "one_time",
+          category,
+          status: "pending",
+          progress: 0,
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          clientId: clientId && clientId !== "none" ? parseInt(clientId) : null,
+          managerId: user.id,
+        })
+        .returning();
+
+      // Add team members if provided
+      if (teamMembers && teamMembers.length > 0) {
+        const memberData = teamMembers.map((memberId: string) => ({
+          projectId: newProject.id,
+          userId: parseInt(memberId),
+          invitedBy: user.id,
+          invitationStatus: "accepted" as const,
+        }));
+
+        await db.insert(projectMembers).values(memberData);
+      }
+
+      res.json({ success: true, id: newProject.id, project: newProject });
+    } catch (error) {
+      console.error("Error creating project:", error);
+      res.status(500).json({ error: "Failed to create project" });
+    }
+  });
+
+  // Update project
+  app.put("/api/projects/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+    const { name, description, type, category, startDate, endDate, clientId, teamMembers } = req.body;
+
+    try {
+      if (!name || !category || !startDate || !endDate) {
+        return res.status(400).json({ error: "Name, category, start date, and end date are required" });
+      }
+
+      // Check if user has permission to update this project
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+      const isProductOwner = user.role === "product_owner";
+
+      if (!isOperationsManager && !isProjectManager && !isProductOwner) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Update project
+      const [updatedProject] = await db
+        .update(projects)
+        .set({
+          name,
+          description: description || "",
+          type: type || "one_time",
+          category,
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          clientId: clientId && clientId !== "none" ? parseInt(clientId) : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(projects.id, projectId))
+        .returning();
+
+      // Update team members if provided
+      if (teamMembers && Array.isArray(teamMembers)) {
+        // Remove existing members
+        await db.delete(projectMembers).where(eq(projectMembers.projectId, projectId));
+
+        // Add new members
+        if (teamMembers.length > 0) {
+          const memberData = teamMembers.map((memberId: string) => ({
+            projectId,
+            userId: parseInt(memberId),
+            invitedBy: user.id,
+            invitationStatus: "accepted" as const,
+          }));
+
+          await db.insert(projectMembers).values(memberData);
+        }
+      }
+
+      res.json({ success: true, project: updatedProject });
+    } catch (error) {
+      console.error("Error updating project:", error);
+      res.status(500).json({ error: "Failed to update project" });
+    }
+  });
+
+  // Create project plan
+  app.post("/api/projects/:id/plans", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+    const { name, description, startDate, endDate, deliverables } = req.body;
+
+    try {
+      if (!name || !startDate || !endDate) {
+        return res.status(400).json({ error: "Name, start date, and end date are required" });
+      }
+
+      // Check if project exists and user has access
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+
+      if (!isOperationsManager && !isProjectManager) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Create project plan
+      const [newPlan] = await db
+        .insert(projectPlans)
+        .values({
+          projectId,
+          name,
+          description: description || "",
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          status: "draft",
+          createdBy: user.id,
+        })
+        .returning();
+
+      // Create deliverables if provided
+      if (deliverables && deliverables.length > 0) {
+        const deliverableData = deliverables.map((deliverable: any, index: number) => ({
+          projectPlanId: newPlan.id,
+          name: deliverable.name || `Deliverable ${index + 1}`,
+          description: deliverable.description || "",
+          startDate: deliverable.startDate ? new Date(deliverable.startDate) : new Date(startDate),
+          endDate: deliverable.endDate ? new Date(deliverable.endDate) : new Date(endDate),
+          duration: deliverable.duration || 1,
+          status: "pending",
+          order: deliverable.order || index,
+        }));
+
+        await db.insert(deliverables).values(deliverableData);
+      }
+
+      res.json({ success: true, planId: newPlan.id });
+    } catch (error) {
+      console.error("Error creating project plan:", error);
+      res.status(500).json({ error: "Failed to create project plan" });
+    }
   });
 
   // Create task
