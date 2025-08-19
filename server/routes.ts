@@ -42,7 +42,7 @@ import {
   sops,
   sopSegments,
 } from "@db/schema";
-import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull, alias } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
 
 // Configure multer for file uploads
@@ -1252,14 +1252,11 @@ export function registerRoutes(app: Express): Server {
     const user = req.user!;
 
     try {
-      let requestsQuery;
+      let requests;
       
-      // Create alias for assigned user
-      const assignedToUser = alias(users, 'assignedToUser');
-
       if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'operations_manager' || user.specialization === 'operations_manager') {
         // Technical support staff, project managers, product owners, and operations managers see all requests
-        requestsQuery = db
+        requests = await db
           .select({
             id: technicalSupportRequests.id,
             title: technicalSupportRequests.title,
@@ -1275,17 +1272,15 @@ export function registerRoutes(app: Express): Server {
             resolvedAt: technicalSupportRequests.resolvedAt,
             requesterName: users.name,
             requesterEmail: users.email,
-            assignedToName: assignedToUser.name,
-            assignedToEmail: assignedToUser.email,
             taskTitle: tasks.title,
           })
           .from(technicalSupportRequests)
           .leftJoin(users, eq(technicalSupportRequests.requesterId, users.id))
-          .leftJoin(assignedToUser, eq(technicalSupportRequests.assignedToId, assignedToUser.id))
-          .leftJoin(tasks, eq(technicalSupportRequests.taskId, tasks.id));
+          .leftJoin(tasks, eq(technicalSupportRequests.taskId, tasks.id))
+          .orderBy(desc(technicalSupportRequests.createdAt));
       } else {
         // Non-technical support staff see only their own requests
-        requestsQuery = db
+        requests = await db
           .select({
             id: technicalSupportRequests.id,
             title: technicalSupportRequests.title,
@@ -1301,18 +1296,25 @@ export function registerRoutes(app: Express): Server {
             resolvedAt: technicalSupportRequests.resolvedAt,
             requesterName: users.name,
             requesterEmail: users.email,
-            assignedToName: assignedToUser.name,
-            assignedToEmail: assignedToUser.email,
             taskTitle: tasks.title,
           })
           .from(technicalSupportRequests)
           .leftJoin(users, eq(technicalSupportRequests.requesterId, users.id))
-          .leftJoin(assignedToUser, eq(technicalSupportRequests.assignedToId, assignedToUser.id))
           .leftJoin(tasks, eq(technicalSupportRequests.taskId, tasks.id))
-          .where(eq(technicalSupportRequests.requesterId, user.id));
+          .where(eq(technicalSupportRequests.requesterId, user.id))
+          .orderBy(desc(technicalSupportRequests.createdAt));
       }
 
-      const requests = await requestsQuery.orderBy(desc(technicalSupportRequests.createdAt));
+      // For requests that have assignedToId, get the assigned user info separately
+      const assignedUserIds = requests.filter(r => r.assignedToId).map(r => r.assignedToId);
+      const assignedUsers = assignedUserIds.length > 0 ? await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        })
+        .from(users)
+        .where(inArray(users.id, assignedUserIds)) : [];
 
       const formattedRequests = requests.map(request => ({
         id: request.id,
@@ -1332,11 +1334,8 @@ export function registerRoutes(app: Express): Server {
           name: request.requesterName,
           email: request.requesterEmail,
         },
-        assignedTo: request.assignedToId ? {
-          id: request.assignedToId,
-          name: request.assignedToName,
-          email: request.assignedToEmail,
-        } : null,
+        assignedTo: request.assignedToId ? 
+          assignedUsers.find(u => u.id === request.assignedToId) || null : null,
         task: request.taskId ? {
           id: request.taskId,
           title: request.taskTitle,
