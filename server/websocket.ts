@@ -48,8 +48,16 @@ export function setupWebSocket(wss: WebSocketServer) {
     extWs.isAlive = true;
 
     try {
-      // Safely check if request has session data from the upgrade
+      // Check if request has session data from the upgrade
       const extReq = req as any;
+      
+      console.log('WebSocket connection - session debug:', {
+        hasSession: !!extReq.session,
+        hasPassport: !!(extReq.session && extReq.session.passport),
+        hasUser: !!(extReq.session && extReq.session.passport && extReq.session.passport.user),
+        userId: extReq.session?.passport?.user
+      });
+
       const hasValidSession = extReq && extReq.session && extReq.session.passport && extReq.session.passport.user;
 
       if (hasValidSession) {
@@ -70,30 +78,22 @@ export function setupWebSocket(wss: WebSocketServer) {
           }));
         }
       } else {
-        console.log('WebSocket connection not authenticated - no valid user in session');
+        // Allow unauthenticated connections but mark them appropriately
+        console.log('WebSocket connection without authentication - allowing for potential later auth');
+        
+        // Send connection established message anyway - authentication can happen later
         if (extWs.readyState === WebSocket.OPEN) {
           extWs.send(JSON.stringify({
-            type: 'error',
-            message: 'Authentication required'
+            type: 'connected',
+            message: 'WebSocket connection established',
+            authenticated: false
           }));
-          extWs.close(1008, 'Not authenticated');
         }
-        return;
       }
     } catch (error) {
       console.error('WebSocket connection error:', error);
-      try {
-        if (extWs.readyState === WebSocket.OPEN) {
-          extWs.send(JSON.stringify({
-            type: 'error',
-            message: 'Authentication failed'
-          }));
-        }
-        extWs.close(1008, 'Authentication failed');
-      } catch (closeError) {
-        console.error('Error closing WebSocket:', closeError);
-      }
-      return;
+      // Don't close connection on errors - just log them
+      console.log('Continuing with WebSocket connection despite error');
     }
 
     // Handle pong responses

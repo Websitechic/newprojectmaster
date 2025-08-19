@@ -69,14 +69,15 @@ export function useWebSocket(userId: number | undefined) {
       // Connection closed handler
       ws.current.onclose = (event) => {
         console.log('WebSocket connection closed:', event.code, event.reason);
-        reconnectAttempts.current++;
-        // Attempt to reconnect if not a clean close (code 1000) and within limits
-        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = 1000 * Math.min(reconnectAttempts.current, 5); // Exponential backoff
+        
+        // Only attempt reconnection for unexpected closes and if we have a valid userId
+        if (event.code !== 1000 && event.code !== 1008 && userId && reconnectAttempts.current < maxReconnectAttempts) {
+          reconnectAttempts.current++;
+          const delay = 1000 * Math.min(reconnectAttempts.current, 3); // Reduced backoff
+          console.log(`Attempting WebSocket reconnection ${reconnectAttempts.current}/${maxReconnectAttempts} in ${delay}ms`);
           setTimeout(connect, delay);
         } else if (reconnectAttempts.current >= maxReconnectAttempts) {
           console.error('Max WebSocket reconnect attempts reached.');
-          // Show toast for persistent connection failures
           toast({
             title: "Connection Warning",
             description: "Chat features may be limited. Try refreshing the page.",

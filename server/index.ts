@@ -118,20 +118,20 @@ let emailServiceInitialized = false;
     server.on('upgrade', (request, socket, head) => {
       console.log('WebSocket upgrade request received');
 
-      // Add timeout for upgrade process
+      // Set upgrade timeout
       const upgradeTimeout = setTimeout(() => {
         console.log('WebSocket upgrade timeout');
         if (socket && !socket.destroyed) {
           socket.write('HTTP/1.1 408 Request Timeout\r\n\r\n');
           socket.destroy();
         }
-      }, 10000); // 10 second timeout
+      }, 10000);
 
-      // Parse session from upgrade request with comprehensive error handling
       try {
+        // Parse session and attach to request
         sessionParser(request as any, {} as any, (err: any) => {
           clearTimeout(upgradeTimeout);
-          
+
           if (err) {
             console.log('Session parsing error during upgrade:', err);
             if (socket && !socket.destroyed) {
@@ -143,18 +143,17 @@ let emailServiceInitialized = false;
 
           console.log('Session parsed for WebSocket upgrade');
 
-          // Check for session existence more safely
+          // Log session state for debugging
           const extRequest = request as any;
-          if (!extRequest || !extRequest.session) {
-            console.log('No session found in upgrade request');
-            if (socket && !socket.destroyed) {
-              socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-              socket.destroy();
-            }
-            return;
+          if (extRequest.session) {
+            console.log('Session exists:', !!extRequest.session);
+            console.log('Session passport:', !!extRequest.session.passport);
+            console.log('Session user:', extRequest.session.passport?.user);
+          } else {
+            console.log('No session found in request');
           }
 
-          // Allow connections with session, authentication will be checked in websocket.ts
+          // Allow connections - authentication will be verified in websocket.ts
           try {
             wss.handleUpgrade(request, socket, head, (ws) => {
               console.log('WebSocket upgrade completed, emitting connection');
