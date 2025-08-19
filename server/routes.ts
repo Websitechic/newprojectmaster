@@ -42,7 +42,7 @@ import {
   sops,
   sopSegments,
 } from "@db/schema";
-import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull, alias } from "drizzle-orm";
 import WebSocket from "ws";
 
 // Configure multer for file uploads
@@ -152,6 +152,31 @@ export function registerRoutes(app: Express): Server {
         })
         .from(users)
         .where(eq(users.role, "staff"))
+        .orderBy(asc(users.name));
+
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Get all users (for bookings participant selection)
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          specialization: users.specialization,
+        })
+        .from(users)
         .orderBy(asc(users.name));
 
       res.json(allUsers);
@@ -1120,6 +1145,484 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error deleting note:", error);
       res.status(500).json({ error: "Failed to delete note" });
+    }
+  });
+
+  // Bookings API Routes
+  app.get("/api/bookings", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const allBookings = await db
+        .select({
+          id: bookings.id,
+          title: bookings.title,
+          description: bookings.description,
+          type: bookings.type,
+          scheduledBy: bookings.scheduledBy,
+          participants: bookings.participants,
+          startTime: bookings.startTime,
+          endTime: bookings.endTime,
+          status: bookings.status,
+          meetingLink: bookings.meetingLink,
+          notes: bookings.notes,
+          createdAt: bookings.createdAt,
+          schedulerName: users.name,
+        })
+        .from(bookings)
+        .leftJoin(users, eq(bookings.scheduledBy, users.id))
+        .orderBy(desc(bookings.startTime));
+
+      res.json(allBookings);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      res.status(500).json({ error: "Failed to fetch bookings" });
+    }
+  });
+
+  app.get("/api/bookings/my-upcoming", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const upcomingBookings = await db
+        .select()
+        .from(bookings)
+        .where(
+          and(
+            sql`${bookings.participants} @> ${JSON.stringify([user.id])}`,
+            eq(bookings.status, "scheduled"),
+            gte(bookings.startTime, new Date())
+          )
+        )
+        .orderBy(asc(bookings.startTime))
+        .limit(5);
+
+      res.json(upcomingBookings);
+    } catch (error) {
+      console.error("Error fetching upcoming bookings:", error);
+      res.status(500).json({ error: "Failed to fetch upcoming bookings" });
+    }
+  });
+
+  app.post("/api/bookings", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const { title, description, type, participants, startTime, endTime, meetingLink, notes } = req.body;
+
+      const [newBooking] = await db
+        .insert(bookings)
+        .values({
+          title,
+          description,
+          type,
+          scheduledBy: user.id,
+          participants,
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+          status: "scheduled",
+          meetingLink,
+          notes,
+        })
+        .returning();
+
+      res.json({ success: true, bookingId: newBooking.id });
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      res.status(500).json({ error: "Failed to create booking" });
+    }
+  });
+
+  // Technical Support Requests API Routes
+  app.get("/api/technical-support/requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      let requestsQuery;
+      
+      // Create alias for assigned user
+      const assignedToUser = alias(users, 'assignedToUser');
+
+      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'operations_manager' || user.specialization === 'operations_manager') {
+        // Technical support staff, project managers, product owners, and operations managers see all requests
+        requestsQuery = db
+          .select({
+            id: technicalSupportRequests.id,
+            title: technicalSupportRequests.title,
+            description: technicalSupportRequests.description,
+            taskId: technicalSupportRequests.taskId,
+            requesterId: technicalSupportRequests.requesterId,
+            assignedToId: technicalSupportRequests.assignedToId,
+            status: technicalSupportRequests.status,
+            priority: technicalSupportRequests.priority,
+            resolution: technicalSupportRequests.resolution,
+            createdAt: technicalSupportRequests.createdAt,
+            updatedAt: technicalSupportRequests.updatedAt,
+            resolvedAt: technicalSupportRequests.resolvedAt,
+            requesterName: users.name,
+            requesterEmail: users.email,
+            assignedToName: assignedToUser.name,
+            assignedToEmail: assignedToUser.email,
+            taskTitle: tasks.title,
+          })
+          .from(technicalSupportRequests)
+          .leftJoin(users, eq(technicalSupportRequests.requesterId, users.id))
+          .leftJoin(assignedToUser, eq(technicalSupportRequests.assignedToId, assignedToUser.id))
+          .leftJoin(tasks, eq(technicalSupportRequests.taskId, tasks.id));
+      } else {
+        // Non-technical support staff see only their own requests
+        requestsQuery = db
+          .select({
+            id: technicalSupportRequests.id,
+            title: technicalSupportRequests.title,
+            description: technicalSupportRequests.description,
+            taskId: technicalSupportRequests.taskId,
+            requesterId: technicalSupportRequests.requesterId,
+            assignedToId: technicalSupportRequests.assignedToId,
+            status: technicalSupportRequests.status,
+            priority: technicalSupportRequests.priority,
+            resolution: technicalSupportRequests.resolution,
+            createdAt: technicalSupportRequests.createdAt,
+            updatedAt: technicalSupportRequests.updatedAt,
+            resolvedAt: technicalSupportRequests.resolvedAt,
+            requesterName: users.name,
+            requesterEmail: users.email,
+            assignedToName: assignedToUser.name,
+            assignedToEmail: assignedToUser.email,
+            taskTitle: tasks.title,
+          })
+          .from(technicalSupportRequests)
+          .leftJoin(users, eq(technicalSupportRequests.requesterId, users.id))
+          .leftJoin(assignedToUser, eq(technicalSupportRequests.assignedToId, assignedToUser.id))
+          .leftJoin(tasks, eq(technicalSupportRequests.taskId, tasks.id))
+          .where(eq(technicalSupportRequests.requesterId, user.id));
+      }
+
+      const requests = await requestsQuery.orderBy(desc(technicalSupportRequests.createdAt));
+
+      const formattedRequests = requests.map(request => ({
+        id: request.id,
+        title: request.title,
+        description: request.description,
+        taskId: request.taskId,
+        requesterId: request.requesterId,
+        assignedToId: request.assignedToId,
+        status: request.status,
+        priority: request.priority,
+        resolution: request.resolution,
+        createdAt: request.createdAt,
+        updatedAt: request.updatedAt,
+        resolvedAt: request.resolvedAt,
+        requester: {
+          id: request.requesterId,
+          name: request.requesterName,
+          email: request.requesterEmail,
+        },
+        assignedTo: request.assignedToId ? {
+          id: request.assignedToId,
+          name: request.assignedToName,
+          email: request.assignedToEmail,
+        } : null,
+        task: request.taskId ? {
+          id: request.taskId,
+          title: request.taskTitle,
+        } : null,
+      }));
+
+      res.json(formattedRequests);
+    } catch (error) {
+      console.error("Error fetching technical support requests:", error);
+      res.status(500).json({ error: "Failed to fetch technical support requests" });
+    }
+  });
+
+  app.post("/api/technical-support/requests/:id/assign", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const requestId = parseInt(req.params.id);
+
+    try {
+      await db
+        .update(technicalSupportRequests)
+        .set({
+          assignedToId: user.id,
+          status: "in_progress",
+          updatedAt: new Date(),
+        })
+        .where(eq(technicalSupportRequests.id, requestId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error assigning technical support request:", error);
+      res.status(500).json({ error: "Failed to assign request" });
+    }
+  });
+
+  app.put("/api/technical-support/requests/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const requestId = parseInt(req.params.id);
+    const { status, resolution } = req.body;
+
+    try {
+      const updateData: any = {
+        status,
+        updatedAt: new Date(),
+      };
+
+      if (resolution) {
+        updateData.resolution = resolution;
+      }
+
+      if (status === "resolved" || status === "closed") {
+        updateData.resolvedAt = new Date();
+      }
+
+      await db
+        .update(technicalSupportRequests)
+        .set(updateData)
+        .where(eq(technicalSupportRequests.id, requestId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating technical support request:", error);
+      res.status(500).json({ error: "Failed to update request" });
+    }
+  });
+
+  // Deadline Extension Requests API Routes
+  app.get("/api/deadline-extension-requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role === "project_manager" || user.role === "operations_manager" || user.specialization === "operations_manager") {
+        // Project managers see requests for their projects, operations managers see all requests
+        const whereCondition = user.role === "operations_manager" || user.specialization === "operations_manager"
+          ? undefined // Operations managers see all requests
+          : eq(deadlineExtensionRequests.projectManagerId, user.id); // Project managers see only their projects
+
+        const requests = await db
+          .select({
+            id: deadlineExtensionRequests.id,
+            taskId: deadlineExtensionRequests.taskId,
+            requesterId: deadlineExtensionRequests.requesterId,
+            projectManagerId: deadlineExtensionRequests.projectManagerId,
+            reason: deadlineExtensionRequests.reason,
+            requestedDeadline: deadlineExtensionRequests.requestedDeadline,
+            status: deadlineExtensionRequests.status,
+            decisionReason: deadlineExtensionRequests.decisionReason,
+            decidedBy: deadlineExtensionRequests.decidedBy,
+            decidedAt: deadlineExtensionRequests.decidedAt,
+            approvedDeadline: deadlineExtensionRequests.approvedDeadline,
+            approvedWorkingHours: deadlineExtensionRequests.approvedWorkingHours,
+            createdAt: deadlineExtensionRequests.createdAt,
+            updatedAt: deadlineExtensionRequests.updatedAt,
+            requesterName: users.name,
+            requesterEmail: users.email,
+            taskTitle: tasks.title,
+            taskDeadline: tasks.deadline,
+            taskWorkingHours: tasks.workingHours,
+            projectName: projects.name,
+            projectId: projects.id,
+          })
+          .from(deadlineExtensionRequests)
+          .leftJoin(users, eq(deadlineExtensionRequests.requesterId, users.id))
+          .leftJoin(tasks, eq(deadlineExtensionRequests.taskId, tasks.id))
+          .leftJoin(projects, eq(tasks.projectId, projects.id))
+          .where(whereCondition)
+          .orderBy(desc(deadlineExtensionRequests.createdAt));
+
+        res.json(requests);
+      } else {
+        return res.status(403).json({ error: "Access denied" });
+      }
+    } catch (error) {
+      console.error("Error fetching deadline extension requests:", error);
+      res.status(500).json({ error: "Failed to fetch deadline extension requests" });
+    }
+  });
+
+  // Client Sentiment Tracker API Routes
+  app.get("/api/client-sentiment/current-week", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      // Get current week's start date (Monday)
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const monday = new Date(now.setDate(diff));
+      monday.setHours(0, 0, 0, 0);
+
+      const [existingSentiment] = await db
+        .select()
+        .from(clientSentiment)
+        .where(
+          and(
+            eq(clientSentiment.clientId, user.id),
+            gte(clientSentiment.createdAt, monday)
+          )
+        )
+        .limit(1);
+
+      if (!existingSentiment) {
+        return res.status(404).json({ error: "No sentiment for current week" });
+      }
+
+      res.json(existingSentiment);
+    } catch (error) {
+      console.error("Error fetching current week sentiment:", error);
+      res.status(500).json({ error: "Failed to fetch sentiment" });
+    }
+  });
+
+  app.post("/api/client-sentiment", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const { sentiment, reason } = req.body;
+
+    try {
+      // Get current week dates
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const monday = new Date(now.setDate(diff));
+      monday.setHours(0, 0, 0, 0);
+      
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+
+      const [newSentiment] = await db
+        .insert(clientSentiment)
+        .values({
+          clientId: user.id,
+          sentiment,
+          reason,
+          weekStart: monday.toISOString(),
+          weekEnd: sunday.toISOString(),
+        })
+        .returning();
+
+      res.json({ success: true, sentimentId: newSentiment.id });
+    } catch (error) {
+      console.error("Error creating client sentiment:", error);
+      res.status(500).json({ error: "Failed to create sentiment" });
+    }
+  });
+
+  // Client Complaints API Routes
+  app.get("/api/complaints", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const allComplaints = await db
+        .select()
+        .from(complaints)
+        .orderBy(desc(complaints.createdAt));
+
+      res.json(allComplaints);
+    } catch (error) {
+      console.error("Error fetching complaints:", error);
+      res.status(500).json({ error: "Failed to fetch complaints" });
+    }
+  });
+
+  app.put("/api/complaints/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const complaintId = parseInt(req.params.id);
+      const { status, reviewComments } = req.body;
+
+      await db
+        .update(complaints)
+        .set({
+          status,
+          reviewComments,
+          reviewedAt: new Date(),
+        })
+        .where(eq(complaints.id, complaintId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating complaint:", error);
+      res.status(500).json({ error: "Failed to update complaint" });
+    }
+  });
+
+  // Leave Applications API Routes
+  app.get("/api/leave-applications/all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    // Check if user is project manager or operations manager
+    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const applications = await db
+        .select({
+          id: leaveApplications.id,
+          leaveType: leaveApplications.leaveType,
+          reason: leaveApplications.reason,
+          startDate: leaveApplications.startDate,
+          endDate: leaveApplications.endDate,
+          totalDays: leaveApplications.totalDays,
+          proofImageUrl: leaveApplications.proofImageUrl,
+          status: leaveApplications.status,
+          appliedAt: leaveApplications.appliedAt,
+          reviewedAt: leaveApplications.reviewedAt,
+          reviewComments: leaveApplications.reviewComments,
+          userName: users.name,
+          userEmail: users.email,
+        })
+        .from(leaveApplications)
+        .leftJoin(users, eq(leaveApplications.userId, users.id))
+        .orderBy(desc(leaveApplications.appliedAt));
+
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching leave applications:", error);
+      res.status(500).json({ error: "Failed to fetch leave applications" });
     }
   });
 
