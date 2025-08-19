@@ -48,19 +48,22 @@ export function setupWebSocket(wss: WebSocketServer) {
     extWs.isAlive = true;
 
     try {
-      // Check if request has session data from the upgrade
+      // Safely check if request has session data from the upgrade
       const extReq = req as any;
       
+      // More defensive session checking to prevent undefined errors
+      const hasSession = extReq && typeof extReq === 'object' && extReq.session;
+      const hasPassport = hasSession && extReq.session.passport;
+      const hasUser = hasPassport && extReq.session.passport.user;
+      
       console.log('WebSocket connection - session debug:', {
-        hasSession: !!extReq.session,
-        hasPassport: !!(extReq.session && extReq.session.passport),
-        hasUser: !!(extReq.session && extReq.session.passport && extReq.session.passport.user),
-        userId: extReq.session?.passport?.user
+        hasSession: !!hasSession,
+        hasPassport: !!hasPassport,
+        hasUser: !!hasUser,
+        userId: hasUser ? extReq.session.passport.user : 'undefined'
       });
 
-      const hasValidSession = extReq && extReq.session && extReq.session.passport && extReq.session.passport.user;
-
-      if (hasValidSession) {
+      if (hasUser) {
         const user = extReq.session.passport.user;
         console.log(`WebSocket authenticated user: ${user}`);
         extWs.userId = user;
@@ -74,7 +77,9 @@ export function setupWebSocket(wss: WebSocketServer) {
         if (extWs.readyState === WebSocket.OPEN) {
           extWs.send(JSON.stringify({
             type: 'connected',
-            message: 'WebSocket connection established'
+            message: 'WebSocket connection established',
+            authenticated: true,
+            userId: user
           }));
         }
       } else {
@@ -92,8 +97,22 @@ export function setupWebSocket(wss: WebSocketServer) {
       }
     } catch (error) {
       console.error('WebSocket connection error:', error);
-      // Don't close connection on errors - just log them
+      // Don't close connection on errors - just log them and continue
       console.log('Continuing with WebSocket connection despite error');
+      
+      // Send basic connection message even if there's an error
+      try {
+        if (extWs.readyState === WebSocket.OPEN) {
+          extWs.send(JSON.stringify({
+            type: 'connected',
+            message: 'WebSocket connection established',
+            authenticated: false,
+            error: 'Session parsing failed'
+          }));
+        }
+      } catch (sendError) {
+        console.error('Failed to send error message:', sendError);
+      }
     }
 
     // Handle pong responses

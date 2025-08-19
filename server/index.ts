@@ -145,19 +145,32 @@ let emailServiceInitialized = false;
 
           // Log session state for debugging
           const extRequest = request as any;
-          if (extRequest.session) {
-            console.log('Session exists:', !!extRequest.session);
-            console.log('Session passport:', !!extRequest.session.passport);
-            console.log('Session user:', extRequest.session.passport?.user);
-          } else {
-            console.log('No session found in request');
+          try {
+            if (extRequest && extRequest.session) {
+              console.log('Session exists:', !!extRequest.session);
+              console.log('Session passport:', !!(extRequest.session.passport));
+              console.log('Session user:', extRequest.session.passport?.user || 'none');
+            } else {
+              console.log('No session found in request');
+            }
+          } catch (sessionLogError) {
+            console.error('Error logging session state:', sessionLogError);
           }
 
           // Allow connections - authentication will be verified in websocket.ts
           try {
             wss.handleUpgrade(request, socket, head, (ws) => {
               console.log('WebSocket upgrade completed, emitting connection');
-              wss.emit('connection', ws, request);
+              // Wrap the connection emission in a try-catch to prevent crashes
+              try {
+                wss.emit('connection', ws, request);
+              } catch (connectionError) {
+                console.error('Error emitting WebSocket connection:', connectionError);
+                // Close the WebSocket connection gracefully
+                if (ws && ws.readyState === ws.OPEN) {
+                  ws.close(1011, 'Server error during connection setup');
+                }
+              }
             });
           } catch (upgradeError) {
             console.error('Error in handleUpgrade:', upgradeError);

@@ -70,10 +70,17 @@ export function useWebSocket(userId: number | undefined) {
       ws.current.onclose = (event) => {
         console.log('WebSocket connection closed:', event.code, event.reason);
         
+        // Don't reconnect if the close was intentional or if we don't have a userId
+        const intentionalClose = event.code === 1000 || event.code === 1001;
+        const authFailure = event.code === 1008;
+        const serverError = event.code === 1011;
+        
         // Only attempt reconnection for unexpected closes and if we have a valid userId
-        if (event.code !== 1000 && event.code !== 1008 && userId && reconnectAttempts.current < maxReconnectAttempts) {
+        if (!intentionalClose && !authFailure && userId && reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current++;
-          const delay = 1000 * Math.min(reconnectAttempts.current, 3); // Reduced backoff
+          // Longer delay for server errors to give server time to stabilize
+          const baseDelay = serverError ? 3000 : 1000;
+          const delay = baseDelay * Math.min(reconnectAttempts.current, 3);
           console.log(`Attempting WebSocket reconnection ${reconnectAttempts.current}/${maxReconnectAttempts} in ${delay}ms`);
           setTimeout(connect, delay);
         } else if (reconnectAttempts.current >= maxReconnectAttempts) {
