@@ -342,7 +342,10 @@ export default function Projects() {
                             className="flex items-center justify-between p-3 bg-card hover:bg-muted/50 border rounded-lg cursor-pointer transition-colors"
 
                           >
-                            <div className="flex items-center space-x-4 flex-1 min-w-0" onClick={() => window.location.href = `/dashboard/projects/${project.id}`}>
+                            <div className="flex items-center space-x-4 flex-1 min-w-0" onClick={() => {
+                              console.log('Navigating to project:', project.id);
+                              setLocation(`/dashboard/projects/${project.id}`);
+                            }}>
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-semibold text-sm truncate" title={project.name}>
                                   {project.name}

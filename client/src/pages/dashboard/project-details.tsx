@@ -62,9 +62,15 @@ export default function ProjectDetails() {
 
   const isProjectManager = user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager";
 
-  const { data: project, isLoading } = useQuery({
+  const { data: project, isLoading, error } = useQuery({
     queryKey: [`/api/projects/${id}`],
-    queryFn: () => fetch(`/api/projects/${id}`).then(res => res.json()),
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${id}`);
+      if (!response.ok) {
+        throw new Error(`Failed to load project: ${response.status}`);
+      }
+      return response.json();
+    },
   });
 
   const { data: projectPlans, isLoading: plansLoading } = useQuery({
@@ -210,8 +216,57 @@ export default function ProjectDetails() {
     }
   };
 
-  if (isLoading || !project) {
-    return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar currentPath={`/dashboard/projects/${id}`} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <MeetingAlert />
+          <div className="flex-1 flex items-center justify-center">
+            <div>Loading project...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar currentPath={`/dashboard/projects/${id}`} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <MeetingAlert />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-red-600 mb-2">Error Loading Project</h2>
+              <p className="text-gray-600 mb-4">Failed to load project details. Please try again.</p>
+              <Button onClick={() => window.location.reload()}>Reload Page</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar currentPath={`/dashboard/projects/${id}`} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <MeetingAlert />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-gray-600 mb-2">Project Not Found</h2>
+              <p className="text-gray-600 mb-4">The requested project could not be found.</p>
+              <Button onClick={() => setLocation("/dashboard/projects")}>Back to Projects</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const getStatusColor = (status: string) => {
