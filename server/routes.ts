@@ -1974,7 +1974,7 @@ export function registerRoutes(app: Express): Server {
         const diff = targetDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
         const monday = new Date(targetDate.setDate(diff));
         monday.setHours(0, 0, 0, 0);
-        
+
         const mondayStr = monday.toISOString().split('T')[0];
         whereConditions.push(eq(clientSentiment.weekStart, mondayStr));
       } else if (week === "current") {
@@ -1984,7 +1984,7 @@ export function registerRoutes(app: Express): Server {
         const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
         const monday = new Date(now.setDate(diff));
         monday.setHours(0, 0, 0, 0);
-        
+
         const mondayStr = monday.toISOString().split('T')[0];
         whereConditions.push(eq(clientSentiment.weekStart, mondayStr));
       }
@@ -2926,6 +2926,10 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // WebSocket setup
+  // The setupWebSocket function is responsible for initializing the WebSocket server
+  // and handling connections, messages, and disconnections.
+  // It's crucial for real-time communication features.
   const wss = setupWebSocket(server);
   return server;
 }

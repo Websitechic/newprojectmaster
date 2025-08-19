@@ -86,7 +86,11 @@ export function setupWebSocket(wss: WebSocketServer) {
           message: 'Authentication failed'
         }));
       }
-      extWs.close(1008, 'Authentication failed');
+      if (typeof extWs.close === 'function') {
+        extWs.close(1008, 'Authentication failed');
+      } else {
+        extWs.terminate();
+      }
       return;
     }
 

@@ -114,25 +114,25 @@ let emailServiceInitialized = false;
       sessionMiddleware(req, res, next);
     };
 
-    // Handle WebSocket upgrade with proper session handling
+    // WebSocket upgrade handling
     server.on('upgrade', (request, socket, head) => {
-      console.log('WebSocket upgrade - Session:', request.headers.cookie);
+      console.log('WebSocket upgrade request received');
 
+      // Parse session from upgrade request
       sessionParser(request as any, {} as any, () => {
-        const session = (request as any).session;
-        const user = session?.passport?.user;
+        console.log('Session parsed for WebSocket upgrade');
 
-        console.log('WebSocket upgrade - User:', user);
-
-        // Check if this socket is already being handled
-        if ((socket as any)._wsHandled) {
-          console.log('Socket already handled, skipping');
+        // Ensure request has session property
+        const extRequest = request as any;
+        if (!extRequest.session) {
+          console.log('No session found in upgrade request');
+          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+          socket.destroy();
           return;
         }
-        (socket as any)._wsHandled = true;
 
-        // Allow upgrade - authentication will be checked per message
         wss.handleUpgrade(request, socket, head, (ws) => {
+          console.log('WebSocket upgrade completed, emitting connection');
           wss.emit('connection', ws, request);
         });
       });

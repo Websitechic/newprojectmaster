@@ -91,6 +91,20 @@ class CommunicationMonitor {
     projectManagerId: number
   ) {
     try {
+      // Check if communication_delays table exists first
+      const tableExists = await db.execute(sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'communication_delays'
+        );
+      `);
+      
+      if (!tableExists.rows[0]?.exists) {
+        console.log('communication_delays table does not exist, skipping delay tracking');
+        return;
+      }
+
       // Get the last message from this staff member in this project
       const lastResponse = await db.execute(sql`
         SELECT created_at

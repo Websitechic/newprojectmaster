@@ -186,10 +186,10 @@ export function NotificationsDropdown() {
             <span className="text-sm text-muted-foreground">No notifications</span>
           </DropdownMenuItem>
         ) : (
-          notifications.slice(0, 5).map((notification, index) => (
+          notifications.slice(0, 5).map((notification) => (
             <DropdownMenuItem
               key={notification.id}
-              className="cursor-pointer"
+              className="flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50"
               onClick={() => handleNotificationClick(notification)}
             >
               <div className="flex flex-col space-y-1">
