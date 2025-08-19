@@ -1500,17 +1500,27 @@ export function registerRoutes(app: Express): Server {
     const user = req.user!;
 
     try {
-      const { title, content, category } = req.body;
+      const { title, content, type, todoItems, category } = req.body;
 
-      if (!title || !content) {
-        return res.status(400).json({ error: "Title and content are required" });
+      // For todo type notes, allow empty content if todoItems are provided
+      if (type === "todo") {
+        if (!todoItems || !Array.isArray(todoItems) || todoItems.length === 0) {
+          return res.status(400).json({ error: "Todo items are required for todo list notes" });
+        }
+      } else {
+        // For freetext notes, content is required
+        if (!content || !content.trim()) {
+          return res.status(400).json({ error: "Content is required for text notes" });
+        }
       }
 
       const [newNote] = await db
         .insert(notes)
         .values({
-          title,
-          content,
+          title: title || "Untitled Note",
+          content: content || "",
+          type: type || "freetext",
+          todoItems: type === "todo" ? todoItems : null,
           userId: user.id,
           createdBy: user.id,
           category: category || "general",
@@ -1533,10 +1543,18 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const noteId = parseInt(req.params.id);
-      const { title, content, category } = req.body;
+      const { title, content, type, todoItems, category } = req.body;
 
-      if (!title || !content) {
-        return res.status(400).json({ error: "Title and content are required" });
+      // Validate based on note type
+      if (type === "todo") {
+        if (!todoItems || !Array.isArray(todoItems) || todoItems.length === 0) {
+          return res.status(400).json({ error: "Todo items are required for todo list notes" });
+        }
+      } else {
+        // For freetext notes, content is required
+        if (!content || !content.trim()) {
+          return res.status(400).json({ error: "Content is required for text notes" });
+        }
       }
 
       // Check if note belongs to user
@@ -1553,8 +1571,10 @@ export function registerRoutes(app: Express): Server {
       const [updatedNote] = await db
         .update(notes)
         .set({
-          title,
-          content,
+          title: title || "Untitled Note",
+          content: content || "",
+          type: type || "freetext",
+          todoItems: type === "todo" ? todoItems : null,
           updatedAt: new Date(),
         })
         .where(and(eq(notes.id, noteId), eq(notes.userId, user.id)))
