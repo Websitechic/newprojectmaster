@@ -20,8 +20,17 @@ interface ExtendedRequest extends Request {
 
 export function setupWebSocket(server: any) {
   const wss = new WebSocketServer({ 
-    server,
+    noServer: true,
     path: '/ws'
+  });
+
+  // Handle WebSocket upgrade manually to prevent double handling
+  server.on('upgrade', (request: any, socket: any, head: any) => {
+    if (request.url === '/ws') {
+      wss.handleUpgrade(request, socket, head, (ws: any) => {
+        wss.emit('connection', ws, request);
+      });
+    }
   });
 
   // Set up ping interval to keep connections alive

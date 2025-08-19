@@ -1902,59 +1902,99 @@ export function registerRoutes(app: Express): Server {
   // Add resource link to project
   app.post("/api/projects/:id/resources/link", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
     const projectId = parseInt(req.params.id);
     const { name, link, category } = req.body;
 
-    // Operations managers can add resource links
-    const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+    console.log("Resource link endpoint called:", { projectId, name, link, category, userId: user.id, userRole: user.role });
 
     try {
-      // Check if user has access to add resources
-      const project = await db.projects.findFirst({ where: { id: projectId } });
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
-      const hasAccess = isOperationsManager || 
-                       (user.role === 'project_manager' && project.managerId === user.id) ||
-                       (user.role === 'client' && project.clientId === user.id);
-
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-
+      // Validate required fields
       if (!name || !link || !category) {
+        console.log("Missing required fields:", { name, link, category });
         return res.status(400).json({ error: "Name, link, and category are required" });
       }
 
+      // Validate URL format
+      try {
+        new URL(link);
+      } catch (urlError) {
+        console.log("Invalid URL format:", link);
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Check if project exists using proper Drizzle syntax
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        console.log("Project not found:", projectId);
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check user access permissions
+      const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+      const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
+      const isProductOwner = user.role === 'product_owner';
+      const isClient = user.role === 'client' && project.clientId === user.id;
+
+      const hasAccess = isOperationsManager || isProjectManager || isProductOwner || isClient;
+
+      console.log("Access check:", { 
+        isOperationsManager, 
+        isProjectManager, 
+        isProductOwner, 
+        isClient, 
+        hasAccess,
+        userRole: user.role,
+        userSpecialization: user.specialization,
+        projectManagerId: project.managerId,
+        projectClientId: project.clientId
+      });
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied - insufficient permissions" });
+      }
+
+      // Insert the new resource
       const [newResource] = await db
         .insert(resources)
         .values({
-          name,
+          name: name.trim(),
           type: category,
-          link,
+          link: link.trim(),
           projectId,
           uploadedBy: user.id,
         })
         .returning();
 
+      console.log("Resource created successfully:", newResource);
       res.json({ success: true, resourceId: newResource.id });
+
     } catch (error) {
       console.error("Error adding resource link:", error);
-      res.status(500).json({ error: "Failed to add resource link" });
+      console.error("Error stack:", error.stack);
+      res.status(500).json({ 
+        error: "Failed to add resource link", 
+        details: error.message 
+      });
     }
   });
 
   // Update resource
   app.put("/api/projects/:projectId/resources/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
+    const user = req.user!;
+    const projectId = parseInt(req.params.projectId);
     const resourceId = parseInt(req.params.id);
     const { name, link, category } = req.body;
 
@@ -1963,15 +2003,50 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Name, link, and category are required" });
       }
 
-      await db
+      // Validate URL format
+      try {
+        new URL(link);
+      } catch (urlError) {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Check if project exists and user has access
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check user access permissions
+      const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+      const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
+      const isProductOwner = user.role === 'product_owner';
+      const isClient = user.role === 'client' && project.clientId === user.id;
+
+      const hasAccess = isOperationsManager || isProjectManager || isProductOwner || isClient;
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied - insufficient permissions" });
+      }
+
+      // Update the resource
+      const [updatedResource] = await db
         .update(resources)
         .set({
-          name,
+          name: name.trim(),
           type: category,
-          link,
-          updatedAt: new Date(),
+          link: link.trim(),
         })
-        .where(eq(resources.id, resourceId));
+        .where(eq(resources.id, resourceId))
+        .returning();
+
+      if (!updatedResource) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
 
       res.json({ success: true });
     } catch (error) {
@@ -1983,13 +2058,47 @@ export function registerRoutes(app: Express): Server {
   // Delete resource
   app.delete("/api/projects/:projectId/resources/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
+    const user = req.user!;
+    const projectId = parseInt(req.params.projectId);
     const resourceId = parseInt(req.params.id);
 
     try {
-      await db.delete(resources).where(eq(resources.id, resourceId));
+      // Check if project exists and user has access
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check user access permissions
+      const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+      const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
+      const isProductOwner = user.role === 'product_owner';
+      const isClient = user.role === 'client' && project.clientId === user.id;
+
+      const hasAccess = isOperationsManager || isProjectManager || isProductOwner || isClient;
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied - insufficient permissions" });
+      }
+
+      // Delete the resource
+      const deletedRows = await db
+        .delete(resources)
+        .where(eq(resources.id, resourceId))
+        .returning();
+
+      if (deletedRows.length === 0) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
+
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting resource:", error);
