@@ -43,6 +43,7 @@ import SendComplaint from "@/pages/send-complaint";
 import StaffComplaints from "@/pages/dashboard/staff-complaints";
 import StaffQueries from "@/pages/dashboard/staff-queries";
 import Notes from "@/pages/dashboard/notes";
+import SOPPage from "@/pages/dashboard/sop";
 import { Suspense } from "react";
 import CommunicationTrackerPage from "@/pages/dashboard/communication-tracker";
 import KPIReportPage from "@/pages/dashboard/kpi-report";
@@ -121,7 +122,7 @@ function Router() {
       <Route path="/dashboard/memos" component={Memos} />
       <Route path="/dashboard/notes" component={lazy(() => import("./pages/dashboard/notes"))} />
       <Route path="/dashboard/staff-queries" component={lazy(() => import("./pages/dashboard/staff-queries"))} />
-      <Route path="/dashboard/sop" component={lazy(() => import("./pages/dashboard/sop"))} />
+      <Route path="/dashboard/sop" component={SOPPage} />
       <Route path="/dashboard/communication-tracker" component={CommunicationTrackerPage} />
       <Route path="/dashboard/kpi-report" component={KPIReportPage} />
       <Route path="/technical-management" component={TechnicalManagementFixed} />
