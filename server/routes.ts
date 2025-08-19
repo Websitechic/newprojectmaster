@@ -90,6 +90,150 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Projects API Routes
+  app.get("/api/projects", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    let projectsList;
+
+    try {
+      if (user.role === "client") {
+        // Clients see projects they're assigned to as clientId
+        projectsList = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.clientId, user.id))
+          .orderBy(desc(projects.updatedAt));
+      } else if (user.role === "project_manager") {
+        // Project managers see projects they manage
+        projectsList = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.managerId, user.id))
+          .orderBy(desc(projects.updatedAt));
+      } else if (user.role === "product_owner") {
+        // Product owners see all projects (read-only access)
+        projectsList = await db
+          .select()
+          .from(projects)
+          .orderBy(desc(projects.updatedAt));
+      } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+        // Operations managers see all projects with full access
+        projectsList = await db
+          .select()
+          .from(projects)
+          .orderBy(desc(projects.updatedAt));
+      } else {
+        // Staff see projects they're invited to and have accepted
+        const memberProjects = await db
+          .select({
+            project: projects,
+          })
+          .from(projectMembers)
+          .innerJoin(projects, eq(projectMembers.projectId, projects.id))
+          .where(
+            and(
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .orderBy(desc(projects.updatedAt));
+
+        projectsList = memberProjects.map(mp => mp.project);
+      }
+
+      res.json(projectsList);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      res.status(500).json({ error: "Failed to fetch projects" });
+    }
+  });
+
+  // Get unread message counts for projects
+  app.get("/api/projects/unread-counts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      // Get all projects the user has access to
+      let userProjectIds: number[] = [];
+
+      if (user.role === "client") {
+        const clientProjects = await db
+          .select({ id: projects.id })
+          .from(projects)
+          .where(eq(projects.clientId, user.id));
+        userProjectIds = clientProjects.map(p => p.id);
+      } else if (user.role === "project_manager") {
+        const managerProjects = await db
+          .select({ id: projects.id })
+          .from(projects)
+          .where(eq(projects.managerId, user.id));
+        userProjectIds = managerProjects.map(p => p.id);
+      } else if (user.role === "product_owner" || user.role === "operations_manager" || user.specialization === "operations_manager") {
+        const allProjects = await db
+          .select({ id: projects.id })
+          .from(projects);
+        userProjectIds = allProjects.map(p => p.id);
+      } else {
+        // Staff - get projects they're members of
+        const memberProjects = await db
+          .select({ projectId: projectMembers.projectId })
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          );
+        userProjectIds = memberProjects.map(mp => mp.projectId);
+      }
+
+      if (userProjectIds.length === 0) {
+        return res.json({});
+      }
+
+      // Get unread message counts for each project
+      const unreadCounts = await db
+        .select({
+          projectId: projectMessages.projectId,
+          unreadCount: sql<number>`count(*)`,
+        })
+        .from(projectMessages)
+        .leftJoin(
+          messageReadReceipts,
+          and(
+            eq(messageReadReceipts.messageId, projectMessages.id),
+            eq(messageReadReceipts.userId, user.id)
+          )
+        )
+        .where(
+          and(
+            inArray(projectMessages.projectId, userProjectIds),
+            ne(projectMessages.senderId, user.id), // Don't count own messages
+            isNull(messageReadReceipts.id) // Not read by user
+          )
+        )
+        .groupBy(projectMessages.projectId);
+
+      const counts = unreadCounts.reduce((acc, count) => {
+        acc[count.projectId] = count.unreadCount;
+        return acc;
+      }, {} as Record<number, number>);
+
+      res.json(counts);
+    } catch (error) {
+      console.error("Error fetching project unread counts:", error);
+      res.status(500).json({ error: "Failed to fetch unread counts" });
+    }
+  });
+
   // Get available staff by specialization (for KPI reports)
   app.get("/api/staff", async (req, res) => {
     if (!req.isAuthenticated()) {
