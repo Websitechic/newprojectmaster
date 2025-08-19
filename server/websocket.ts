@@ -48,9 +48,11 @@ export function setupWebSocket(wss: WebSocketServer) {
     extWs.isAlive = true;
 
     try {
-      // Check if request has session data from the upgrade
+      // Safely check if request has session data from the upgrade
       const extReq = req as any;
-      if (extReq.session && extReq.session.passport && extReq.session.passport.user) {
+      const hasSession = extReq && extReq.session && extReq.session.passport && extReq.session.passport.user;
+      
+      if (hasSession) {
         const user = extReq.session.passport.user;
         console.log(`WebSocket authenticated user: ${user}`);
         extWs.userId = user;
@@ -86,11 +88,7 @@ export function setupWebSocket(wss: WebSocketServer) {
           message: 'Authentication failed'
         }));
       }
-      if (typeof extWs.close === 'function') {
-        extWs.close(1008, 'Authentication failed');
-      } else {
-        extWs.terminate();
-      }
+      extWs.close(1008, 'Authentication failed');
       return;
     }
 

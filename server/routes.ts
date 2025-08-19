@@ -81,6 +81,15 @@ export function registerRoutes(app: Express): Server {
 
   const server = createServer(app);
 
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
+
+  // Add middleware to ensure API routes return JSON
+  app.use('/api', (req, res, next) => {
+    res.setHeader('Content-Type', 'application/json');
+    next();
+  });
+
   // User endpoint for authentication
   app.get("/api/user", (req, res) => {
     if (req.isAuthenticated()) {

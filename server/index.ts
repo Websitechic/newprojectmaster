@@ -118,24 +118,37 @@ let emailServiceInitialized = false;
     server.on('upgrade', (request, socket, head) => {
       console.log('WebSocket upgrade request received');
 
-      // Parse session from upgrade request
-      sessionParser(request as any, {} as any, () => {
-        console.log('Session parsed for WebSocket upgrade');
+      // Parse session from upgrade request with error handling
+      try {
+        sessionParser(request as any, {} as any, (err: any) => {
+          if (err) {
+            console.log('Session parsing error during upgrade:', err);
+            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+            socket.destroy();
+            return;
+          }
 
-        // Ensure request has session property
-        const extRequest = request as any;
-        if (!extRequest.session) {
-          console.log('No session found in upgrade request');
-          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-          socket.destroy();
-          return;
-        }
+          console.log('Session parsed for WebSocket upgrade');
 
-        wss.handleUpgrade(request, socket, head, (ws) => {
-          console.log('WebSocket upgrade completed, emitting connection');
-          wss.emit('connection', ws, request);
+          // Ensure request has session property
+          const extRequest = request as any;
+          if (!extRequest.session) {
+            console.log('No session found in upgrade request');
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
+          wss.handleUpgrade(request, socket, head, (ws) => {
+            console.log('WebSocket upgrade completed, emitting connection');
+            wss.emit('connection', ws, request);
+          });
         });
-      });
+      } catch (error) {
+        console.error('Error during WebSocket upgrade:', error);
+        socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+        socket.destroy();
+      }
     });
 
     setupWebSocket(wss);
