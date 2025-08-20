@@ -309,7 +309,7 @@ export default function Dashboard() {
                     <p>No tasks assigned to you yet.</p>
                     <p className="text-xs mt-2">User ID: {user?.id}, Role: {user?.role}</p>
                   </div>
-                )}</div>
+                )}
               </div>
             </>
           ) : (
