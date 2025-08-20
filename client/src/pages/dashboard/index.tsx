@@ -288,8 +288,8 @@ export default function Dashboard() {
                 <h2 className="text-2xl font-bold">All Your Tasks</h2>
                 {staffTasks.length > 0 ? (
                   <StaffTaskList 
-                    tasks={tasks || []} 
-                    projectId={staffTasks[0]?.projectId || 0}
+                    tasks={staffTasks}
+                    projectId={undefined}
                   />
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
