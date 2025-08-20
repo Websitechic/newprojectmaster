@@ -54,9 +54,23 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   // Filter tasks to show only those assigned to the current staff member
   // Sort by ID to maintain consistent positioning regardless of timer state
   const filteredTasks = tasks
-    .filter((task) => task.assigneeId === user?.id)
+    .filter((task) => {
+      const isAssigned = task.assigneeId === user?.id;
+      if (!isAssigned) {
+        console.log('Task not assigned to user:', { taskId: task.id, taskAssigneeId: task.assigneeId, userId: user?.id });
+      }
+      return isAssigned;
+    })
     .filter(task => task.title.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => a.id - b.id);
+
+  // Debug log
+  console.log('StaffTaskList Debug:', {
+    totalTasksReceived: tasks.length,
+    filteredTasksCount: filteredTasks.length,
+    userId: user?.id,
+    tasksDetails: tasks.map(t => ({ id: t.id, title: t.title, assigneeId: t.assigneeId }))
+  });
 
   // Debug: Check if we have all projects for the tasks
   const missingProjects = filteredTasks.filter(task => !projectMap[task.projectId]);

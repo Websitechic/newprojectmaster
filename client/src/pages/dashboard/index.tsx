@@ -56,6 +56,16 @@ export default function Dashboard() {
                    user?.role === "client" && user?.clientType === "support_maintenance_client" ? tasks || [] :
                    tasks || [];
 
+  // Debug log to check data
+  console.log('Dashboard Debug:', {
+    userRole: user?.role,
+    userId: user?.id,
+    totalTasks: tasks?.length || 0,
+    staffTasksCount: staffTasks.length,
+    userTasksCount: userTasks.length,
+    staffTasks: staffTasks.map(t => ({ id: t.id, title: t.title, assigneeId: t.assigneeId }))
+  });
+
   // Categorize tasks
   const activeTask = staffTasks.find(task => task.isTimerRunning);
   const tasksInProgress = userTasks.filter(task => 
@@ -286,16 +296,20 @@ export default function Dashboard() {
               {/* Full Task List */}
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">All Your Tasks</h2>
-                {staffTasks.length > 0 ? (
+                <div className="text-sm text-gray-500 mb-4">
+                  Found {staffTasks.length} tasks assigned to you
+                </div>
+                {staffTasks && staffTasks.length > 0 ? (
                   <StaffTaskList 
                     tasks={staffTasks}
                     projectId={undefined}
                   />
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
-                    No tasks assigned to you yet.
+                    <p>No tasks assigned to you yet.</p>
+                    <p className="text-xs mt-2">User ID: {user?.id}, Role: {user?.role}</p>
                   </div>
-                )}
+                )}</div>
               </div>
             </>
           ) : (
