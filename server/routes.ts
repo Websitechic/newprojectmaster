@@ -84,7 +84,7 @@ export function registerRoutes(app: Express): Server {
   // Add middleware to ensure API routes return JSON - BEFORE static files
   app.use('/api', (req, res, next) => {
     res.setHeader('Content-Type', 'application/json');
-    
+
     // Override res.send to ensure JSON for API routes
     const originalSend = res.send;
     res.send = function(data) {
@@ -94,7 +94,7 @@ export function registerRoutes(app: Express): Server {
       }
       return originalSend.call(this, data);
     };
-    
+
     next();
   });
 
