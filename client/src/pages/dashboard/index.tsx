@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
@@ -28,6 +28,31 @@ export default function Dashboard() {
     pending: false,
     review: false,
   });
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastNavigationRef = useRef<string | null>(null);
+
+  const handleNavigation = (path: string) => {
+    // Prevent rapid successive navigations to the same path
+    if (lastNavigationRef.current === path) {
+      return;
+    }
+    
+    // Clear any existing timeout
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+    }
+    
+    // Set a brief timeout to prevent rapid clicks
+    navigationTimeoutRef.current = setTimeout(() => {
+      lastNavigationRef.current = path;
+      setLocation(path);
+      
+      // Clear the last navigation after a delay
+      setTimeout(() => {
+        lastNavigationRef.current = null;
+      }, 1000);
+    }, 100);
+  };
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -43,6 +68,10 @@ export default function Dashboard() {
 
     return () => {
       updateStatus("offline");
+      // Cleanup navigation timeout
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
     };
   }, [updateStatus]);
 
@@ -354,7 +383,7 @@ export default function Dashboard() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  setLocation(`/dashboard/projects/${project.id}`);
+                                  handleNavigation(`/dashboard/projects/${project.id}`);
                                 }}
                               >
                                 <p className="font-medium text-sm text-green-900">{project.name}</p>
@@ -401,7 +430,7 @@ export default function Dashboard() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  setLocation(`/dashboard/projects/${project.id}`);
+                                  handleNavigation(`/dashboard/projects/${project.id}`);
                                 }}
                               >
                                 <p className="font-medium text-sm text-yellow-900">{project.name}</p>
@@ -467,7 +496,7 @@ export default function Dashboard() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  setLocation(`/dashboard/projects/${project.id}`);
+                                  handleNavigation(`/dashboard/projects/${project.id}`);
                                 }}
                               >
                                 <p className="font-medium text-sm text-blue-900">{project.name}</p>
