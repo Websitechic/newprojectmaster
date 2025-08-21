@@ -64,6 +64,9 @@ export default function Dashboard() {
   // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
   const userTasks = user?.role === "staff" ? staffTasks : 
                    user?.role === "client" && user?.clientType === "support_maintenance_client" ? tasks || [] :
+                   user?.role === "operations_manager" || user?.specialization === "operations_manager" ? tasks || [] :
+                   user?.role === "project_manager" ? tasks || [] :
+                   user?.role === "product_owner" ? tasks || [] :
                    tasks || [];
 
 

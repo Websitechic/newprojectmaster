@@ -1076,12 +1076,13 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    const isProjectManager = user.role === "project_manager";
 
     try {
       let queries;
 
-      if (isOperationsManager) {
-        // Operations managers can see all queries
+      if (isOperationsManager || isProjectManager) {
+        // Operations managers and project managers can see all queries
         queries = await db
           .select()
           .from(staffQueries)

@@ -40,13 +40,13 @@ export default function StaffQueries() {
   // Fetch all users for staff selection
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users/all"],
-    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager",
+    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "project_manager",
   });
 
   // Fetch all departments for department selection
   const { data: departments = [] } = useQuery({
     queryKey: ["/api/departments"],
-    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager",
+    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "project_manager",
   });
 
   // Fetch staff queries
@@ -188,6 +188,7 @@ export default function StaffQueries() {
   };
 
   const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
+  const isProjectManager = user?.role === "project_manager";
 
   if (isLoading) {
     return (
@@ -202,16 +203,16 @@ export default function StaffQueries() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {isOperationsManager ? "Staff Queries Management" : "Staff Queries"}
+            {(isOperationsManager || isProjectManager) ? "Staff Queries Management" : "Staff Queries"}
           </h1>
           <p className="text-gray-600">
-            {isOperationsManager 
+            {(isOperationsManager || isProjectManager)
               ? "Send and manage staff queries and disciplinary actions"
               : "View all staff queries and disciplinary actions"
             }
           </p>
         </div>
-        {isOperationsManager && (
+        {(isOperationsManager || isProjectManager) && (
           <Button onClick={() => setShowForm(true)} className="flex items-center gap-2">
             <Send size={16} />
             Send New Query
@@ -220,7 +221,7 @@ export default function StaffQueries() {
       </div>
 
       {/* Create Query Form */}
-      {showForm && isOperationsManager && (
+      {showForm && (isOperationsManager || isProjectManager) && (
         <Card>
           <CardHeader>
             <CardTitle>Send Staff Query</CardTitle>
@@ -364,7 +365,7 @@ export default function StaffQueries() {
                 {isOperationsManager ? "No queries sent" : "No queries available"}
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                {isOperationsManager 
+                {(isOperationsManager || isProjectManager)
                   ? "You haven't sent any staff queries yet."
                   : "No staff queries have been issued yet."
                 }
@@ -435,7 +436,7 @@ export default function StaffQueries() {
                   </div>
                 )}
 
-                {!isOperationsManager && query.status === "pending" && query.staffId === user?.id && (
+                {!(isOperationsManager || isProjectManager) && query.status === "pending" && query.staffId === user?.id && (
                   <div className="flex gap-2 pt-4 border-t">
                     <Button
                       size="sm"
@@ -455,7 +456,7 @@ export default function StaffQueries() {
                   </div>
                 )}
 
-                {isOperationsManager && (
+                {(isOperationsManager || isProjectManager) && (
                   <div className="text-xs text-gray-500 pt-2 border-t">
                     Sent by: {query.senderName || "Operations Manager"}
                   </div>
