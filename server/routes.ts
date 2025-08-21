@@ -1104,31 +1104,41 @@ export function registerRoutes(app: Express): Server {
     try {
       const { staffId, staffName, department, staffUniqueValue, reason, whyQuery, attachmentPath, likelyPenalty, additionalNote } = req.body;
 
+      console.log("Staff query data:", { staffId, staffName, department, staffUniqueValue, reason, whyQuery, attachmentPath, likelyPenalty, additionalNote });
+
       if (!staffId || !staffName || !reason || !whyQuery || !likelyPenalty) {
         return res.status(400).json({ error: "All required fields must be filled" });
+      }
+
+      // Parse staffId to ensure it's a valid integer
+      const parsedStaffId = parseInt(staffId);
+      if (isNaN(parsedStaffId)) {
+        return res.status(400).json({ error: "Invalid staff ID" });
       }
 
       const [newQuery] = await db
         .insert(staffQueries)
         .values({
-          staffId: parseInt(staffId),
-          staffName,
+          staffId: parsedStaffId,
+          staffName: staffName.trim(),
           department: department || "",
           staffUniqueValue: staffUniqueValue || "",
           reason,
-          whyQuery,
+          whyQuery: whyQuery.trim(),
           attachmentPath: attachmentPath || null,
-          likelyPenalty,
-          additionalNote: additionalNote || null,
+          likelyPenalty: likelyPenalty.trim(),
+          additionalNote: additionalNote ? additionalNote.trim() : null,
           sentBy: user.id,
           status: "pending",
         })
         .returning();
 
+      console.log("Staff query created successfully:", newQuery);
       res.json({ success: true, queryId: newQuery.id });
     } catch (error) {
       console.error("Error creating staff query:", error);
-      res.status(500).json({ error: "Failed to create staff query" });
+      console.error("Error details:", error.message);
+      res.status(500).json({ error: "Failed to create staff query", details: error.message });
     }
   });
 
@@ -1576,6 +1586,11 @@ export function registerRoutes(app: Express): Server {
     const otherUserId = parseInt(req.params.userId);
 
     try {
+      // Validate otherUserId is a valid integer
+      if (isNaN(otherUserId) || otherUserId <= 0) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
       const messages = await db
         .select({
           id: directMessages.id,
