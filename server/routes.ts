@@ -423,7 +423,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { staffId, startDate, endDate } = req.query;
+      const {staffId, startDate, endDate} = req.query;
 
       if (!staffId || !startDate || !endDate) {
         return res.status(400).json({ error: "Staff ID, start date, and end date are required" });
