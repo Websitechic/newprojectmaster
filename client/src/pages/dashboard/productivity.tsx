@@ -53,6 +53,10 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'
 
 // Color scheme based on task time tracking status
 const getTaskStatusColor = (task: any, workingHours?: number) => {
+  if (!task || typeof task.timeSpent !== 'number') {
+    return '#6B7280'; // Gray for invalid task data
+  }
+  
   if (!workingHours || workingHours <= 0) {
     return '#6B7280'; // Gray for tasks without time allocation
   }
@@ -79,6 +83,10 @@ const getTaskStatusColor = (task: any, workingHours?: number) => {
 };
 
 const getStatusLabel = (task: any, workingHours?: number) => {
+  if (!task || typeof task.timeSpent !== 'number') {
+    return 'Invalid Data';
+  }
+  
   if (!workingHours || workingHours <= 0) {
     return 'No Time Allocation';
   }
@@ -132,17 +140,19 @@ export default function ProductivityPage() {
   };
 
   // Prepare pie chart data for tasks worked on today with dynamic colors
-  const taskPieData = productivityData?.today.taskBreakdown.map((task, index) => {
+  const taskPieData = productivityData?.today?.taskBreakdown?.filter(task => 
+    task && task.title && typeof task.timeSpent === 'number' && task.timeSpent > 0
+  ).map((task, index) => {
     // Note: You may need to add workingHours to the task data from the API
     // For now, we'll use a placeholder or derive from existing data
     const workingHours = (task as any).workingHours || 8; // Default to 8 hours if not provided
     
     return {
-      name: task.title,
-      value: task.timeSpent,
-      project: task.projectName,
-      status: task.status,
-      isCompleted: task.isCompleted,
+      name: task.title || `Task ${index + 1}`,
+      value: task.timeSpent || 0,
+      project: task.projectName || 'Unknown Project',
+      status: task.status || 'unknown',
+      isCompleted: Boolean(task.isCompleted),
       color: getTaskStatusColor(task, workingHours),
       statusLabel: getStatusLabel(task, workingHours),
       workingHours: workingHours,
@@ -151,12 +161,19 @@ export default function ProductivityPage() {
   }) || [];
 
   // Prepare weekly breakdown data
-  const weeklyData = productivityData?.today.weeklyBreakdown.map(item => ({
-    day: item.dayName,
-    hours: item.hours,
-    timeSpent: item.timeSpent,
-    taskCount: item.taskCount,
-    tasks: item.tasks
+  const weeklyData = productivityData?.today?.weeklyBreakdown?.filter(item => 
+    item && item.dayName && typeof item.hours === 'number'
+  ).map(item => ({
+    day: item.dayName || 'Unknown',
+    hours: item.hours || 0,
+    timeSpent: item.timeSpent || 0,
+    taskCount: item.taskCount || 0,
+    tasks: item.tasks || [],
+    workdayStart: item.workdayStart || null,
+    workdayEnd: item.workdayEnd || null,
+    totalSpanHours: item.totalSpanHours || 0,
+    performanceStatus: item.performanceStatus || 'unknown',
+    performanceColor: item.performanceColor || '#6B7280'
   })) || [];
 
   if (isLoading) {
@@ -301,26 +318,33 @@ export default function ProductivityPage() {
                           ))}
                         </Pie>
                         <Tooltip 
-                          formatter={(value: number, name: string, props: any) => [
-                            formatTime(value), 
-                            `Time Spent (${props.payload.timeUsedPercentage}% of allocated)`
-                          ]}
+                          formatter={(value: number, name: string, props: any) => {
+                            const timeUsedPercentage = props?.payload?.timeUsedPercentage || 0;
+                            return [
+                              formatTime(value || 0), 
+                              `Time Spent (${timeUsedPercentage}% of allocated)`
+                            ];
+                          }}
                           labelFormatter={(label, payload) => {
-                            if (payload && payload.length > 0) {
+                            if (payload && payload.length > 0 && payload[0].payload) {
                               const data = payload[0].payload;
+                              const safeLabel = label || data.name || 'Unknown Task';
+                              const statusLabel = data.statusLabel || 'Unknown';
+                              const workingHours = data.workingHours || 0;
+                              
                               return (
                                 <div>
-                                  <div className="font-medium">{label}</div>
+                                  <div className="font-medium">{safeLabel}</div>
                                   <div className="text-sm text-gray-600">
-                                    Status: {data.statusLabel}
+                                    Status: {statusLabel}
                                   </div>
                                   <div className="text-sm text-gray-600">
-                                    Allocated: {formatTime(data.workingHours * 3600)}
+                                    Allocated: {formatTime(workingHours * 3600)}
                                   </div>
                                 </div>
                               );
                             }
-                            return `Task: ${label}`;
+                            return `Task: ${label || 'Unknown'}`;
                           }}
                         />
                       </PieChart>
@@ -388,33 +412,47 @@ export default function ProductivityPage() {
                           />
                           <Tooltip 
                             formatter={(value: number, name: string, props: any) => {
-                              const data = props.payload;
+                              const data = props?.payload;
+                              const safeValue = typeof value === 'number' ? value : 0;
                               return [
-                                `${value.toFixed(2)} hours`,
+                                `${safeValue.toFixed(2)} hours`,
                                 "Actual Work Hours"
                               ];
                             }}
                             labelFormatter={(label, payload) => {
-                              if (payload && payload.length > 0) {
+                              if (payload && payload.length > 0 && payload[0].payload) {
                                 const data = payload[0].payload;
-                                const formatTime = (isoString: string) => {
-                                  return new Date(isoString).toLocaleTimeString('en-US', {
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                    hour12: true
-                                  });
+                                const safeLabel = label || data.day || 'Unknown Day';
+                                
+                                const formatTime = (isoString: string | null) => {
+                                  if (!isoString) return 'N/A';
+                                  try {
+                                    return new Date(isoString).toLocaleTimeString('en-US', {
+                                      hour: 'numeric',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    });
+                                  } catch (e) {
+                                    return 'Invalid time';
+                                  }
                                 };
+                                
+                                const performanceStatus = data.performanceStatus || 'unknown';
+                                const hours = data.hours || 0;
+                                const totalSpanHours = data.totalSpanHours || 0;
+                                const taskCount = data.taskCount || 0;
+                                const tasks = data.tasks || [];
                                 
                                 return (
                                   <div className="space-y-2">
-                                    <div className="font-medium">{label}</div>
+                                    <div className="font-medium">{safeLabel}</div>
                                     
                                     {data.workdayStart && data.workdayEnd ? (
                                       <div className="text-sm text-gray-600">
                                         <div><strong>Started:</strong> {formatTime(data.workdayStart)}</div>
                                         <div><strong>Ended:</strong> {formatTime(data.workdayEnd)}</div>
-                                        <div><strong>Total Span:</strong> {data.totalSpanHours}h</div>
-                                        <div><strong>Actual Work:</strong> {data.hours.toFixed(2)}h</div>
+                                        <div><strong>Total Span:</strong> {totalSpanHours.toFixed(2)}h</div>
+                                        <div><strong>Actual Work:</strong> {hours.toFixed(2)}h</div>
                                       </div>
                                     ) : (
                                       <div className="text-sm text-gray-600">
@@ -423,16 +461,16 @@ export default function ProductivityPage() {
                                     )}
                                     
                                     <div className="text-sm text-gray-600">
-                                      <div><strong>Tasks worked on:</strong> {data.taskCount}</div>
-                                      {data.tasks && data.tasks.length > 0 && (
+                                      <div><strong>Tasks worked on:</strong> {taskCount}</div>
+                                      {tasks && tasks.length > 0 && (
                                         <div className="mt-1">
                                           <div className="font-medium">Tasks:</div>
-                                          {data.tasks.slice(0, 3).map((task: string, index: number) => (
-                                            <div key={index} className="text-xs">• {task}</div>
+                                          {tasks.slice(0, 3).map((task: string, index: number) => (
+                                            <div key={index} className="text-xs">• {task || 'Untitled Task'}</div>
                                           ))}
-                                          {data.tasks.length > 3 && (
+                                          {tasks.length > 3 && (
                                             <div className="text-xs text-gray-500">
-                                              +{data.tasks.length - 3} more tasks
+                                              +{tasks.length - 3} more tasks
                                             </div>
                                           )}
                                         </div>
@@ -440,16 +478,18 @@ export default function ProductivityPage() {
                                     </div>
                                     
                                     <div className={`text-sm font-medium px-2 py-1 rounded text-center ${
-                                      data.performanceStatus === 'good' ? 'bg-green-100 text-green-800' :
-                                      data.performanceStatus === 'fair' ? 'bg-yellow-100 text-yellow-800' :
+                                      performanceStatus === 'good' ? 'bg-green-100 text-green-800' :
+                                      performanceStatus === 'fair' ? 'bg-yellow-100 text-yellow-800' :
                                       'bg-red-100 text-red-800'
                                     }`}>
-                                      Performance: {data.performanceStatus.charAt(0).toUpperCase() + data.performanceStatus.slice(1)}
+                                      Performance: {performanceStatus && typeof performanceStatus === 'string' 
+                                        ? performanceStatus.charAt(0).toUpperCase() + performanceStatus.slice(1) 
+                                        : 'Unknown'}
                                     </div>
                                   </div>
                                 );
                               }
-                              return label;
+                              return label || 'Unknown';
                             }}
                             contentStyle={{
                               backgroundColor: 'white',
@@ -474,7 +514,11 @@ export default function ProductivityPage() {
                           
                           {/* Performance status indicators above bars */}
                           {weeklyData.map((entry, index) => {
-                            if (entry.hours > 0 && entry.performanceStatus) {
+                            if (entry && entry.hours > 0 && entry.performanceStatus) {
+                              const statusText = typeof entry.performanceStatus === 'string' 
+                                ? entry.performanceStatus.toUpperCase() 
+                                : 'UNKNOWN';
+                              
                               return (
                                 <text
                                   key={index}
@@ -485,7 +529,7 @@ export default function ProductivityPage() {
                                   fontWeight="bold"
                                   fill={entry.performanceColor || '#666'}
                                 >
-                                  {entry.performanceStatus.toUpperCase()}
+                                  {statusText}
                                 </text>
                               );
                             }
