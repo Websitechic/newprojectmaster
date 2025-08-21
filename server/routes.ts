@@ -1114,11 +1114,11 @@ export function registerRoutes(app: Express): Server {
           department: department || "",
           staffUniqueValue: staffUniqueValue || "",
           reason,
-          explanation: whyQuery, // Map whyQuery to explanation field
-          attachmentUrl: attachmentPath || null, // Map attachmentPath to attachmentUrl field
+          whyQuery, // Use the correct field name from schema
+          attachmentPath: attachmentPath || null, // Use the correct field name from schema
           likelyPenalty,
           additionalNote: additionalNote || null,
-          submitterId: user.id, // Map sentBy to submitterId field
+          sentBy: user.id, // Use the correct field name from schema
           status: "pending",
         })
         .returning();
