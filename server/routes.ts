@@ -898,35 +898,17 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      // First try to get existing departments from SOPs
-      const existingDepartments = await db
-        .selectDistinct({ department: sops.department })
-        .from(sops)
-        .orderBy(asc(sops.department));
-
-      // Get staff specializations as fallback/additional departments
-      const staffSpecializations = await db
+      // Get unique specializations from staff members (same as /api/departments)
+      const departments = await db
         .selectDistinct({ department: users.specialization })
         .from(users)
         .where(and(eq(users.role, "staff"), isNotNull(users.specialization)))
         .orderBy(asc(users.specialization));
 
-      // Combine and deduplicate
-      const allDepartments = new Set([
-        ...existingDepartments.map(d => d.department),
-        ...staffSpecializations.map(d => d.department).filter(Boolean),
-        // Add some default departments
-        "General",
-        "Administration",
-        "Operations",
-        "Technical Support",
-        "Project Management",
-        "Web Development",
-        "Digital Marketing",
-        "Client Relations"
-      ]);
+      const departmentList = departments
+        .map(d => d.department)
+        .filter(Boolean);
 
-      const departmentList = Array.from(allDepartments).filter(Boolean).sort();
       res.json(departmentList);
     } catch (error) {
       console.error("Error fetching departments:", error);
