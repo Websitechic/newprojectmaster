@@ -346,7 +346,7 @@ export default function Projects() {
                               e.preventDefault();
                               e.stopPropagation();
                               console.log('Navigating to project:', project.id);
-                              setLocation(`/dashboard/projects/${project.id}`);
+                              window.location.href = `/dashboard/projects/${project.id}`;
                             }}>
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-semibold text-sm truncate" title={project.name}>

@@ -361,7 +361,11 @@ export default function Dashboard() {
                               <div 
                                 key={project.id} 
                                 className="p-2 bg-green-50 rounded-md border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
-                                onClick={(e) => handleProjectClick(project.id, e)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.location.href = `/dashboard/projects/${project.id}`;
+                                }}
                               >
                                 <p className="font-medium text-sm text-green-900">{project.name}</p>
                                 <p className="text-xs text-green-700">{project.category?.replace('_', ' ')}</p>
@@ -404,7 +408,11 @@ export default function Dashboard() {
                               <div 
                                 key={project.id} 
                                 className="p-2 bg-yellow-50 rounded-md border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
-                                onClick={(e) => handleProjectClick(project.id, e)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.location.href = `/dashboard/projects/${project.id}`;
+                                }}
                               >
                                 <p className="font-medium text-sm text-yellow-900">{project.name}</p>
                                 <p className="text-xs text-yellow-700">{project.category?.replace('_', ' ')}</p>
@@ -466,7 +474,11 @@ export default function Dashboard() {
                               <div 
                                 key={project.id} 
                                 className="p-2 bg-blue-50 rounded-md border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
-                                onClick={(e) => handleProjectClick(project.id, e)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.location.href = `/dashboard/projects/${project.id}`;
+                                }}
                               >
                                 <p className="font-medium text-sm text-blue-900">{project.name}</p>
                                 <p className="text-xs text-blue-700">{project.category?.replace('_', ' ')}</p>
