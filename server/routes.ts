@@ -1081,19 +1081,7 @@ export function registerRoutes(app: Express): Server {
     try {
       // All users (operations managers, project managers, and staff) see all queries
       const queries = await db
-        .select({
-          id: staffQueries.id,
-          staffId: staffQueries.staffId,
-          staffName: staffQueries.staffName,
-          department: staffQueries.department,
-          reason: staffQueries.reason,
-          explanation: staffQueries.explanation,
-          attachmentUrl: staffQueries.attachmentUrl,
-          submitterId: staffQueries.submitterId,
-          status: staffQueries.status,
-          createdAt: staffQueries.createdAt,
-          updatedAt: staffQueries.updatedAt,
-        })
+        .select()
         .from(staffQueries)
         .orderBy(desc(staffQueries.createdAt));
 
@@ -1112,9 +1100,9 @@ export function registerRoutes(app: Express): Server {
     const user = req.user!;
 
     try {
-      const { staffId, staffName, department, reason, explanation, attachmentUrl } = req.body;
+      const { staffId, staffName, department, staffUniqueValue, reason, whyQuery, attachmentPath, likelyPenalty, additionalNote } = req.body;
 
-      if (!staffId || !staffName || !reason || !explanation) {
+      if (!staffId || !staffName || !reason || !whyQuery || !likelyPenalty) {
         return res.status(400).json({ error: "All required fields must be filled" });
       }
 
@@ -1123,11 +1111,14 @@ export function registerRoutes(app: Express): Server {
         .values({
           staffId: parseInt(staffId),
           staffName,
-          department,
+          department: department || "",
+          staffUniqueValue: staffUniqueValue || "",
           reason,
-          explanation,
-          attachmentUrl,
-          submitterId: user.id,
+          whyQuery,
+          attachmentPath: attachmentPath || null,
+          likelyPenalty,
+          additionalNote: additionalNote || null,
+          sentBy: user.id,
           status: "pending",
         })
         .returning();

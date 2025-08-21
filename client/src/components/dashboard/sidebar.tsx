@@ -256,7 +256,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   ];
 
   // Project manager specific menu items - support maintenance clients get technical management access
-  const pmMenuItems = (user?.role === "project_manager" || isClientWithSpecialAccess) ? [
+  const pmMenuItems = user?.role === "project_manager" || isClientWithSpecialAccess ? [
     ...(user?.role === "project_manager" ? [
       {
         icon: <Users size={20} />,

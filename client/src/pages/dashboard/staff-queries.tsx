@@ -16,7 +16,6 @@ interface StaffQuery {
   id: number;
   staffId: number;
   staffName: string;
-  staffNameFull?: string;
   department: string;
   staffUniqueValue: string;
   reason: string;
@@ -25,7 +24,6 @@ interface StaffQuery {
   likelyPenalty: string;
   additionalNote?: string;
   sentBy: number;
-  senderName?: string;
   status: "pending" | "acknowledged" | "resolved";
   createdAt: string;
   updatedAt: string;
@@ -150,8 +148,15 @@ export default function StaffQueries() {
     }
 
     createQueryMutation.mutate({
-      ...formData,
       staffId: parseInt(formData.staffId),
+      staffName: formData.staffName,
+      department: formData.department,
+      staffUniqueValue: formData.staffUniqueValue,
+      reason: formData.reason,
+      whyQuery: formData.whyQuery,
+      attachmentPath: formData.attachmentFile ? "pending_upload" : null,
+      likelyPenalty: formData.likelyPenalty,
+      additionalNote: formData.additionalNote,
     });
   };
 
@@ -381,7 +386,7 @@ export default function StaffQueries() {
                     <div className="flex items-center gap-2">
                       <User size={16} />
                       <span className="font-medium">
-                        {isOperationsManager ? query.staffNameFull || query.staffName : query.staffName}
+                        {query.staffName}
                       </span>
                     </div>
                     <Badge className={getStatusColor(query.status)}>
@@ -458,7 +463,7 @@ export default function StaffQueries() {
 
                 {(isOperationsManager || isProjectManager) && (
                   <div className="text-xs text-gray-500 pt-2 border-t">
-                    Sent by: {query.senderName || "Operations Manager"}
+                    Query ID: {query.id}
                   </div>
                 )}
               </CardContent>
