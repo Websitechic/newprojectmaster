@@ -31,22 +31,26 @@ export default function Dashboard() {
   const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastNavigationRef = useRef<string | null>(null);
 
-  const handleNavigation = (path: string) => {
+  const handleNavigation = (path: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     // Prevent rapid successive navigations to the same path
     if (lastNavigationRef.current === path) {
       return;
     }
-    
+
     // Clear any existing timeout
     if (navigationTimeoutRef.current) {
       clearTimeout(navigationTimeoutRef.current);
     }
-    
+
     // Set a brief timeout to prevent rapid clicks
     navigationTimeoutRef.current = setTimeout(() => {
       lastNavigationRef.current = path;
       setLocation(path);
-      
+
       // Clear the last navigation after a delay
       setTimeout(() => {
         lastNavigationRef.current = null;
@@ -85,7 +89,7 @@ export default function Dashboard() {
                    user?.role === "client" && user?.clientType === "support_maintenance_client" ? tasks || [] :
                    tasks || [];
 
-  
+
 
   // Categorize tasks
   const activeTask = staffTasks.find(task => task.isTimerRunning);
@@ -317,7 +321,7 @@ export default function Dashboard() {
               {/* Full Task List */}
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">All Your Tasks</h2>
-                
+
                 {staffTasks && staffTasks.length > 0 ? (
                   <StaffTaskList 
                     tasks={staffTasks}
@@ -380,11 +384,7 @@ export default function Dashboard() {
                               <div 
                                 key={project.id} 
                                 className="p-2 bg-green-50 rounded-md border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleNavigation(`/dashboard/projects/${project.id}`);
-                                }}
+                                onClick={(e) => handleNavigation(`/dashboard/projects/${project.id}`, e)}
                               >
                                 <p className="font-medium text-sm text-green-900">{project.name}</p>
                                 <p className="text-xs text-green-700">{project.category?.replace('_', ' ')}</p>
@@ -427,11 +427,7 @@ export default function Dashboard() {
                               <div 
                                 key={project.id} 
                                 className="p-2 bg-yellow-50 rounded-md border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleNavigation(`/dashboard/projects/${project.id}`);
-                                }}
+                                onClick={(e) => handleNavigation(`/dashboard/projects/${project.id}`, e)}
                               >
                                 <p className="font-medium text-sm text-yellow-900">{project.name}</p>
                                 <p className="text-xs text-yellow-700">{project.category?.replace('_', ' ')}</p>
@@ -493,11 +489,7 @@ export default function Dashboard() {
                               <div 
                                 key={project.id} 
                                 className="p-2 bg-blue-50 rounded-md border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleNavigation(`/dashboard/projects/${project.id}`);
-                                }}
+                                onClick={(e) => handleNavigation(`/dashboard/projects/${project.id}`, e)}
                               >
                                 <p className="font-medium text-sm text-blue-900">{project.name}</p>
                                 <p className="text-xs text-blue-700">{project.category?.replace('_', ' ')}</p>

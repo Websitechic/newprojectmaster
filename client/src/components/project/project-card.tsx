@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Video, Trash2, Edit, Calendar, User, Users } from "lucide-react";
+import { useLocation } from "wouter";
 import type { Project } from "@db/schema";
 import { VideoCall } from "@/components/video/video-call";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -40,6 +41,7 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [_, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -108,16 +110,29 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
     setShowVideoCall(true);
   };
 
-  const handleCardClick = () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent navigation if clicking on buttons or interactive elements
+    if ((e.target as HTMLElement).closest('button, [role="button"]')) {
+      return;
+    }
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
     const targetPath = user?.role === 'staff'
       ? `/dashboard/projects/${project.id}/staff`
       : `/dashboard/projects/${project.id}`;
-    window.location.href = targetPath;
+    
+    if (handleClick) {
+      handleClick();
+    } else {
+      setLocation(targetPath);
+    }
   };
 
   return (
     <>
-    <Card className="h-full hover:shadow-lg transition-all duration-200 cursor-pointer border border-gray-200 rounded-xl bg-white" onClick={handleClick}>
+    <Card className="h-full hover:shadow-lg transition-all duration-200 cursor-pointer border border-gray-200 rounded-xl bg-white" onClick={handleCardClick}>
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
