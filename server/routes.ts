@@ -533,6 +533,215 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Productivity API endpoint for individual users
+  app.get("/api/productivity", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const { date } = req.query;
+    const targetDate = date ? new Date(date as string) : new Date();
+    
+    try {
+      // Set date boundaries for today
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Set date boundaries for yesterday
+      const yesterday = new Date(targetDate);
+      yesterday.setDate(targetDate.getDate() - 1);
+      const startOfYesterday = new Date(yesterday);
+      startOfYesterday.setHours(0, 0, 0, 0);
+      const endOfYesterday = new Date(yesterday);
+      endOfYesterday.setHours(23, 59, 59, 999);
+
+      // Get current week start (Monday)
+      const now = new Date(targetDate);
+      const dayOfWeek = now.getDay();
+      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const weekStart = new Date(now.setDate(diff));
+      weekStart.setHours(0, 0, 0, 0);
+      
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      // Get tasks for today
+      const todayTasks = await db
+        .select()
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.assigneeId, user.id),
+            gte(tasks.updatedAt, startOfDay),
+            sql`${tasks.updatedAt} <= ${endOfDay}`
+          )
+        );
+
+      // Get tasks for yesterday
+      const yesterdayTasks = await db
+        .select()
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.assigneeId, user.id),
+            gte(tasks.updatedAt, startOfYesterday),
+            sql`${tasks.updatedAt} <= ${endOfYesterday}`
+          )
+        );
+
+      // Get tasks for this week
+      const weekTasks = await db
+        .select()
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.assigneeId, user.id),
+            gte(tasks.updatedAt, weekStart),
+            sql`${tasks.updatedAt} <= ${weekEnd}`
+          )
+        );
+
+      // Get project names for tasks
+      const allTaskIds = [...todayTasks, ...yesterdayTasks, ...weekTasks].map(t => t.projectId).filter(Boolean);
+      const projectsData = allTaskIds.length > 0 ? await db
+        .select()
+        .from(projects)
+        .where(inArray(projects.id, allTaskIds)) : [];
+      
+      const projectMap = new Map(projectsData.map(p => [p.id, p.name]));
+
+      // Process today's data
+      const todayTaskBreakdown = todayTasks.map(task => ({
+        taskId: task.id,
+        title: task.title,
+        projectName: projectMap.get(task.projectId) || "Unknown Project",
+        timeSpent: task.timeSpent || 0,
+        status: task.status,
+        isCompleted: task.status === 'completed',
+        workingHours: task.workingHours || 8
+      }));
+
+      const todayData = {
+        totalTasksWorkedOn: todayTasks.length,
+        totalTasksCompleted: todayTasks.filter(task => task.status === 'completed').length,
+        totalTimeWorked: todayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0),
+        taskBreakdown: todayTaskBreakdown,
+        weeklyBreakdown: [] // Will be populated below
+      };
+
+      // Process yesterday's data
+      const yesterdayTaskBreakdown = yesterdayTasks.map(task => ({
+        taskId: task.id,
+        title: task.title,
+        projectName: projectMap.get(task.projectId) || "Unknown Project",
+        timeSpent: task.timeSpent || 0,
+        status: task.status,
+        isCompleted: task.status === 'completed',
+        workingHours: task.workingHours || 8
+      }));
+
+      const yesterdayData = {
+        totalTasksWorkedOn: yesterdayTasks.length,
+        totalTasksCompleted: yesterdayTasks.filter(task => task.status === 'completed').length,
+        totalTimeWorked: yesterdayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0),
+        taskBreakdown: yesterdayTaskBreakdown,
+        weeklyBreakdown: []
+      };
+
+      // Generate weekly breakdown (Mon-Fri)
+      const weeklyBreakdown = [];
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      
+      for (let i = 0; i < 7; i++) {
+        const currentDay = new Date(weekStart);
+        currentDay.setDate(weekStart.getDate() + i);
+        
+        const dayStart = new Date(currentDay);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(currentDay);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        // Get tasks for this specific day
+        const dayTasks = weekTasks.filter(task => {
+          const taskDate = new Date(task.updatedAt);
+          return taskDate >= dayStart && taskDate <= dayEnd;
+        });
+
+        const totalTime = dayTasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
+        const hours = totalTime / 3600; // Convert seconds to hours
+        
+        // Calculate performance status
+        let performanceStatus = 'poor';
+        let performanceColor = '#EF4444';
+        
+        if (hours >= 4) {
+          performanceStatus = 'good';
+          performanceColor = '#10B981';
+        } else if (hours >= 2) {
+          performanceStatus = 'fair';
+          performanceColor = '#F59E0B';
+        }
+
+        // Get first and last timer activities for workday span calculation
+        const timerTasks = dayTasks.filter(task => task.timerStartTime);
+        let workdayStart = null;
+        let workdayEnd = null;
+        let totalSpanHours = hours; // Default to actual work hours
+
+        if (timerTasks.length > 0) {
+          const timerStarts = timerTasks.map(task => new Date(task.timerStartTime)).sort((a, b) => a.getTime() - b.getTime());
+          const timerEnds = timerTasks.map(task => {
+            const start = new Date(task.timerStartTime);
+            return new Date(start.getTime() + ((task.timerDuration || 0) * 1000));
+          }).sort((a, b) => b.getTime() - a.getTime());
+
+          workdayStart = timerStarts[0].toISOString();
+          workdayEnd = timerEnds[0].toISOString();
+          totalSpanHours = Math.max(hours, (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60));
+        }
+
+        weeklyBreakdown.push({
+          day: currentDay.toISOString().split('T')[0],
+          dayName: dayNames[currentDay.getDay()],
+          timeSpent: totalTime,
+          hours,
+          taskCount: dayTasks.length,
+          tasks: dayTasks.map(task => task.title),
+          workdayStart,
+          workdayEnd,
+          totalSpanHours,
+          performanceStatus,
+          performanceColor
+        });
+      }
+
+      // Add weekly breakdown to today's data (for the chart)
+      todayData.weeklyBreakdown = weeklyBreakdown;
+
+      // Calculate week summary
+      const weekData = {
+        totalTasks: weekTasks.length,
+        completedTasks: weekTasks.filter(task => task.status === 'completed').length,
+        totalTime: weekTasks.reduce((total, task) => total + (task.timeSpent || 0), 0)
+      };
+
+      const response = {
+        today: todayData,
+        yesterday: yesterdayData,
+        thisWeek: weekData
+      };
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error fetching productivity data:", error);
+      res.status(500).json({ error: "Failed to fetch productivity data" });
+    }
+  });
+
   // Export KPI report (Operations Manager only)
   app.post("/api/kpi-report/export", async (req, res) => {
     if (!req.isAuthenticated()) {
