@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
@@ -28,42 +28,14 @@ export default function Dashboard() {
     pending: false,
     review: false,
   });
-  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastNavigationRef = useRef<string | null>(null);
-
-  const handleNavigation = (path: string, e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    // Prevent rapid successive navigations to the same path
-    if (lastNavigationRef.current === path) {
-      return;
-    }
-
-    // Clear any existing timeout
-    if (navigationTimeoutRef.current) {
-      clearTimeout(navigationTimeoutRef.current);
-    }
-
-    // Set a brief timeout to prevent rapid clicks
-    navigationTimeoutRef.current = setTimeout(() => {
-      lastNavigationRef.current = path;
-      setLocation(path);
-
-      // Clear the last navigation after a delay
-      setTimeout(() => {
-        lastNavigationRef.current = null;
-      }, 1000);
-    }, 100);
-  };
 
   const handleProjectClick = (projectId: number, e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
-    handleNavigation(`/dashboard/projects/${projectId}`, e);
+    console.log('Navigating to project:', projectId);
+    setLocation(`/dashboard/projects/${projectId}`);
   };
 
 
@@ -81,10 +53,6 @@ export default function Dashboard() {
 
     return () => {
       updateStatus("offline");
-      // Cleanup navigation timeout
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-      }
     };
   }, [updateStatus]);
 
