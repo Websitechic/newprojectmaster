@@ -37,11 +37,6 @@ export function useWebSocket(userId: number | undefined) {
     }
 
     try {
-      // Construct WebSocket URL dynamically
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const wsUrl = `${protocol}//${host}/ws`;
-
       ws.current = new WebSocket(wsUrl);
 
       // Connection opened handler
