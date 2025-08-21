@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, MessageCircle, Users, Search } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from "@/components/ui/use-toast";
 
 interface User {
   id: number;
@@ -47,8 +48,10 @@ export function DirectMessages() {
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<"conversations" | "new">("conversations");
+  const [sendingMessage, setSendingMessage] = useState(false);
   const { user } = useUser();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   // Fetch conversations
   useEffect(() => {
@@ -117,17 +120,17 @@ export function DirectMessages() {
         const data = JSON.parse(event.data);
         if (data.type === "direct_message") {
           const message = data.data;
-          
+
           // If the message is from the currently selected user, add it to messages
           if (selectedUser && message.senderId === selectedUser.id) {
             setMessages(prev => [...prev, message]);
           }
-          
+
           // Update conversations list
           setConversations(prev => {
             const updated = [...prev];
             const existingIndex = updated.findIndex(conv => conv.user.id === message.senderId);
-            
+
             if (existingIndex >= 0) {
               // Update existing conversation
               updated[existingIndex] = {
@@ -155,7 +158,7 @@ export function DirectMessages() {
                   }, ...prev]);
                 });
             }
-            
+
             return updated;
           });
         }
@@ -170,8 +173,9 @@ export function DirectMessages() {
   }, [selectedUser]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedUser) return;
+    if (!newMessage.trim() || !selectedUser || sendingMessage) return;
 
+    setSendingMessage(true);
     try {
       const response = await fetch("/api/direct-messages", {
         method: "POST",
@@ -184,58 +188,49 @@ export function DirectMessages() {
         }),
       });
 
-      if (response.ok) {
-        const sentMessage = await response.json();
-        setMessages(prev => [...prev, sentMessage]);
-        setNewMessage("");
-        
-        // Update conversations list
-        setConversations(prev => {
-          const updated = [...prev];
-          const existingIndex = updated.findIndex(conv => conv.user.id === selectedUser.id);
-          
-          if (existingIndex >= 0) {
-            updated[existingIndex] = {
-              ...updated[existingIndex],
-              lastMessage: {
-                content: sentMessage.content,
-                createdAt: sentMessage.createdAt,
-                senderId: sentMessage.senderId,
-              },
-            };
-          } else {
-            updated.unshift({
-              user: selectedUser,
-              lastMessage: {
-                content: sentMessage.content,
-                createdAt: sentMessage.createdAt,
-                senderId: sentMessage.senderId,
-              },
-              unreadCount: 0,
-            });
-          }
-          
-          return updated;
-        });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send message');
       }
+
+      const sentMessage = await response.json();
+      setNewMessage("");
+
+      // Refresh conversations and messages
+      await queryClient.invalidateQueries({ queryKey: ['/api/direct-messages/conversations'] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/direct-messages/${selectedUser.id}`] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/direct-messages/unread-count'] });
+
+      toast({
+        title: "Success",
+        description: "Message sent successfully!",
+      });
+
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingMessage(false);
     }
   };
 
   const handleUserSelect = (selectedUser: User) => {
     setSelectedUser(selectedUser);
     setView("conversations");
-    
+
     // Mark messages as read
     fetch(`/api/direct-messages/${selectedUser.id}/read`, {
       method: "PUT",
     });
-    
+
     // Update unread count in conversations
-    setConversations(prev => 
-      prev.map(conv => 
-        conv.user.id === selectedUser.id 
+    setConversations(prev =>
+      prev.map(conv =>
+        conv.user.id === selectedUser.id
           ? { ...conv, unreadCount: 0 }
           : conv
       )
@@ -275,7 +270,7 @@ export function DirectMessages() {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full p-4">
             <div className="space-y-4">
@@ -311,17 +306,32 @@ export function DirectMessages() {
             </div>
           </ScrollArea>
         </CardContent>
-        
+
         <CardFooter className="border-t p-4">
           <div className="flex gap-2 w-full">
             <Input
-              placeholder="Type a message..."
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder="Type a message..."
+              className="flex-1"
             />
-            <Button size="icon" onClick={handleSendMessage}>
-              <Send className="h-4 w-4" />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!newMessage.trim() || sendingMessage}
+              size="sm"
+              type="button"
+            >
+              {sendingMessage ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </CardFooter>
@@ -363,7 +373,7 @@ export function DirectMessages() {
           />
         </div>
       </CardHeader>
-      
+
       <CardContent className="flex-1 overflow-hidden p-0">
         <ScrollArea className="h-full">
           {view === "conversations" ? (
