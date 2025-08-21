@@ -1114,11 +1114,11 @@ export function registerRoutes(app: Express): Server {
           department: department || "",
           staffUniqueValue: staffUniqueValue || "",
           reason,
-          explanation: whyQuery, // Map whyQuery to explanation field
-          attachmentUrl: attachmentPath || null, // Map attachmentPath to attachmentUrl field
+          whyQuery,
+          attachmentPath: attachmentPath || null,
           likelyPenalty,
           additionalNote: additionalNote || null,
-          submitterId: user.id, // Map sentBy to submitterId field
+          sentBy: user.id,
           status: "pending",
         })
         .returning();
@@ -3165,33 +3165,8 @@ export function registerRoutes(app: Express): Server {
       if (user.role === "staff") {
         // Staff see only tasks assigned to them
         tasksList = await db
-          .select({
-            id: tasks.id,
-            title: tasks.title,
-            description: tasks.description,
-            status: tasks.status,
-            priority: tasks.priority,
-            progress: tasks.progress,
-            projectId: tasks.projectId,
-            assigneeId: tasks.assigneeId,
-            assignedBy: tasks.assignedBy,
-            deadline: tasks.deadline,
-            startDate: tasks.startDate,
-            workingHours: tasks.workingHours,
-            assignedHours: tasks.assignedHours,
-            timeSpent: tasks.timeSpent,
-            isTimerRunning: tasks.isTimerRunning,
-            timerStartTime: tasks.timerStartTime,
-            timerDuration: tasks.timerDuration,
-            hasBeenStarted: tasks.hasBeenStarted,
-            createdAt: tasks.createdAt,
-            updatedAt: tasks.updatedAt,
-            projectName: projects.name,
-            assigneeName: users.name,
-          })
+          .select()
           .from(tasks)
-          .leftJoin(projects, eq(tasks.projectId, projects.id))
-          .leftJoin(users, eq(tasks.assigneeId, users.id))
           .where(eq(tasks.assigneeId, user.id))
           .orderBy(desc(tasks.updatedAt));
       } else if (user.role === "client") {
@@ -3205,33 +3180,8 @@ export function registerRoutes(app: Express): Server {
         
         if (projectIds.length > 0) {
           tasksList = await db
-            .select({
-              id: tasks.id,
-              title: tasks.title,
-              description: tasks.description,
-              status: tasks.status,
-              priority: tasks.priority,
-              progress: tasks.progress,
-              projectId: tasks.projectId,
-              assigneeId: tasks.assigneeId,
-              assignedBy: tasks.assignedBy,
-              deadline: tasks.deadline,
-              startDate: tasks.startDate,
-              workingHours: tasks.workingHours,
-              assignedHours: tasks.assignedHours,
-              timeSpent: tasks.timeSpent,
-              isTimerRunning: tasks.isTimerRunning,
-              timerStartTime: tasks.timerStartTime,
-              timerDuration: tasks.timerDuration,
-              hasBeenStarted: tasks.hasBeenStarted,
-              createdAt: tasks.createdAt,
-              updatedAt: tasks.updatedAt,
-              projectName: projects.name,
-              assigneeName: users.name,
-            })
+            .select()
             .from(tasks)
-            .leftJoin(projects, eq(tasks.projectId, projects.id))
-            .leftJoin(users, eq(tasks.assigneeId, users.id))
             .where(inArray(tasks.projectId, projectIds))
             .orderBy(desc(tasks.updatedAt));
         } else {
@@ -3248,68 +3198,18 @@ export function registerRoutes(app: Express): Server {
         
         if (projectIds.length > 0) {
           tasksList = await db
-            .select({
-              id: tasks.id,
-              title: tasks.title,
-              description: tasks.description,
-              status: tasks.status,
-              priority: tasks.priority,
-              progress: tasks.progress,
-              projectId: tasks.projectId,
-              assigneeId: tasks.assigneeId,
-              assignedBy: tasks.assignedBy,
-              deadline: tasks.deadline,
-              startDate: tasks.startDate,
-              workingHours: tasks.workingHours,
-              assignedHours: tasks.assignedHours,
-              timeSpent: tasks.timeSpent,
-              isTimerRunning: tasks.isTimerRunning,
-              timerStartTime: tasks.timerStartTime,
-              timerDuration: tasks.timerDuration,
-              hasBeenStarted: tasks.hasBeenStarted,
-              createdAt: tasks.createdAt,
-              updatedAt: tasks.updatedAt,
-              projectName: projects.name,
-              assigneeName: users.name,
-            })
+            .select()
             .from(tasks)
-            .leftJoin(projects, eq(tasks.projectId, projects.id))
-            .leftJoin(users, eq(tasks.assigneeId, users.id))
             .where(inArray(tasks.projectId, projectIds))
             .orderBy(desc(tasks.updatedAt));
         } else {
           tasksList = [];
         }
       } else if (user.role === "product_owner" || user.role === "operations_manager" || user.specialization === "operations_manager") {
-        // Product owners and operations managers see all tasks with project and assignee details
+        // Product owners and operations managers see all tasks
         tasksList = await db
-          .select({
-            id: tasks.id,
-            title: tasks.title,
-            description: tasks.description,
-            status: tasks.status,
-            priority: tasks.priority,
-            progress: tasks.progress,
-            projectId: tasks.projectId,
-            assigneeId: tasks.assigneeId,
-            assignedBy: tasks.assignedBy,
-            deadline: tasks.deadline,
-            startDate: tasks.startDate,
-            workingHours: tasks.workingHours,
-            assignedHours: tasks.assignedHours,
-            timeSpent: tasks.timeSpent,
-            isTimerRunning: tasks.isTimerRunning,
-            timerStartTime: tasks.timerStartTime,
-            timerDuration: tasks.timerDuration,
-            hasBeenStarted: tasks.hasBeenStarted,
-            createdAt: tasks.createdAt,
-            updatedAt: tasks.updatedAt,
-            projectName: projects.name,
-            assigneeName: users.name,
-          })
+          .select()
           .from(tasks)
-          .leftJoin(projects, eq(tasks.projectId, projects.id))
-          .leftJoin(users, eq(tasks.assigneeId, users.id))
           .orderBy(desc(tasks.updatedAt));
       } else {
         tasksList = [];
