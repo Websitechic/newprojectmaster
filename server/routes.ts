@@ -1079,22 +1079,23 @@ export function registerRoutes(app: Express): Server {
     const isProjectManager = user.role === "project_manager";
 
     try {
-      let queries;
-
-      if (isOperationsManager || isProjectManager) {
-        // Operations managers and project managers can see all queries
-        queries = await db
-          .select()
-          .from(staffQueries)
-          .orderBy(desc(staffQueries.createdAt));
-      } else {
-        // Regular users can only see their own queries
-        queries = await db
-          .select()
-          .from(staffQueries)
-          .where(eq(staffQueries.submitterId, user.id))
-          .orderBy(desc(staffQueries.createdAt));
-      }
+      // All users (operations managers, project managers, and staff) see all queries
+      const queries = await db
+        .select({
+          id: staffQueries.id,
+          staffId: staffQueries.staffId,
+          staffName: staffQueries.staffName,
+          department: staffQueries.department,
+          reason: staffQueries.reason,
+          explanation: staffQueries.explanation,
+          attachmentUrl: staffQueries.attachmentUrl,
+          submitterId: staffQueries.submitterId,
+          status: staffQueries.status,
+          createdAt: staffQueries.createdAt,
+          updatedAt: staffQueries.updatedAt,
+        })
+        .from(staffQueries)
+        .orderBy(desc(staffQueries.createdAt));
 
       res.json(queries);
     } catch (error) {
