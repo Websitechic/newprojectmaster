@@ -1,105 +1,100 @@
 
-# Direct Messages Issues - Research and Fix Plan
+# Staff Queries Error Fix Plan
 
-## Issue Analysis
+## Problem Analysis
+The "failed to create staff query" error is caused by multiple issues:
 
-### Primary Problems Identified:
+### 1. Database Field Name Mismatches
+- **Frontend sends**: `explanation`, `attachmentUrl`, `submitterId`
+- **Backend expects**: `whyQuery`, `attachmentPath`, `sentBy`
+- **Database schema has**: `why_query`, `attachment_path`, `sent_by`
 
-1. **Missing API Endpoints**: Critical direct message endpoints are not implemented in `server/routes.ts`
-2. **API Response Format Issues**: Server returning HTML instead of JSON for some requests
-3. **WebSocket Connection Problems**: Connection failures preventing real-time messaging
-4. **Database Schema Issues**: Missing tables causing 500 errors
-5. **React Component Issues**: Hook order violations causing crashes
+### 2. Department List Issue
+- Current endpoint fetches departments from user specializations
+- Need predefined department list: Technical support, design, development, media buying, copywriting, automation, community manager, Project manager, product owner
 
-## Detailed Research Findings
+### 3. Form Data Handling
+- Frontend form sends wrong field names to backend
+- Backend tries to insert with mismatched field names
 
-### 1. Missing API Endpoints in `server/routes.ts`
-**Current State**: The main routes file is missing several critical endpoints that exist in backup files:
-- `GET /api/direct-messages/conversations` - Returns conversation list
-- `GET /api/direct-messages/:id` - Returns messages with specific user  
-- `PUT /api/direct-messages/:id/read` - Marks messages as read
-- Missing proper error handling in existing endpoints
+## Files to Fix
 
-**Evidence**: Comparing `server/routes.ts` with `server/routes_backup.ts` shows missing implementations.
+### 1. server/routes.ts (POST /api/staff-queries endpoint)
+**Location**: Around line 1000-1050
+**Issue**: Field name mismatch in database insertion
+**Fix**: Update field names to match database schema:
+```javascript
+// Change from:
+explanation: whyQuery,
+attachmentUrl: attachmentPath,
+submitterId: user.id,
 
-### 2. Frontend Issues in `client/src/components/chat/direct-messages.tsx`
-**Current State**: Component makes API calls to endpoints that don't exist or return errors
-**Evidence**: Console logs show fetch errors for conversations and message endpoints
+// To:
+whyQuery,
+attachmentPath: attachmentPath || null,
+sentBy: user.id,
+```
 
-### 3. WebSocket Implementation in `server/websocket.ts`
-**Current State**: WebSocket setup exists but connections are failing
-**Evidence**: Logs show "WebSocket connection without authenticated session"
+### 2. server/routes.ts (GET /api/departments endpoint) 
+**Location**: Around line 600-650
+**Issue**: Returns user specializations instead of predefined departments
+**Fix**: Replace with hardcoded department list:
+```javascript
+const departmentList = [
+  "Technical support",
+  "Design", 
+  "Development",
+  "Media buying",
+  "Copywriting",
+  "Automation",
+  "Community manager",
+  "Project manager",
+  "Product owner"
+];
+```
 
-### 4. Database Schema Issues
-**Current State**: Missing SOPs table causing cascading failures
-**Evidence**: Error logs show "relation 'sops' does not exist"
+### 3. client/src/pages/dashboard/staff-queries.tsx
+**Location**: Form submission handler
+**Issue**: Sends wrong field names to backend
+**Fix**: Update mutation to send correct field names matching backend expectations
 
-## Fix Plan
+## Implementation Steps
 
-### Phase 1: Database Schema Fix
-1. **Run missing migrations** to create SOPs and other missing tables
-2. **Verify all required tables exist** before proceeding
+1. **Fix Backend Field Names** (server/routes.ts)
+   - Update POST /api/staff-queries to use correct database field names
+   - Ensure field mapping matches schema: whyQuery, attachmentPath, sentBy
 
-### Phase 2: API Endpoints Implementation
-1. **Add missing direct message endpoints** to `server/routes.ts`:
-   - `GET /api/direct-messages/conversations`
-   - `GET /api/direct-messages/:id` 
-   - `PUT /api/direct-messages/:id/read`
-2. **Improve error handling** in existing endpoints
-3. **Add proper JSON response headers** for all API routes
+2. **Fix Department Endpoint** (server/routes.ts)
+   - Replace GET /api/departments with predefined list
+   - Remove dependency on user specializations
 
-### Phase 3: WebSocket Connection Fix
-1. **Debug WebSocket authentication** issues
-2. **Improve connection retry logic** in `client/src/hooks/use-websocket.ts`
-3. **Add proper error handling** for WebSocket failures
+3. **Update Frontend Form** (staff-queries.tsx)
+   - Ensure form sends data with correct field names
+   - Update mutation to match backend expectations
 
-### Phase 4: Frontend Component Fixes
-1. **Fix React hook order** issues in Dashboard component
-2. **Add proper error boundaries** for API failures
-3. **Improve loading states** in direct messages component
+4. **Test Error Handling**
+   - Add proper error logging to identify field mismatches
+   - Ensure database constraints are handled properly
 
-### Phase 5: Testing and Validation
-1. **Test message sending** functionality end-to-end
-2. **Verify WebSocket real-time updates** work
-3. **Test error scenarios** and fallbacks
+## Expected Results
+- Staff query creation should work without field name errors
+- Department dropdown should show the 9 predefined departments
+- Form submission should succeed and show success message
+- Queries should appear in the staff queries list
 
-## Files Requiring Changes
+## Verification Steps
+1. Try creating a staff query - should succeed
+2. Check department dropdown - should show 9 departments
+3. Verify query appears in database with correct field values
+4. Test with different user roles (operations manager, project manager)
 
-### Critical Priority:
-- `server/routes.ts` - Add missing API endpoints
-- `client/src/components/chat/direct-messages.tsx` - Fix API calls and error handling
-- `server/websocket.ts` - Improve connection handling
-
-### Medium Priority:
-- `client/src/hooks/use-websocket.ts` - Better error recovery
-- `client/src/pages/dashboard/index.tsx` - Fix React hook issues
-
-### Low Priority:
-- Database migration files - Ensure all tables exist
-- Error boundary components - Add proper error handling
-
-## Implementation Order
-
-1. **First**: Fix database schema issues (run migrations)
-2. **Second**: Implement missing API endpoints in routes.ts
-3. **Third**: Test API endpoints work correctly
-4. **Fourth**: Fix WebSocket connection issues  
-5. **Fifth**: Update frontend components to handle errors properly
-6. **Sixth**: End-to-end testing of direct messaging
-
-## Success Criteria
-
-- ✅ Direct message send button works without errors
-- ✅ Messages appear in real-time via WebSocket
-- ✅ Conversation list loads correctly
-- ✅ No console errors related to direct messaging
-- ✅ WebSocket connects successfully
-- ✅ API endpoints return proper JSON responses
-
-## Risk Assessment
-
-**High Risk**: Database schema changes could affect other features
-**Medium Risk**: WebSocket changes might impact other real-time features  
-**Low Risk**: Frontend component changes are isolated
-
-**Mitigation**: Implement changes incrementally and test each phase thoroughly.
+## Database Schema Reference
+```sql
+staff_queries table fields:
+- why_query (text, required)
+- attachment_path (text, optional) 
+- sent_by (integer, required, FK to users.id)
+- staff_id (integer, required, FK to users.id)
+- staff_name (text, required)
+- department (text, required)
+```

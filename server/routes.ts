@@ -391,16 +391,18 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      // Get unique specializations from staff members
-      const departments = await db
-        .selectDistinct({ department: users.specialization })
-        .from(users)
-        .where(and(eq(users.role, "staff"), isNotNull(users.specialization)))
-        .orderBy(asc(users.specialization));
-
-      const departmentList = departments
-        .map(d => d.department)
-        .filter(Boolean);
+      // Predefined department list for staff queries
+      const departmentList = [
+        "Technical support",
+        "Design",
+        "Development",
+        "Media buying",
+        "Copywriting",
+        "Automation",
+        "Community manager",
+        "Project manager",
+        "Product owner"
+      ];
 
       res.json(departmentList);
     } catch (error) {
@@ -1482,7 +1484,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Direct Messages API Routes
-  
+
   // Get all conversations for the authenticated user
   app.get("/api/direct-messages/conversations", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -1514,7 +1516,7 @@ export function registerRoutes(app: Express): Server {
 
       // Get unique conversations and user details
       const uniqueConversations = new Map();
-      
+
       for (const conv of conversations) {
         if (!uniqueConversations.has(conv.userId)) {
           // Get user details
@@ -3175,9 +3177,9 @@ export function registerRoutes(app: Express): Server {
           .select({ id: projects.id })
           .from(projects)
           .where(eq(projects.clientId, user.id));
-        
+
         const projectIds = clientProjects.map(p => p.id);
-        
+
         if (projectIds.length > 0) {
           tasksList = await db
             .select()
@@ -3193,9 +3195,9 @@ export function registerRoutes(app: Express): Server {
           .select({ id: projects.id })
           .from(projects)
           .where(eq(projects.managerId, user.id));
-        
+
         const projectIds = managerProjects.map(p => p.id);
-        
+
         if (projectIds.length > 0) {
           tasksList = await db
             .select()
