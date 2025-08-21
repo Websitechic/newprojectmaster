@@ -102,10 +102,10 @@ export default function StaffQueries() {
       });
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: error.message || "Failed to send staff query",
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
@@ -126,23 +126,23 @@ export default function StaffQueries() {
       queryClient.invalidateQueries({ queryKey: ["/api/staff-queries"] });
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: error.message || "Failed to update query status",
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.staffId || !formData.staffName || !formData.department || !formData.staffUniqueValue || 
+
+    if (!formData.staffId || !formData.staffName || !formData.department || !formData.staffUniqueValue ||
         !formData.reason || !formData.whyQuery || !formData.likelyPenalty) {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: "Please fill in all required fields",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }

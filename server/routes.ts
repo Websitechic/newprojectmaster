@@ -1070,6 +1070,57 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Test staff query creation endpoint
+  app.post("/api/staff-queries/test", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      // Get the first staff member for testing
+      const [firstStaff] = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "staff"))
+        .limit(1);
+
+      if (!firstStaff) {
+        return res.status(400).json({ error: "No staff members found for testing" });
+      }
+
+      const testQueryData = {
+        staffId: firstStaff.id,
+        staffName: firstStaff.name,
+        department: "Development",
+        staffUniqueValue: firstStaff.email,
+        reason: "substandard_delivery",
+        whyQuery: "Test query - delivered work below expected standards",
+        attachmentPath: null,
+        likelyPenalty: "Written warning and additional training",
+        additionalNote: "This is a test query created by the system",
+        sentBy: user.id,
+        status: "pending",
+      };
+
+      const [newQuery] = await db
+        .insert(staffQueries)
+        .values(testQueryData)
+        .returning();
+
+      res.json({ 
+        success: true, 
+        message: "Test staff query created successfully",
+        queryId: newQuery.id,
+        testData: testQueryData
+      });
+    } catch (error) {
+      console.error("Error creating test staff query:", error);
+      res.status(500).json({ error: "Failed to create test staff query", details: error.message });
+    }
+  });
+
   // Staff Queries API Routes
   app.get("/api/staff-queries", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -1116,6 +1167,48 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Invalid staff ID" });
       }
 
+      // Verify staff member exists
+      const [staffMember] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parsedStaffId))
+        .limit(1);
+
+      if (!staffMember) {
+        return res.status(400).json({ error: "Staff member not found" });
+      }
+
+      console.log("Staff member found:", staffMember.name);
+
+      // Validate reason enum
+      const validReasons = [
+        "wrongly_using_work_app",
+        "substandard_delivery",
+        "repeatedly_missed_deadlines",
+        "disrespectful_communication",
+        "disregard_company_policy"
+      ];
+
+      if (!validReasons.includes(reason)) {
+        console.error("Invalid reason provided:", reason, "Valid reasons:", validReasons);
+        return res.status(400).json({ error: "Invalid reason provided", validReasons });
+      }
+
+      // Additional validation
+      if (!staffName.trim()) {
+        return res.status(400).json({ error: "Staff name cannot be empty" });
+      }
+
+      if (!whyQuery.trim()) {
+        return res.status(400).json({ error: "Query explanation cannot be empty" });
+      }
+
+      if (!likelyPenalty.trim()) {
+        return res.status(400).json({ error: "Likely penalty cannot be empty" });
+      }
+
+      console.log("Validation passed, attempting to insert into database...");
+
       const [newQuery] = await db
         .insert(staffQueries)
         .values({
@@ -1138,6 +1231,7 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error creating staff query:", error);
       console.error("Error details:", error.message);
+      console.error("Error stack:", error.stack);
       res.status(500).json({ error: "Failed to create staff query", details: error.message });
     }
   });
