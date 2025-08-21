@@ -24,7 +24,7 @@ export function setupWebSocket(wss: WebSocketServer) {
     global.connectedClients = new Map();
   }
 
-  // Set up ping interval to keep connections alive
+  // Set up ping interval to keep connections alive (increased to 60 seconds to reduce aggressive pinging)
   const interval = setInterval(() => {
     if (wss && wss.clients) {
       wss.clients.forEach((ws) => {
@@ -38,15 +38,23 @@ export function setupWebSocket(wss: WebSocketServer) {
           } catch (error) {
             console.error('Error terminating WebSocket:', error);
           }
+          // Remove from connected clients when terminating
+          if (extWs.userId && global.connectedClients) {
+            global.connectedClients.delete(extWs.userId);
+          }
           return;
         }
         extWs.isAlive = false;
         if (extWs.readyState === WebSocket.OPEN) {
-          extWs.ping();
+          try {
+            extWs.ping();
+          } catch (error) {
+            console.error('Error sending ping:', error);
+          }
         }
       });
     }
-  }, 30000);
+  }, 60000);
 
   wss.on('close', () => {
     clearInterval(interval);

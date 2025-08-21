@@ -102,11 +102,11 @@ let emailServiceInitialized = false;
     log("Setting up routes and server...");
     const server = registerRoutes(app);
 
-    // Setup WebSocket server
+    // Setup WebSocket server with separate path from Vite HMR
     log("Setting up WebSocket...");
     const wss = new WebSocketServer({
       noServer: true,
-      path: "/ws"
+      path: "/api/ws"
     });
 
     // Session parser middleware for WebSocket upgrades
@@ -114,24 +114,33 @@ let emailServiceInitialized = false;
       sessionMiddleware(req, res, next);
     };
 
-    // WebSocket upgrade handling with improved error handling
+    // WebSocket upgrade handling with improved error management and path filtering
     server.on('upgrade', (request, socket, head) => {
-      console.log('WebSocket upgrade request received');
+      const url = new URL(request.url!, `http://${request.headers.host}`);
+      
+      // Only handle our application WebSocket upgrades, let Vite handle HMR WebSocket
+      if (url.pathname !== '/api/ws') {
+        console.log('Ignoring non-application WebSocket upgrade:', url.pathname);
+        return;
+      }
 
-      // Set upgrade timeout
+      console.log('Application WebSocket upgrade request received for /api/ws');
+
+      // Set upgrade timeout with longer duration
       const upgradeTimeout = setTimeout(() => {
         console.log('WebSocket upgrade timeout');
         if (socket && !socket.destroyed) {
           socket.write('HTTP/1.1 408 Request Timeout\r\n\r\n');
           socket.destroy();
         }
-      }, 10000);
+      }, 15000);
 
       // Parse session for WebSocket connection
       sessionParser(request, {} as any, (err) => {
+        clearTimeout(upgradeTimeout);
+        
         if (err) {
           console.error('Session parsing error during WebSocket upgrade:', err);
-          clearTimeout(upgradeTimeout);
           if (socket && !socket.destroyed) {
             socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
             socket.destroy();
@@ -140,7 +149,6 @@ let emailServiceInitialized = false;
         }
 
         try {
-          clearTimeout(upgradeTimeout);
           console.log('Session parsed for WebSocket upgrade');
 
           // Log session info for debugging
@@ -151,16 +159,18 @@ let emailServiceInitialized = false;
 
           wss.handleUpgrade(request, socket, head, (ws) => {
             console.log('WebSocket upgrade completed, emitting connection');
-            // Wrap the connection emission in a try-catch to prevent crashes
-            try {
-              wss.emit('connection', ws, request);
-            } catch (connectionError) {
-              console.error('Error emitting WebSocket connection:', connectionError);
-              // Close the WebSocket connection gracefully
-              if (ws && ws.readyState === ws.OPEN) {
-                ws.close(1011, 'Server error during connection setup');
+            // Set a timeout for connection setup
+            setTimeout(() => {
+              try {
+                wss.emit('connection', ws, request);
+              } catch (connectionError) {
+                console.error('Error emitting WebSocket connection:', connectionError);
+                // Close the WebSocket connection gracefully
+                if (ws && ws.readyState === ws.OPEN) {
+                  ws.close(1011, 'Server error during connection setup');
+                }
               }
-            }
+            }, 100);
           });
         } catch (error) {
           console.error('WebSocket upgrade error:', error);

@@ -25,13 +25,8 @@ export function useWebSocket(userId: number | undefined) {
       return;
     }
 
-    // Construct WebSocket URL based on current window location
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws`;
-
-    // If connection is already open, do nothing
-    if (ws.current?.readyState === WebSocket.OPEN) {
+    // If connection is already open or connecting, do nothing
+    if (ws.current?.readyState === WebSocket.OPEN || ws.current?.readyState === WebSocket.CONNECTING) {
       return;
     }
 
@@ -69,12 +64,12 @@ export function useWebSocket(userId: number | undefined) {
       // Connection closed handler
       ws.current.onclose = (event) => {
         console.log('WebSocket connection closed:', event.code, event.reason);
-        
+
         // Don't reconnect if the close was intentional or if we don't have a userId
         const intentionalClose = event.code === 1000 || event.code === 1001;
         const authFailure = event.code === 1008;
         const serverError = event.code === 1011;
-        
+
         // Only attempt reconnection for unexpected closes and if we have a valid userId
         if (!intentionalClose && !authFailure && userId && reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current++;
