@@ -554,7 +554,7 @@ export function registerRoutes(app: Express): Server {
       const filename = `kpi-report-${staffName || 'staff'}-${Date.now()}`;
 
       if (format === 'csv') {
-        // Create CSV content
+        // Create CSV content with proper escaping
         const csvRows = [
           ['Date', 'Total Span Hours', 'Actual Work Hours', 'Tasks', 'Status'],
           ...productivityData.dailyData.map((day: any) => [
@@ -566,41 +566,85 @@ export function registerRoutes(app: Express): Server {
           ])
         ];
 
-        const csvContent = csvRows.map(row => row.join(',')).join('\n');
+        const csvContent = csvRows.map(row => 
+          row.map(field => 
+            typeof field === 'string' && field.includes(',') 
+              ? `"${field.replace(/"/g, '""')}"` 
+              : field
+          ).join(',')
+        ).join('\n');
 
-        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
         res.send(csvContent);
       } else if (format === 'excel') {
-        // For Excel, we'll return structured data
-        // In a real implementation, you'd use a library like xlsx
-        const excelData = {
-          staffName,
-          department,
-          dateRange,
-          summary: productivityData.summary,
-          dailyData: productivityData.dailyData
-        };
+        // Create a simple Excel-compatible CSV format with tab separators
+        const excelRows = [
+          ['Staff Name', staffName],
+          ['Department', department],
+          ['Date Range', `${dateRange} days`],
+          ['Generated At', new Date().toISOString()],
+          [''],
+          ['Summary'],
+          ['Total Days', productivityData.summary.totalDays],
+          ['Average Hours per Day', productivityData.summary.avgHoursPerDay.toFixed(2)],
+          ['Good Days', productivityData.summary.goodDays],
+          ['Fair Days', productivityData.summary.fairDays],
+          ['Poor Days', productivityData.summary.poorDays],
+          [''],
+          ['Daily Data'],
+          ['Date', 'Total Span Hours', 'Actual Work Hours', 'Tasks', 'Status'],
+          ...productivityData.dailyData.map((day: any) => [
+            day.date,
+            day.totalSpanHours.toFixed(2),
+            day.actualWorkHours.toFixed(2),
+            day.taskCount,
+            day.performanceStatus
+          ])
+        ];
 
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
-        res.json(excelData);
+        const excelContent = excelRows.map(row => row.join('\t')).join('\n');
+
+        res.setHeader('Content-Type', 'application/vnd.ms-excel');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.xls"`);
+        res.send(excelContent);
       } else if (format === 'pdf') {
-        // For PDF, we'll return structured data
-        // In a real implementation, you'd use a library like puppeteer or pdfkit
-        const pdfData = {
-          title: `KPI Report - ${staffName}`,
-          department,
-          dateRange,
-          generatedAt: new Date().toISOString(),
-          summary: productivityData.summary,
-          dailyData: productivityData.dailyData,
-          weeklyData: productivityData.weeklyData
-        };
+        // Create a simple text-based report that can be viewed as PDF content
+        const pdfContent = `KPI REPORT - ${staffName}
+==================================================
 
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
-        res.json(pdfData);
+Staff Information:
+- Name: ${staffName}
+- Department: ${department}
+- Report Period: Last ${dateRange} days
+- Generated: ${new Date().toLocaleString()}
+
+SUMMARY
+-------
+Total Days: ${productivityData.summary.totalDays}
+Average Hours per Day: ${productivityData.summary.avgHoursPerDay.toFixed(2)} hours
+Good Performance Days: ${productivityData.summary.goodDays}
+Fair Performance Days: ${productivityData.summary.fairDays}
+Poor Performance Days: ${productivityData.summary.poorDays}
+
+DAILY BREAKDOWN
+---------------
+${productivityData.dailyData.map((day: any) => 
+  `${day.date} | ${day.totalSpanHours.toFixed(2)}h span | ${day.actualWorkHours.toFixed(2)}h work | ${day.taskCount} tasks | ${day.performanceStatus.toUpperCase()}`
+).join('\n')}
+
+WEEKLY OVERVIEW
+---------------
+${productivityData.weeklyData ? productivityData.weeklyData.map((week: any) => 
+  `${week.day}: ${week.hours.toFixed(2)} hours (${week.performanceStatus})`
+).join('\n') : 'No weekly data available'}
+
+End of Report
+==================================================`;
+
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.txt"`);
+        res.send(pdfContent);
       } else {
         return res.status(400).json({ error: "Invalid export format" });
       }
