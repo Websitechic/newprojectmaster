@@ -58,6 +58,15 @@ export default function Dashboard() {
     }, 100);
   };
 
+  const handleProjectClick = (projectId: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    handleNavigation(`/dashboard/projects/${projectId}`, e);
+  };
+
+
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
@@ -384,7 +393,7 @@ export default function Dashboard() {
                               <div 
                                 key={project.id} 
                                 className="p-2 bg-green-50 rounded-md border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
-                                onClick={(e) => handleNavigation(`/dashboard/projects/${project.id}`, e)}
+                                onClick={(e) => handleProjectClick(project.id, e)}
                               >
                                 <p className="font-medium text-sm text-green-900">{project.name}</p>
                                 <p className="text-xs text-green-700">{project.category?.replace('_', ' ')}</p>
@@ -427,7 +436,7 @@ export default function Dashboard() {
                               <div 
                                 key={project.id} 
                                 className="p-2 bg-yellow-50 rounded-md border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
-                                onClick={(e) => handleNavigation(`/dashboard/projects/${project.id}`, e)}
+                                onClick={(e) => handleProjectClick(project.id, e)}
                               >
                                 <p className="font-medium text-sm text-yellow-900">{project.name}</p>
                                 <p className="text-xs text-yellow-700">{project.category?.replace('_', ' ')}</p>
@@ -489,7 +498,7 @@ export default function Dashboard() {
                               <div 
                                 key={project.id} 
                                 className="p-2 bg-blue-50 rounded-md border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
-                                onClick={(e) => handleNavigation(`/dashboard/projects/${project.id}`, e)}
+                                onClick={(e) => handleProjectClick(project.id, e)}
                               >
                                 <p className="font-medium text-sm text-blue-900">{project.name}</p>
                                 <p className="text-xs text-blue-700">{project.category?.replace('_', ' ')}</p>
