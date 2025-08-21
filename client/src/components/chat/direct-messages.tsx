@@ -170,9 +170,14 @@ export function DirectMessages() {
   }, [selectedUser]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedUser) return;
+    if (!newMessage.trim() || !selectedUser) {
+      console.log("Cannot send message: missing content or selected user");
+      return;
+    }
 
     try {
+      console.log("Sending message to user:", selectedUser.id, "Content:", newMessage);
+      
       const response = await fetch("/api/direct-messages", {
         method: "POST",
         headers: {
@@ -180,13 +185,23 @@ export function DirectMessages() {
         },
         body: JSON.stringify({
           receiverId: selectedUser.id,
-          content: newMessage,
+          content: newMessage.trim(),
         }),
       });
 
+      console.log("Response status:", response.status);
+
       if (response.ok) {
         const sentMessage = await response.json();
-        setMessages(prev => [...prev, sentMessage]);
+        console.log("Message sent successfully:", sentMessage);
+        
+        // Add sender name for display
+        const messageWithSender = {
+          ...sentMessage,
+          senderName: user?.name || "You"
+        };
+        
+        setMessages(prev => [...prev, messageWithSender]);
         setNewMessage("");
         
         // Update conversations list
@@ -217,9 +232,14 @@ export function DirectMessages() {
           
           return updated;
         });
+      } else {
+        const errorText = await response.text();
+        console.error("Failed to send message:", response.status, errorText);
+        throw new Error(`Failed to send message: ${response.status}`);
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      // You could add a toast notification here to inform the user
     }
   };
 
@@ -318,7 +338,12 @@ export function DirectMessages() {
               placeholder="Type a message..."
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
             />
             <Button size="icon" onClick={handleSendMessage}>
               <Send className="h-4 w-4" />

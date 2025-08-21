@@ -13,6 +13,13 @@ export function useWebSocket(userId: number | undefined) {
   const maxReconnectAttempts = 5;
   const { toast } = useToast();
 
+  // Determine WebSocket URL based on current location
+  const getWebSocketUrl = useCallback(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    return `${protocol}//${host}/ws`;
+  }, []);
+
   const connect = useCallback(() => {
     // Don't try to connect if we've exceeded max attempts
     if (reconnectAttempts.current >= maxReconnectAttempts) {
@@ -37,6 +44,7 @@ export function useWebSocket(userId: number | undefined) {
     }
 
     try {
+      const wsUrl = getWebSocketUrl();
       ws.current = new WebSocket(wsUrl);
 
       // Connection opened handler
@@ -113,7 +121,7 @@ export function useWebSocket(userId: number | undefined) {
          });
       }
     }
-  }, [userId, toast]); // Depend on userId and toast
+  }, [userId, toast, getWebSocketUrl]); // Depend on userId, toast, and getWebSocketUrl
 
   // Effect to manage connection lifecycle
   useEffect(() => {
