@@ -898,12 +898,36 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const departments = await db
+      // First try to get existing departments from SOPs
+      const existingDepartments = await db
         .selectDistinct({ department: sops.department })
         .from(sops)
         .orderBy(asc(sops.department));
 
-      res.json(departments.map(d => d.department));
+      // Get staff specializations as fallback/additional departments
+      const staffSpecializations = await db
+        .selectDistinct({ department: users.specialization })
+        .from(users)
+        .where(and(eq(users.role, "staff"), isNotNull(users.specialization)))
+        .orderBy(asc(users.specialization));
+
+      // Combine and deduplicate
+      const allDepartments = new Set([
+        ...existingDepartments.map(d => d.department),
+        ...staffSpecializations.map(d => d.department).filter(Boolean),
+        // Add some default departments
+        "General",
+        "Administration",
+        "Operations",
+        "Technical Support",
+        "Project Management",
+        "Web Development",
+        "Digital Marketing",
+        "Client Relations"
+      ]);
+
+      const departmentList = Array.from(allDepartments).filter(Boolean).sort();
+      res.json(departmentList);
     } catch (error) {
       console.error("Error fetching departments:", error);
       res.status(500).json({ error: "Failed to fetch departments" });
@@ -1477,6 +1501,223 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error deleting memo:", error);
       res.status(500).json({ error: "Failed to delete memo" });
+    }
+  });
+
+  // Direct Messages API Routes
+  
+  // Get all conversations for the authenticated user
+  app.get("/api/direct-messages/conversations", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      // Get conversations where user is either sender or receiver
+      const conversations = await db
+        .select({
+          userId: sql<number>`CASE 
+            WHEN ${directMessages.senderId} = ${user.id} THEN ${directMessages.receiverId}
+            ELSE ${directMessages.senderId}
+          END`,
+          lastMessageContent: directMessages.content,
+          lastMessageTime: directMessages.createdAt,
+          lastMessageSenderId: directMessages.senderId,
+        })
+        .from(directMessages)
+        .where(
+          or(
+            eq(directMessages.senderId, user.id),
+            eq(directMessages.receiverId, user.id)
+          )
+        )
+        .orderBy(desc(directMessages.createdAt));
+
+      // Get unique conversations and user details
+      const uniqueConversations = new Map();
+      
+      for (const conv of conversations) {
+        if (!uniqueConversations.has(conv.userId)) {
+          // Get user details
+          const [otherUser] = await db
+            .select({
+              id: users.id,
+              name: users.name,
+              email: users.email,
+              role: users.role,
+              status: users.status,
+              lastActive: users.lastActive,
+            })
+            .from(users)
+            .where(eq(users.id, conv.userId))
+            .limit(1);
+
+          if (otherUser) {
+            // Count unread messages from this user
+            const unreadCount = await db
+              .select({ count: sql<number>`count(*)` })
+              .from(directMessages)
+              .where(
+                and(
+                  eq(directMessages.senderId, conv.userId),
+                  eq(directMessages.receiverId, user.id),
+                  eq(directMessages.read, false)
+                )
+              );
+
+            uniqueConversations.set(conv.userId, {
+              user: otherUser,
+              lastMessage: {
+                content: conv.lastMessageContent,
+                createdAt: conv.lastMessageTime,
+                senderId: conv.lastMessageSenderId,
+              },
+              unreadCount: unreadCount[0]?.count || 0,
+            });
+          }
+        }
+      }
+
+      res.json(Array.from(uniqueConversations.values()));
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  // Get messages between authenticated user and specific user
+  app.get("/api/direct-messages/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const otherUserId = parseInt(req.params.userId);
+
+    try {
+      const messages = await db
+        .select({
+          id: directMessages.id,
+          content: directMessages.content,
+          senderId: directMessages.senderId,
+          receiverId: directMessages.receiverId,
+          read: directMessages.read,
+          createdAt: directMessages.createdAt,
+          senderName: users.name,
+        })
+        .from(directMessages)
+        .leftJoin(users, eq(directMessages.senderId, users.id))
+        .where(
+          or(
+            and(
+              eq(directMessages.senderId, user.id),
+              eq(directMessages.receiverId, otherUserId)
+            ),
+            and(
+              eq(directMessages.senderId, otherUserId),
+              eq(directMessages.receiverId, user.id)
+            )
+          )
+        )
+        .orderBy(asc(directMessages.createdAt));
+
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // Mark messages as read
+  app.put("/api/direct-messages/:userId/read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const otherUserId = parseInt(req.params.userId);
+
+    try {
+      await db
+        .update(directMessages)
+        .set({ read: true })
+        .where(
+          and(
+            eq(directMessages.senderId, otherUserId),
+            eq(directMessages.receiverId, user.id),
+            eq(directMessages.read, false)
+          )
+        );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
+  // Get unread messages count
+  app.get("/api/direct-messages/unread-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      const unreadCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(directMessages)
+        .where(
+          and(
+            eq(directMessages.receiverId, user.id),
+            eq(directMessages.read, false)
+          )
+        );
+
+      res.json({ count: unreadCount[0]?.count || 0 });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
+  // Send direct message
+  app.post("/api/direct-messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const { receiverId, content } = req.body;
+
+    try {
+      if (!receiverId || !content || !content.trim()) {
+        return res.status(400).json({ error: "Receiver ID and content are required" });
+      }
+
+      const [newMessage] = await db
+        .insert(directMessages)
+        .values({
+          senderId: user.id,
+          receiverId: parseInt(receiverId),
+          content: content.trim(),
+          read: false,
+        })
+        .returning();
+
+      // Add sender name for immediate display
+      const messageWithSender = {
+        ...newMessage,
+        senderName: user.name,
+      };
+
+      res.json(messageWithSender);
+    } catch (error) {
+      console.error("Error sending direct message:", error);
+      res.status(500).json({ error: "Failed to send message" });
     }
   });
 
