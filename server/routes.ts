@@ -886,7 +886,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get unique departments for SOPs
+  // Get unique departments for SOPs (from staff specializations only)
   app.get("/api/sops/departments", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -898,21 +898,21 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      // Get unique specializations from staff members (same as /api/departments)
+      // Get unique specializations from staff members only
       const departments = await db
-        .selectDistinct({ department: users.specialization })
+        .selectDistinct({ specialization: users.specialization })
         .from(users)
         .where(and(eq(users.role, "staff"), isNotNull(users.specialization)))
         .orderBy(asc(users.specialization));
 
       const departmentList = departments
-        .map(d => d.department)
+        .map(d => d.specialization)
         .filter(Boolean);
 
       res.json(departmentList);
     } catch (error) {
-      console.error("Error fetching departments:", error);
-      res.status(500).json({ error: "Failed to fetch departments" });
+      console.error("Error fetching SOP departments:", error);
+      res.status(500).json({ error: "Failed to fetch SOP departments" });
     }
   });
 
