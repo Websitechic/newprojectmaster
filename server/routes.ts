@@ -2724,6 +2724,152 @@ End of Report
   });
 
   // Leave Applications API Routes
+  
+  // Submit leave application
+  app.post("/api/leave-applications", upload.single('proofImage'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    // Check if user is staff or product owner
+    if (user.role !== "staff" && user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only staff members and product owners can submit leave applications" });
+    }
+
+    try {
+      const { leaveType, reason, startDate, endDate } = req.body;
+
+      if (!leaveType || !reason || !startDate || !endDate) {
+        return res.status(400).json({ error: "Leave type, reason, start date, and end date are required" });
+      }
+
+      // Validate leave type
+      const validLeaveTypes = ["day_off", "leave_of_absence"];
+      if (!validLeaveTypes.includes(leaveType)) {
+        return res.status(400).json({ error: "Invalid leave type" });
+      }
+
+      // Parse and validate dates
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+
+      if (start > end) {
+        return res.status(400).json({ error: "Start date cannot be after end date" });
+      }
+
+      // Calculate total days
+      const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+      // Check leave of absence limit (14 days per year)
+      if (leaveType === "leave_of_absence") {
+        const currentYear = new Date().getFullYear();
+
+        // Get approved leave of absence applications for current year
+        const existingApplications = await db
+          .select()
+          .from(leaveApplications)
+          .where(and(
+            eq(leaveApplications.userId, user.id),
+            eq(leaveApplications.leaveType, "leave_of_absence"),
+            eq(leaveApplications.status, "approved")
+          ));
+
+        const usedDays = existingApplications
+          .filter(app => new Date(app.startDate).getFullYear() === currentYear)
+          .reduce((total, app) => total + app.totalDays, 0);
+
+        if (usedDays + totalDays > 14) {
+          return res.status(400).json({
+            error: `Leave of absence exceeds annual limit. You have ${14 - usedDays} days remaining.`
+          });
+        }
+      }
+
+      // Handle file upload if present
+      let proofImageUrl = null;
+      if (req.file) {
+        proofImageUrl = `/uploads/leave-proof/${req.file.filename}`;
+      }
+
+      // Create leave application
+      const [newApplication] = await db
+        .insert(leaveApplications)
+        .values({
+          userId: user.id,
+          leaveType,
+          reason,
+          startDate: start,
+          endDate: end,
+          totalDays,
+          proofImageUrl,
+          status: "pending",
+          appliedAt: new Date(),
+        })
+        .returning();
+
+      // Create notification for project managers
+      const projectManagers = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "project_manager"));
+
+      for (const pm of projectManagers) {
+        try {
+          await db
+            .insert(notifications)
+            .values({
+              userId: pm.id,
+              type: "task_assigned", // Using existing type
+              content: `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
+              referenceId: newApplication.id,
+              referenceType: "project", // Using existing type
+            });
+        } catch (notificationError) {
+          console.error("Error creating notification:", notificationError);
+          // Continue execution even if notification fails
+        }
+      }
+
+      res.json({ success: true, applicationId: newApplication.id });
+    } catch (error) {
+      console.error("Error creating leave application:", error);
+      res.status(500).json({ error: "Failed to create leave application" });
+    }
+  });
+
+  // Get user's leave applications
+  app.get("/api/leave-applications", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    // Check if user is staff or product owner
+    if (user.role !== "staff" && user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only staff members and product owners can access leave applications" });
+    }
+
+    try {
+      const applications = await db
+        .select()
+        .from(leaveApplications)
+        .where(eq(leaveApplications.userId, user.id))
+        .orderBy(desc(leaveApplications.appliedAt));
+
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching leave applications:", error);
+      res.status(500).json({ error: "Failed to fetch leave applications" });
+    }
+  });
+
   app.get("/api/leave-applications/all", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
