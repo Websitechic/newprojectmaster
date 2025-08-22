@@ -1175,10 +1175,15 @@ End of Report
     }
 
     try {
-      const { name, email, username, password, productService, clientType, gender } = req.body; // Added gender field
+      const { name, email, username, password, productService, clientType, gender } = req.body;
 
-      if (!name || !email || !username || !password || !productService || !clientType || !gender) { // Added gender validation
-        return res.status(400).json({ error: "All fields are required" });
+      if (!name || !email || !username || !password || !productService || !clientType || !gender) {
+        return res.status(400).json({ error: "All fields including gender are required" });
+      }
+
+      // Validate gender
+      if (!["male", "female"].includes(gender)) {
+        return res.status(400).json({ error: "Gender must be either 'male' or 'female'" });
       }
 
       // Check if user already exists
@@ -1207,17 +1212,13 @@ End of Report
           role: "client" as UserRole,
           productService,
           clientType,
-          gender, // Added gender here
+          gender,
           onboardingStatus: "onboarding_pending",
           emailVerified: false,
           status: "active" as UserStatus,
           workStatus: "active" as WorkStatus,
         })
         .returning();
-
-      // Assign default gender to existing clients if not provided
-      // This part is handled by a separate script or migration
-      // For now, we assume gender is provided during creation.
 
       res.json({ success: true, clientId: newClient.id });
     } catch (error) {

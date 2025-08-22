@@ -50,6 +50,7 @@ export const users = pgTable("users", {
   role: text("role", { enum: Object.values(UserRole) as [string, ...string[]] }).notNull(),
   name: text("name").notNull(),
   email: text("email").notNull(),
+  gender: text("gender", { enum: ["male", "female"] }),
   specialization: text("specialization", { 
     enum: Object.values(UserSpecialization) as [string, ...string[]]
   }),
