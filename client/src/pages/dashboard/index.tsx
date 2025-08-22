@@ -493,18 +493,77 @@ export default function Dashboard() {
                           Pending Projects
                         </div>
                         <Badge variant="secondary">
-                          {projects?.filter(
-                            (project) => project.status === "pending",
-                          ).length || 0}
+                          {(() => {
+                            const oneWeekAgo = new Date();
+                            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+                            const pendingProjects = projects?.filter((project) => {
+                              const projectTasks = tasks?.filter(
+                                (task) => task.projectId === project.id
+                              ) || [];
+
+                              // If no tasks, it's pending
+                              if (projectTasks.length === 0) {
+                                return true;
+                              }
+
+                              // If has tasks, check if any has been worked on in the last week
+                              const hasRecentWork = projectTasks.some((task) => {
+                                // Check if task has been started and worked on recently
+                                if (task.hasBeenStarted && task.timerStartTime) {
+                                  const lastWorked = new Date(task.timerStartTime);
+                                  return lastWorked >= oneWeekAgo;
+                                }
+                                // Also check updatedAt for recent activity
+                                if (task.updatedAt) {
+                                  const lastUpdated = new Date(task.updatedAt);
+                                  return lastUpdated >= oneWeekAgo && (task.hasBeenStarted || task.status !== 'todo');
+                                }
+                                return false;
+                              });
+
+                              // If no recent work, it's pending
+                              return !hasRecentWork;
+                            }) || [];
+
+                            return pendingProjects.length;
+                          })()}
                         </Badge>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="max-h-48 overflow-y-auto">
                       {(() => {
-                        const pendingProjects =
-                          projects?.filter(
-                            (project) => project.status === "pending",
+                        const oneWeekAgo = new Date();
+                        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+                        const pendingProjects = projects?.filter((project) => {
+                          const projectTasks = tasks?.filter(
+                            (task) => task.projectId === project.id
                           ) || [];
+
+                          // If no tasks, it's pending
+                          if (projectTasks.length === 0) {
+                            return true;
+                          }
+
+                          // If has tasks, check if any has been worked on in the last week
+                          const hasRecentWork = projectTasks.some((task) => {
+                            // Check if task has been started and worked on recently
+                            if (task.hasBeenStarted && task.timerStartTime) {
+                              const lastWorked = new Date(task.timerStartTime);
+                              return lastWorked >= oneWeekAgo;
+                            }
+                            // Also check updatedAt for recent activity
+                            if (task.updatedAt) {
+                              const lastUpdated = new Date(task.updatedAt);
+                              return lastUpdated >= oneWeekAgo && (task.hasBeenStarted || task.status !== 'todo');
+                            }
+                            return false;
+                          });
+
+                          // If no recent work, it's pending
+                          return !hasRecentWork;
+                        }) || [];
 
                         if (pendingProjects.length === 0) {
                           return (
@@ -516,24 +575,37 @@ export default function Dashboard() {
 
                         return (
                           <div className="space-y-2">
-                            {pendingProjects.map((project) => (
-                              <div
-                                key={project.id}
-                                className="p-2 bg-yellow-50 rounded-md border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  window.location.href = `/dashboard/projects/${project.id}`;
-                                }}
-                              >
-                                <p className="font-medium text-sm text-yellow-900">
-                                  {project.name}
-                                </p>
-                                <p className="text-xs text-yellow-700">
-                                  {project.category?.replace("_", " ")}
-                                </p>
-                              </div>
-                            ))}
+                            {pendingProjects.map((project) => {
+                              const projectTasks = tasks?.filter(
+                                (task) => task.projectId === project.id
+                              ) || [];
+                              
+                              const reasonText = projectTasks.length === 0 
+                                ? "No tasks assigned" 
+                                : "No work activity for 1+ week";
+
+                              return (
+                                <div
+                                  key={project.id}
+                                  className="p-2 bg-yellow-50 rounded-md border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.location.href = `/dashboard/projects/${project.id}`;
+                                  }}
+                                >
+                                  <p className="font-medium text-sm text-yellow-900">
+                                    {project.name}
+                                  </p>
+                                  <p className="text-xs text-yellow-700">
+                                    {project.category?.replace("_", " ")}
+                                  </p>
+                                  <p className="text-xs text-yellow-600 italic">
+                                    {reasonText}
+                                  </p>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })()}
