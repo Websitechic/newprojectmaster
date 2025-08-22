@@ -45,8 +45,12 @@ import {
   TimerOff, 
   TimerReset,
   Play,
-  UserCheck
+  UserCheck,
+  FileSpreadsheet, 
+  FileText, 
+  Download
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 
 interface StaffMember {
@@ -212,6 +216,86 @@ export default function StaffReport() {
     ? staffReport?.filter(member => member.specialization === filterSpecialization)
     : staffReport;
 
+  // Function to handle export
+  const handleExport = (format: 'csv' | 'json') => {
+    if (!staffReport) return;
+
+    let dataToExport: any[] = [];
+    if (filterSpecialization) {
+      dataToExport = staffReport.filter(member => member.specialization === filterSpecialization);
+    } else {
+      dataToExport = staffReport;
+    }
+
+    if (format === 'csv') {
+      const csvRows = [];
+      // CSV headers
+      const headers = [
+        "ID", "Name", "Username", "Email", "Specialization", "Work Status", 
+        "Break Start Time", "Break Count", "Absence Reason", "Absence End Date", 
+        "Current Task ID", "Task Start Time", "Last Active", "Task Count", 
+        "Active Tasks", "Is Currently Engaged", "Engaged Task Title", "Engaged Project Name", 
+        "Assigned Hours", "Total Hours Spent", "Remaining Hours", "Timer Start Time", 
+        "Break Duration", "Break Overtime"
+      ];
+      csvRows.push(headers.join(','));
+
+      // CSV rows
+      dataToExport.forEach(staff => {
+        const row = [
+          staff.id,
+          `"${staff.name.replace(/"/g, '""')}"`,
+          `"${staff.username.replace(/"/g, '""')}"`,
+          staff.email,
+          staff.specialization || "",
+          staff.workStatus,
+          staff.breakStartTime ? formatDate(staff.breakStartTime, "yyyy-MM-dd HH:mm:ss") : "",
+          staff.breakCount,
+          staff.absenceReason || "",
+          staff.absenceEndDate ? formatDate(staff.absenceEndDate, "yyyy-MM-dd") : "",
+          staff.currentTaskId || "",
+          staff.taskStartTime ? formatDate(staff.taskStartTime, "yyyy-MM-dd HH:mm:ss") : "",
+          formatDate(staff.lastActive, "yyyy-MM-dd HH:mm:ss"),
+          staff.taskCount,
+          staff.activeTasks,
+          staff.isCurrentlyEngaged,
+          staff.engagedTask?.taskTitle || "",
+          staff.engagedTask?.projectName || "",
+          staff.engagedTask?.assignedHours || "",
+          staff.engagedTask?.totalHoursSpent.toFixed(2) || "",
+          staff.engagedTask?.remainingHours || "",
+          staff.engagedTask?.timerStartTime ? formatDate(staff.engagedTask.timerStartTime, "yyyy-MM-dd HH:mm:ss") : "",
+          staff.breakInfo?.breakDuration || "",
+          staff.breakInfo?.breakOvertime || "",
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvString = csvRows.join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `staff_report_${formatDate(new Date(), 'yyyy-MM-dd')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else if (format === 'json') {
+      const jsonString = JSON.stringify(dataToExport, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `staff_report_${formatDate(new Date(), 'yyyy-MM-dd')}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
@@ -286,6 +370,17 @@ export default function StaffReport() {
                 ))}
               </SelectContent>
             </Select>
+            {/* Export Buttons */}
+            <div className="flex items-center space-x-2">
+              <Button onClick={() => handleExport('csv')} className="flex items-center">
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+              <Button onClick={() => handleExport('json')} className="flex items-center">
+                <FileText className="mr-2 h-4 w-4" />
+                Export JSON
+              </Button>
+            </div>
           </div>
         </div>
 

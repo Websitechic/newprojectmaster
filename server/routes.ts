@@ -1007,6 +1007,137 @@ End of Report
     }
   });
 
+  // Export staff report (Project Managers and Operations Managers only)
+  app.post("/api/staff-report/export", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only project managers and operations managers can export staff reports" });
+    }
+
+    try {
+      const { format, specialization, staffData } = req.body;
+
+      if (!format || !staffData) {
+        return res.status(400).json({ error: "Format and staff data are required" });
+      }
+
+      const filename = `staff-report-${specialization || 'all'}-${new Date().toISOString().split('T')[0]}`;
+
+      if (format === 'csv') {
+        // Create CSV content
+        const csvRows = [
+          ['Name', 'Email', 'Specialization', 'Work Status', 'Task Count', 'Active Tasks', 'Currently Engaged', 'Current Task', 'Last Active'],
+          ...staffData.map((staff: any) => [
+            staff.name,
+            staff.email,
+            staff.specialization || 'None',
+            staff.workStatus || 'active',
+            staff.taskCount || 0,
+            staff.activeTasks || 0,
+            staff.isCurrentlyEngaged ? 'Yes' : 'No',
+            staff.engagedTask?.taskTitle || 'None',
+            new Date(staff.lastActive).toLocaleString()
+          ])
+        ];
+
+        const csvContent = csvRows.map(row => 
+          row.map(field => 
+            typeof field === 'string' && field.includes(',') 
+              ? `"${field.replace(/"/g, '""')}"` 
+              : field
+          ).join(',')
+        ).join('\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+        res.send(csvContent);
+      } else if (format === 'excel') {
+        // Create Excel-compatible format
+        const excelRows = [
+          ['STAFF REPORT'],
+          ['Generated At', new Date().toISOString()],
+          ['Filter', specialization || 'All Specializations'],
+          ['Total Staff Members', staffData.length],
+          [''],
+          ['Staff Details'],
+          ['Name', 'Email', 'Specialization', 'Work Status', 'Task Count', 'Active Tasks', 'Currently Engaged', 'Current Task', 'Last Active'],
+          ...staffData.map((staff: any) => [
+            staff.name,
+            staff.email,
+            staff.specialization || 'None',
+            staff.workStatus || 'active',
+            staff.taskCount || 0,
+            staff.activeTasks || 0,
+            staff.isCurrentlyEngaged ? 'Yes' : 'No',
+            staff.engagedTask?.taskTitle || 'None',
+            new Date(staff.lastActive).toLocaleString()
+          ]),
+          [''],
+          ['Summary by Status'],
+          ['Active Staff', staffData.filter((s: any) => s.workStatus === 'active').length],
+          ['On Break', staffData.filter((s: any) => s.workStatus === 'on_break').length],
+          ['Absent', staffData.filter((s: any) => s.workStatus === 'absent').length],
+          ['Currently Engaged', staffData.filter((s: any) => s.isCurrentlyEngaged).length]
+        ];
+
+        const excelContent = excelRows.map(row => row.join('\t')).join('\n');
+
+        res.setHeader('Content-Type', 'application/vnd.ms-excel');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.xls"`);
+        res.send(excelContent);
+      } else if (format === 'pdf') {
+        // Create text-based report
+        const pdfContent = `STAFF REPORT
+==================================================
+
+Report Information:
+- Generated: ${new Date().toLocaleString()}
+- Filter: ${specialization || 'All Specializations'}
+- Total Staff Members: ${staffData.length}
+
+STAFF SUMMARY
+-------------
+Active Staff: ${staffData.filter((s: any) => s.workStatus === 'active').length}
+On Break: ${staffData.filter((s: any) => s.workStatus === 'on_break').length}
+Absent: ${staffData.filter((s: any) => s.workStatus === 'absent').length}
+Currently Engaged: ${staffData.filter((s: any) => s.isCurrentlyEngaged).length}
+
+DETAILED STAFF LIST
+-------------------
+${staffData.map((staff: any) => `
+Name: ${staff.name}
+Email: ${staff.email}
+Specialization: ${staff.specialization || 'None'}
+Work Status: ${staff.workStatus || 'active'}
+Total Tasks: ${staff.taskCount || 0}
+Active Tasks: ${staff.activeTasks || 0}
+Currently Engaged: ${staff.isCurrentlyEngaged ? 'Yes' : 'No'}
+Current Task: ${staff.engagedTask?.taskTitle || 'None'}
+${staff.engagedTask ? `Current Project: ${staff.engagedTask.projectName}` : ''}
+Last Active: ${new Date(staff.lastActive).toLocaleString()}
+---
+`).join('')}
+
+End of Report
+==================================================`;
+
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.txt"`);
+        res.send(pdfContent);
+      } else {
+        return res.status(400).json({ error: "Invalid export format" });
+      }
+
+    } catch (error) {
+      console.error("Error exporting staff report:", error);
+      res.status(500).json({ error: "Failed to export staff report" });
+    }
+  });
+
   // Client Accounts API Routes (Project Managers, Product Owners, and Operations Managers only)
   app.get("/api/client-accounts", async (req, res) => {
     if (!req.isAuthenticated()) {
