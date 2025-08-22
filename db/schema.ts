@@ -80,6 +80,9 @@ export const users = pgTable("users", {
   clientType: text("client_type", {
     enum: ["project_client", "support_maintenance_client"]
   }),
+  gender: text("gender", {
+    enum: ["male", "female"]
+  }),
   lastActive: timestamp("last_active").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
