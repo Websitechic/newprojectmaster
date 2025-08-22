@@ -36,6 +36,7 @@ interface CreateClientData {
   password: string;
   productService: string;
   clientType: string;
+  gender: string;
 }
 
 export default function ClientAccounts() {
@@ -54,6 +55,7 @@ export default function ClientAccounts() {
     password: "",
     productService: "",
     clientType: "",
+    gender: "",
   });
 
   // Check if user has permission to access this page
@@ -115,6 +117,7 @@ export default function ClientAccounts() {
         password: "",
         productService: "",
         clientType: "",
+        gender: "",
       });
       toast({
         title: "Success",
@@ -139,7 +142,7 @@ export default function ClientAccounts() {
 
   const handleCreateClient = () => {
     // Basic validation
-    if (!formData.name || !formData.email || !formData.username || !formData.password || !formData.productService || !formData.clientType) {
+    if (!formData.name || !formData.email || !formData.username || !formData.password || !formData.productService || !formData.clientType || !formData.gender) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -407,6 +410,19 @@ export default function ClientAccounts() {
                   <SelectContent>
                     <SelectItem value="project_client">Project Client</SelectItem>
                     <SelectItem value="support_maintenance_client">Support & Maintenance Client</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select value={formData.gender} onValueChange={(value) => handleInputChange("gender", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

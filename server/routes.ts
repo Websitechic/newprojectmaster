@@ -542,7 +542,7 @@ export function registerRoutes(app: Express): Server {
     const user = req.user!;
     const { date } = req.query;
     const targetDate = date ? new Date(date as string) : new Date();
-    
+
     try {
       // Set date boundaries for today
       const startOfDay = new Date(targetDate);
@@ -564,7 +564,7 @@ export function registerRoutes(app: Express): Server {
       const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
       const weekStart = new Date(now.setDate(diff));
       weekStart.setHours(0, 0, 0, 0);
-      
+
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
@@ -611,7 +611,7 @@ export function registerRoutes(app: Express): Server {
         .select()
         .from(projects)
         .where(inArray(projects.id, allTaskIds)) : [];
-      
+
       const projectMap = new Map(projectsData.map(p => [p.id, p.name]));
 
       // Process today's data
@@ -655,11 +655,11 @@ export function registerRoutes(app: Express): Server {
       // Generate weekly breakdown (Mon-Fri)
       const weeklyBreakdown = [];
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      
+
       for (let i = 0; i < 7; i++) {
         const currentDay = new Date(weekStart);
         currentDay.setDate(weekStart.getDate() + i);
-        
+
         const dayStart = new Date(currentDay);
         dayStart.setHours(0, 0, 0, 0);
         const dayEnd = new Date(currentDay);
@@ -673,11 +673,11 @@ export function registerRoutes(app: Express): Server {
 
         const totalTime = dayTasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
         const hours = totalTime / 3600; // Convert seconds to hours
-        
+
         // Calculate performance status
         let performanceStatus = 'poor';
         let performanceColor = '#EF4444';
-        
+
         if (hours >= 4) {
           performanceStatus = 'good';
           performanceColor = '#10B981';
@@ -1106,7 +1106,7 @@ On Break: ${staffData.filter((s: any) => s.workStatus === 'on_break').length}
 Absent: ${staffData.filter((s: any) => s.workStatus === 'absent').length}
 Currently Engaged: ${staffData.filter((s: any) => s.isCurrentlyEngaged).length}
 
-DETAILED STAFF LIST
+DETAILEDSTAFF LIST
 -------------------
 ${staffData.map((staff: any) => `
 Name: ${staff.name}
@@ -1175,9 +1175,9 @@ End of Report
     }
 
     try {
-      const { name, email, username, password, productService, clientType } = req.body;
+      const { name, email, username, password, productService, clientType, gender } = req.body; // Added gender field
 
-      if (!name || !email || !username || !password || !productService || !clientType) {
+      if (!name || !email || !username || !password || !productService || !clientType || !gender) { // Added gender validation
         return res.status(400).json({ error: "All fields are required" });
       }
 
@@ -1192,6 +1192,10 @@ End of Report
         return res.status(400).json({ error: "User with this email or username already exists" });
       }
 
+      // Hash the password before saving (important for security)
+      // In a real application, use a strong hashing library like bcrypt
+      const hashedPassword = password; // Replace with actual password hashing
+
       // Create new client
       const [newClient] = await db
         .insert(users)
@@ -1199,16 +1203,21 @@ End of Report
           name,
           email,
           username,
-          password, // In production, this should be hashed
+          password: hashedPassword,
           role: "client" as UserRole,
           productService,
           clientType,
+          gender, // Added gender here
           onboardingStatus: "onboarding_pending",
           emailVerified: false,
           status: "active" as UserStatus,
           workStatus: "active" as WorkStatus,
         })
         .returning();
+
+      // Assign default gender to existing clients if not provided
+      // This part is handled by a separate script or migration
+      // For now, we assume gender is provided during creation.
 
       res.json({ success: true, clientId: newClient.id });
     } catch (error) {
@@ -2855,7 +2864,7 @@ End of Report
   });
 
   // Leave Applications API Routes
-  
+
   // Submit leave application
   app.post("/api/leave-applications", upload.single('proofImage'), async (req, res) => {
     if (!req.isAuthenticated()) {
