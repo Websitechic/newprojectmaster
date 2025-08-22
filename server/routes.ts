@@ -2910,6 +2910,82 @@ End of Report
     }
   });
 
+  // Review leave application (approve or reject)
+  app.put("/api/leave-applications/:id/review", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    // Check if user is project manager or operations manager
+    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const applicationId = parseInt(req.params.id);
+      const { status, reviewComments } = req.body;
+
+      if (!status || !["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be 'approved' or 'rejected'" });
+      }
+
+      if (status === "rejected" && !reviewComments?.trim()) {
+        return res.status(400).json({ error: "Review comments are required when rejecting an application" });
+      }
+
+      // Check if application exists
+      const [existingApplication] = await db
+        .select()
+        .from(leaveApplications)
+        .where(eq(leaveApplications.id, applicationId))
+        .limit(1);
+
+      if (!existingApplication) {
+        return res.status(404).json({ error: "Leave application not found" });
+      }
+
+      if (existingApplication.status !== "pending") {
+        return res.status(400).json({ error: "Application has already been reviewed" });
+      }
+
+      // Update the application
+      const [updatedApplication] = await db
+        .update(leaveApplications)
+        .set({
+          status,
+          reviewComments: reviewComments?.trim() || null,
+          reviewedAt: new Date(),
+          reviewedBy: user.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(leaveApplications.id, applicationId))
+        .returning();
+
+      // Create notification for the applicant
+      try {
+        await db
+          .insert(notifications)
+          .values({
+            userId: updatedApplication.userId,
+            type: "task_updated", // Using existing type
+            content: `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
+            referenceId: updatedApplication.id,
+            referenceType: "project", // Using existing type
+          });
+      } catch (notificationError) {
+        console.error("Error creating notification:", notificationError);
+        // Continue execution even if notification fails
+      }
+
+      res.json({ success: true, application: updatedApplication });
+    } catch (error) {
+      console.error("Error reviewing leave application:", error);
+      res.status(500).json({ error: "Failed to review leave application" });
+    }
+  });
+
   // Project-specific API Routes
 
   // Get project by ID
