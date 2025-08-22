@@ -318,346 +318,181 @@ export default function Dashboard() {
             <>
               {/* Manager/Admin Dashboard */}
               {(user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
-                <>
-                  {/* Project Status Section */}
-                  <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Project Status</h2>
-
-                    {/* Active Projects */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-green-700">
-                            <Play className="h-5 w-5" />
-                            Active Projects
-                          </div>
-                          <Badge variant="secondary">
-                            {(() => {
-                              const activeProjects = projects?.filter(project => {
-                                // Projects with tasks currently being worked on (in_progress or timer running)
-                                return tasks?.some(task => 
-                                  task.projectId === project.id && 
-                                  (task.status === 'in_progress' || task.isTimerRunning)
-                                );
-                              }) || [];
-                              return activeProjects.length;
-                            })()}
-                          </Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="max-h-48 overflow-y-auto">
-                        {(() => {
-                          const activeProjects = projects?.filter(project => {
-                            return tasks?.some(task => 
-                              task.projectId === project.id && 
-                              (task.status === 'in_progress' || task.isTimerRunning)
-                            );
-                          }) || [];
-
-                          if (activeProjects.length === 0) {
-                            return (
-                              <p className="text-sm text-muted-foreground">
-                                No active projects currently
-                              </p>
-                            );
-                          }
-
-                          return (
-                            <div className="space-y-2">
-                              {activeProjects.map(project => (
-                                <div 
-                                  key={project.id} 
-                                  className="p-2 bg-green-50 rounded-md border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    window.location.href = `/dashboard/projects/${project.id}`;
-                                  }}
-                                >
-                                  <p className="font-medium text-sm text-green-900">{project.name}</p>
-                                  <p className="text-xs text-green-700">{project.category?.replace('_', ' ')}</p>
-                                </div>
-                              ))}
-                            </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  {/* Active Projects */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-green-700">
+                          <Play className="h-5 w-5" />
+                          Active Projects
+                        </div>
+                        <Badge variant="secondary">
+                          {(() => {
+                            const activeProjects = projects?.filter(project => {
+                              // Projects with tasks currently being worked on (in_progress or timer running)
+                              return tasks?.some(task => 
+                                task.projectId === project.id && 
+                                (task.status === 'in_progress' || task.isTimerRunning)
+                              );
+                            }) || [];
+                            return activeProjects.length;
+                          })()}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="max-h-48 overflow-y-auto">
+                      {(() => {
+                        const activeProjects = projects?.filter(project => {
+                          return tasks?.some(task => 
+                            task.projectId === project.id && 
+                            (task.status === 'in_progress' || task.isTimerRunning)
                           );
-                        })()}
-                      </CardContent>
-                    </Card>
+                        }) || [];
 
-                    {/* Pending Projects */}
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-yellow-700">
-                            <Clock className="h-5 w-5" />
-                            Pending Projects
-                          </div>
-                          <Badge variant="secondary">
-                            {projects?.filter(project => project.status === 'pending').length || 0}
-                          </Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="max-h-48 overflow-y-auto">
-                        {(() => {
-                          const pendingProjects = projects?.filter(project => project.status === 'pending') || [];
-
-                          if (pendingProjects.length === 0) {
-                            return (
-                              <p className="text-sm text-muted-foreground">
-                                No pending projects
-                              </p>
-                            );
-                          }
-
+                        if (activeProjects.length === 0) {
                           return (
-                            <div className="space-y-2">
-                              {pendingProjects.map(project => (
-                                <div 
-                                  key={project.id} 
-                                  className="p-2 bg-yellow-50 rounded-md border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    window.location.href = `/dashboard/projects/${project.id}`;
-                                  }}
-                                >
-                                  <p className="font-medium text-sm text-yellow-900">{project.name}</p>
-                                  <p className="text-xs text-yellow-700">{project.category?.replace('_', ' ')}</p>
-                                </div>
-                              ))}
-                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              No active projects currently
+                            </p>
                           );
-                        })()}
-                      </CardContent>
-                    </Card>
+                        }
 
-                    {/* Completed Projects */}
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-blue-700">
-                            <CheckCircle className="h-5 w-5" />
-                            Completed Projects
+                        return (
+                          <div className="space-y-2">
+                            {activeProjects.map(project => (
+                              <div 
+                                key={project.id} 
+                                className="p-2 bg-green-50 rounded-md border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.location.href = `/dashboard/projects/${project.id}`;
+                                }}
+                              >
+                                <p className="font-medium text-sm text-green-900">{project.name}</p>
+                                <p className="text-xs text-green-700">{project.category?.replace('_', ' ')}</p>
+                              </div>
+                            ))}
                           </div>
-                          <Badge variant="secondary">
-                            {(() => {
-                              const oneMonthAgo = new Date();
-                              oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
 
-                              return projects?.filter(project => {
-                                // Projects completed in the last month
-                                return project.status === 'completed' || 
-                                       (project.progress === 100 && 
-                                        project.updatedAt && 
-                                        new Date(project.updatedAt) >= oneMonthAgo);
-                              }).length || 0;
-                            })()}
-                          </Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="max-h-48 overflow-y-auto">
-                        {(() => {
-                          const oneMonthAgo = new Date();
-                          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                  {/* Pending Projects */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-yellow-700">
+                          <Clock className="h-5 w-5" />
+                          Pending Projects
+                        </div>
+                        <Badge variant="secondary">
+                          {projects?.filter(project => project.status === 'pending').length || 0}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="max-h-48 overflow-y-auto">
+                      {(() => {
+                        const pendingProjects = projects?.filter(project => project.status === 'pending') || [];
 
-                          const completedProjects = projects?.filter(project => {
-                            return project.status === 'completed' || 
-                                   (project.progress === 100 && 
-                                    project.updatedAt && 
-                                    new Date(project.updatedAt) >= oneMonthAgo);
-                          }) || [];
-
-                          if (completedProjects.length === 0) {
-                            return (
-                              <p className="text-sm text-muted-foreground">
-                                No projects completed this month
-                              </p>
-                            );
-                          }
-
+                        if (pendingProjects.length === 0) {
                           return (
-                            <div className="space-y-2">
-                              {completedProjects.map(project => (
-                                <div 
-                                  key={project.id} 
-                                  className="p-2 bg-blue-50 rounded-md border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    window.location.href = `/dashboard/projects/${project.id}`;
-                                  }}
-                                >
-                                  <p className="font-medium text-sm text-blue-900">{project.name}</p>
-                                  <p className="text-xs text-blue-700">{project.category?.replace('_', ' ')}</p>
-                                </div>
-                              ))}
-                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              No pending projects
+                            </p>
                           );
-                        })()}
-                      </CardContent>
-                    </Card>
-                  </div>
+                        }
 
-                  {/* Task Status Section */}
-                  <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Task Status</h2>
+                        return (
+                          <div className="space-y-2">
+                            {pendingProjects.map(project => (
+                              <div 
+                                key={project.id} 
+                                className="p-2 bg-yellow-50 rounded-md border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.location.href = `/dashboard/projects/${project.id}`;
+                                }}
+                              >
+                                <p className="font-medium text-sm text-yellow-900">{project.name}</p>
+                                <p className="text-xs text-yellow-700">{project.category?.replace('_', ' ')}</p>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
 
-                    {/* Tasks in Progress */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-blue-700">
-                            <AlertCircle className="h-5 w-5" />
-                            Tasks in Progress
-                          </div>
-                          <Badge variant="secondary">{tasksInProgress.length}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {tasksInProgress.length > 0 ? (
-                          <Collapsible open={openSections.inProgress} onOpenChange={() => toggleSection('inProgress')}>
-                            <CollapsibleTrigger asChild>
-                              <Button variant="outline" className="w-full justify-between">
-                                View Tasks
-                                {openSections.inProgress ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                              </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="space-y-2 mt-3">
-                              {tasksInProgress.map(task => (
-                                <TaskCard key={task.id} task={task} />
-                              ))}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        ) : (
-                          <div className="text-center text-gray-500 py-4">
-                            <p className="text-sm">No tasks in progress</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                  {/* Completed Projects */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-blue-700">
+                          <CheckCircle className="h-5 w-5" />
+                          Completed Projects
+                        </div>
+                        <Badge variant="secondary">
+                          {(() => {
+                            const oneMonthAgo = new Date();
+                            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
-                    {/* Pending Tasks */}
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-orange-700">
-                            <Clock className="h-5 w-5" />
-                            Pending Tasks
-                          </div>
-                          <Badge variant="secondary">{pendingTasks.length}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {pendingTasks.length > 0 ? (
-                          <Collapsible open={openSections.pending} onOpenChange={() => toggleSection('pending')}>
-                            <CollapsibleTrigger asChild>
-                              <Button variant="outline" className="w-full justify-between">
-                                View Tasks
-                                {openSections.pending ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                              </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="space-y-2 mt-3">
-                              {pendingTasks.map(task => (
-                                <TaskCard key={task.id} task={task} />
-                              ))}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        ) : (
-                          <div className="text-center text-gray-500 py-4">
-                            <p className="text-sm">No pending tasks</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                            return projects?.filter(project => {
+                              // Projects completed in the last month
+                              return project.status === 'completed' || 
+                                     (project.progress === 100 && 
+                                      project.updatedAt && 
+                                      new Date(project.updatedAt) >= oneMonthAgo);
+                            }).length || 0;
+                          })()}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="max-h-48 overflow-y-auto">
+                      {(() => {
+                        const oneMonthAgo = new Date();
+                        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
-                    {/* Tasks in Review */}
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-purple-700">
-                            <CheckCircle className="h-5 w-5" />
-                            Tasks in Review
-                          </div>
-                          <Badge variant="secondary">{tasksInReview.length}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {tasksInReview.length > 0 ? (
-                          <Collapsible open={openSections.review} onOpenChange={() => toggleSection('review')}>
-                            <CollapsibleTrigger asChild>
-                              <Button variant="outline" className="w-full justify-between">
-                                View Tasks
-                                {openSections.review ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                              </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="space-y-2 mt-3">
-                              {tasksInReview.map(task => (
-                                <TaskCard key={task.id} task={task} />
-                              ))}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        ) : (
-                          <div className="text-center text-gray-500 py-4">
-                            <p className="text-sm">No tasks in review</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                        const completedProjects = projects?.filter(project => {
+                          return project.status === 'completed' || 
+                                 (project.progress === 100 && 
+                                  project.updatedAt && 
+                                  new Date(project.updatedAt) >= oneMonthAgo);
+                        }) || [];
 
-                    {/* Technical Support */}
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-red-700">
-                            <HelpCircle className="h-5 w-5" />
-                            Technical Support
+                        if (completedProjects.length === 0) {
+                          return (
+                            <p className="text-sm text-muted-foreground">
+                              No projects completed this month
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-2">
+                            {completedProjects.map(project => (
+                              <div 
+                                key={project.id} 
+                                className="p-2 bg-blue-50 rounded-md border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.location.href = `/dashboard/projects/${project.id}`;
+                                }}
+                              >
+                                <p className="font-medium text-sm text-blue-900">{project.name}</p>
+                                <p className="text-xs text-blue-700">{project.category?.replace('_', ' ')}</p>
+                              </div>
+                            ))}
                           </div>
-                          <Badge variant="secondary">{technicalSupportTasks.length}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {technicalSupportTasks.length > 0 ? (
-                          <div className="space-y-3">
-                            <Select>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select a support task..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {technicalSupportTasks.map(task => (
-                                  <SelectItem key={task.id} value={task.id.toString()}>
-                                    <div className="flex flex-col items-start">
-                                      <span className="font-medium text-sm">{task.title}</span>
-                                      <span className="text-xs text-gray-500 truncate">
-                                        {task.description?.substring(0, 50)}...
-                                      </span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Collapsible open={openSections.technical} onOpenChange={() => toggleSection('technical')}>
-                              <CollapsibleTrigger asChild>
-                                <Button variant="outline" className="w-full justify-between">
-                                  View All
-                                  {openSections.technical ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                </Button>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent className="space-y-2 mt-3">
-                                {technicalSupportTasks.map(task => (
-                                  <TaskCard key={task.id} task={task} />
-                                ))}
-                              </CollapsibleContent>
-                            </Collapsible>
-                          </div>
-                        ) : (
-                          <div className="text-center text-gray-500 py-4">
-                            <p className="text-sm">No technical support tasks</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                </>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
+                </div>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
