@@ -19,14 +19,37 @@ const crypto = {
     return `${buf.toString("hex")}.${salt}`;
   },
   compare: async (suppliedPassword: string, storedPassword: string) => {
-    const [hashedPassword, salt] = storedPassword.split(".");
-    const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
-    const suppliedPasswordBuf = (await scryptAsync(
-      suppliedPassword,
-      salt,
-      64
-    )) as Buffer;
-    return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+    // Handle malformed password hashes
+    if (!storedPassword || typeof storedPassword !== 'string') {
+      console.error('Invalid stored password format:', storedPassword);
+      return false;
+    }
+
+    const parts = storedPassword.split(".");
+    if (parts.length !== 2) {
+      console.error('Malformed password hash - expected format: hash.salt, got:', storedPassword);
+      return false;
+    }
+
+    const [hashedPassword, salt] = parts;
+    
+    if (!hashedPassword || !salt) {
+      console.error('Missing hash or salt in stored password');
+      return false;
+    }
+
+    try {
+      const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
+      const suppliedPasswordBuf = (await scryptAsync(
+        suppliedPassword,
+        salt,
+        64
+      )) as Buffer;
+      return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+    } catch (error) {
+      console.error('Error comparing passwords:', error);
+      return false;
+    }
   },
 };
 

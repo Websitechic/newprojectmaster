@@ -1197,9 +1197,14 @@ End of Report
         return res.status(400).json({ error: "User with this email or username already exists" });
       }
 
-      // Hash the password before saving (important for security)
-      // In a real application, use a strong hashing library like bcrypt
-      const hashedPassword = password; // Replace with actual password hashing
+      // Hash the password using the same method as auth.ts
+      const { scrypt, randomBytes } = await import("crypto");
+      const { promisify } = await import("util");
+      const scryptAsync = promisify(scrypt);
+
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
 
       // Create new client
       const [newClient] = await db
