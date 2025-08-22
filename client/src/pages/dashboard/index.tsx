@@ -406,11 +406,12 @@ export default function Dashboard() {
               {/* Manager/Admin Dashboard */}
               {(user?.role === "operations_manager" ||
                 user?.specialization === "operations_manager") && (
+                <>
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Project Status</h2>
+                  </div>
                 
-      
-                
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   {/* Active Projects */}
 
                   <Card>
@@ -616,7 +617,12 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
                 </div>
+                </>
               )}
+
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Task Status</h2>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                 {/* Tasks in Progress */}
