@@ -16,8 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash, Plus } from "lucide-react";
-import type { Task } from "@db/schema";
+import { Pencil, Trash, Plus, Clock } from "lucide-react";
+import type { Task, Project } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 
 interface TaskFormData {
@@ -45,9 +45,10 @@ interface TaskListProps {
   projectId?: number;
   isStaffView?: boolean;
   showNewTaskButton?: boolean;
+  showProjectInfo?: boolean;
 }
 
-export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true }: TaskListProps) {
+export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true, showProjectInfo = false }: TaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -60,6 +61,18 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     refetchOnWindowFocus: true,
     enabled: !!user, // Only fetch if user is authenticated
   });
+
+  // Get all projects to display project names when showProjectInfo is true
+  const { data: projects } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    enabled: !!user && showProjectInfo,
+  });
+
+  // Create a map of project IDs to project names
+  const projectMap = projects?.reduce((acc, project) => {
+    acc[project.id] = project.name;
+    return acc;
+  }, {} as Record<number, string>) || {};
 
   const handleEditClick = (task: Task) => {
     setEditTask(task);
@@ -220,6 +233,13 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     },
   });
 
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editTask) {
@@ -275,6 +295,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Assignee</TableHead>
+              {showProjectInfo && <TableHead>Project</TableHead>}
+              {showProjectInfo && <TableHead>Time Spent</TableHead>}
               <TableHead>Start Date</TableHead>
               <TableHead>Deadline</TableHead>
               <TableHead>Working Hours</TableHead>
@@ -294,6 +316,19 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 <TableCell>
                   {staff?.find((s) => s.id === task.assigneeId)?.name || "Unassigned"}
                 </TableCell>
+                {showProjectInfo && (
+                  <TableCell>
+                    {projectMap[task.projectId] || `Project ID: ${task.projectId}`}
+                  </TableCell>
+                )}
+                {showProjectInfo && (
+                  <TableCell>
+                    <div className="flex items-center gap-1 text-gray-600">
+                      <Clock className="h-4 w-4" />
+                      <span>{formatTime(task.timeSpent || 0)}</span>
+                    </div>
+                  </TableCell>
+                )}
                 <TableCell>
                   {task.startDate
                     ? new Date(task.startDate).toLocaleDateString()
