@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@/hooks/use-user";
@@ -98,12 +99,12 @@ export default function ClientAccounts() {
         },
         body: JSON.stringify(data),
       });
-
+      
       if (!response.ok) {
         const error = await response.text();
         throw new Error(error || "Failed to create client account");
       }
-
+      
       return response.json();
     },
     onSuccess: () => {
@@ -168,7 +169,7 @@ export default function ClientAccounts() {
 
   const getProductServiceLabel = (service: string | null) => {
     if (!service) return "Not specified";
-
+    
     const labels: Record<string, string> = {
       website_development: "Website Dev",
       dpl_outright: "DPL Outright",
@@ -176,18 +177,18 @@ export default function ClientAccounts() {
       direct_marketing: "Direct Marketing",
       support_maintenance: "Support & Maintenance",
     };
-
+    
     return labels[service] || service;
   };
 
   const getClientTypeLabel = (type: string | null) => {
     if (!type) return "Not specified";
-
+    
     const labels: Record<string, string> = {
       project_client: "Project Client",
       support_maintenance_client: "Support Client",
     };
-
+    
     return labels[type] || type;
   };
 
@@ -213,7 +214,7 @@ export default function ClientAccounts() {
       if (durationFilter !== "all") {
         const registrationDate = new Date(client.createdAt);
         const daysSinceRegistration = differenceInDays(new Date(), registrationDate);
-
+        
         switch (durationFilter) {
           case "week":
             matchesDuration = daysSinceRegistration <= 7;
@@ -315,7 +316,7 @@ export default function ClientAccounts() {
             Manage and create client accounts for your projects
           </p>
         </div>
-
+        
         <div className="flex gap-2">
           <Button 
             variant="outline" 
@@ -328,7 +329,7 @@ export default function ClientAccounts() {
             <span className="sm:hidden">Export</span>
           </Button>
         </div>
-
+        
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="w-full sm:w-auto">
@@ -351,7 +352,7 @@ export default function ClientAccounts() {
                   placeholder="Enter client's full name"
                 />
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <Input
@@ -362,7 +363,7 @@ export default function ClientAccounts() {
                   placeholder="Enter client's email"
                 />
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
@@ -372,7 +373,7 @@ export default function ClientAccounts() {
                   placeholder="Enter username for login"
                 />
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -383,7 +384,7 @@ export default function ClientAccounts() {
                   placeholder="Enter initial password"
                 />
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="productService">Product/Service</Label>
                 <Select value={formData.productService} onValueChange={(value) => handleInputChange("productService", value)}>
@@ -399,7 +400,7 @@ export default function ClientAccounts() {
                   </SelectContent>
                 </Select>
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="clientType">Client Type</Label>
                 <Select value={formData.clientType} onValueChange={(value) => handleInputChange("clientType", value)}>
@@ -425,7 +426,7 @@ export default function ClientAccounts() {
                   </SelectContent>
                 </Select>
               </div>
-
+              
               <Button 
                 onClick={handleCreateClient} 
                 className="w-full"
@@ -621,7 +622,7 @@ export default function ClientAccounts() {
           </CardContent>
         </Card>
       )}
-
+      
       {clients.length === 0 && (
         <Card className="text-center py-8 md:py-12">
           <CardContent>

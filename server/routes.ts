@@ -1177,7 +1177,7 @@ End of Report
     try {
       const { name, email, username, password, productService, clientType, gender } = req.body; // Added gender field
 
-      if (!username || !password || !name || !email || !productService || !clientType || !gender) { // Added gender validation
+      if (!name || !email || !username || !password || !productService || !clientType || !gender) { // Added gender validation
         return res.status(400).json({ error: "All fields are required" });
       }
 
