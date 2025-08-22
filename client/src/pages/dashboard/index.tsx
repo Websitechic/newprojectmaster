@@ -935,9 +935,10 @@ export default function Dashboard() {
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">All Tasks</h2>
                 {tasks && tasks.length > 0 ? (
-                  <StaffTaskList
-                    tasks={tasks || []}
-                    projectId={undefined}
+                  <TaskList
+                    tasks={tasks?.slice(0, 5) || []}
+                    projectId={tasks[0]?.projectId || 0}
+                    showNewTaskButton={false}
                   />
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
