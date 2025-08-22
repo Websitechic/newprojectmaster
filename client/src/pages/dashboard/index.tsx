@@ -14,9 +14,27 @@ import { useUser } from "@/hooks/use-user";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Clock, Play, AlertCircle, CheckCircle, HelpCircle } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Play,
+  AlertCircle,
+  CheckCircle,
+  HelpCircle,
+} from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Project, Task } from "@db/schema";
 
 export default function Dashboard() {
@@ -34,10 +52,9 @@ export default function Dashboard() {
       e.preventDefault();
       e.stopPropagation();
     }
-    console.log('Navigating to project:', projectId);
+    console.log("Navigating to project:", projectId);
     setLocation(`/dashboard/projects/${projectId}`);
   };
-
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -57,40 +74,50 @@ export default function Dashboard() {
   }, [updateStatus]);
 
   // Filter tasks for staff user or all tasks for managers and support maintenance clients
-  const staffTasks = user?.role === "staff" 
-    ? tasks?.filter(task => task.assigneeId === user?.id) || []
-    : tasks || [];
+  const staffTasks =
+    user?.role === "staff"
+      ? tasks?.filter((task) => task.assigneeId === user?.id) || []
+      : tasks || [];
 
   // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
-  const userTasks = user?.role === "staff" ? staffTasks : 
-                   user?.role === "client" && user?.clientType === "support_maintenance_client" ? tasks || [] :
-                   user?.role === "operations_manager" || user?.specialization === "operations_manager" ? tasks || [] :
-                   user?.role === "project_manager" ? tasks || [] :
-                   user?.role === "product_owner" ? tasks || [] :
-                   tasks || [];
-
-
+  const userTasks =
+    user?.role === "staff"
+      ? staffTasks
+      : user?.role === "client" &&
+          user?.clientType === "support_maintenance_client"
+        ? tasks || []
+        : user?.role === "operations_manager" ||
+            user?.specialization === "operations_manager"
+          ? tasks || []
+          : user?.role === "project_manager"
+            ? tasks || []
+            : user?.role === "product_owner"
+              ? tasks || []
+              : tasks || [];
 
   // Categorize tasks
-  const activeTask = staffTasks.find(task => task.isTimerRunning);
-  const tasksInProgress = userTasks.filter(task => 
-    task.status === "in_progress" && !task.isTimerRunning
+  const activeTask = staffTasks.find((task) => task.isTimerRunning);
+  const tasksInProgress = userTasks.filter(
+    (task) => task.status === "in_progress" && !task.isTimerRunning,
   );
-  const pendingTasks = userTasks.filter(task => task.status === "todo");
-  const tasksInReview = userTasks.filter(task => task.status === "review");
-  const technicalSupportTasks = userTasks.filter(task => 
-    task.status === "technical_support"
+  const pendingTasks = userTasks.filter((task) => task.status === "todo");
+  const tasksInReview = userTasks.filter((task) => task.status === "review");
+  const technicalSupportTasks = userTasks.filter(
+    (task) => task.status === "technical_support",
   );
 
   // Calculate overall progress
   const totalTasks = userTasks.length;
-  const completedTasks = userTasks.filter(task => task.status === "completed").length;
-  const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const completedTasks = userTasks.filter(
+    (task) => task.status === "completed",
+  ).length;
+  const overallProgress =
+    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const toggleSection = (section: string) => {
-    setOpenSections(prev => ({
+    setOpenSections((prev) => ({
       ...prev,
-      [section]: !prev[section]
+      [section]: !prev[section],
     }));
   };
 
@@ -98,10 +125,16 @@ export default function Dashboard() {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const TaskCard = ({ task, showTimer = false }: { task: Task; showTimer?: boolean }) => (
+  const TaskCard = ({
+    task,
+    showTimer = false,
+  }: {
+    task: Task;
+    showTimer?: boolean;
+  }) => (
     <div className="border rounded-lg p-3 bg-white hover:bg-gray-50 transition-colors">
       <div className="flex justify-between items-start mb-2">
         <h4 className="font-medium text-sm truncate flex-1">{task.title}</h4>
@@ -113,12 +146,18 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-      <p className="text-xs text-gray-500 mb-2 line-clamp-2">{task.description}</p>
+      <p className="text-xs text-gray-500 mb-2 line-clamp-2">
+        {task.description}
+      </p>
       <div className="flex justify-between items-center">
         <Badge variant="outline" className="text-xs">
-          {task.status === "in_progress" ? "In Progress" : 
-           task.status === "todo" ? "To Do" : 
-           task.status === "review" ? "Review" : task.status}
+          {task.status === "in_progress"
+            ? "In Progress"
+            : task.status === "todo"
+              ? "To Do"
+              : task.status === "review"
+                ? "Review"
+                : task.status}
         </Badge>
         {task.deadline && (
           <span className="text-xs text-gray-400">
@@ -137,11 +176,13 @@ export default function Dashboard() {
         <MeetingAlert />
         <div className="flex-1 overflow-auto p-6">
           <BookingAlert />
-          {user?.role === "staff" || (user?.role === "client" && user?.clientType === "support_maintenance_client") ? (
+          {user?.role === "staff" ||
+          (user?.role === "client" &&
+            user?.clientType === "support_maintenance_client") ? (
             <>
               {/* Staff & Support Maintenance Client Dashboard */}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-
                 {/* Tasks in Progress */}
                 <Card>
                   <CardHeader className="pb-3">
@@ -150,20 +191,32 @@ export default function Dashboard() {
                         <AlertCircle className="h-5 w-5" />
                         Tasks in Progress
                       </div>
-                      <Badge variant="secondary">{tasksInProgress.length}</Badge>
+                      <Badge variant="secondary">
+                        {tasksInProgress.length}
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {tasksInProgress.length > 0 ? (
-                      <Collapsible open={openSections.inProgress} onOpenChange={() => toggleSection('inProgress')}>
+                      <Collapsible
+                        open={openSections.inProgress}
+                        onOpenChange={() => toggleSection("inProgress")}
+                      >
                         <CollapsibleTrigger asChild>
-                          <Button variant="outline" className="w-full justify-between">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between"
+                          >
                             View Tasks
-                            {openSections.inProgress ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {openSections.inProgress ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
-                          {tasksInProgress.map(task => (
+                          {tasksInProgress.map((task) => (
                             <TaskCard key={task.id} task={task} />
                           ))}
                         </CollapsibleContent>
@@ -189,15 +242,25 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     {pendingTasks.length > 0 ? (
-                      <Collapsible open={openSections.pending} onOpenChange={() => toggleSection('pending')}>
+                      <Collapsible
+                        open={openSections.pending}
+                        onOpenChange={() => toggleSection("pending")}
+                      >
                         <CollapsibleTrigger asChild>
-                          <Button variant="outline" className="w-full justify-between">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between"
+                          >
                             View Tasks
-                            {openSections.pending ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {openSections.pending ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
-                          {pendingTasks.map(task => (
+                          {pendingTasks.map((task) => (
                             <TaskCard key={task.id} task={task} />
                           ))}
                         </CollapsibleContent>
@@ -223,15 +286,25 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     {tasksInReview.length > 0 ? (
-                      <Collapsible open={openSections.review} onOpenChange={() => toggleSection('review')}>
+                      <Collapsible
+                        open={openSections.review}
+                        onOpenChange={() => toggleSection("review")}
+                      >
                         <CollapsibleTrigger asChild>
-                          <Button variant="outline" className="w-full justify-between">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between"
+                          >
                             View Tasks
-                            {openSections.review ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {openSections.review ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
-                          {tasksInReview.map(task => (
+                          {tasksInReview.map((task) => (
                             <TaskCard key={task.id} task={task} />
                           ))}
                         </CollapsibleContent>
@@ -252,7 +325,9 @@ export default function Dashboard() {
                         <HelpCircle className="h-5 w-5" />
                         Technical Support
                       </div>
-                      <Badge variant="secondary">{technicalSupportTasks.length}</Badge>
+                      <Badge variant="secondary">
+                        {technicalSupportTasks.length}
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -263,10 +338,15 @@ export default function Dashboard() {
                             <SelectValue placeholder="Select a support task..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {technicalSupportTasks.map(task => (
-                              <SelectItem key={task.id} value={task.id.toString()}>
+                            {technicalSupportTasks.map((task) => (
+                              <SelectItem
+                                key={task.id}
+                                value={task.id.toString()}
+                              >
                                 <div className="flex flex-col items-start">
-                                  <span className="font-medium text-sm">{task.title}</span>
+                                  <span className="font-medium text-sm">
+                                    {task.title}
+                                  </span>
                                   <span className="text-xs text-gray-500 truncate">
                                     {task.description?.substring(0, 50)}...
                                   </span>
@@ -275,15 +355,25 @@ export default function Dashboard() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Collapsible open={openSections.technical} onOpenChange={() => toggleSection('technical')}>
+                        <Collapsible
+                          open={openSections.technical}
+                          onOpenChange={() => toggleSection("technical")}
+                        >
                           <CollapsibleTrigger asChild>
-                            <Button variant="outline" className="w-full justify-between">
+                            <Button
+                              variant="outline"
+                              className="w-full justify-between"
+                            >
                               View All
-                              {openSections.technical ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              {openSections.technical ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
                             </Button>
                           </CollapsibleTrigger>
                           <CollapsibleContent className="space-y-2 mt-3">
-                            {technicalSupportTasks.map(task => (
+                            {technicalSupportTasks.map((task) => (
                               <TaskCard key={task.id} task={task} />
                             ))}
                           </CollapsibleContent>
@@ -303,10 +393,7 @@ export default function Dashboard() {
                 <h2 className="text-2xl font-bold">All Your Tasks</h2>
 
                 {staffTasks && staffTasks.length > 0 ? (
-                  <StaffTaskList 
-                    tasks={staffTasks}
-                    projectId={undefined}
-                  />
+                  <StaffTaskList tasks={staffTasks} projectId={undefined} />
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
                     No tasks assigned to you yet.
@@ -317,9 +404,15 @@ export default function Dashboard() {
           ) : (
             <>
               {/* Manager/Admin Dashboard */}
-              {(user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              {(user?.role === "operations_manager" ||
+                user?.specialization === "operations_manager") && (
+                
+      
+                
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   {/* Active Projects */}
+
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center justify-between">
@@ -329,13 +422,16 @@ export default function Dashboard() {
                         </div>
                         <Badge variant="secondary">
                           {(() => {
-                            const activeProjects = projects?.filter(project => {
-                              // Projects with tasks currently being worked on (in_progress or timer running)
-                              return tasks?.some(task => 
-                                task.projectId === project.id && 
-                                (task.status === 'in_progress' || task.isTimerRunning)
-                              );
-                            }) || [];
+                            const activeProjects =
+                              projects?.filter((project) => {
+                                // Projects with tasks currently being worked on (in_progress or timer running)
+                                return tasks?.some(
+                                  (task) =>
+                                    task.projectId === project.id &&
+                                    (task.status === "in_progress" ||
+                                      task.isTimerRunning),
+                                );
+                              }) || [];
                             return activeProjects.length;
                           })()}
                         </Badge>
@@ -343,12 +439,15 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent className="max-h-48 overflow-y-auto">
                       {(() => {
-                        const activeProjects = projects?.filter(project => {
-                          return tasks?.some(task => 
-                            task.projectId === project.id && 
-                            (task.status === 'in_progress' || task.isTimerRunning)
-                          );
-                        }) || [];
+                        const activeProjects =
+                          projects?.filter((project) => {
+                            return tasks?.some(
+                              (task) =>
+                                task.projectId === project.id &&
+                                (task.status === "in_progress" ||
+                                  task.isTimerRunning),
+                            );
+                          }) || [];
 
                         if (activeProjects.length === 0) {
                           return (
@@ -360,9 +459,9 @@ export default function Dashboard() {
 
                         return (
                           <div className="space-y-2">
-                            {activeProjects.map(project => (
-                              <div 
-                                key={project.id} 
+                            {activeProjects.map((project) => (
+                              <div
+                                key={project.id}
                                 className="p-2 bg-green-50 rounded-md border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -370,8 +469,12 @@ export default function Dashboard() {
                                   window.location.href = `/dashboard/projects/${project.id}`;
                                 }}
                               >
-                                <p className="font-medium text-sm text-green-900">{project.name}</p>
-                                <p className="text-xs text-green-700">{project.category?.replace('_', ' ')}</p>
+                                <p className="font-medium text-sm text-green-900">
+                                  {project.name}
+                                </p>
+                                <p className="text-xs text-green-700">
+                                  {project.category?.replace("_", " ")}
+                                </p>
                               </div>
                             ))}
                           </div>
@@ -389,13 +492,18 @@ export default function Dashboard() {
                           Pending Projects
                         </div>
                         <Badge variant="secondary">
-                          {projects?.filter(project => project.status === 'pending').length || 0}
+                          {projects?.filter(
+                            (project) => project.status === "pending",
+                          ).length || 0}
                         </Badge>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="max-h-48 overflow-y-auto">
                       {(() => {
-                        const pendingProjects = projects?.filter(project => project.status === 'pending') || [];
+                        const pendingProjects =
+                          projects?.filter(
+                            (project) => project.status === "pending",
+                          ) || [];
 
                         if (pendingProjects.length === 0) {
                           return (
@@ -407,9 +515,9 @@ export default function Dashboard() {
 
                         return (
                           <div className="space-y-2">
-                            {pendingProjects.map(project => (
-                              <div 
-                                key={project.id} 
+                            {pendingProjects.map((project) => (
+                              <div
+                                key={project.id}
                                 className="p-2 bg-yellow-50 rounded-md border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -417,8 +525,12 @@ export default function Dashboard() {
                                   window.location.href = `/dashboard/projects/${project.id}`;
                                 }}
                               >
-                                <p className="font-medium text-sm text-yellow-900">{project.name}</p>
-                                <p className="text-xs text-yellow-700">{project.category?.replace('_', ' ')}</p>
+                                <p className="font-medium text-sm text-yellow-900">
+                                  {project.name}
+                                </p>
+                                <p className="text-xs text-yellow-700">
+                                  {project.category?.replace("_", " ")}
+                                </p>
                               </div>
                             ))}
                           </div>
@@ -440,13 +552,17 @@ export default function Dashboard() {
                             const oneMonthAgo = new Date();
                             oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
-                            return projects?.filter(project => {
-                              // Projects completed in the last month
-                              return project.status === 'completed' || 
-                                     (project.progress === 100 && 
-                                      project.updatedAt && 
-                                      new Date(project.updatedAt) >= oneMonthAgo);
-                            }).length || 0;
+                            return (
+                              projects?.filter((project) => {
+                                // Projects completed in the last month
+                                return (
+                                  project.status === "completed" ||
+                                  (project.progress === 100 &&
+                                    project.updatedAt &&
+                                    new Date(project.updatedAt) >= oneMonthAgo)
+                                );
+                              }).length || 0
+                            );
                           })()}
                         </Badge>
                       </CardTitle>
@@ -456,12 +572,15 @@ export default function Dashboard() {
                         const oneMonthAgo = new Date();
                         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
-                        const completedProjects = projects?.filter(project => {
-                          return project.status === 'completed' || 
-                                 (project.progress === 100 && 
-                                  project.updatedAt && 
-                                  new Date(project.updatedAt) >= oneMonthAgo);
-                        }) || [];
+                        const completedProjects =
+                          projects?.filter((project) => {
+                            return (
+                              project.status === "completed" ||
+                              (project.progress === 100 &&
+                                project.updatedAt &&
+                                new Date(project.updatedAt) >= oneMonthAgo)
+                            );
+                          }) || [];
 
                         if (completedProjects.length === 0) {
                           return (
@@ -473,9 +592,9 @@ export default function Dashboard() {
 
                         return (
                           <div className="space-y-2">
-                            {completedProjects.map(project => (
-                              <div 
-                                key={project.id} 
+                            {completedProjects.map((project) => (
+                              <div
+                                key={project.id}
                                 className="p-2 bg-blue-50 rounded-md border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -483,8 +602,12 @@ export default function Dashboard() {
                                   window.location.href = `/dashboard/projects/${project.id}`;
                                 }}
                               >
-                                <p className="font-medium text-sm text-blue-900">{project.name}</p>
-                                <p className="text-xs text-blue-700">{project.category?.replace('_', ' ')}</p>
+                                <p className="font-medium text-sm text-blue-900">
+                                  {project.name}
+                                </p>
+                                <p className="text-xs text-blue-700">
+                                  {project.category?.replace("_", " ")}
+                                </p>
                               </div>
                             ))}
                           </div>
@@ -504,20 +627,32 @@ export default function Dashboard() {
                         <AlertCircle className="h-5 w-5" />
                         Tasks in Progress
                       </div>
-                      <Badge variant="secondary">{tasksInProgress.length}</Badge>
+                      <Badge variant="secondary">
+                        {tasksInProgress.length}
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {tasksInProgress.length > 0 ? (
-                      <Collapsible open={openSections.inProgress} onOpenChange={() => toggleSection('inProgress')}>
+                      <Collapsible
+                        open={openSections.inProgress}
+                        onOpenChange={() => toggleSection("inProgress")}
+                      >
                         <CollapsibleTrigger asChild>
-                          <Button variant="outline" className="w-full justify-between">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between"
+                          >
                             View Tasks
-                            {openSections.inProgress ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {openSections.inProgress ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
-                          {tasksInProgress.map(task => (
+                          {tasksInProgress.map((task) => (
                             <TaskCard key={task.id} task={task} />
                           ))}
                         </CollapsibleContent>
@@ -543,15 +678,25 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     {pendingTasks.length > 0 ? (
-                      <Collapsible open={openSections.pending} onOpenChange={() => toggleSection('pending')}>
+                      <Collapsible
+                        open={openSections.pending}
+                        onOpenChange={() => toggleSection("pending")}
+                      >
                         <CollapsibleTrigger asChild>
-                          <Button variant="outline" className="w-full justify-between">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between"
+                          >
                             View Tasks
-                            {openSections.pending ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {openSections.pending ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
-                          {pendingTasks.map(task => (
+                          {pendingTasks.map((task) => (
                             <TaskCard key={task.id} task={task} />
                           ))}
                         </CollapsibleContent>
@@ -577,15 +722,25 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     {tasksInReview.length > 0 ? (
-                      <Collapsible open={openSections.review} onOpenChange={() => toggleSection('review')}>
+                      <Collapsible
+                        open={openSections.review}
+                        onOpenChange={() => toggleSection("review")}
+                      >
                         <CollapsibleTrigger asChild>
-                          <Button variant="outline" className="w-full justify-between">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between"
+                          >
                             View Tasks
-                            {openSections.review ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {openSections.review ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
-                          {tasksInReview.map(task => (
+                          {tasksInReview.map((task) => (
                             <TaskCard key={task.id} task={task} />
                           ))}
                         </CollapsibleContent>
@@ -606,7 +761,9 @@ export default function Dashboard() {
                         <HelpCircle className="h-5 w-5" />
                         Technical Support
                       </div>
-                      <Badge variant="secondary">{technicalSupportTasks.length}</Badge>
+                      <Badge variant="secondary">
+                        {technicalSupportTasks.length}
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -617,10 +774,15 @@ export default function Dashboard() {
                             <SelectValue placeholder="Select a support task..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {technicalSupportTasks.map(task => (
-                              <SelectItem key={task.id} value={task.id.toString()}>
+                            {technicalSupportTasks.map((task) => (
+                              <SelectItem
+                                key={task.id}
+                                value={task.id.toString()}
+                              >
                                 <div className="flex flex-col items-start">
-                                  <span className="font-medium text-sm">{task.title}</span>
+                                  <span className="font-medium text-sm">
+                                    {task.title}
+                                  </span>
                                   <span className="text-xs text-gray-500 truncate">
                                     {task.description?.substring(0, 50)}...
                                   </span>
@@ -629,15 +791,25 @@ export default function Dashboard() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Collapsible open={openSections.technical} onOpenChange={() => toggleSection('technical')}>
+                        <Collapsible
+                          open={openSections.technical}
+                          onOpenChange={() => toggleSection("technical")}
+                        >
                           <CollapsibleTrigger asChild>
-                            <Button variant="outline" className="w-full justify-between">
+                            <Button
+                              variant="outline"
+                              className="w-full justify-between"
+                            >
                               View All
-                              {openSections.technical ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              {openSections.technical ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
                             </Button>
                           </CollapsibleTrigger>
                           <CollapsibleContent className="space-y-2 mt-3">
-                            {technicalSupportTasks.map(task => (
+                            {technicalSupportTasks.map((task) => (
                               <TaskCard key={task.id} task={task} />
                             ))}
                           </CollapsibleContent>
@@ -668,8 +840,8 @@ export default function Dashboard() {
                           {overallProgress}%
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                          <div 
-                            className="bg-blue-600 h-3 rounded-full transition-all duration-300" 
+                          <div
+                            className="bg-blue-600 h-3 rounded-full transition-all duration-300"
                             style={{ width: `${overallProgress}%` }}
                           />
                         </div>
@@ -685,8 +857,8 @@ export default function Dashboard() {
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">All Tasks</h2>
                 {tasks && tasks.length > 0 ? (
-                  <TaskList 
-                    tasks={tasks?.slice(0, 5) || []} 
+                  <TaskList
+                    tasks={tasks?.slice(0, 5) || []}
                     projectId={tasks[0]?.projectId || 0}
                     showNewTaskButton={false}
                   />
