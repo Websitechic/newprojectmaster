@@ -88,11 +88,26 @@ export function registerRoutes(app: Express): Server {
     // Override res.send to ensure JSON for API routes
     const originalSend = res.send;
     res.send = function(data) {
+      // Always ensure we're sending JSON for API routes
       if (typeof data === 'string' && !data.startsWith('{') && !data.startsWith('[')) {
         // If it's a plain string that's not JSON, wrap it
         return originalSend.call(this, JSON.stringify({ message: data }));
       }
       return originalSend.call(this, data);
+    };
+
+    // Override res.status().send() to ensure JSON
+    const originalStatus = res.status;
+    res.status = function(code) {
+      const statusRes = originalStatus.call(this, code);
+      const originalStatusSend = statusRes.send;
+      statusRes.send = function(data) {
+        if (typeof data === 'string' && !data.startsWith('{') && !data.startsWith('[')) {
+          return originalStatusSend.call(this, JSON.stringify({ error: data }));
+        }
+        return originalStatusSend.call(this, data);
+      };
+      return statusRes;
     };
 
     next();
@@ -112,6 +127,63 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error in /api/user:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update user status endpoint
+  app.put("/api/users/status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { status } = req.body;
+      const user = req.user!;
+
+      // Validate status
+      const validStatuses = ["online", "idle", "away", "offline"];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+
+      // Update user status in database
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          status: status as any,
+          lastActive: new Date(),
+        })
+        .where(eq(users.id, user.id))
+        .returning();
+
+      res.json({ success: true, status: updatedUser.status });
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      res.status(500).json({ error: "Failed to update user status" });
+    }
+  });
+
+  // User heartbeat endpoint
+  app.post("/api/user/heartbeat", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = req.user!;
+      
+      // Update last active timestamp
+      await db
+        .update(users)
+        .set({
+          lastActive: new Date(),
+        })
+        .where(eq(users.id, user.id));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating user heartbeat:", error);
+      res.status(500).json({ error: "Failed to update heartbeat" });
     }
   });
 
