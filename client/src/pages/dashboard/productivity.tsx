@@ -125,7 +125,21 @@ export default function ProductivityPage() {
       }
       const data = await response.json();
       console.log("Productivity data received:", data);
-      return data;
+      
+      // Validate and sanitize the data
+      const sanitizedData = {
+        today: {
+          totalTasksWorkedOn: data?.today?.totalTasksWorkedOn || 0,
+          totalTasksCompleted: data?.today?.totalTasksCompleted || 0,
+          totalTimeWorked: data?.today?.totalTimeWorked || 0,
+          taskBreakdown: Array.isArray(data?.today?.taskBreakdown) ? data.today.taskBreakdown : [],
+          weeklyBreakdown: Array.isArray(data?.today?.weeklyBreakdown) ? data.today.weeklyBreakdown : []
+        },
+        yesterday: data?.yesterday || { totalTasksWorkedOn: 0, totalTasksCompleted: 0, totalTimeWorked: 0, taskBreakdown: [], weeklyBreakdown: [] },
+        thisWeek: data?.thisWeek || { totalTasks: 0, completedTasks: 0, totalTime: 0 }
+      };
+      
+      return sanitizedData;
     },
     enabled: !!user,
     refetchInterval: 60000, // Refresh every minute for real-time updates
@@ -190,7 +204,8 @@ export default function ProductivityPage() {
 
   // Calculate productivity metrics for the productivity card
   const totalAssignedTime = productivityData?.today?.taskBreakdown?.reduce((total, task) => {
-    const workingHours = (task as any).workingHours || 8;
+    // Get working hours from task or default to a reasonable estimate based on task complexity
+    const workingHours = (task as any).workingHours || 4; // Default to 4 hours per task
     return total + (workingHours * 3600);
   }, 0) || 0;
   
@@ -342,14 +357,14 @@ export default function ProductivityPage() {
                           cy="50%"
                           labelLine={false}
                           label={({ name, value, timeUsedPercentage }) => 
-                            `${name}: ${formatTime(value)} (${timeUsedPercentage}%)`
+                            `${name}: ${formatTime(value || 0)} (${timeUsedPercentage || 0}%)`
                           }
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="value"
                         >
                           {taskPieData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+                            <Cell key={`pie-cell-${entry.name}-${index}`} fill={entry.color || '#8884d8'} />
                           ))}
                         </Pie>
                         <Tooltip 

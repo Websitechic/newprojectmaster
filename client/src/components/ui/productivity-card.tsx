@@ -22,46 +22,60 @@ export function ProductivityCard({
   const safeTaskCount = Math.max(0, taskCount || 0);
   
   // Calculate productivity percentage (time efficiency)
-  const productivity = safeAssignedTime > 0 && safeActualTime > 0 ? 
-    Math.round((safeAssignedTime / safeActualTime) * 100) : 0;
+  // If actual time is less than or equal to assigned time, that's good efficiency
+  const productivity = safeAssignedTime > 0 ? 
+    Math.min(100, Math.round((safeAssignedTime / Math.max(safeActualTime, 1)) * 100)) : 0;
 
-  // Determine status based on productivity
-  const getStatusInfo = (productivity: number) => {
-    if (productivity >= 100) {
-      return {
-        status: "Excellent",
-        color: "text-green-600",
-        bgColor: "bg-green-50"
-      };
-    } else if (productivity >= 80) {
-      return {
-        status: "Good",
-        color: "text-blue-600", 
-        bgColor: "bg-blue-50"
-      };
-    } else if (productivity >= 60) {
-      return {
-        status: "Average",
-        color: "text-yellow-600",
-        bgColor: "bg-yellow-50"
-      };
-    } else if (productivity > 0) {
-      return {
-        status: "Needs Improvement",
-        color: "text-red-600",
-        bgColor: "bg-red-50"
-      };
-    } else {
+  // Determine status based on productivity (efficiency)
+  const getStatusInfo = (productivity: number, actualTime: number, assignedTime: number) => {
+    if (actualTime === 0 && assignedTime === 0) {
       return {
         status: "No Data",
         color: "text-gray-600",
         bgColor: "bg-gray-50"
       };
     }
+    
+    if (assignedTime === 0) {
+      return {
+        status: "No Assignments",
+        color: "text-gray-600",
+        bgColor: "bg-gray-50"
+      };
+    }
+
+    // Calculate efficiency ratio: actual/assigned (lower is better)
+    const efficiencyRatio = actualTime / assignedTime;
+    
+    if (efficiencyRatio <= 1.0) {
+      return {
+        status: "Excellent",
+        color: "text-green-600",
+        bgColor: "bg-green-50"
+      };
+    } else if (efficiencyRatio <= 1.25) {
+      return {
+        status: "Good",
+        color: "text-blue-600", 
+        bgColor: "bg-blue-50"
+      };
+    } else if (efficiencyRatio <= 1.5) {
+      return {
+        status: "Average",
+        color: "text-yellow-600",
+        bgColor: "bg-yellow-50"
+      };
+    } else {
+      return {
+        status: "Needs Improvement",
+        color: "text-red-600",
+        bgColor: "bg-red-50"
+      };
+    }
   };
 
-  const statusInfo = getStatusInfo(productivity);
-  const isEfficient = productivity >= 80;
+  const statusInfo = getStatusInfo(productivity, safeActualTime, safeAssignedTime);
+  const isEfficient = safeAssignedTime > 0 ? (safeActualTime / safeAssignedTime) <= 1.25 : false;
 
   // Format time for display
   const formatTime = (seconds: number) => {
@@ -154,16 +168,20 @@ export function ProductivityCard({
         </div>
 
         {/* Performance Indicator */}
-        {productivity > 0 && (
+        {safeAssignedTime > 0 && safeActualTime > 0 && (
           <div className="text-xs text-gray-500 text-center pt-2">
-            {productivity >= 100 
-              ? "🎉 Excellent! You're completing tasks within estimated time."
-              : productivity >= 80 
-              ? "👍 Good productivity! Minor time overruns."
-              : productivity >= 60 
-              ? "⚠️ Average performance. Consider optimizing workflow."
-              : "📈 Focus needed. Significant time overruns detected."
-            }
+            {(() => {
+              const ratio = safeActualTime / safeAssignedTime;
+              if (ratio <= 1.0) {
+                return "🎉 Excellent! Completing tasks within estimated time.";
+              } else if (ratio <= 1.25) {
+                return "👍 Good productivity! Minor time overruns.";
+              } else if (ratio <= 1.5) {
+                return "⚠️ Average performance. Consider optimizing workflow.";
+              } else {
+                return "📈 Focus needed. Significant time overruns detected.";
+              }
+            })()}
           </div>
         )}
       </CardContent>
