@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -148,7 +148,7 @@ export default function ProductivityPage() {
   });
 
   // Force refresh when date changes or when returning to the page
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
       refetch();
     }
