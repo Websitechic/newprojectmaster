@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Clock, CheckCircle, Target, TrendingUp, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ProductivityCard } from "@/components/ui/productivity-card";
@@ -165,16 +166,24 @@ export default function ProductivityPage() {
     item && item.dayName && typeof item.hours === 'number'
   ).map(item => ({
     day: item.dayName || 'Unknown',
-    hours: item.hours || 0,
-    timeSpent: item.timeSpent || 0,
-    taskCount: item.taskCount || 0,
-    tasks: item.tasks || [],
+    hours: Math.max(0, item.hours || 0),
+    timeSpent: Math.max(0, item.timeSpent || 0),
+    taskCount: Math.max(0, item.taskCount || 0),
+    tasks: Array.isArray(item.tasks) ? item.tasks : [],
     workdayStart: item.workdayStart || null,
     workdayEnd: item.workdayEnd || null,
-    totalSpanHours: item.totalSpanHours || 0,
-    performanceStatus: item.performanceStatus || 'unknown',
+    totalSpanHours: Math.max(0, item.totalSpanHours || item.hours || 0),
+    performanceStatus: item.performanceStatus || 'poor',
     performanceColor: item.performanceColor || '#6B7280'
   })) || [];
+
+  // Calculate productivity metrics for the productivity card
+  const totalAssignedTime = todayData?.taskBreakdown?.reduce((total, task) => {
+    const workingHours = (task as any).workingHours || 8;
+    return total + (workingHours * 3600);
+  }, 0) || 0;
+  
+  const totalActualTime = todayData?.totalTimeWorked || 0;
 
   if (isLoading) {
     return (
@@ -222,11 +231,8 @@ export default function ProductivityPage() {
             {/* Productivity Card */}
             <div className="mb-6">
               <ProductivityCard
-                assignedTime={todayData?.taskBreakdown.reduce((total, task) => {
-                  const workingHours = (task as any).workingHours || 8;
-                  return total + (workingHours * 3600);
-                }, 0) || 0}
-                actualTime={todayData?.totalTimeWorked || 0}
+                assignedTime={totalAssignedTime}
+                actualTime={totalActualTime}
                 taskCount={todayData?.totalTasksWorkedOn || 0}
                 period={`${format(new Date(selectedDate), "MMM d, yyyy")}`}
               />
@@ -409,14 +415,17 @@ export default function ProductivityPage() {
                           <YAxis 
                             label={{ value: 'Hours', angle: -90, position: 'insideLeft' }}
                             tick={{ fontSize: 12 }}
+                            domain={[0, 'dataMax']}
                           />
                           <Tooltip 
                             formatter={(value: number, name: string, props: any) => {
                               const data = props?.payload;
-                              const safeValue = typeof value === 'number' ? value : 0;
+                              const safeValue = typeof value === 'number' && !isNaN(value) ? value : 0;
+                              const displayName = name === 'totalSpanHours' ? 'Total Span' : 
+                                                name === 'hours' ? 'Actual Work Hours' : name;
                               return [
                                 `${safeValue.toFixed(2)} hours`,
-                                "Actual Work Hours"
+                                displayName
                               ];
                             }}
                             labelFormatter={(label, payload) => {

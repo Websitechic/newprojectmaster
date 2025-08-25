@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -17,33 +16,55 @@ export function ProductivityCard({
   taskCount = 0,
   period = "Today" 
 }: ProductivityCardProps) {
-  // Calculate productivity percentage using the formula:
-  // Productivity = (Assigned Task Time / Actual Task Time) * 100
-  const calculateProductivity = () => {
-    if (actualTime === 0) return 0;
-    return Math.round((assignedTime / actualTime) * 100);
+  // Calculate productivity percentage (time efficiency)
+  const productivity = assignedTime > 0 && actualTime > 0 ? 
+    Math.round((assignedTime / actualTime) * 100) : 0;
+
+  // Determine status based on productivity
+  const getStatusInfo = (productivity: number) => {
+    if (productivity >= 100) {
+      return {
+        status: "Excellent",
+        color: "text-green-600",
+        bgColor: "bg-green-50"
+      };
+    } else if (productivity >= 80) {
+      return {
+        status: "Good",
+        color: "text-blue-600", 
+        bgColor: "bg-blue-50"
+      };
+    } else if (productivity >= 60) {
+      return {
+        status: "Average",
+        color: "text-yellow-600",
+        bgColor: "bg-yellow-50"
+      };
+    } else if (productivity > 0) {
+      return {
+        status: "Needs Improvement",
+        color: "text-red-600",
+        bgColor: "bg-red-50"
+      };
+    } else {
+      return {
+        status: "No Data",
+        color: "text-gray-600",
+        bgColor: "bg-gray-50"
+      };
+    }
   };
 
+  const statusInfo = getStatusInfo(productivity);
+  const isEfficient = productivity >= 80;
+
+  // Format time for display
   const formatTime = (seconds: number) => {
+    if (!seconds || seconds <= 0) return "0h 0m";
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
-
-  const productivity = calculateProductivity();
-  
-  // Determine productivity status
-  const getProductivityStatus = () => {
-    if (productivity >= 100) return { status: "excellent", color: "text-green-600", bgColor: "bg-green-100" };
-    if (productivity >= 80) return { status: "good", color: "text-blue-600", bgColor: "bg-blue-100" };
-    if (productivity >= 60) return { status: "average", color: "text-yellow-600", bgColor: "bg-yellow-100" };
-    return { status: "needs improvement", color: "text-red-600", bgColor: "bg-red-100" };
-  };
-
-  const statusInfo = getProductivityStatus();
-  
-  // Determine if productivity is trending up or down (simplified comparison)
-  const isEfficient = productivity >= 80;
 
   return (
     <Card className="w-full">
@@ -60,7 +81,7 @@ export function ProductivityCard({
         </div>
         <CardDescription>{period} performance overview</CardDescription>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* Main Productivity Score */}
         <div className="text-center">
@@ -88,19 +109,21 @@ export function ProductivityCard({
         </div>
 
         {/* Time Breakdown */}
-        <div className="grid grid-cols-2 gap-4 pt-2">
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-sm text-gray-600 mb-1">Assigned Time</div>
-            <div className="font-semibold text-blue-600">
-              {formatTime(assignedTime)}
-            </div>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="text-center">
+            <div className="text-gray-600">Assigned</div>
+            <div className="font-semibold">{formatTime(assignedTime)}</div>
           </div>
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-sm text-gray-600 mb-1">Actual Time</div>
-            <div className="font-semibold text-orange-600">
-              {formatTime(actualTime)}
-            </div>
+          <div className="text-center">
+            <div className="text-gray-600">Actual</div>
+            <div className="font-semibold">{formatTime(actualTime)}</div>
           </div>
+        </div>
+
+        {/* Task Count */}
+        <div className="text-center">
+          <div className="text-gray-600 text-sm">Tasks Worked On</div>
+          <div className="text-lg font-semibold">{taskCount || 0}</div>
         </div>
 
         {/* Additional Metrics */}
