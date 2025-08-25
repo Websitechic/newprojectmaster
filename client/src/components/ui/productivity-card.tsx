@@ -22,48 +22,61 @@ export function ProductivityCard({
   const safeTaskCount = Math.max(0, taskCount || 0);
   
   // Calculate productivity percentage (time efficiency)
-  // If actual time is less than or equal to assigned time, that's good efficiency
-  const productivity = safeAssignedTime > 0 ? 
-    Math.min(100, Math.round((safeAssignedTime / Math.max(safeActualTime, 1)) * 100)) : 0;
+  // Higher productivity = more work done in less time
+  const productivity = safeAssignedTime > 0 && safeActualTime > 0 ? 
+    Math.min(100, Math.max(0, Math.round((safeAssignedTime / safeActualTime) * 100))) : 
+    (safeActualTime > 0 && safeAssignedTime === 0 ? 50 : 0); // Default to 50% if no assigned time but work was done
 
   // Determine status based on productivity (efficiency)
   const getStatusInfo = (productivity: number, actualTime: number, assignedTime: number) => {
     if (actualTime === 0 && assignedTime === 0) {
       return {
-        status: "No Data",
+        status: "No Activity",
         color: "text-gray-600",
         bgColor: "bg-gray-50"
       };
     }
     
-    if (assignedTime === 0) {
+    if (actualTime === 0) {
       return {
-        status: "No Assignments",
+        status: "No Work Logged",
         color: "text-gray-600",
         bgColor: "bg-gray-50"
       };
     }
 
-    // Calculate efficiency ratio: actual/assigned (lower is better)
-    const efficiencyRatio = actualTime / assignedTime;
-    
-    if (efficiencyRatio <= 1.0) {
+    if (assignedTime === 0) {
+      return {
+        status: "Unplanned Work",
+        color: "text-blue-600",
+        bgColor: "bg-blue-50"
+      };
+    }
+
+    // Base status on productivity percentage
+    if (productivity >= 90) {
       return {
         status: "Excellent",
         color: "text-green-600",
         bgColor: "bg-green-50"
       };
-    } else if (efficiencyRatio <= 1.25) {
+    } else if (productivity >= 75) {
       return {
         status: "Good",
         color: "text-blue-600", 
         bgColor: "bg-blue-50"
       };
-    } else if (efficiencyRatio <= 1.5) {
+    } else if (productivity >= 60) {
       return {
         status: "Average",
         color: "text-yellow-600",
         bgColor: "bg-yellow-50"
+      };
+    } else if (productivity >= 40) {
+      return {
+        status: "Below Average",
+        color: "text-orange-600",
+        bgColor: "bg-orange-50"
       };
     } else {
       return {
@@ -75,7 +88,7 @@ export function ProductivityCard({
   };
 
   const statusInfo = getStatusInfo(productivity, safeActualTime, safeAssignedTime);
-  const isEfficient = safeAssignedTime > 0 ? (safeActualTime / safeAssignedTime) <= 1.25 : false;
+  const isEfficient = productivity >= 75;
 
   // Format time for display
   const formatTime = (seconds: number) => {
@@ -105,7 +118,7 @@ export function ProductivityCard({
       <CardContent className="space-y-4">
         {/* Main Productivity Score */}
         <div className="text-center">
-          <div className="text-4xl font-bold mb-2" style={{ color: statusInfo.color.replace('text-', '') }}>
+          <div className={`text-4xl font-bold mb-2 ${statusInfo.color}`}>
             {productivity}%
           </div>
           <Badge 
@@ -168,18 +181,21 @@ export function ProductivityCard({
         </div>
 
         {/* Performance Indicator */}
-        {safeAssignedTime > 0 && safeActualTime > 0 && (
+        {safeActualTime > 0 && (
           <div className="text-xs text-gray-500 text-center pt-2">
             {(() => {
-              const ratio = safeActualTime / safeAssignedTime;
-              if (ratio <= 1.0) {
-                return "🎉 Excellent! Completing tasks within estimated time.";
-              } else if (ratio <= 1.25) {
-                return "👍 Good productivity! Minor time overruns.";
-              } else if (ratio <= 1.5) {
-                return "⚠️ Average performance. Consider optimizing workflow.";
+              if (productivity >= 90) {
+                return "🎉 Excellent efficiency! You're completing tasks quickly and effectively.";
+              } else if (productivity >= 75) {
+                return "👍 Good productivity! Keep up the great work.";
+              } else if (productivity >= 60) {
+                return "⚠️ Average performance. Consider optimizing your workflow.";
+              } else if (productivity >= 40) {
+                return "📊 Below average efficiency. Focus on time management.";
+              } else if (safeAssignedTime > 0) {
+                return "📈 Improvement needed. Tasks are taking longer than estimated.";
               } else {
-                return "📈 Focus needed. Significant time overruns detected.";
+                return "📝 Working on unplanned tasks. Consider better planning.";
               }
             })()}
           </div>

@@ -204,8 +204,11 @@ export default function ProductivityPage() {
 
   // Calculate productivity metrics for the productivity card
   const totalAssignedTime = productivityData?.today?.taskBreakdown?.reduce((total, task) => {
-    // Get working hours from task or default to a reasonable estimate based on task complexity
-    const workingHours = (task as any).workingHours || 4; // Default to 4 hours per task
+    // Get working hours from task or estimate based on task status and complexity
+    const workingHours = (task as any).workingHours || 
+      (task.status === 'completed' ? Math.max(task.timeSpent / 3600, 1) : // If completed, use actual time or minimum 1 hour
+       task.timeSpent > 0 ? Math.max(task.timeSpent / 3600 * 1.25, 2) : // If in progress, estimate 25% more than current time, minimum 2 hours
+       3); // Default estimate for new tasks
     return total + (workingHours * 3600);
   }, 0) || 0;
   
