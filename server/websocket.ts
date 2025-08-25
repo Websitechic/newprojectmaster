@@ -67,7 +67,7 @@ export function setupWebSocket(wss: WebSocketServer) {
     let userId: number | null = null;
 
     // Check if user is authenticated - safely access session
-    const session = request.session || null;
+    const session = (request as any).session || null;
     if (!session || !session.passport || !session.passport.user) {
       console.log('WebSocket connection without authenticated session - will wait for auth message');
 
