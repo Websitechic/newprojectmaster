@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Clock, CheckCircle, Target, TrendingUp, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ProductivityCard } from "@/components/ui/productivity-card";
@@ -114,18 +113,30 @@ export default function ProductivityPage() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const { data: productivityData, isLoading } = useQuery<ProductivityStats>({
+  const { data: productivityData, isLoading, error } = useQuery<ProductivityStats>({
     queryKey: ["/api/productivity", selectedDate],
     queryFn: async () => {
+      console.log("Fetching productivity data for date:", selectedDate);
       const response = await fetch(`/api/productivity?date=${selectedDate}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch productivity data");
+        const errorText = await response.text();
+        console.error("Productivity API error:", response.status, errorText);
+        throw new Error(`Failed to fetch productivity data: ${response.status} ${errorText}`);
       }
-      return response.json();
+      const data = await response.json();
+      console.log("Productivity data received:", data);
+      return data;
     },
     enabled: !!user,
     refetchInterval: 60000, // Refresh every minute for real-time updates
+    retry: 3,
+    retryDelay: 1000,
   });
+
+  // Log any query errors
+  if (error) {
+    console.error("Productivity query error:", error);
+  }
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -178,12 +189,12 @@ export default function ProductivityPage() {
   })) || [];
 
   // Calculate productivity metrics for the productivity card
-  const totalAssignedTime = todayData?.taskBreakdown?.reduce((total, task) => {
+  const totalAssignedTime = productivityData?.today?.taskBreakdown?.reduce((total, task) => {
     const workingHours = (task as any).workingHours || 8;
     return total + (workingHours * 3600);
   }, 0) || 0;
   
-  const totalActualTime = todayData?.totalTimeWorked || 0;
+  const totalActualTime = productivityData?.today?.totalTimeWorked || 0;
 
   if (isLoading) {
     return (
@@ -193,6 +204,24 @@ export default function ProductivityPage() {
           <Header />
           <div className="flex-1 flex items-center justify-center">
             <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Add error handling for missing data
+  if (!productivityData) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar currentPath="/dashboard/productivity" />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-gray-500">No productivity data available</p>
+              <p className="text-sm text-gray-400 mt-2">Try refreshing the page or check your connection</p>
+            </div>
           </div>
         </div>
       </div>

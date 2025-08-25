@@ -16,9 +16,14 @@ export function ProductivityCard({
   taskCount = 0,
   period = "Today" 
 }: ProductivityCardProps) {
+  // Ensure we have valid numbers
+  const safeAssignedTime = Math.max(0, assignedTime || 0);
+  const safeActualTime = Math.max(0, actualTime || 0);
+  const safeTaskCount = Math.max(0, taskCount || 0);
+  
   // Calculate productivity percentage (time efficiency)
-  const productivity = assignedTime > 0 && actualTime > 0 ? 
-    Math.round((assignedTime / actualTime) * 100) : 0;
+  const productivity = safeAssignedTime > 0 && safeActualTime > 0 ? 
+    Math.round((safeAssignedTime / safeActualTime) * 100) : 0;
 
   // Determine status based on productivity
   const getStatusInfo = (productivity: number) => {
@@ -60,9 +65,10 @@ export function ProductivityCard({
 
   // Format time for display
   const formatTime = (seconds: number) => {
-    if (!seconds || seconds <= 0) return "0h 0m";
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+    const safeSeconds = Math.max(0, seconds || 0);
+    if (safeSeconds <= 0) return "0h 0m";
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
@@ -112,34 +118,34 @@ export function ProductivityCard({
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="text-center">
             <div className="text-gray-600">Assigned</div>
-            <div className="font-semibold">{formatTime(assignedTime)}</div>
+            <div className="font-semibold">{formatTime(safeAssignedTime)}</div>
           </div>
           <div className="text-center">
             <div className="text-gray-600">Actual</div>
-            <div className="font-semibold">{formatTime(actualTime)}</div>
+            <div className="font-semibold">{formatTime(safeActualTime)}</div>
           </div>
         </div>
 
         {/* Task Count */}
         <div className="text-center">
           <div className="text-gray-600 text-sm">Tasks Worked On</div>
-          <div className="text-lg font-semibold">{taskCount || 0}</div>
+          <div className="text-lg font-semibold">{safeTaskCount}</div>
         </div>
 
         {/* Additional Metrics */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Target className="h-4 w-4" />
-            <span>{taskCount} tasks</span>
+            <span>{safeTaskCount} tasks</span>
           </div>
           <div className="text-sm text-gray-600">
-            {actualTime > assignedTime ? (
+            {safeActualTime > safeAssignedTime ? (
               <span className="text-red-600">
-                +{formatTime(actualTime - assignedTime)} over
+                +{formatTime(safeActualTime - safeAssignedTime)} over
               </span>
-            ) : assignedTime > actualTime ? (
+            ) : safeAssignedTime > safeActualTime ? (
               <span className="text-green-600">
-                -{formatTime(assignedTime - actualTime)} under
+                -{formatTime(safeAssignedTime - safeActualTime)} under
               </span>
             ) : (
               <span className="text-gray-600">On target</span>
