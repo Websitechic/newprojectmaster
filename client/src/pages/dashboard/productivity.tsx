@@ -113,7 +113,7 @@ export default function ProductivityPage() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const { data: productivityData, isLoading, error } = useQuery<ProductivityStats>({
+  const { data: productivityData, isLoading, error, refetch } = useQuery<ProductivityStats>({
     queryKey: ["/api/productivity", selectedDate],
     queryFn: async () => {
       console.log("Fetching productivity data for date:", selectedDate);
@@ -142,10 +142,17 @@ export default function ProductivityPage() {
       return sanitizedData;
     },
     enabled: !!user,
-    refetchInterval: 60000, // Refresh every minute for real-time updates
+    refetchInterval: 10000, // Refresh every 10 seconds for live timer updates
     retry: 3,
     retryDelay: 1000,
   });
+
+  // Force refresh when date changes or when returning to the page
+  React.useEffect(() => {
+    if (user) {
+      refetch();
+    }
+  }, [selectedDate, user, refetch]);
 
   // Log any query errors
   if (error) {

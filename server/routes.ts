@@ -569,41 +569,41 @@ export function registerRoutes(app: Express): Server {
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
 
-      // Get tasks for today
-      const todayTasks = await db
+      // Get ALL tasks for the user (not just by update date)
+      const allUserTasks = await db
         .select()
         .from(tasks)
-        .where(
-          and(
-            eq(tasks.assigneeId, user.id),
-            gte(tasks.updatedAt, startOfDay),
-            sql`${tasks.updatedAt} <= ${endOfDay}`
-          )
-        );
+        .where(eq(tasks.assigneeId, user.id));
 
-      // Get tasks for yesterday
-      const yesterdayTasks = await db
-        .select()
-        .from(tasks)
-        .where(
-          and(
-            eq(tasks.assigneeId, user.id),
-            gte(tasks.updatedAt, startOfYesterday),
-            sql`${tasks.updatedAt} <= ${endOfYesterday}`
-          )
-        );
+      // Filter tasks by actual work done (timer sessions or time spent) rather than update date
+      const todayTasks = allUserTasks.filter(task => {
+        // Include tasks that have time spent today or currently running timer
+        if (task.isTimerRunning && task.timerStartTime) {
+          const timerDate = new Date(task.timerStartTime);
+          return timerDate >= startOfDay && timerDate <= endOfDay;
+        }
+        
+        // Include tasks that have accumulated time and were worked on today
+        if (task.timeSpent && task.timeSpent > 0) {
+          // Check if task was updated today (as proxy for work done)
+          const updateDate = new Date(task.updatedAt);
+          return updateDate >= startOfDay && updateDate <= endOfDay;
+        }
+        
+        // Include tasks that were started or modified today
+        const updateDate = new Date(task.updatedAt);
+        return updateDate >= startOfDay && updateDate <= endOfDay;
+      });
 
-      // Get tasks for this week
-      const weekTasks = await db
-        .select()
-        .from(tasks)
-        .where(
-          and(
-            eq(tasks.assigneeId, user.id),
-            gte(tasks.updatedAt, weekStart),
-            sql`${tasks.updatedAt} <= ${weekEnd}`
-          )
-        );
+      const yesterdayTasks = allUserTasks.filter(task => {
+        const updateDate = new Date(task.updatedAt);
+        return updateDate >= startOfYesterday && updateDate <= endOfYesterday;
+      });
+
+      const weekTasks = allUserTasks.filter(task => {
+        const updateDate = new Date(task.updatedAt);
+        return updateDate >= weekStart && updateDate <= weekEnd;
+      });
 
       // Get project names for tasks
       const allTaskIds = [...todayTasks, ...yesterdayTasks, ...weekTasks].map(t => t.projectId).filter(Boolean);
@@ -614,21 +614,36 @@ export function registerRoutes(app: Express): Server {
 
       const projectMap = new Map(projectsData.map(p => [p.id, p.name]));
 
-      // Process today's data
-      const todayTaskBreakdown = todayTasks.map(task => ({
-        taskId: task.id,
-        title: task.title,
-        projectName: projectMap.get(task.projectId) || "Unknown Project",
-        timeSpent: task.timeSpent || 0,
-        status: task.status,
-        isCompleted: task.status === 'completed',
-        workingHours: task.workingHours || 8
-      }));
+      // Process today's data with current timer sessions
+      const todayTaskBreakdown = todayTasks.map(task => {
+        let currentTimeSpent = task.timeSpent || 0;
+        
+        // Add current session time if timer is running
+        if (task.isTimerRunning && task.timerStartTime) {
+          const sessionTime = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
+          currentTimeSpent += sessionTime;
+        }
+        
+        return {
+          taskId: task.id,
+          title: task.title,
+          projectName: projectMap.get(task.projectId) || "Unknown Project",
+          timeSpent: currentTimeSpent,
+          status: task.status,
+          isCompleted: task.status === 'completed',
+          workingHours: task.workingHours || 8,
+          isTimerRunning: task.isTimerRunning || false,
+          timerStartTime: task.timerStartTime
+        };
+      });
+
+      // Calculate total time including running timers
+      const totalTimeWorked = todayTaskBreakdown.reduce((total, task) => total + task.timeSpent, 0);
 
       const todayData = {
         totalTasksWorkedOn: todayTasks.length,
         totalTasksCompleted: todayTasks.filter(task => task.status === 'completed').length,
-        totalTimeWorked: todayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0),
+        totalTimeWorked,
         taskBreakdown: todayTaskBreakdown,
         weeklyBreakdown: [] // Will be populated below
       };

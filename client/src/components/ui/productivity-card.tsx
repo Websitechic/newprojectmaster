@@ -21,11 +21,31 @@ export function ProductivityCard({
   const safeActualTime = Math.max(0, actualTime || 0);
   const safeTaskCount = Math.max(0, taskCount || 0);
   
-  // Calculate productivity percentage (time efficiency)
-  // Higher productivity = more work done in less time
-  const productivity = safeAssignedTime > 0 && safeActualTime > 0 ? 
-    Math.min(100, Math.max(0, Math.round((safeAssignedTime / safeActualTime) * 100))) : 
-    (safeActualTime > 0 && safeAssignedTime === 0 ? 50 : 0); // Default to 50% if no assigned time but work was done
+  // Calculate productivity percentage based on actual work done vs expected work
+  // If no assigned time, use task count * 2 hours as a rough estimate
+  const estimatedAssignedTime = safeAssignedTime > 0 ? safeAssignedTime : (safeTaskCount * 2 * 3600);
+  
+  let productivity = 0;
+  
+  if (safeActualTime > 0) {
+    if (estimatedAssignedTime > 0) {
+      // Standard efficiency calculation (assigned/actual * 100)
+      productivity = Math.min(100, Math.round((estimatedAssignedTime / safeActualTime) * 100));
+    } else {
+      // If actively working but no assigned time, show based on hours worked
+      const hoursWorked = safeActualTime / 3600;
+      if (hoursWorked >= 4) productivity = 85;
+      else if (hoursWorked >= 2) productivity = 70;
+      else if (hoursWorked >= 1) productivity = 50;
+      else productivity = 30;
+    }
+  } else if (safeTaskCount > 0) {
+    // Has tasks but no time logged - show low productivity
+    productivity = 20;
+  } else {
+    // No activity
+    productivity = 0;
+  }
 
   // Determine status based on productivity (efficiency)
   const getStatusInfo = (productivity: number, actualTime: number, assignedTime: number) => {
@@ -181,25 +201,27 @@ export function ProductivityCard({
         </div>
 
         {/* Performance Indicator */}
-        {safeActualTime > 0 && (
-          <div className="text-xs text-gray-500 text-center pt-2">
-            {(() => {
-              if (productivity >= 90) {
-                return "🎉 Excellent efficiency! You're completing tasks quickly and effectively.";
-              } else if (productivity >= 75) {
-                return "👍 Good productivity! Keep up the great work.";
-              } else if (productivity >= 60) {
-                return "⚠️ Average performance. Consider optimizing your workflow.";
-              } else if (productivity >= 40) {
-                return "📊 Below average efficiency. Focus on time management.";
-              } else if (safeAssignedTime > 0) {
-                return "📈 Improvement needed. Tasks are taking longer than estimated.";
-              } else {
-                return "📝 Working on unplanned tasks. Consider better planning.";
-              }
-            })()}
-          </div>
-        )}
+        <div className="text-xs text-gray-500 text-center pt-2">
+          {(() => {
+            if (safeActualTime === 0 && safeTaskCount === 0) {
+              return "⏰ No activity recorded yet today. Start a task timer to track your productivity!";
+            } else if (safeActualTime === 0 && safeTaskCount > 0) {
+              return "🚀 Tasks assigned but no time tracked. Start your timers to measure productivity!";
+            } else if (productivity >= 90) {
+              return "🎉 Excellent efficiency! You're completing tasks quickly and effectively.";
+            } else if (productivity >= 75) {
+              return "👍 Good productivity! Keep up the great work.";
+            } else if (productivity >= 60) {
+              return "⚠️ Average performance. Consider optimizing your workflow.";
+            } else if (productivity >= 40) {
+              return "📊 Below average efficiency. Focus on time management.";
+            } else if (estimatedAssignedTime > 0) {
+              return "📈 Tasks taking longer than expected. Review your approach or break them down.";
+            } else {
+              return "📝 Working on tasks. Track your time more consistently for better insights.";
+            }
+          })()}
+        </div>
       </CardContent>
     </Card>
   );
