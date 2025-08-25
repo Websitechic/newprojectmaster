@@ -117,7 +117,7 @@ let emailServiceInitialized = false;
     // WebSocket upgrade handling with improved error management and path filtering
     server.on('upgrade', (request, socket, head) => {
       const url = new URL(request.url!, `http://${request.headers.host}`);
-      
+
       // Only handle our application WebSocket upgrades, let Vite handle HMR WebSocket
       if (url.pathname !== '/api/ws') {
         console.log('Ignoring non-application WebSocket upgrade:', url.pathname);
@@ -135,27 +135,32 @@ let emailServiceInitialized = false;
         }
       }, 15000);
 
-      // Parse session for WebSocket connection
-      sessionParser(request, {} as any, (err) => {
-        clearTimeout(upgradeTimeout);
-        
-        if (err) {
-          console.error('Session parsing error during WebSocket upgrade:', err);
-          if (socket && !socket.destroyed) {
-            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-            socket.destroy();
-          }
-          return;
+      // Parse session for WebSocket connection with improved error handling
+    sessionParser(request, {} as any, (err) => {
+      clearTimeout(upgradeTimeout);
+
+      if (err) {
+        console.error('Session parsing error during WebSocket upgrade:', err);
+        if (socket && !socket.destroyed) {
+          socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+          socket.destroy();
+        }
+        return;
+      }
+
+      try {
+        console.log('Session parsed for WebSocket upgrade');
+
+        // Ensure session is properly attached to request
+        if (!request.session && request.sessionStore) {
+          console.warn('Session not properly attached to WebSocket request');
         }
 
-        try {
-          console.log('Session parsed for WebSocket upgrade');
-
-          // Log session info for debugging
-          const session = (request as any).session;
-          console.log('Session exists:', !!session);
-          console.log('Session passport:', !!(session && session.passport));
-          console.log('Session user:', session && session.passport && session.passport.user);
+        // Log session info for debugging with safe access
+        const session = request.session || null;
+        console.log('Session exists:', !!session);
+        console.log('Session passport:', !!(session && session.passport));
+        console.log('Session user:', session && session.passport && session.passport.user);
 
           wss.handleUpgrade(request, socket, head, (ws) => {
             console.log('WebSocket upgrade completed, emitting connection');
