@@ -1789,7 +1789,7 @@ End of Report
   // Get user's own complaints
   app.get("/api/staff-complaints/my-complaints", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
@@ -1810,7 +1810,7 @@ End of Report
 
   app.get("/api/staff-complaints", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
@@ -1910,6 +1910,84 @@ End of Report
     } catch (error) {
       console.error("Error creating staff complaint:", error);
       res.status(500).json({ error: "Failed to create staff complaint", details: error.message });
+    }
+  });
+
+  // Update staff complaint status (Operations Manager only)
+  app.put("/api/staff-complaints/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+
+    if (!isOperationsManager) {
+      return res.status(403).json({ error: "Only operations managers can update staff complaints" });
+    }
+
+    try {
+      const complaintId = parseInt(req.params.id);
+      const { status, reviewComments } = req.body;
+
+      console.log("Updating staff complaint:", { complaintId, status, reviewComments, userId: user.id });
+
+      if (!status) {
+        return res.status(400).json({ error: "Status is required" });
+      }
+
+      const validStatuses = ["pending", "reviewed", "resolved"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be one of: " + validStatuses.join(", ") });
+      }
+
+      // Check if complaint exists
+      const [existingComplaint] = await db
+        .select()
+        .from(staffComplaints)
+        .where(eq(staffComplaints.id, complaintId))
+        .limit(1);
+
+      if (!existingComplaint) {
+        return res.status(404).json({ error: "Staff complaint not found" });
+      }
+
+      // Update the complaint
+      const [updatedComplaint] = await db
+        .update(staffComplaints)
+        .set({
+          status,
+          reviewComments: reviewComments || null,
+          reviewedAt: new Date(),
+        })
+        .where(eq(staffComplaints.id, complaintId))
+        .returning();
+
+      console.log("Staff complaint updated successfully:", updatedComplaint);
+
+      // Create notification for the staff member who submitted the complaint
+      if (existingComplaint.submitterId) {
+        try {
+          await db
+            .insert(notifications)
+            .values({
+              userId: existingComplaint.submitterId,
+              type: "task_updated", // Using existing type
+              content: `Your staff complaint has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
+              referenceId: complaintId,
+              referenceType: "project", // Using existing type
+            });
+          console.log("Notification sent to staff member:", existingComplaint.submitterId);
+        } catch (notificationError) {
+          console.error("Error creating notification for staff complaint update:", notificationError);
+          // Continue execution even if notification fails
+        }
+      }
+
+      res.json({ success: true, complaint: updatedComplaint });
+    } catch (error) {
+      console.error("Error updating staff complaint:", error);
+      res.status(500).json({ error: "Failed to update staff complaint", details: error.message });
     }
   });
 
