@@ -91,12 +91,20 @@ export default function SendComplaint() {
         formDataToSend.append('screenshot', screenshot);
       }
 
+      console.log('Submitting complaint form data...');
+
       const response = await fetch('/api/staff-complaints', {
         method: 'POST',
+        credentials: 'include',
         body: formDataToSend,
       });
 
+      console.log('Response status:', response.status);
+
       if (response.ok) {
+        const result = await response.json();
+        console.log('Complaint submitted successfully:', result);
+        
         toast({
           title: "Complaint submitted successfully",
           description: "Your complaint has been submitted and will be reviewed by operations management.",
@@ -117,8 +125,9 @@ export default function SendComplaint() {
           fileInput.value = '';
         }
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit complaint');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Error response:', errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to submit complaint`);
       }
     } catch (error) {
       console.error('Error submitting complaint:', error);

@@ -1843,13 +1843,15 @@ End of Report
 
   app.post("/api/staff-complaints", upload.single('screenshot'), async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
 
     try {
       const { name, email, department, detailedExplanation } = req.body;
+
+      console.log("Staff complaint submission:", { name, email, department, userId: user.id });
 
       if (!name || !email || !detailedExplanation) {
         return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
@@ -1859,6 +1861,7 @@ End of Report
       let screenshotUrl = null;
       if (req.file) {
         screenshotUrl = `/uploads/leave-proof/${req.file.filename}`;
+        console.log("Screenshot uploaded:", screenshotUrl);
       }
 
       const [newComplaint] = await db
@@ -1873,6 +1876,8 @@ End of Report
           status: "pending",
         })
         .returning();
+
+      console.log("Staff complaint created:", newComplaint.id);
 
       // Create notifications for operations managers
       try {
@@ -1895,6 +1900,8 @@ End of Report
               referenceType: "project", // Using existing type
             });
         }
+
+        console.log(`Notifications sent to ${operationsManagers.length} operations managers`);
       } catch (notificationError) {
         console.error("Error creating staff complaint notifications:", notificationError);
       }
@@ -1902,7 +1909,7 @@ End of Report
       res.json({ success: true, complaintId: newComplaint.id });
     } catch (error) {
       console.error("Error creating staff complaint:", error);
-      res.status(500).json({ error: "Failed to create staff complaint" });
+      res.status(500).json({ error: "Failed to create staff complaint", details: error.message });
     }
   });
 
