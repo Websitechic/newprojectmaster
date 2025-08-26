@@ -108,8 +108,8 @@ export function setupWebSocket(wss: WebSocketServer) {
 
     // Handle connection close
     ws.on('close', (code: number, reason: Buffer) => {
-      const reasonString = reason.toString();
-      console.log(`WebSocket connection closed for user ${userId || 'unknown'}, code: ${code}, reason: ${reasonString || 'no reason'}`);
+      const reasonString = reason ? reason.toString() : 'no reason provided';
+      console.log(`WebSocket connection closed for user ${userId || 'unknown'}, code: ${code}, reason: ${reasonString}`);
 
       if (userId) {
         global.connectedClients.delete(userId);
