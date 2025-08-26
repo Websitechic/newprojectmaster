@@ -19,7 +19,7 @@ import { formatDate } from "@/lib/utils";
 const requestSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
-  taskId: z.number({ required_error: "Please select a related task" }),
+  taskId: z.number({ required_error: "Please select a related task" }).optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
 });
 
@@ -72,7 +72,7 @@ interface Project {
 
 const priorityColors = {
   low: "bg-green-100 text-green-800",
-  medium: "bg-yellow-100 text-yellow-800", 
+  medium: "bg-yellow-100 text-yellow-800",
   high: "bg-orange-100 text-orange-800",
   urgent: "bg-red-100 text-red-800"
 };
@@ -133,7 +133,10 @@ export default function TechnicalSupportPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to create request");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to create request");
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -143,8 +146,12 @@ export default function TechnicalSupportPage() {
       form.reset();
       toast({ title: "Success", description: "Technical support request created successfully" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to create request", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create request",
+        variant: "destructive"
+      });
     },
   });
 
@@ -255,13 +262,14 @@ export default function TechnicalSupportPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Related Task *</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                      <Select onValueChange={(value) => field.onChange(value === "" ? undefined : parseInt(value))} value={field.value?.toString() ?? ""}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a task" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="">None</SelectItem>
                           {userTasks.map((task) => (
                             <SelectItem key={task.id} value={task.id.toString()}>
                               {task.title} ({projectMap[task.projectId] || `Project ${task.projectId}`})

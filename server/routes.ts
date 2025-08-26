@@ -140,7 +140,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       console.log("Fetching notifications for user:", user.id);
-      
+
       const userNotifications = await db
         .select()
         .from(notifications)
@@ -149,7 +149,7 @@ export function registerRoutes(app: Express): Server {
         .limit(50);
 
       console.log(`Found ${userNotifications.length} notifications for user ${user.id}`);
-      
+
       res.json(userNotifications);
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -198,7 +198,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const user = req.user!;
-      
+
       // Update last active timestamp
       await db
         .update(users)
@@ -681,14 +681,14 @@ export function registerRoutes(app: Express): Server {
           const timerDate = new Date(task.timerStartTime);
           return timerDate >= startOfDay && timerDate <= endOfDay;
         }
-        
+
         // Include tasks that have accumulated time and were worked on today
         if (task.timeSpent && task.timeSpent > 0) {
           // Check if task was updated today (as proxy for work done)
           const updateDate = new Date(task.updatedAt);
           return updateDate >= startOfDay && updateDate <= endOfDay;
         }
-        
+
         // Include tasks that were started or modified today
         const updateDate = new Date(task.updatedAt);
         return updateDate >= startOfDay && updateDate <= endOfDay;
@@ -716,13 +716,13 @@ export function registerRoutes(app: Express): Server {
       // Process today's data with current timer sessions
       const todayTaskBreakdown = todayTasks.map(task => {
         let currentTimeSpent = task.timeSpent || 0;
-        
+
         // Add current session time if timer is running
         if (task.isTimerRunning && task.timerStartTime) {
           const sessionTime = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
           currentTimeSpent += sessionTime;
         }
-        
+
         return {
           taskId: task.id,
           title: task.title,
@@ -1606,7 +1606,7 @@ End of Report
         .returning();
 
       console.log("Test notification created:", newNotification);
-      
+
       res.json({ 
         success: true, 
         message: "Test notification created successfully",
@@ -2706,6 +2706,39 @@ End of Report
     } catch (error) {
       console.error("Error fetching technical support requests:", error);
       res.status(500).json({ error: "Failed to fetch technical support requests" });
+    }
+  });
+
+  app.post("/api/technical-support/requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const { title, description, taskId, priority } = req.body;
+
+      if (!title || !description) {
+        return res.status(400).json({ error: "Title and description are required" });
+      }
+
+      const [newRequest] = await db
+        .insert(technicalSupportRequests)
+        .values({
+          title: title.trim(),
+          description: description.trim(),
+          taskId: taskId ? parseInt(taskId) : null,
+          requesterId: user.id,
+          priority: priority || "medium",
+          status: "pending",
+        })
+        .returning();
+
+      res.json({ success: true, requestId: newRequest.id });
+    } catch (error) {
+      console.error("Error creating technical support request:", error);
+      res.status(500).json({ error: "Failed to create request" });
     }
   });
 

@@ -31,6 +31,9 @@ export function NotificationsDropdown() {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Local state to manage notifications, for SSE updates before query refetch
+  const [sseNotifications, setSseNotifications] = useState<Notification[]>([]);
+
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     queryFn: async () => {
@@ -47,6 +50,8 @@ export function NotificationsDropdown() {
         }
         const data = await res.json();
         console.log("Notifications fetched:", data);
+        // Initialize SSE notifications with fetched data
+        setSseNotifications(data);
         return data;
       } catch (error) {
         console.error("Error fetching notifications:", error);
@@ -87,12 +92,24 @@ export function NotificationsDropdown() {
 
         eventSource.onmessage = (event) => {
           try {
-            const notification = JSON.parse(event.data);
-            queryClient.setQueryData(["/api/notifications"], (oldData: Notification[] = []) => {
-              return [notification, ...oldData];
-            });
+            const data = JSON.parse(event.data);
+
+            // Only process actual notification data, ignore system messages like heartbeat or connected
+            if (data.type === 'notification' && data.notification) {
+              console.log('New notification received:', data.notification);
+              // Update SSE local state to prepend new notification
+              setSseNotifications(prev => [data.notification, ...prev]);
+              // Update query cache with the new notification
+              queryClient.setQueryData(["/api/notifications"], (oldData: Notification[] = []) => {
+                // Ensure the new notification is not already in the cache before prepending
+                if (!oldData.some(n => n.id === data.notification.id)) {
+                  return [data.notification, ...oldData];
+                }
+                return oldData;
+              });
+            }
           } catch (error) {
-            console.error("Error parsing notification:", error);
+            console.error("Error parsing SSE message:", error);
           }
         };
 
@@ -106,7 +123,6 @@ export function NotificationsDropdown() {
             eventSourceRef.current.close();
             eventSourceRef.current = null;
           }
-
 
           // Only reconnect if we still have a user and no existing connection
           if (user?.id && !eventSourceRef.current && !reconnectTimeoutRef.current) {
@@ -138,9 +154,25 @@ export function NotificationsDropdown() {
       }
       setIsConnecting(false);
     };
-  }, [user?.id]);
+  }, [user?.id, queryClient]); // Added queryClient to dependency array
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Combine fetched notifications with SSE notifications and sort by createdAt descending
+  const combinedNotifications = [...sseNotifications, ...notifications].sort((a, b) => {
+    const dateA = a.createdAt ? parseISO(a.createdAt) : null;
+    const dateB = b.createdAt ? parseISO(b.createdAt) : null;
+
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1; // a is considered newer if b has no date
+    if (!dateB) return -1; // b is considered newer if a has no date
+
+    return dateB.getTime() - dateA.getTime();
+  });
+
+  // Remove duplicates, prioritizing SSE notifications if they have the same ID
+  const uniqueNotifications = Array.from(new Map(combinedNotifications.map(item => [item.id, item])).values());
+
+
+  const unreadCount = uniqueNotifications.filter(n => !n.read).length;
 
   const handleNotificationClick = async (notification: Notification) => {
     try {
@@ -172,6 +204,8 @@ export function NotificationsDropdown() {
       queryClient.setQueryData(["/api/notifications"], (old: Notification[] = []) =>
         old.map(n => n.id === notificationId ? { ...n, read: true } : n)
       );
+      // Also update SSE local state
+      setSseNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, read: true } : n));
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
@@ -193,12 +227,12 @@ export function NotificationsDropdown() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
-        {notifications.length === 0 ? (
+        {uniqueNotifications.length === 0 ? (
           <DropdownMenuItem key="no-notifications" disabled>
             <span className="text-sm text-muted-foreground">No notifications</span>
           </DropdownMenuItem>
         ) : (
-          notifications.slice(0, 5).map((notification, index) => (
+          uniqueNotifications.slice(0, 5).map((notification, index) => (
             <DropdownMenuItem
               key={`notification-${notification.id}-${index}`}
               className="flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50"
@@ -217,6 +251,10 @@ export function NotificationsDropdown() {
                 {notification.type === "deadline" && (
                   <AlertTriangle className="h-4 w-4 text-red-500" />
                 )}
+                {/* Default icon if type is unknown or for general notifications */}
+                {(!notification.type || ["mention", "system"].includes(notification.type)) && (
+                   <Bell className="h-4 w-4 text-gray-500" />
+                )}
               </div>
               <div className="flex flex-col space-y-1">
                 <p className="text-sm">{notification.content}</p>
@@ -226,18 +264,18 @@ export function NotificationsDropdown() {
                       console.log('Notification missing createdAt:', notification);
                       return 'Just now';
                     }
-                    
+
                     try {
                       // Handle both ISO strings and Date objects
-                      const date = typeof notification.createdAt === 'string' 
-                        ? parseISO(notification.createdAt) 
+                      const date = typeof notification.createdAt === 'string'
+                        ? parseISO(notification.createdAt)
                         : new Date(notification.createdAt);
-                      
+
                       if (!isValid(date)) {
                         console.log('Invalid date for notification:', notification.id, notification.createdAt);
                         return 'Just now';
                       }
-                      
+
                       return formatDistanceToNow(date, { addSuffix: true });
                     } catch (error) {
                       console.error('Date parsing error for notification:', notification.id, notification.createdAt, error);
