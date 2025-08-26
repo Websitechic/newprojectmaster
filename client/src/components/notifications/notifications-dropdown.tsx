@@ -35,14 +35,19 @@ export function NotificationsDropdown() {
     queryKey: ["/api/notifications"],
     queryFn: async () => {
       try {
+        console.log("Fetching notifications for user:", user?.id);
         const res = await fetch("/api/notifications", { credentials: "include" });
         if (!res.ok) {
           if (res.status === 401) {
+            console.log("Unauthorized to fetch notifications");
             return []; // Return empty array for unauthorized users
           }
+          console.error(`Failed to fetch notifications: ${res.status}`);
           throw new Error(`Failed to fetch notifications: ${res.status}`);
         }
-        return res.json();
+        const data = await res.json();
+        console.log("Notifications fetched:", data);
+        return data;
       } catch (error) {
         console.error("Error fetching notifications:", error);
         return []; // Return empty array on error
@@ -217,7 +222,10 @@ export function NotificationsDropdown() {
                 <p className="text-sm">{notification.content}</p>
                 <div className="text-xs text-muted-foreground">
                   {(() => {
-                    if (!notification.createdAt) return 'No date';
+                    if (!notification.createdAt) {
+                      console.log('Notification missing createdAt:', notification);
+                      return 'Just now';
+                    }
                     
                     try {
                       // Handle both ISO strings and Date objects
@@ -225,12 +233,15 @@ export function NotificationsDropdown() {
                         ? parseISO(notification.createdAt) 
                         : new Date(notification.createdAt);
                       
-                      if (!isValid(date)) return 'Invalid date';
+                      if (!isValid(date)) {
+                        console.log('Invalid date for notification:', notification.id, notification.createdAt);
+                        return 'Just now';
+                      }
                       
                       return formatDistanceToNow(date, { addSuffix: true });
                     } catch (error) {
-                      console.error('Date parsing error for notification:', notification.id, error);
-                      return 'Invalid date';
+                      console.error('Date parsing error for notification:', notification.id, notification.createdAt, error);
+                      return 'Just now';
                     }
                   })()}
                 </div>

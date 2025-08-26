@@ -130,6 +130,33 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Notifications endpoint
+  app.get("/api/notifications", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      console.log("Fetching notifications for user:", user.id);
+      
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, user.id))
+        .orderBy(desc(notifications.createdAt))
+        .limit(50);
+
+      console.log(`Found ${userNotifications.length} notifications for user ${user.id}`);
+      
+      res.json(userNotifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
   // Update user status endpoint
   app.put("/api/users/status", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -1553,6 +1580,42 @@ End of Report
     } catch (error) {
       console.error("Error uploading file:", error);
       res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
+  // Test notification creation endpoint
+  app.post("/api/notifications/test", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      // Create a test notification
+      const [newNotification] = await db
+        .insert(notifications)
+        .values({
+          userId: user.id,
+          type: "task_assignment",
+          content: "Test notification - This is a sample notification to verify the system is working",
+          read: false,
+          referenceId: null,
+          referenceType: null,
+        })
+        .returning();
+
+      console.log("Test notification created:", newNotification);
+      
+      res.json({ 
+        success: true, 
+        message: "Test notification created successfully",
+        notificationId: newNotification.id,
+        notification: newNotification
+      });
+    } catch (error) {
+      console.error("Error creating test notification:", error);
+      res.status(500).json({ error: "Failed to create test notification", details: error.message });
     }
   });
 
@@ -3680,6 +3743,39 @@ End of Report
     } catch (error) {
       console.error("Error marking messages as read:", error);
       res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
+  // Mark notification as read
+  app.put("/api/notifications/:id/read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const notificationId = parseInt(req.params.id);
+
+    try {
+      // Update notification as read if it belongs to the user
+      const [updatedNotification] = await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.id, notificationId),
+            eq(notifications.userId, user.id)
+          )
+        )
+        .returning();
+
+      if (!updatedNotification) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ error: "Failed to mark notification as read" });
     }
   });
 
