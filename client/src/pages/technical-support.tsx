@@ -19,7 +19,7 @@ import { formatDate } from "@/lib/utils";
 const requestSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
-  taskId: z.number({ required_error: "Please select a related task" }).optional(),
+  taskId: z.number().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
 });
 
@@ -261,11 +261,11 @@ export default function TechnicalSupportPage() {
                   name="taskId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Related Task *</FormLabel>
+                      <FormLabel>Related Task</FormLabel>
                       <Select onValueChange={(value) => field.onChange(value === "" ? undefined : parseInt(value))} value={field.value?.toString() ?? ""}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a task" />
+                            <SelectValue placeholder="Select a task (optional)" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>

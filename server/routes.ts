@@ -1786,6 +1786,28 @@ End of Report
   });
 
   // Staff Complaints API Routes
+  // Get user's own complaints
+  app.get("/api/staff-complaints/my-complaints", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const complaints = await db
+        .select()
+        .from(staffComplaints)
+        .where(eq(staffComplaints.submitterId, user.id))
+        .orderBy(desc(staffComplaints.createdAt));
+
+      res.json(complaints);
+    } catch (error) {
+      console.error("Error fetching user's staff complaints:", error);
+      res.status(500).json({ error: "Failed to fetch complaints" });
+    }
+  });
+
   app.get("/api/staff-complaints", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -1819,7 +1841,7 @@ End of Report
     }
   });
 
-  app.post("/api/staff-complaints", async (req, res) => {
+  app.post("/api/staff-complaints", upload.single('screenshot'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
@@ -1827,24 +1849,55 @@ End of Report
     const user = req.user!;
 
     try {
-      const { name, email, department, detailedExplanation, screenshotUrl } = req.body;
+      const { name, email, department, detailedExplanation } = req.body;
 
       if (!name || !email || !detailedExplanation) {
         return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
       }
 
+      // Handle screenshot if uploaded
+      let screenshotUrl = null;
+      if (req.file) {
+        screenshotUrl = `/uploads/leave-proof/${req.file.filename}`;
+      }
+
       const [newComplaint] = await db
         .insert(staffComplaints)
         .values({
-          name,
-          email,
-          department,
-          detailedExplanation,
+          name: name.trim(),
+          email: email.trim(),
+          department: department || null,
+          detailedExplanation: detailedExplanation.trim(),
           screenshotUrl,
           submitterId: user.id,
           status: "pending",
         })
         .returning();
+
+      // Create notifications for operations managers
+      try {
+        const operationsManagers = await db
+          .select()
+          .from(users)
+          .where(or(
+            eq(users.role, "operations_manager"),
+            eq(users.specialization, "operations_manager")
+          ));
+
+        for (const manager of operationsManagers) {
+          await db
+            .insert(notifications)
+            .values({
+              userId: manager.id,
+              type: "task_assigned", // Using existing type
+              content: `New staff complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
+              referenceId: newComplaint.id,
+              referenceType: "project", // Using existing type
+            });
+        }
+      } catch (notificationError) {
+        console.error("Error creating staff complaint notifications:", notificationError);
+      }
 
       res.json({ success: true, complaintId: newComplaint.id });
     } catch (error) {
