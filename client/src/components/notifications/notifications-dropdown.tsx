@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { formatDistanceToNow } from "date-fns"; // Assuming formatDistanceToNow is needed and imported from date-fns
+import { formatDistanceToNow, format, isValid, parseISO } from "date-fns";
 
 interface Notification {
   id: number;
@@ -216,11 +216,24 @@ export function NotificationsDropdown() {
               <div className="flex flex-col space-y-1">
                 <p className="text-sm">{notification.content}</p>
                 <div className="text-xs text-muted-foreground">
-                {notification.createdAt && !isNaN(new Date(notification.createdAt).getTime()) 
-                  ? format(new Date(notification.createdAt), 'MMM d, h:mm a')
-                  : 'Invalid date'
-                }
-              </div>
+                  {(() => {
+                    if (!notification.createdAt) return 'No date';
+                    
+                    try {
+                      // Handle both ISO strings and Date objects
+                      const date = typeof notification.createdAt === 'string' 
+                        ? parseISO(notification.createdAt) 
+                        : new Date(notification.createdAt);
+                      
+                      if (!isValid(date)) return 'Invalid date';
+                      
+                      return formatDistanceToNow(date, { addSuffix: true });
+                    } catch (error) {
+                      console.error('Date parsing error for notification:', notification.id, error);
+                      return 'Invalid date';
+                    }
+                  })()}
+                </div>
               </div>
             </DropdownMenuItem>
           ))
