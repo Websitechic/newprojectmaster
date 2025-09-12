@@ -51,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: ["/api/user"],
     queryFn: async () => {
       try {
+        console.log("Fetching user authentication status...");
+        
         const res = await fetch("/api/user", {
           credentials: "include",
           headers: {
@@ -58,7 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         });
 
-        if (res.status === 401) return null;
+        console.log("User fetch response status:", res.status);
+
+        if (res.status === 401) {
+          console.log("User not authenticated");
+          return null;
+        }
+        
         if (!res.ok) {
           console.error(`Failed to fetch user: ${res.status} ${res.statusText}`);
           return null;
@@ -67,21 +75,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
           console.error("Expected JSON response but got:", contentType);
+          const text = await res.text();
+          console.error("Response text:", text);
           return null;
         }
 
-        return res.json();
+        const userData = await res.json();
+        console.log("User data fetched successfully:", userData);
+        return userData;
       } catch (err) {
         console.error("Error fetching user:", err);
         return null;
       }
     },
-    retry: false,
+    retry: (failureCount, error) => {
+      console.log("User query retry attempt:", failureCount, error);
+      return failureCount < 2; // Retry up to 2 times
+    },
     staleTime: 30000, // Consider data fresh for 30 seconds
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
+      console.log("Attempting login for:", credentials.username);
+      
       const res = await fetch("/api/login", {
         method: "POST",
         headers: {
@@ -92,25 +110,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include"
       });
 
+      console.log("Login response status:", res.status);
+
       if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Login failed");
+        let errorMessage = "Login failed";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error("Error parsing login error response:", parseError);
+          const textError = await res.text();
+          errorMessage = textError || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
-      return res.json();
+      const data = await res.json();
+      console.log("Login successful, user data:", data.user);
+      return data;
     },
     onSuccess: (data) => {
+      console.log("Setting user data in query cache:", data.user);
       queryClient.setQueryData(["/api/user"], data.user);
+      
+      // Invalidate and refetch user data to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
         title: "Success",
         description: "Successfully logged in",
       });
     },
     onError: (error: Error) => {
-      console.error("Login error:", error);
+      console.error("Login mutation error:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to login",
+        title: "Login Failed",
+        description: error.message || "Invalid username or password",
         variant: "destructive",
       });
     },

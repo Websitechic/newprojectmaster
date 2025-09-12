@@ -44,10 +44,8 @@ const sessionMiddleware = session({
     secure: false, // Set to false for development
     httpOnly: true,
     sameSite: "lax",
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    path: "/"
-  },
-  name: "session_id" // Custom session cookie name
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 });
 
 // Apply session middleware
@@ -60,6 +58,12 @@ setupAuth(app);
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
+  
+  // Log authentication-related requests in detail
+  if (path.includes("login") || path.includes("user") || path.includes("auth")) {
+    console.log(`${req.method} ${path} - Session ID: ${req.sessionID}, Authenticated: ${req.isAuthenticated?.()}`);
+  }
+  
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
