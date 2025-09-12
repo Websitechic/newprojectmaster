@@ -296,6 +296,8 @@ interface Task {
   workingHours: number;
   deadline: string;
   createdAt: string;
+  description: string | null;
+  assigneeId: number | null;
 }
 
 interface ProjectProgress {

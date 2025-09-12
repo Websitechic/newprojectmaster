@@ -5,7 +5,7 @@ import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { MeetingAlert } from "@/components/dashboard/meeting-alert";
 import { BookingAlert } from "@/components/booking/booking-alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectCard } from "@/components/project/project-card";
 import { TaskList } from "@/components/task/task-list";
 import { StaffTaskList } from "@/components/task/staff-task-list";

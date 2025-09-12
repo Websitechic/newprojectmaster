@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/dashboard/header";
@@ -114,7 +113,7 @@ export default function ClientSentimentTracker() {
       { value: "current", label: "Current Week" },
       { value: "last", label: "Last Week" },
     ];
-    
+
     for (let i = 2; i <= 8; i++) {
       const date = subWeeks(new Date(), i);
       const start = startOfWeek(date, { weekStartsOn: 1 });
@@ -124,7 +123,7 @@ export default function ClientSentimentTracker() {
         label: `${format(start, "MMM d")} - ${format(end, "MMM d")}`
       });
     }
-    
+
     return options;
   };
 
@@ -160,7 +159,7 @@ export default function ClientSentimentTracker() {
                 </h1>
                 <p className="text-gray-600 mt-1">Monitor client satisfaction and feedback</p>
               </div>
-              
+
               <div className="w-48">
                 <Select value={selectedWeek} onValueChange={setSelectedWeek}>
                   <SelectTrigger>
@@ -276,13 +275,13 @@ export default function ClientSentimentTracker() {
                             </span>
                           </div>
                         </div>
-                        
+
                         <div className="bg-gray-50 rounded-md p-3">
                           <p className="text-sm text-gray-700 leading-relaxed">
                             {sentiment.reason}
                           </p>
                         </div>
-                        
+
                         <div className="mt-3 text-xs text-gray-500">
                           Week: {format(new Date(sentiment.weekStart), "MMM d")} - {format(new Date(sentiment.weekEnd), "MMM d, yyyy")}
                         </div>
