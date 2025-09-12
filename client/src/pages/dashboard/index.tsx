@@ -169,11 +169,11 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex min-h-screen">
+    <div className="dashboard-layout fit-device-width">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-0">
+      <div className="dashboard-content">
         <Header />
-        <div className="flex-1 overflow-auto p-4 sm:p-6">
+        <div className="dashboard-main">
           <BookingAlert />
           {user?.role === "staff" ||
           (user?.role === "client" &&
