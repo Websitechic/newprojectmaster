@@ -22,6 +22,10 @@ import {
   AlertCircle,
   CheckCircle,
   HelpCircle,
+  Briefcase,
+  CheckSquare,
+  Users,
+  TrendingUp,
 } from "lucide-react";
 import {
   Collapsible,
@@ -37,6 +41,24 @@ import {
 } from "@/components/ui/select";
 import type { Project, Task } from "@db/schema";
 
+// Mock stats data - replace with actual data fetching
+const stats = {
+  totalProjects: 15,
+  activeTasks: 7,
+  teamMembers: 12,
+  completionRate: 85,
+};
+
+// Mock formatDate function - replace with actual implementation if needed
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return "N/A";
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
 export default function Dashboard() {
   const [location, setLocation] = useLocation();
   const { user } = useUser();
@@ -45,6 +67,7 @@ export default function Dashboard() {
     inProgress: false,
     pending: false,
     review: false,
+    technical: false,
   });
 
   const handleProjectClick = (projectId: number, e?: React.MouseEvent) => {
@@ -73,13 +96,12 @@ export default function Dashboard() {
     };
   }, [updateStatus]);
 
-  // Filter tasks for staff user or all tasks for managers and support maintenance clients
+  // Filter tasks based on user role
   const staffTasks =
     user?.role === "staff"
       ? tasks?.filter((task) => task.assigneeId === user?.id) || []
       : tasks || [];
 
-  // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
   const userTasks =
     user?.role === "staff"
       ? staffTasks
@@ -169,12 +191,60 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="dashboard-layout fit-device-width">
+    <>
       <Sidebar currentPath={location} />
       <div className="dashboard-content">
         <Header />
         <div className="dashboard-main">
-          <BookingAlert />
+          <div className="container-responsive space-responsive">
+            <div>
+              <h1 className="text-fluid-xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-fluid-base text-gray-600">Welcome back, {user?.name}!</p>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid-responsive-1-2-3 lg:grid-cols-4">
+              <Card className="card-responsive">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-fluid-sm font-medium">Total Projects</CardTitle>
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-fluid-xl font-bold">{stats?.totalProjects || 0}</div>
+                </CardContent>
+              </Card>
+
+              <Card className="card-responsive">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-fluid-sm font-medium">Active Tasks</CardTitle>
+                  <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-fluid-xl font-bold">{stats?.activeTasks || 0}</div>
+                </CardContent>
+              </Card>
+
+              <Card className="card-responsive">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-fluid-sm font-medium">Team Members</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-fluid-xl font-bold">{stats?.teamMembers || 0}</div>
+                </CardContent>
+              </Card>
+
+              <Card className="card-responsive">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-fluid-sm font-medium">Completion Rate</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-fluid-xl font-bold">{stats?.completionRate || 0}%</div>
+                </CardContent>
+              </Card>
+            </div>
+
           {user?.role === "staff" ||
           (user?.role === "client" &&
             user?.clientType === "support_maintenance_client") ? (
@@ -579,8 +649,8 @@ export default function Dashboard() {
                                 (task) => task.projectId === project.id
                               ) || [];
 
-                              const reasonText = projectTasks.length === 0 
-                                ? "No tasks assigned" 
+                              const reasonText = projectTasks.length === 0
+                                ? "No tasks assigned"
                                 : "No work activity for 1+ week";
 
                               return (
@@ -948,8 +1018,81 @@ export default function Dashboard() {
               </div>
             </>
           )}
+
+          {/* Recent Activity and Projects */}
+            <div className="grid-responsive-1-2">
+              <Card className="card-responsive">
+                <CardHeader>
+                  <CardTitle className="text-fluid-lg">Recent Projects</CardTitle>
+                  <CardDescription className="text-fluid-base">Your latest project activities</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {projects && projects.length > 0 ? (
+                    <div className="space-responsive">
+                      {projects.slice(0, 5).map((project) => (
+                        <div key={project.id} className="flex-responsive items-center">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-fluid-sm font-medium truncate">{project.name}</p>
+                            <p className="text-fluid-sm text-gray-500 line-clamp-2">{project.description}</p>
+                          </div>
+                          <Badge
+                            variant={project.status === 'completed' ? 'default' : 'secondary'}
+                            className="flex-shrink-0"
+                          >
+                            {project.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-fluid-base">No projects found</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="card-responsive">
+                <CardHeader>
+                  <CardTitle className="text-fluid-lg">Upcoming Deadlines</CardTitle>
+                  <CardDescription className="text-fluid-base">Tasks due soon</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {tasks && tasks.length > 0 ? (
+                    <div className="space-responsive">
+                      {tasks
+                        .filter(task => task.dueDate && new Date(task.dueDate) > new Date())
+                        .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+                        .slice(0, 5)
+                        .map((task) => (
+                          <div key={task.id} className="flex-responsive items-center">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full flex-shrink-0"></div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-fluid-sm font-medium truncate">{task.title}</p>
+                              <p className="text-fluid-sm text-gray-500">
+                                Due: {task.dueDate ? formatDate(task.dueDate) : 'No due date'}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={
+                                task.priority === 'high' ? 'destructive' :
+                                task.priority === 'medium' ? 'default' : 'secondary'
+                              }
+                              className="flex-shrink-0"
+                            >
+                              {task.priority}
+                            </Badge>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-fluid-base">No upcoming deadlines</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

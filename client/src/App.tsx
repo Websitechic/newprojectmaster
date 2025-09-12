@@ -93,57 +93,57 @@ function Router() {
             {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
           </Route>
           <Route path="/dashboard">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               {user?.role === "client" ? <ClientDashboard /> : <Dashboard />}
             </div>
           </Route>
           <Route path="/dashboard/projects">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               <Projects />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               <ProjectDetails />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/tasks">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               <ProjectTasks />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/team-chat">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               <TeamChat />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/client-chat">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               <ClientChat />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/staff-tasks">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               <StaffProjectTasks />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/staff">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               <StaffProjectDetails />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/resources">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               <ProjectResources />
             </div>
           </Route>
           <Route path="/dashboard/staff-report">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               <StaffReport />
             </div>
           </Route>
           <Route path="/dashboard/tasks">
-            <div className="lg:flex min-h-screen">
+            <div className="dashboard-layout">
               <Tasks />
             </div>
           </Route>
