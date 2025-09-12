@@ -169,20 +169,19 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-0">
         <Header />
-        <MeetingAlert />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
           <BookingAlert />
           {user?.role === "staff" ||
           (user?.role === "client" &&
             user?.clientType === "support_maintenance_client") ? (
             <>
               {/* Staff & Support Maintenance Client Dashboard */}
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
                 {/* Tasks in Progress */}
                 <Card>
                   <CardHeader className="pb-3">
@@ -410,8 +409,8 @@ export default function Dashboard() {
                   <div className="mb-6">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">Project Status</h2>
                   </div>
-                
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                   {/* Active Projects */}
 
                   <Card>
@@ -579,7 +578,7 @@ export default function Dashboard() {
                               const projectTasks = tasks?.filter(
                                 (task) => task.projectId === project.id
                               ) || [];
-                              
+
                               const reasonText = projectTasks.length === 0 
                                 ? "No tasks assigned" 
                                 : "No work activity for 1+ week";
@@ -696,7 +695,7 @@ export default function Dashboard() {
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Task Status</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
                 {/* Tasks in Progress */}
                 <Card>
                   <CardHeader className="pb-3">

@@ -8,12 +8,12 @@ export default function EmergencySupport() {
   const [location] = useLocation();
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
+          <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">

@@ -1,3 +1,4 @@
+
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
@@ -29,13 +30,14 @@ import {
   Phone,
   Building2,
   MessageSquare,
+  Menu,
+  X,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 import { useQuery } from "@tanstack/react-query";
-
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -44,9 +46,10 @@ interface SidebarItemProps {
   active?: boolean;
   badge?: number;
   external?: boolean;
+  onClick?: () => void;
 }
 
-function SidebarItem({ icon, label, href, active, badge, external }: SidebarItemProps) {
+function SidebarItem({ icon, label, href, active, badge, external, onClick }: SidebarItemProps) {
   const content = (
     <div
       className={cn(
@@ -55,20 +58,21 @@ function SidebarItem({ icon, label, href, active, badge, external }: SidebarItem
           ? "bg-purple-100 text-purple-700 shadow-sm"
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
       )}
+      onClick={onClick}
     >
-      <div className={cn("w-5 h-5", active ? "text-purple-700" : "text-gray-500")}>
+      <div className={cn("w-5 h-5 flex-shrink-0", active ? "text-purple-700" : "text-gray-500")}>
         {icon}
       </div>
-      <span className="flex-1">{label}</span>
+      <span className="flex-1 truncate">{label}</span>
       {badge && badge > 0 && (
-        <div className="w-2 h-2 bg-red-500 rounded-full" />
+        <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
       )}
     </div>
   );
 
   if (external) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer">
+      <a href={href} target="_blank" rel="noopener noreferrer" onClick={onClick}>
         {content}
       </a>
     );
@@ -85,12 +89,13 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   const { logout, user } = useUser();
   const [, setLocation] = useLocation();
   const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
   const { data: unreadCounts = {} } = useQuery({
     queryKey: ["/api/projects/unread-counts"],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   });
 
-  // Fetch unread memos count for non-operations managers
   const { data: unreadMemos = [] } = useQuery({
     queryKey: ["/api/memos/my-memos"],
     enabled: user?.role !== "operations_manager" && user?.specialization !== "operations_manager",
@@ -98,11 +103,41 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   });
 
   const unreadMemoCount = Array.isArray(unreadMemos) ? unreadMemos.filter((memo: any) => !memo.isRead).length : 0;
-
-  // Calculate total unread project messages
   const totalUnreadProjectMessages = Object.values(unreadCounts || {}).reduce((total: number, count: unknown) => total + (typeof count === 'number' ? count : 0), 0);
 
-  // Fetch initial unread count
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [currentPath]);
+
+  // Close mobile menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (isMobileMenuOpen && !target.closest('.mobile-sidebar') && !target.closest('.mobile-menu-button')) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('click', handleOutsideClick);
+      return () => document.removeEventListener('click', handleOutsideClick);
+    }
+  }, [isMobileMenuOpen]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
+
+  // Fetch unread count
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
@@ -119,7 +154,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     fetchUnreadCount();
   }, []);
 
-  // Set up SSE connection for real-time updates (direct messages only)
+  // SSE connection for real-time updates
   useEffect(() => {
     if (!user?.id) return;
 
@@ -145,9 +180,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-
             if (data.type === 'direct_message') {
-              // Increment unread direct messages count
               setUnreadDirectMessages(prev => prev + 1);
             }
           } catch (error) {
@@ -164,7 +197,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
           }
           eventSource = null;
 
-          // Only reconnect if user is still authenticated and no pending reconnection
           if (user?.id && !reconnectTimeout) {
             reconnectTimeout = setTimeout(() => {
               reconnectTimeout = null;
@@ -178,10 +210,9 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       }
     };
 
-    // Delay connection to ensure authentication is complete
     const connectionDelay = setTimeout(() => {
       connectSSE();
-    }, 3000); // Increased delay to avoid conflicts with notifications dropdown
+    }, 3000);
 
     return () => {
       clearTimeout(connectionDelay);
@@ -204,7 +235,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     }
   }, [currentPath]);
 
-  // Base menu items for all users, support maintenance clients get the same as non-clients
+  // Menu items configuration (same as before)
   const isClientWithSpecialAccess = user?.role === "client" && user?.clientType === "support_maintenance_client";
   const baseMenuItems = (user?.role !== "client" || isClientWithSpecialAccess) ? [
     {
@@ -255,7 +286,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     },
   ];
 
-  // Project manager specific menu items - support maintenance clients get technical management access
   const pmMenuItems = user?.role === "project_manager" || isClientWithSpecialAccess ? [
     ...(user?.role === "project_manager" ? [
       {
@@ -291,7 +321,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     }
   ] : [];
 
-  // Staff specific menu items
   const staffMenuItems = user?.role === "staff" ? [
     {
       icon: <Calendar size={20} />,
@@ -318,7 +347,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       key: "staff-queries",
     }
   ] : user?.role === "product_owner" ? [
-    // Product owners can apply for leave
     {
       icon: <Calendar size={20} />,
       label: "Leave Application",
@@ -345,16 +373,13 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     }
   ] : [];
 
-  // Technical support menu items - conditional based on specialization and role
   const technicalSupportMenuItems = user?.role === "staff" ? [
-    // For technical support staff, show Technical Management
     ...(user?.specialization === "technical_support" ? [{
       icon: <Settings size={20} />,
       label: "Technical Management",
       href: "/dashboard/technical-management",
       key: "technical-management",
     }] : []),
-    // For non-technical support staff (including null specialization), show Technical Support
     ...(user?.specialization !== "technical_support" ? [{
       icon: <Settings size={20} />,
       label: "Technical Support",
@@ -362,7 +387,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       key: "technical-support",
     }] : [])
   ] : user?.role === "product_owner" ? [
-    // Product owners get read-only access to Technical Management
     {
       icon: <Settings size={20} />,
       label: "Technical Management",
@@ -371,7 +395,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     }
   ] : [];
 
-  // Extension requests menu items
   const extensionMenuItems = user?.role === "project_manager" ? [{
     icon: <Clock size={20} />,
     label: "Deadline Extension Requests",
@@ -384,7 +407,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     key: "extension-requests",
   }] : [];
 
-  // Operations Manager specific menu items
   const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" ? [
     {
       icon: <Users size={20} />,
@@ -478,9 +500,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     },
   ] : [];
 
-  // Client specific menu items based on client type
   const clientMenuItems = user?.role === "client" ? [
-    // Projects tab only for Support & Maintenance clients
     ...(user?.clientType === "support_maintenance_client" ? [{
       icon: <FileText size={20} />,
       label: "Projects",
@@ -506,7 +526,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/register-dissatisfaction",
       key: "client-register-dissatisfaction",
     },
-    // Support Policy only for Support & Maintenance clients
     ...(user?.clientType === "support_maintenance_client" ? [{
       icon: <Shield size={20} />,
       label: "Support Policy",
@@ -519,14 +538,12 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/rate-us",
       key: "client-rate-us",
     },
-    // Emergency During Off Days only for Support & Maintenance clients
     ...(user?.clientType === "support_maintenance_client" ? [{
       icon: <Phone size={20} />,
       label: "Emergency During Off Days",
       href: "/dashboard/emergency-support",
       key: "client-emergency-support",
     }] : []),
-    // Reach Us only for Project clients
     ...(user?.clientType === "project_client" ? [{
       icon: <MessageSquare size={20} />,
       label: "Reach Us",
@@ -535,7 +552,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     }] : []),
   ] : [];
 
-  // Combine menu items based on user role
   const menuItems = user?.role === "client" ? [
     {
       icon: <LayoutDashboard size={20} />,
@@ -543,15 +559,14 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard",
       key: "dashboard",
     },
-    ...clientMenuItems,           // Client specific items
+    ...clientMenuItems,
   ] : [
-    ...baseMenuItems.slice(0, 2), // Dashboard, Projects
-    ...pmMenuItems,               // Project manager specific items
-    ...staffMenuItems,            // Staff specific items
-    ...technicalSupportMenuItems, // Technical support menu items
-    ...extensionMenuItems,        // Extension requests menu items
+    ...baseMenuItems.slice(0, 2),
+    ...pmMenuItems,
+    ...staffMenuItems,
+    ...technicalSupportMenuItems,
+    ...extensionMenuItems,
     ...operationsManagerMenuItems,
-    // Only show memos for non-operations managers (operations managers already have it in their specific menu)
     ...(user?.role !== "operations_manager" && user?.specialization !== "operations_manager" ? [{
       icon: <FileText size={20} />,
       label: "Memos",
@@ -559,52 +574,60 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       badge: unreadMemoCount > 0 ? unreadMemoCount : undefined,
       key: "memos",
     }] : []),
-    ...baseMenuItems.slice(2)     // Direct Messages, Settings
+    ...baseMenuItems.slice(2)
   ];
 
-  return (
-    <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col">
+  const handleMenuItemClick = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  const SidebarContent = () => (
+    <>
       {/* Logo Section */}
-      <div className="px-6 py-6 border-b border-gray-100">
+      <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <span className="text-white font-bold text-lg">W</span>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">Websitechic</h1>
-            <p className="text-xs text-gray-500 uppercase tracking-wide">Digital Agency</p>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-gray-900 truncate">Websitechic</h1>
+            <p className="text-xs text-gray-500 uppercase tracking-wide truncate">Digital Agency</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6">
+      <nav className="flex-1 px-2 sm:px-4 py-4 sm:py-6 overflow-y-auto">
         <div className="space-y-1">
           {menuItems.map((item) => {
             const { key, ...itemProps } = item;
-            return <SidebarItem key={key} {...itemProps} />;
+            return (
+              <SidebarItem 
+                key={key} 
+                {...itemProps} 
+                onClick={handleMenuItemClick}
+              />
+            );
           })}
         </div>
-
-
       </nav>
 
       {/* User Profile */}
-      <div className="px-4 py-4 border-t border-gray-100">
+      <div className="px-2 sm:px-4 py-4 border-t border-gray-100">
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
-          <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-white text-sm font-medium">
               {user?.name?.charAt(0) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
-            <p className="text-xs text-gray-500 capitalize">
-                {user?.role === 'client' ?
-                  `${user?.clientType?.replace('_', ' ') || 'Client'} • ${user?.productService?.replace('_', ' ') || 'Service not specified'}` :
-                  user?.role?.replace('_', ' ')
-                }
-              </p>
+            <p className="text-xs text-gray-500 capitalize truncate">
+              {user?.role === 'client' ?
+                `${user?.clientType?.replace('_', ' ') || 'Client'} • ${user?.productService?.replace('_', ' ') || 'Service not specified'}` :
+                user?.role?.replace('_', ' ')
+              }
+            </p>
           </div>
         </div>
         <Button
@@ -620,10 +643,44 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
             }
           }}
         >
-          <LogOut size={16} className="mr-3" />
-          Logout
+          <LogOut size={16} className="mr-3 flex-shrink-0" />
+          <span className="truncate">Logout</span>
         </Button>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="mobile-menu-button fixed top-4 left-4 z-50 lg:hidden bg-white shadow-md hover:bg-gray-50"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      >
+        {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+      </Button>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-300" />
+      )}
+
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex h-screen w-64 bg-white border-r border-gray-200 flex-col">
+        <SidebarContent />
+      </div>
+
+      {/* Mobile Sidebar */}
+      <div className={cn(
+        "mobile-sidebar fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:hidden",
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="flex flex-col h-full">
+          <SidebarContent />
+        </div>
+      </div>
+    </>
   );
 }

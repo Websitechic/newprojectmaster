@@ -1,3 +1,4 @@
+
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -78,63 +79,228 @@ function Router() {
   }
 
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    }>
-      <Switch>
-      <Route path="/auth">
-        {user ? <Redirect to="/dashboard" /> : <AuthPage />}
-      </Route>
-      <Route path="/">
-        {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
-      </Route>
-      <Route path="/dashboard">
-        {user?.role === "client" ? <ClientDashboard /> : <Dashboard />}
-      </Route>
-      <Route path="/dashboard/projects" component={Projects} />
-      <Route path="/dashboard/projects/:id" component={ProjectDetails} />
-      <Route path="/dashboard/projects/:id/tasks" component={ProjectTasks} />
-      <Route path="/dashboard/projects/:id/team-chat" component={TeamChat} />
-      <Route path="/dashboard/projects/:id/client-chat" component={ClientChat} />
-      <Route path="/dashboard/projects/:id/staff-tasks" component={StaffProjectTasks} />
-      <Route path="/dashboard/projects/:id/staff" component={StaffProjectDetails} />
-      <Route path="/dashboard/projects/:id/resources" component={ProjectResources} />
-      <Route path="/dashboard/staff-report" component={StaffReport} />
-      <Route path="/dashboard/tasks" component={Tasks} />
-      <Route path="/dashboard/leave-application" component={LeaveApplication} />
-      <Route path="/dashboard/leave-management" component={LeaveManagement} />
-      <Route path="/dashboard/bookings" component={Bookings} />
-      <Route path="/dashboard/productivity" component={Productivity} />
-      <Route path="/dashboard/direct-messages" component={DirectMessages} />
-      <Route path="/dashboard/technical-support" component={TechnicalSupport} />
-      <Route path="/dashboard/technical-management" component={TechnicalManagementFixed} />
-      <Route path="/dashboard/extension-requests" component={ExtensionRequestsPage} />
-      <Route path="/dashboard/deadline-extension-requests" component={DeadlineExtensionRequests} />
-      <Route path="/dashboard/client-management" component={ClientManagement} />
-      <Route path="/dashboard/guide-videos" component={GuideVideos} />
-      <Route path="/dashboard/register-dissatisfaction" component={RegisterDissatisfaction} />
-      <Route path="/dashboard/support-policy" component={SupportPolicy} />
-      <Route path="/dashboard/emergency-support" component={EmergencySupport} />
-      <Route path="/dashboard/reach-us" component={ReachUsPage} />
-      <Route path="/dashboard/rate-us" component={RateUs} />
-      <Route path="/dashboard/complaints-management" component={ComplaintsManagement} />
-      <Route path="/dashboard/client-accounts" component={ClientAccounts} />
-      <Route path="/dashboard/client-sentiment" component={ClientSentiment} />
-      <Route path="/dashboard/client-sentiment-tracker" component={ClientSentimentTracker} />
-      <Route path="/dashboard/memos" component={Memos} />
-      <Route path="/dashboard/notes" component={lazy(() => import("./pages/dashboard/notes"))} />
-      <Route path="/dashboard/staff-queries" component={lazy(() => import("./pages/dashboard/staff-queries"))} />
-      <Route path="/dashboard/staff-complaints" component={lazy(() => import("./pages/dashboard/staff-complaints"))} />
-      <Route path="/dashboard/client-complaints" component={ComplaintsManagement} />
-      <Route path="/dashboard/sop" component={SOPPage} />
-      <Route path="/dashboard/communication-tracker" component={CommunicationTrackerPage} />
-      <Route path="/dashboard/kpi-report" component={KPIReportPage} />
-      <Route path="/technical-management" component={TechnicalManagementFixed} />
-      <Route path="/send-complaint" component={SendComplaint} />
-      </Switch>
-    </Suspense>
+    <div className="min-h-screen bg-gray-50">
+      <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      }>
+        <Switch>
+          <Route path="/auth">
+            {user ? <Redirect to="/dashboard" /> : <AuthPage />}
+          </Route>
+          <Route path="/">
+            {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
+          </Route>
+          <Route path="/dashboard">
+            <div className="lg:flex min-h-screen">
+              {user?.role === "client" ? <ClientDashboard /> : <Dashboard />}
+            </div>
+          </Route>
+          <Route path="/dashboard/projects">
+            <div className="lg:flex min-h-screen">
+              <Projects />
+            </div>
+          </Route>
+          <Route path="/dashboard/projects/:id">
+            <div className="lg:flex min-h-screen">
+              <ProjectDetails />
+            </div>
+          </Route>
+          <Route path="/dashboard/projects/:id/tasks">
+            <div className="lg:flex min-h-screen">
+              <ProjectTasks />
+            </div>
+          </Route>
+          <Route path="/dashboard/projects/:id/team-chat">
+            <div className="lg:flex min-h-screen">
+              <TeamChat />
+            </div>
+          </Route>
+          <Route path="/dashboard/projects/:id/client-chat">
+            <div className="lg:flex min-h-screen">
+              <ClientChat />
+            </div>
+          </Route>
+          <Route path="/dashboard/projects/:id/staff-tasks">
+            <div className="lg:flex min-h-screen">
+              <StaffProjectTasks />
+            </div>
+          </Route>
+          <Route path="/dashboard/projects/:id/staff">
+            <div className="lg:flex min-h-screen">
+              <StaffProjectDetails />
+            </div>
+          </Route>
+          <Route path="/dashboard/projects/:id/resources">
+            <div className="lg:flex min-h-screen">
+              <ProjectResources />
+            </div>
+          </Route>
+          <Route path="/dashboard/staff-report">
+            <div className="lg:flex min-h-screen">
+              <StaffReport />
+            </div>
+          </Route>
+          <Route path="/dashboard/tasks">
+            <div className="lg:flex min-h-screen">
+              <Tasks />
+            </div>
+          </Route>
+          <Route path="/dashboard/leave-application">
+            <div className="lg:flex min-h-screen">
+              <LeaveApplication />
+            </div>
+          </Route>
+          <Route path="/dashboard/leave-management">
+            <div className="lg:flex min-h-screen">
+              <LeaveManagement />
+            </div>
+          </Route>
+          <Route path="/dashboard/bookings">
+            <div className="lg:flex min-h-screen">
+              <Bookings />
+            </div>
+          </Route>
+          <Route path="/dashboard/productivity">
+            <div className="lg:flex min-h-screen">
+              <Productivity />
+            </div>
+          </Route>
+          <Route path="/dashboard/direct-messages">
+            <div className="lg:flex min-h-screen">
+              <DirectMessages />
+            </div>
+          </Route>
+          <Route path="/dashboard/technical-support">
+            <div className="lg:flex min-h-screen">
+              <TechnicalSupport />
+            </div>
+          </Route>
+          <Route path="/dashboard/technical-management">
+            <div className="lg:flex min-h-screen">
+              <TechnicalManagementFixed />
+            </div>
+          </Route>
+          <Route path="/dashboard/extension-requests">
+            <div className="lg:flex min-h-screen">
+              <ExtensionRequestsPage />
+            </div>
+          </Route>
+          <Route path="/dashboard/deadline-extension-requests">
+            <div className="lg:flex min-h-screen">
+              <DeadlineExtensionRequests />
+            </div>
+          </Route>
+          <Route path="/dashboard/client-management">
+            <div className="lg:flex min-h-screen">
+              <ClientManagement />
+            </div>
+          </Route>
+          <Route path="/dashboard/guide-videos">
+            <div className="lg:flex min-h-screen">
+              <GuideVideos />
+            </div>
+          </Route>
+          <Route path="/dashboard/register-dissatisfaction">
+            <div className="lg:flex min-h-screen">
+              <RegisterDissatisfaction />
+            </div>
+          </Route>
+          <Route path="/dashboard/support-policy">
+            <div className="lg:flex min-h-screen">
+              <SupportPolicy />
+            </div>
+          </Route>
+          <Route path="/dashboard/emergency-support">
+            <div className="lg:flex min-h-screen">
+              <EmergencySupport />
+            </div>
+          </Route>
+          <Route path="/dashboard/reach-us">
+            <div className="lg:flex min-h-screen">
+              <ReachUsPage />
+            </div>
+          </Route>
+          <Route path="/dashboard/rate-us">
+            <div className="lg:flex min-h-screen">
+              <RateUs />
+            </div>
+          </Route>
+          <Route path="/dashboard/complaints-management">
+            <div className="lg:flex min-h-screen">
+              <ComplaintsManagement />
+            </div>
+          </Route>
+          <Route path="/dashboard/client-accounts">
+            <div className="lg:flex min-h-screen">
+              <ClientAccounts />
+            </div>
+          </Route>
+          <Route path="/dashboard/client-sentiment">
+            <div className="lg:flex min-h-screen">
+              <ClientSentiment />
+            </div>
+          </Route>
+          <Route path="/dashboard/client-sentiment-tracker">
+            <div className="lg:flex min-h-screen">
+              <ClientSentimentTracker />
+            </div>
+          </Route>
+          <Route path="/dashboard/memos">
+            <div className="lg:flex min-h-screen">
+              <Memos />
+            </div>
+          </Route>
+          <Route path="/dashboard/notes">
+            <div className="lg:flex min-h-screen">
+              <Notes />
+            </div>
+          </Route>
+          <Route path="/dashboard/staff-queries">
+            <div className="lg:flex min-h-screen">
+              <StaffQueries />
+            </div>
+          </Route>
+          <Route path="/dashboard/staff-complaints">
+            <div className="lg:flex min-h-screen">
+              <StaffComplaints />
+            </div>
+          </Route>
+          <Route path="/dashboard/client-complaints">
+            <div className="lg:flex min-h-screen">
+              <ComplaintsManagement />
+            </div>
+          </Route>
+          <Route path="/dashboard/sop">
+            <div className="lg:flex min-h-screen">
+              <SOPPage />
+            </div>
+          </Route>
+          <Route path="/dashboard/communication-tracker">
+            <div className="lg:flex min-h-screen">
+              <CommunicationTrackerPage />
+            </div>
+          </Route>
+          <Route path="/dashboard/kpi-report">
+            <div className="lg:flex min-h-screen">
+              <KPIReportPage />
+            </div>
+          </Route>
+          <Route path="/technical-management">
+            <div className="lg:flex min-h-screen">
+              <TechnicalManagementFixed />
+            </div>
+          </Route>
+          <Route path="/send-complaint">
+            <div className="lg:flex min-h-screen">
+              <SendComplaint />
+            </div>
+          </Route>
+          <Route path="*" component={NotFound} />
+        </Switch>
+      </Suspense>
+    </div>
   );
 }
 
