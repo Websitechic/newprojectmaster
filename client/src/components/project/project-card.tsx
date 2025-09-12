@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardHeader, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -115,14 +115,14 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
     if ((e.target as HTMLElement).closest('button, [role="button"]')) {
       return;
     }
-    
+
     e.preventDefault();
     e.stopPropagation();
-    
+
     const targetPath = user?.role === 'staff'
       ? `/dashboard/projects/${project.id}/staff`
       : `/dashboard/projects/${project.id}`;
-    
+
     if (handleClick) {
       handleClick();
     } else {
