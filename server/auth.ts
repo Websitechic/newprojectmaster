@@ -142,29 +142,19 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    console.log("Login attempt for:", req.body.username);
-    console.log("Session ID:", req.sessionID);
-    
     passport.authenticate("local", async (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
-        console.error("Login authentication error:", err);
-        return res.status(500).json({ error: "Authentication error", details: err.message });
+        return next(err);
       }
-      
       if (!user) {
-        console.log("Login failed for:", req.body.username, "Reason:", info.message);
-        return res.status(401).json({ error: info.message || "Invalid username or password" });
+        return res.status(401).json({ message: info.message || "Authentication failed" });
       }
 
       // Login the user
-      req.logIn(user, async (loginErr) => {
-        if (loginErr) {
-          console.error("Session login error:", loginErr);
-          return res.status(500).json({ error: "Failed to establish session", details: loginErr.message });
+      req.logIn(user, async (err) => {
+        if (err) {
+          return next(err);
         }
-
-        console.log(`User ${user.id} (${user.username}) successfully logged in`);
-        console.log("Session after login:", req.sessionID, "User in session:", !!req.user);
 
         // Update user status to online and last active timestamp
         try {
@@ -179,7 +169,6 @@ export function setupAuth(app: Express) {
           console.log(`User ${user.id} (${user.username}) is now online`);
         } catch (error) {
           console.error('Error updating user status on login:', error);
-          // Don't fail the login for this error
         }
 
         return res.json({ 
@@ -188,9 +177,7 @@ export function setupAuth(app: Express) {
             id: user.id,
             username: user.username,
             role: user.role,
-            name: user.name,
-            email: user.email,
-            specialization: user.specialization
+            name: user.name
           }
         });
       });
@@ -232,15 +219,10 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    try {
-      if (!req.isAuthenticated() || !req.user) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-      return res.json(req.user);
-    } catch (error) {
-      console.error("Error in /api/user:", error);
-      return res.status(500).json({ error: "Internal server error" });
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
     }
+    return res.json(req.user);
   });
 
   app.post("/api/register", async (req, res, next) => {

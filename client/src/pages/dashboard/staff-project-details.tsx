@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, MessageSquare, FileText } from "lucide-react";
 import type { Project } from "@db/schema";
@@ -68,9 +69,9 @@ export default function StaffProjectDetails() {
             <Card>
               <CardHeader>
                 <h2 className="text-xl font-semibold">Project Plan</h2>
-                <CardDescription>
+                <p className="text-sm text-muted-foreground">
                   Project timeline and your role in the delivery
-                </CardDescription>
+                </p>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -96,7 +97,7 @@ export default function StaffProjectDetails() {
                       </div>
                     </div>
                   </div>
-
+                  
                   <div className="space-y-4">
                     <div>
                       <h3 className="font-medium text-sm mb-2">Progress Overview</h3>
@@ -184,9 +185,9 @@ export default function StaffProjectDetails() {
                     <Icon className="h-6 w-6" />
                     <div>
                       <h3 className="text-lg font-semibold">{card.title}</h3>
-                      <CardDescription>
+                      <p className="text-sm text-muted-foreground">
                         {card.description}
-                      </CardDescription>
+                      </p>
                     </div>
                   </CardHeader>
                 </Card>

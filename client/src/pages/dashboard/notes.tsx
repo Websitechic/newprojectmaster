@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -16,13 +17,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  Plus,
-  Search,
-  Edit3,
-  Trash2,
-  Save,
-  FileText,
+import { 
+  Plus, 
+  Search, 
+  Edit3, 
+  Trash2, 
+  Save, 
+  FileText, 
   CheckSquare,
   Bold,
   Italic,
@@ -460,8 +461,8 @@ export default function Notes() {
 
                     <div>
                       <Label htmlFor="type">Note Type</Label>
-                      <Select
-                        value={formData.type}
+                      <Select 
+                        value={formData.type} 
                         onValueChange={(value: "freetext" | "todo") => {
                           setFormData(prev => ({ ...prev, type: value }));
                         }}
@@ -571,8 +572,8 @@ export default function Notes() {
                       {notes.length === 0 ? "No notes created yet" : "No notes match your search"}
                     </h3>
                     <p className="text-gray-500 text-center mb-4">
-                      {notes.length === 0
-                        ? "Create your first note to get started"
+                      {notes.length === 0 
+                        ? "Create your first note to get started" 
                         : "Try a different search term"
                       }
                     </p>
@@ -687,8 +688,8 @@ export default function Notes() {
 
             <div>
               <Label htmlFor="edit-type">Note Type</Label>
-              <Select
-                value={formData.type}
+              <Select 
+                value={formData.type} 
                 onValueChange={(value: "freetext" | "todo") => {
                   setFormData(prev => ({ ...prev, type: value }));
                 }}

@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayCircle } from "lucide-react";
 
 export default function GuideVideos() {

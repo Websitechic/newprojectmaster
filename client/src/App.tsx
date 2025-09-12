@@ -79,7 +79,7 @@ function Router() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 fit-device-width">
+    <div className="min-h-screen bg-gray-50">
       <Suspense fallback={
         <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -93,57 +93,57 @@ function Router() {
             {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
           </Route>
           <Route path="/dashboard">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               {user?.role === "client" ? <ClientDashboard /> : <Dashboard />}
             </div>
           </Route>
           <Route path="/dashboard/projects">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               <Projects />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               <ProjectDetails />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/tasks">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               <ProjectTasks />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/team-chat">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               <TeamChat />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/client-chat">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               <ClientChat />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/staff-tasks">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               <StaffProjectTasks />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/staff">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               <StaffProjectDetails />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/resources">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               <ProjectResources />
             </div>
           </Route>
           <Route path="/dashboard/staff-report">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               <StaffReport />
             </div>
           </Route>
           <Route path="/dashboard/tasks">
-            <div className="dashboard-layout">
+            <div className="lg:flex min-h-screen">
               <Tasks />
             </div>
           </Route>

@@ -267,7 +267,7 @@ function SupportMaintenanceClientDashboard() {
             </CardContent>
           </Card>
 
-
+          
         </div>
       </div>
     </div>
@@ -296,8 +296,6 @@ interface Task {
   workingHours: number;
   deadline: string;
   createdAt: string;
-  description: string | null;
-  assigneeId: number | null;
 }
 
 interface ProjectProgress {
