@@ -1577,6 +1577,80 @@ End of Report
     }
   });
 
+  // Update task (PUT endpoint for operations managers and project managers)
+  app.put("/api/tasks/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const taskId = parseInt(req.params.id);
+
+    try {
+      const { title, description, status, assigneeId, startDate, deadline, workingHours } = req.body;
+
+      // Check if task exists
+      const [existingTask] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+
+      if (!existingTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Get project information to check permissions
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, existingTask.projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check permissions
+      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+      const isTaskAssignee = existingTask.assigneeId === user.id;
+
+      if (!isOperationsManager && !isProjectManager && !isTaskAssignee) {
+        return res.status(403).json({ error: "Access denied - insufficient permissions to update this task" });
+      }
+
+      // Prepare update data
+      const updateData: any = {};
+
+      if (title !== undefined) updateData.title = title;
+      if (description !== undefined) updateData.description = description;
+      if (status !== undefined) updateData.status = status;
+      if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
+      if (deadline !== undefined) updateData.deadline = deadline ? new Date(deadline) : null;
+      if (workingHours !== undefined) updateData.workingHours = workingHours ? parseInt(workingHours) : null;
+
+      // Only project managers and operations managers can reassign tasks
+      if (assigneeId !== undefined && (isOperationsManager || isProjectManager)) {
+        updateData.assigneeId = assigneeId && assigneeId !== 'unassigned' ? parseInt(assigneeId) : null;
+      }
+
+      updateData.updatedAt = new Date();
+
+      // Update the task
+      const [updatedTask] = await db
+        .update(tasks)
+        .set(updateData)
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      res.json({ success: true, task: updatedTask });
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ error: "Failed to update task", details: error.message });
+    }
+  });
+
   // Upload file for SOP segments
   app.post("/api/sops/upload-file", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) {
