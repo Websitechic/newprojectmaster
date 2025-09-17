@@ -187,7 +187,11 @@ let emailServiceInitialized = false;
       });
     });
 
-    setupWebSocket(wss);
+    try {
+      setupWebSocket(wss);
+    } catch (error) {
+      console.error('Failed to setup WebSocket:', error);
+    }
 
     // Setup Vite or static serving
     if (app.get("env") === "development") {
