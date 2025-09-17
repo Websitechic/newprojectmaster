@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
@@ -24,15 +24,15 @@ import {
   Trash2, 
   FileText, 
   Upload, 
-  ChevronDown, 
-  ChevronRight, 
   Save,
   X,
   BookOpen,
   Building,
   AlertCircle,
-  CheckCircle,
-  File
+  File,
+  ExternalLink,
+  Link,
+  Eye
 } from "lucide-react";
 
 interface SopSegment {
@@ -48,6 +48,7 @@ interface Sop {
   id: number;
   title: string;
   department: string;
+  referenceLink?: string;
   createdBy: number;
   createdAt: string;
   updatedAt: string;
@@ -66,12 +67,13 @@ export default function SOPPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingSop, setEditingSop] = useState<Sop | null>(null);
-  const [expandedSops, setExpandedSops] = useState<Set<number>>(new Set());
+  const [selectedSopId, setSelectedSopId] = useState<number | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
     title: "",
     department: "",
+    referenceLink: "",
     segments: [{ title: "", content: "", fileUrl: "", fileName: "" }] as SopSegment[]
   });
 
@@ -251,6 +253,7 @@ export default function SOPPage() {
     setFormData({
       title: "",
       department: "",
+      referenceLink: "",
       segments: [{ title: "", content: "", fileUrl: "", fileName: "" }]
     });
   };
@@ -316,6 +319,7 @@ export default function SOPPage() {
     createSopMutation.mutate({
       title: formData.title,
       department: formData.department,
+      referenceLink: formData.referenceLink,
       segments: formData.segments.map((segment, index) => ({
         ...segment,
         segmentOrder: index
@@ -349,6 +353,7 @@ export default function SOPPage() {
       data: {
         title: formData.title,
         department: formData.department,
+        referenceLink: formData.referenceLink,
         segments: formData.segments.map((segment, index) => ({
           ...segment,
           segmentOrder: index
@@ -362,24 +367,13 @@ export default function SOPPage() {
     setFormData({
       title: sop.title,
       department: sop.department,
+      referenceLink: sop.referenceLink || "",
       segments: sop.segments.map(segment => ({
         ...segment,
         fileName: segment.fileUrl ? segment.fileUrl.split('/').pop() : ""
       }))
     });
     setShowEditForm(true);
-  };
-
-  const toggleSopExpansion = (sopId: number) => {
-    setExpandedSops(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(sopId)) {
-        newSet.delete(sopId);
-      } else {
-        newSet.add(sopId);
-      }
-      return newSet;
-    });
   };
 
   // Group SOPs by department
@@ -391,22 +385,25 @@ export default function SOPPage() {
     return acc;
   }, {} as Record<string, Sop[]>);
 
+  const filteredSops = selectedDepartment === "all" ? sopsByDepartment : 
+    { [selectedDepartment]: sopsByDepartment[selectedDepartment] || [] };
+
   return (
     <div className="flex h-screen">
       <Sidebar currentPath="/dashboard/sop" />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 md:p-6">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                  <BookOpen className="h-8 w-8 text-blue-600" />
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
+                  <BookOpen className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
                   Standard Operating Procedures
                 </h1>
-                <p className="text-gray-600 mt-1">
-                  Create and manage department SOPs with organized segments and file attachments
+                <p className="text-gray-600 mt-1 text-sm md:text-base">
+                  Create and manage department SOPs with organized segments, reference links, and file attachments
                 </p>
               </div>
               <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
@@ -420,7 +417,7 @@ export default function SOPPage() {
                   <DialogHeader>
                     <DialogTitle>Create New SOP</DialogTitle>
                     <DialogDescription>
-                      Create a new Standard Operating Procedure with organized segments
+                      Create a new Standard Operating Procedure with organized segments and reference links
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-6">
@@ -456,6 +453,19 @@ export default function SOPPage() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+
+                    {/* Reference Link */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Reference Link (Optional)
+                      </label>
+                      <Input
+                        type="url"
+                        value={formData.referenceLink}
+                        onChange={(e) => setFormData(prev => ({ ...prev, referenceLink: e.target.value }))}
+                        placeholder="https://example.com/reference"
+                      />
                     </div>
 
                     {/* Segments */}
@@ -616,7 +626,7 @@ export default function SOPPage() {
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>Failed to load SOPs. Please try again.</AlertDescription>
               </Alert>
-            ) : Object.keys(sopsByDepartment).length === 0 ? (
+            ) : Object.keys(filteredSops).length === 0 ? (
               <Card className="p-12 text-center">
                 <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No SOPs Found</h3>
@@ -635,109 +645,127 @@ export default function SOPPage() {
               </Card>
             ) : (
               <div className="space-y-6">
-                {Object.entries(sopsByDepartment).map(([department, departmentSops]) => (
-                  <div key={department}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Building className="h-5 w-5 text-blue-600" />
-                      <h2 className="text-xl font-semibold text-gray-900">{department}</h2>
-                      <Badge variant="secondary" className="ml-2">
-                        {departmentSops.length} SOP{departmentSops.length !== 1 ? 's' : ''}
-                      </Badge>
-                    </div>
-                    
-                    <div className="grid gap-4">
-                      {departmentSops.map((sop) => (
-                        <Card key={sop.id} className="overflow-hidden">
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toggleSopExpansion(sop.id)}
-                                  className="p-1"
-                                >
-                                  {expandedSops.has(sop.id) ? (
-                                    <ChevronDown size={16} />
-                                  ) : (
-                                    <ChevronRight size={16} />
-                                  )}
-                                </Button>
-                                <div>
-                                  <CardTitle className="text-lg">{sop.title}</CardTitle>
-                                  <CardDescription>
-                                    {sop.segments.length} segment{sop.segments.length !== 1 ? 's' : ''} • 
-                                    Updated {new Date(sop.updatedAt).toLocaleDateString()}
-                                  </CardDescription>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => startEdit(sop)}
-                                >
-                                  <Edit size={16} className="mr-1" />
-                                  Edit
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    if (confirm("Are you sure you want to delete this SOP?")) {
-                                      deleteSopMutation.mutate(sop.id);
-                                    }
-                                  }}
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 size={16} />
-                                </Button>
-                              </div>
+                <Accordion type="multiple" className="w-full space-y-4">
+                  {Object.entries(filteredSops).map(([department, departmentSops]) => (
+                    departmentSops && departmentSops.length > 0 && (
+                      <AccordionItem key={department} value={department} className="border rounded-lg">
+                        <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50">
+                          <div className="flex items-center gap-3 text-left">
+                            <Building className="h-5 w-5 text-blue-600" />
+                            <div>
+                              <h2 className="text-xl font-semibold text-gray-900">{department}</h2>
+                              <p className="text-sm text-gray-500 mt-1">
+                                {departmentSops.length} SOP{departmentSops.length !== 1 ? 's' : ''}
+                              </p>
                             </div>
-                          </CardHeader>
-                          
-                          <Collapsible open={expandedSops.has(sop.id)}>
-                            <CollapsibleContent>
-                              <CardContent className="pt-0">
-                                <Separator className="mb-4" />
-                                <div className="space-y-4">
-                                  {sop.segments.map((segment, index) => (
-                                    <Card key={segment.id || index} className="p-4 bg-gray-50">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h4 className="font-medium text-gray-900 flex items-center gap-2">
-                                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                                            Step {index + 1}
-                                          </span>
-                                          {segment.title}
-                                        </h4>
-                                        {segment.fileUrl && (
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-6 pb-4">
+                          <div className="grid gap-4">
+                            {departmentSops.map((sop) => (
+                              <Card key={sop.id} className="hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-3">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <CardTitle className="text-lg flex items-center gap-2">
+                                        <FileText className="h-5 w-5 text-blue-600" />
+                                        {sop.title}
+                                      </CardTitle>
+                                      <CardDescription className="mt-2">
+                                        {sop.segments.length} segment{sop.segments.length !== 1 ? 's' : ''} • 
+                                        Updated {new Date(sop.updatedAt).toLocaleDateString()}
+                                      </CardDescription>
+                                      {sop.referenceLink && (
+                                        <div className="mt-2">
                                           <a
-                                            href={segment.fileUrl}
+                                            href={sop.referenceLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm"
                                           >
-                                            <File size={14} />
-                                            View Attachment
+                                            <Link size={14} />
+                                            Reference Link
+                                            <ExternalLink size={12} />
                                           </a>
-                                        )}
-                                      </div>
-                                      <p className="text-gray-700 whitespace-pre-wrap">{segment.content}</p>
-                                    </Card>
-                                  ))}
-                                </div>
-                              </CardContent>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 ml-4">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setSelectedSopId(selectedSopId === sop.id ? null : sop.id)}
+                                      >
+                                        <Eye size={16} className="mr-1" />
+                                        {selectedSopId === sop.id ? "Hide" : "View"}
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => startEdit(sop)}
+                                      >
+                                        <Edit size={16} className="mr-1" />
+                                        Edit
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          if (confirm("Are you sure you want to delete this SOP?")) {
+                                            deleteSopMutation.mutate(sop.id);
+                                          }
+                                        }}
+                                        className="text-red-600 hover:text-red-700"
+                                      >
+                                        <Trash2 size={16} />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </CardHeader>
+                                
+                                {selectedSopId === sop.id && (
+                                  <CardContent className="pt-0">
+                                    <Separator className="mb-4" />
+                                    <div className="space-y-4">
+                                      {sop.segments.map((segment, index) => (
+                                        <Card key={segment.id || index} className="p-4 bg-gray-50">
+                                          <div className="flex items-start justify-between mb-2">
+                                            <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                                              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                                Step {index + 1}
+                                              </span>
+                                              {segment.title}
+                                            </h4>
+                                            {segment.fileUrl && (
+                                              <a
+                                                href={segment.fileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm"
+                                              >
+                                                <File size={14} />
+                                                View Attachment
+                                              </a>
+                                            )}
+                                          </div>
+                                          <p className="text-gray-700 whitespace-pre-wrap">{segment.content}</p>
+                                        </Card>
+                                      ))}
+                                    </div>
+                                  </CardContent>
+                                )}
+                              </Card>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    )
+                  ))}
+                </Accordion>
               </div>
             )}
 
-            {/* Edit Dialog */}
+            {/* Edit Dialog - Same structure as Create but for editing */}
             <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -779,6 +807,19 @@ export default function SOPPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  {/* Reference Link */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Reference Link (Optional)
+                    </label>
+                    <Input
+                      type="url"
+                      value={formData.referenceLink}
+                      onChange={(e) => setFormData(prev => ({ ...prev, referenceLink: e.target.value }))}
+                      placeholder="https://example.com/reference"
+                    />
                   </div>
 
                   {/* Segments */}

@@ -1445,7 +1445,7 @@ End of Report
     }
 
     try {
-      const { title, department, segments } = req.body;
+      const { title, department, referenceLink, segments } = req.body;
 
       if (!title || !department || !segments || segments.length === 0) {
         return res.status(400).json({ error: "Title, department, and at least one segment are required" });
@@ -1457,6 +1457,7 @@ End of Report
         .values({
           title,
           department,
+          referenceLink: referenceLink || null,
           createdBy: user.id,
         })
         .returning();
@@ -1492,7 +1493,7 @@ End of Report
 
     try {
       const sopId = parseInt(req.params.id);
-      const { title, department, segments } = req.body;
+      const { title, department, referenceLink, segments } = req.body;
 
       if (!title || !department || !segments || segments.length === 0) {
         return res.status(400).json({ error: "Title, department, and at least one segment are required" });
@@ -1504,6 +1505,7 @@ End of Report
         .set({
           title,
           department,
+          referenceLink: referenceLink || null,
           updatedAt: new Date(),
         })
         .where(eq(sops.id, sopId));

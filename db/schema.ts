@@ -774,6 +774,7 @@ export const sops = pgTable("sops", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   department: text("department").notNull(),
+  referenceLink: text("reference_link"),
   createdBy: integer("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
