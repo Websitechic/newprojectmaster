@@ -1372,11 +1372,33 @@ End of Report
         whereConditions.push(sql`${sops.title} ILIKE ${'%' + search + '%'}`);
       }
 
-      const sopList = await db
-        .select()
-        .from(sops)
-        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-        .orderBy(desc(sops.updatedAt));
+      // Try to select with reference_link, fallback if column doesn't exist
+      let sopList;
+      try {
+        sopList = await db
+          .select()
+          .from(sops)
+          .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+          .orderBy(desc(sops.updatedAt));
+      } catch (dbError) {
+        // If reference_link column doesn't exist, select without it
+        console.log("reference_link column may not exist, selecting basic fields");
+        sopList = await db
+          .select({
+            id: sops.id,
+            title: sops.title,
+            department: sops.department,
+            createdBy: sops.createdBy,
+            createdAt: sops.createdAt,
+            updatedAt: sops.updatedAt,
+          })
+          .from(sops)
+          .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+          .orderBy(desc(sops.updatedAt));
+        
+        // Add referenceLink as null for compatibility
+        sopList = sopList.map(sop => ({ ...sop, referenceLink: null }));
+      }
 
       // Get segments for each SOP
       const sopsWithSegments = await Promise.all(
