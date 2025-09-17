@@ -1395,7 +1395,7 @@ End of Report
           .from(sops)
           .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
           .orderBy(desc(sops.updatedAt));
-        
+
         // Add referenceLink as null for compatibility
         sopList = sopList.map(sop => ({ ...sop, referenceLink: null }));
       }
@@ -3736,7 +3736,7 @@ End of Report
         .select()
         .from(tasks)
         .where(eq(tasks.projectId, projectId))
-        .orderBy(desc(tasks.createdAt));
+        .orderBy(desc(tasks.updatedAt));
 
       res.json(projectTasks);
     } catch (error) {
