@@ -24,42 +24,67 @@
 @layer components {
   /* Responsive containers */
   .container-responsive {
-    @apply w-full max-w-full mx-auto px-2 sm:px-4 lg:px-6;
+    @apply w-full max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8;
   }
   
-  /* Responsive grid layouts */
+  /* Enhanced responsive grid layouts */
   .grid-responsive-1-2 {
-    @apply grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4;
+    @apply grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6;
   }
   
   .grid-responsive-1-2-3 {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4;
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6;
   }
   
   .grid-responsive-1-3 {
-    @apply grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-4;
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6;
   }
   
-  /* Responsive forms */
+  .grid-responsive-auto {
+    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4;
+  }
+  
+  /* Enhanced responsive forms */
   .form-responsive {
-    @apply space-y-3 sm:space-y-4;
+    @apply space-y-3 sm:space-y-4 md:space-y-5;
   }
   
   .form-group-responsive {
-    @apply flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3;
+    @apply flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 md:gap-4;
   }
   
-  /* Responsive cards */
+  .form-input-responsive {
+    @apply w-full p-2 sm:p-3 text-sm sm:text-base rounded-md border;
+  }
+  
+  /* Enhanced responsive cards */
   .card-responsive {
-    @apply p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm border;
+    @apply p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg shadow-sm border;
   }
   
-  /* Responsive buttons */
+  .card-compact {
+    @apply p-2 sm:p-3 md:p-4 rounded-md shadow-sm border;
+  }
+  
+  /* Enhanced responsive buttons */
   .button-responsive {
-    @apply px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base;
+    @apply px-3 py-2 sm:px-4 sm:py-2 md:px-5 md:py-3 text-sm sm:text-base;
   }
   
-  /* Dashboard layout */
+  .button-compact {
+    @apply px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm;
+  }
+  
+  /* Mobile-first navigation */
+  .nav-responsive {
+    @apply flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4;
+  }
+  
+  .nav-item-responsive {
+    @apply w-full sm:w-auto px-3 py-2 text-sm sm:text-base;
+  }
+  
+  /* Enhanced dashboard layout */
   .dashboard-layout {
     @apply flex min-h-screen w-full overflow-hidden;
   }
@@ -69,16 +94,57 @@
   }
   
   .dashboard-main {
-    @apply flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full;
+    @apply flex-1 overflow-auto p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 w-full;
   }
   
-  /* Table responsive */
+  .dashboard-header {
+    @apply sticky top-0 z-30 bg-white border-b border-gray-200 p-3 sm:p-4;
+  }
+  
+  .dashboard-content-area {
+    @apply flex-1 p-3 sm:p-4 md:p-6 lg:p-8;
+  }
+  
+  /* Enhanced table responsive */
   .table-responsive {
-    @apply overflow-x-auto w-full;
+    @apply overflow-x-auto w-full -mx-3 sm:mx-0;
   }
   
   .table-responsive table {
     @apply min-w-full w-full;
+  }
+  
+  .table-mobile-stack {
+    @apply block sm:table w-full;
+  }
+  
+  .table-mobile-stack thead {
+    @apply hidden sm:table-header-group;
+  }
+  
+  .table-mobile-stack tbody {
+    @apply block sm:table-row-group;
+  }
+  
+  .table-mobile-stack tr {
+    @apply block sm:table-row border border-gray-200 mb-3 sm:mb-0 sm:border-none rounded-lg sm:rounded-none p-3 sm:p-0;
+  }
+  
+  .table-mobile-stack td {
+    @apply block sm:table-cell text-left sm:text-center py-2 sm:py-3 px-0 sm:px-3 border-b border-gray-100 sm:border-gray-200;
+  }
+  
+  .table-mobile-stack td:before {
+    content: attr(data-label) ": ";
+    @apply font-semibold text-gray-600 sm:hidden;
+  }
+  
+  .data-card-responsive {
+    @apply block sm:hidden p-4 bg-white border border-gray-200 rounded-lg shadow-sm mb-3;
+  }
+  
+  .data-row-responsive {
+    @apply hidden sm:table-row;
   }
   
   /* Mobile-first responsive text */
@@ -90,13 +156,63 @@
     @apply text-xs sm:text-sm lg:text-base;
   }
   
-  /* Responsive spacing */
+  /* Enhanced responsive spacing */
   .space-responsive {
-    @apply space-y-2 sm:space-y-4;
+    @apply space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6;
+  }
+  
+  .space-responsive-sm {
+    @apply space-y-2 sm:space-y-3 md:space-y-4;
   }
   
   .gap-responsive {
-    @apply gap-2 sm:gap-4;
+    @apply gap-3 sm:gap-4 md:gap-5 lg:gap-6;
+  }
+  
+  .gap-responsive-sm {
+    @apply gap-2 sm:gap-3 md:gap-4;
+  }
+  
+  .margin-responsive {
+    @apply m-3 sm:m-4 md:m-5 lg:m-6;
+  }
+  
+  .padding-responsive {
+    @apply p-3 sm:p-4 md:p-5 lg:p-6;
+  }
+  
+  .padding-responsive-sm {
+    @apply p-2 sm:p-3 md:p-4;
+  }
+  
+  /* Responsive flexbox utilities */
+  .flex-responsive {
+    @apply flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4;
+  }
+  
+  .flex-responsive-reverse {
+    @apply flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4;
+  }
+  
+  .justify-responsive {
+    @apply justify-start sm:justify-between;
+  }
+  
+  /* Mobile-first layout utilities */
+  .stack-mobile {
+    @apply flex flex-col sm:flex-row;
+  }
+  
+  .stack-tablet {
+    @apply flex flex-col md:flex-row;
+  }
+  
+  .center-mobile {
+    @apply text-center sm:text-left;
+  }
+  
+  .full-mobile {
+    @apply w-full sm:w-auto;
   }
   
   /* Mobile menu button positioning */
@@ -236,61 +352,100 @@
   }
 }
 
-/* Media queries for specific breakpoints */
-@media (max-width: 767px) {
-  .grid {
+/* Comprehensive mobile-first responsive breakpoints */
+@media (max-width: 479px) {
+  /* Extra small devices */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6 {
     grid-template-columns: 1fr !important;
   }
   
-  .flex-row {
-    flex-direction: column;
-  }
+  .text-3xl { font-size: 1.25rem; }
+  .text-2xl { font-size: 1.125rem; }
+  .text-xl { font-size: 1rem; }
+  .text-lg { font-size: 0.875rem; }
   
-  .text-2xl {
-    font-size: 1.25rem;
-  }
+  .p-8, .p-6 { padding: 0.75rem; }
+  .px-8, .px-6 { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .py-8, .py-6 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
   
-  .text-3xl {
-    font-size: 1.5rem;
-  }
+  .gap-8, .gap-6 { gap: 0.75rem; }
+  .space-y-8 > * + *, .space-y-6 > * + * { margin-top: 0.75rem; }
   
-  .p-6 {
-    padding: 1rem;
-  }
+  .flex-row { flex-direction: column; }
+  .justify-between { justify-content: flex-start; }
   
-  .px-6 {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-  
-  .py-6 {
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-  }
-  
-  .gap-6 {
-    gap: 1rem;
-  }
-  
-  .space-y-6 > * + * {
-    margin-top: 1rem;
-  }
+  .w-1/2, .w-1/3, .w-1/4 { width: 100%; }
 }
 
 @media (max-width: 639px) {
+  /* Small devices */
   .grid-cols-2 {
     grid-template-columns: 1fr !important;
   }
   
-  .grid-cols-3 {
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6 {
     grid-template-columns: 1fr !important;
   }
   
-  .grid-cols-4 {
-    grid-template-columns: 1fr !important;
+  .flex-row { flex-direction: column; }
+  
+  .text-4xl { font-size: 1.5rem; }
+  .text-3xl { font-size: 1.25rem; }
+  .text-2xl { font-size: 1.125rem; }
+  
+  .p-8 { padding: 1rem; }
+  .p-6 { padding: 1rem; }
+  .px-8 { padding-left: 1rem; padding-right: 1rem; }
+  .px-6 { padding-left: 1rem; padding-right: 1rem; }
+  .py-8 { padding-top: 1rem; padding-bottom: 1rem; }
+  .py-6 { padding-top: 1rem; padding-bottom: 1rem; }
+  
+  .gap-8 { gap: 1rem; }
+  .gap-6 { gap: 1rem; }
+  .space-y-8 > * + * { margin-top: 1rem; }
+  .space-y-6 > * + * { margin-top: 1rem; }
+  
+  .hidden-mobile { display: none !important; }
+}
+
+@media (max-width: 767px) {
+  /* Medium devices and below */
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6 {
+    grid-template-columns: repeat(2, 1fr) !important;
   }
   
-  .grid-cols-5 {
-    grid-template-columns: 1fr !important;
+  .flex-row { flex-direction: column; }
+  .items-center { align-items: stretch; }
+  
+  .w-auto { width: 100%; }
+  .max-w-xs, .max-w-sm { max-width: 100%; }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tablet devices */
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6 {
+    grid-template-columns: repeat(3, 1fr) !important;
   }
+}
+
+@media (max-width: 1023px) {
+  /* Desktop and below */
+  .grid-cols-5,
+  .grid-cols-6 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  
+  .hidden-tablet { display: none !important; }
 }

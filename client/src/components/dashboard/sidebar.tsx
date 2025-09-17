@@ -656,29 +656,34 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       <Button
         variant="ghost"
         size="sm"
-        className="mobile-menu-button fixed top-4 left-4 z-50 lg:hidden bg-white shadow-md hover:bg-gray-50"
+        className="mobile-menu-button fixed top-3 left-3 z-50 lg:hidden bg-white shadow-lg hover:bg-gray-50 touch-manipulation rounded-full p-2"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       >
-        {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
       </Button>
 
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-300" />
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-300 touch-manipulation"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
       )}
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex h-screen w-64 bg-white border-r border-gray-200 flex-col">
+      <div className="hidden lg:flex h-screen w-64 xl:w-72 bg-white border-r border-gray-200 flex-col">
         <SidebarContent />
       </div>
 
       {/* Mobile Sidebar */}
       <div className={cn(
-        "mobile-sidebar fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:hidden",
+        "mobile-sidebar fixed inset-y-0 left-0 z-50 w-72 sm:w-80 max-w-[85vw] bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:hidden shadow-xl",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="flex flex-col h-full">
-          <SidebarContent />
+        <div className="flex flex-col h-full overflow-hidden">
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <SidebarContent />
+          </div>
         </div>
       </div>
     </>
