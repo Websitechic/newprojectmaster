@@ -583,11 +583,11 @@ export function registerRoutes(app: Express): Server {
             dailyData.taskCount += 1;
             dailyData.tasks.push(task.title);
 
-            // Calculate performance status
-            if (dailyData.actualWorkHours >= 7) {
+            // Calculate performance status (standardized with productivity page)
+            if (dailyData.actualWorkHours >= 4) {
               dailyData.performanceStatus = 'good';
               dailyData.performanceColor = '#10B981';
-            } else if (dailyData.actualWorkHours >= 5) {
+            } else if (dailyData.actualWorkHours >= 2) {
               dailyData.performanceStatus = 'fair';
               dailyData.performanceColor = '#F59E0B';
             }
@@ -788,7 +788,7 @@ export function registerRoutes(app: Express): Server {
         const totalTime = dayTasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
         const hours = totalTime / 3600; // Convert seconds to hours
 
-        // Calculate performance status
+        // Calculate performance status (consistent with daily data)
         let performanceStatus = 'poor';
         let performanceColor = '#EF4444';
 
