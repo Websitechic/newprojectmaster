@@ -4649,18 +4649,20 @@ End of Report
         })
         .where(and(eq(tasks.assigneeId, user.id), eq(tasks.isTimerRunning, true)));
 
-      // Start timer for this task
-      await db
+      // Start timer for this task and update status to in_progress
+      const [updatedTask] = await db
         .update(tasks)
         .set({
           isTimerRunning: true,
           timerStartTime: new Date(),
           hasBeenStarted: true,
-          status: task.status === "todo" ? "in_progress" : task.status,
+          status: "in_progress", // Always set to in_progress when timer starts
+          updatedAt: new Date(),
         })
-        .where(eq(tasks.id, taskId));
+        .where(eq(tasks.id, taskId))
+        .returning();
 
-      res.json({ success: true });
+      res.json({ success: true, task: updatedTask });
     } catch (error) {
       console.error("Error starting task timer:", error);
       res.status(500).json({ error: "Failed to start timer" });
