@@ -1694,7 +1694,7 @@ End of Report
     }
   });
 
-  app.post("/api/staff-queries", async (req, res) => {
+  app.post("/api/staff-queries", upload.single('attachment'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
@@ -1702,7 +1702,13 @@ End of Report
     const user = req.user!;
 
     try {
-      const { staffId, staffName, department, staffUniqueValue, reason, whyQuery, attachmentPath, likelyPenalty, additionalNote } = req.body;
+      const { staffId, staffName, department, staffUniqueValue, reason, whyQuery, likelyPenalty, additionalNote } = req.body;
+
+      // Handle uploaded attachment if present
+      let attachmentPath = null;
+      if (req.file) {
+        attachmentPath = `/uploads/leave-proof/${req.file.filename}`;
+      }
 
       console.log("Staff query data:", { staffId, staffName, department, staffUniqueValue, reason, whyQuery, attachmentPath, likelyPenalty, additionalNote });
 
@@ -1767,7 +1773,7 @@ End of Report
           staffUniqueValue: staffUniqueValue || "",
           reason,
           whyQuery: whyQuery.trim(),
-          attachmentPath: attachmentPath || null,
+          attachmentPath,
           likelyPenalty: likelyPenalty.trim(),
           additionalNote: additionalNote ? additionalNote.trim() : null,
           sentBy: user.id,
