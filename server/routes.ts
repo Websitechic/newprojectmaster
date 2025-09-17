@@ -1791,6 +1791,59 @@ End of Report
     }
   });
 
+  // Update staff query status (for staff to acknowledge/resolve)
+  app.patch("/api/staff-queries/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const queryId = parseInt(req.params.id);
+    const { status } = req.body;
+
+    try {
+      if (!status || !["acknowledged", "resolved"].includes(status)) {
+        return res.status(400).json({ error: "Valid status is required (acknowledged or resolved)" });
+      }
+
+      // Check if the query exists and belongs to the user
+      const [existingQuery] = await db
+        .select()
+        .from(staffQueries)
+        .where(
+          and(
+            eq(staffQueries.id, queryId),
+            eq(staffQueries.staffId, user.id)
+          )
+        )
+        .limit(1);
+
+      if (!existingQuery) {
+        return res.status(404).json({ error: "Staff query not found or access denied" });
+      }
+
+      if (existingQuery.status !== "pending") {
+        return res.status(400).json({ error: "Query has already been processed" });
+      }
+
+      // Update the query status
+      const [updatedQuery] = await db
+        .update(staffQueries)
+        .set({
+          status,
+          updatedAt: new Date(),
+        })
+        .where(eq(staffQueries.id, queryId))
+        .returning();
+
+      console.log("Staff query status updated:", updatedQuery);
+      res.json({ success: true, query: updatedQuery });
+    } catch (error) {
+      console.error("Error updating staff query status:", error);
+      res.status(500).json({ error: "Failed to update staff query status", details: error.message });
+    }
+  });
+
   // Staff Complaints API Routes
   // Get user's own complaints
   app.get("/api/staff-complaints/my-complaints", async (req, res) => {
