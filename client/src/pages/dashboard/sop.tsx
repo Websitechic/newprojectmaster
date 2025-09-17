@@ -674,21 +674,22 @@ export default function SOPPage() {
                                       <CardDescription className="mt-2">
                                         {sop.segments.length} segment{sop.segments.length !== 1 ? 's' : ''} • 
                                         Updated {new Date(sop.updatedAt).toLocaleDateString()}
+                                        {sop.referenceLink && (
+                                          <>
+                                            {' • '}
+                                            <a
+                                              href={sop.referenceLink}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+                                            >
+                                              <Link size={12} />
+                                              Reference Link
+                                              <ExternalLink size={10} />
+                                            </a>
+                                          </>
+                                        )}
                                       </CardDescription>
-                                      {sop.referenceLink && (
-                                        <div className="mt-2">
-                                          <a
-                                            href={sop.referenceLink}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm"
-                                          >
-                                            <Link size={14} />
-                                            Reference Link
-                                            <ExternalLink size={12} />
-                                          </a>
-                                        </div>
-                                      )}
                                     </div>
                                     <div className="flex items-center gap-2 ml-4">
                                       <Button
