@@ -3224,6 +3224,118 @@ End of Report
     }
   });
 
+  // Submit client complaint
+  app.post("/api/complaints", upload.single('screenshot'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      const { name, email, productManagerName, developerName, technicalManagerName, valuableThings, detailedExplanation } = req.body;
+
+      console.log("Client complaint submission:", { name, email, productManagerName, developerName, technicalManagerName, valuableThings, detailedExplanation, userId: user.id });
+
+      if (!name || !email || !detailedExplanation) {
+        return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
+      }
+
+      // Parse valuable things if it's a string
+      let parsedValuableThings = [];
+      if (valuableThings) {
+        try {
+          parsedValuableThings = typeof valuableThings === 'string' ? JSON.parse(valuableThings) : valuableThings;
+          if (!Array.isArray(parsedValuableThings)) {
+            parsedValuableThings = [];
+          }
+        } catch (error) {
+          console.error("Error parsing valuable things:", error);
+          parsedValuableThings = [];
+        }
+      }
+
+      // Handle screenshot if uploaded
+      let screenshotUrl = null;
+      if (req.file) {
+        screenshotUrl = `/uploads/leave-proof/${req.file.filename}`;
+        console.log("Screenshot uploaded:", screenshotUrl);
+      }
+
+      const [newComplaint] = await db
+        .insert(complaints)
+        .values({
+          name: name.trim(),
+          email: email.trim(),
+          productManagerName: productManagerName?.trim() || null,
+          developerName: developerName?.trim() || null,
+          technicalManagerName: technicalManagerName?.trim() || null,
+          valuableThings: parsedValuableThings,
+          detailedExplanation: detailedExplanation.trim(),
+          screenshotUrl,
+          submitterId: user.id,
+          status: "pending",
+        })
+        .returning();
+
+      console.log("Client complaint created:", newComplaint.id);
+
+      // Create notifications for operations managers
+      try {
+        const operationsManagers = await db
+          .select()
+          .from(users)
+          .where(or(
+            eq(users.role, "operations_manager"),
+            eq(users.specialization, "operations_manager")
+          ));
+
+        for (const manager of operationsManagers) {
+          await db
+            .insert(notifications)
+            .values({
+              userId: manager.id,
+              type: "task_assigned", // Using existing type
+              content: `New client complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
+              referenceId: newComplaint.id,
+              referenceType: "project", // Using existing type
+            });
+        }
+
+        console.log(`Notifications sent to ${operationsManagers.length} operations managers`);
+      } catch (notificationError) {
+        console.error("Error creating client complaint notifications:", notificationError);
+      }
+
+      res.json({ success: true, complaintId: newComplaint.id });
+    } catch (error) {
+      console.error("Error creating client complaint:", error);
+      res.status(500).json({ error: "Failed to create complaint", details: error.message });
+    }
+  });
+
+  // Get user's own complaints
+  app.get("/api/complaints/my-complaints", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      const userComplaints = await db
+        .select()
+        .from(complaints)
+        .where(eq(complaints.submitterId, user.id))
+        .orderBy(desc(complaints.createdAt));
+
+      res.json(userComplaints);
+    } catch (error) {
+      console.error("Error fetching user's complaints:", error);
+      res.status(500).json({ error: "Failed to fetch complaints" });
+    }
+  });
+
   app.put("/api/complaints/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
