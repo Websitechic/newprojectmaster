@@ -90,7 +90,7 @@ export default function TechnicalSupportPage() {
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const { data: requests = [], isLoading } = useQuery<TechnicalSupportRequest[]>({
+  const { data: requests = [], isLoading, error } = useQuery<TechnicalSupportRequest[]>({
     queryKey: ["/api/technical-support/requests"],
     queryFn: async () => {
       const res = await fetch("/api/technical-support/requests");
@@ -196,6 +196,32 @@ export default function TechnicalSupportPage() {
             Technical support staff should use the Technical Management page to handle requests.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    console.error("Error in technical support page:", error);
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center py-12">
+          <AlertCircle className="h-16 w-16 mx-auto text-red-500 mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Error Loading Page</h2>
+          <p className="text-gray-600 mb-4">
+            Failed to load technical support requests. Please try refreshing the page.
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            Refresh Page
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center py-8">Loading requests...</div>
       </div>
     );
   }
@@ -322,9 +348,7 @@ export default function TechnicalSupportPage() {
         </Dialog>
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-8">Loading requests...</div>
-      ) : requests.length === 0 ? (
+      {requests.length === 0 ? (
         <div className="text-center py-12">
           <Wrench className="h-16 w-16 mx-auto text-gray-400 mb-4" />
           <h2 className="text-xl font-semibold mb-2">No Support Requests</h2>
