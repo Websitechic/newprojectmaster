@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -250,9 +250,12 @@ export default function TechnicalSupportPage() {
               Create Request
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Technical Support Request</DialogTitle>
+              <DialogDescription>
+                Submit a technical support request for assistance with any technical issues you're experiencing.
+              </DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -288,14 +291,14 @@ export default function TechnicalSupportPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Related Task</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(value === "" ? undefined : parseInt(value))} value={field.value?.toString() ?? ""}>
+                      <Select onValueChange={(value) => field.onChange(value === "none" ? undefined : parseInt(value))} value={field.value?.toString() ?? "none"}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a task (optional)" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           {userTasks.map((task) => (
                             <SelectItem key={task.id} value={task.id.toString()}>
                               {task.title} ({projectMap[task.projectId] || `Project ${task.projectId}`})
