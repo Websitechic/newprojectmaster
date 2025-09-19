@@ -160,10 +160,20 @@ export default function Bookings() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete booking");
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to delete booking");
       }
 
-      return response.json();
+      // Check if response has content before parsing JSON
+      const responseText = await response.text();
+      if (responseText) {
+        try {
+          return JSON.parse(responseText);
+        } catch (e) {
+          return { success: true };
+        }
+      }
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });

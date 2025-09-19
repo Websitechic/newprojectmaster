@@ -2898,6 +2898,91 @@ End of Report
     }
   });
 
+  // Delete booking
+  app.delete("/api/bookings/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const bookingId = parseInt(req.params.id);
+
+    try {
+      // Check if booking exists
+      const [booking] = await db
+        .select()
+        .from(bookings)
+        .where(eq(bookings.id, bookingId))
+        .limit(1);
+
+      if (!booking) {
+        return res.status(404).json({ error: "Booking not found" });
+      }
+
+      // Check if user has permission to delete (scheduler or participant)
+      const canDelete = booking.scheduledBy === user.id || booking.participants.includes(user.id);
+      
+      if (!canDelete) {
+        return res.status(403).json({ error: "You don't have permission to delete this booking" });
+      }
+
+      // Delete the booking
+      await db
+        .delete(bookings)
+        .where(eq(bookings.id, bookingId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+      res.status(500).json({ error: "Failed to delete booking" });
+    }
+  });
+
+  // Update booking status
+  app.put("/api/bookings/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const bookingId = parseInt(req.params.id);
+    const { status } = req.body;
+
+    try {
+      // Check if booking exists
+      const [booking] = await db
+        .select()
+        .from(bookings)
+        .where(eq(bookings.id, bookingId))
+        .limit(1);
+
+      if (!booking) {
+        return res.status(404).json({ error: "Booking not found" });
+      }
+
+      // Check if user has permission to update (scheduler or participant)
+      const canUpdate = booking.scheduledBy === user.id || booking.participants.includes(user.id);
+      
+      if (!canUpdate) {
+        return res.status(403).json({ error: "You don't have permission to update this booking" });
+      }
+
+      // Update the booking status
+      await db
+        .update(bookings)
+        .set({ 
+          status,
+          updatedAt: new Date()
+        })
+        .where(eq(bookings.id, bookingId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating booking:", error);
+      res.status(500).json({ error: "Failed to update booking" });
+    }
+  });
+
   // Technical Support Requests API Routes
   app.get("/api/technical-support/requests", async (req, res) => {
     if (!req.isAuthenticated()) {
