@@ -53,7 +53,7 @@ interface ProductivityData {
 
 const departments = [
   { value: "technical_support", label: "Technical Support" },
-  { value: "developer", label: "Development" },
+  { value: "development", label: "Development" },
   { value: "design", label: "Design" },
   { value: "media_buying", label: "Media Buying" },
   { value: "copywriting", label: "Copywriting" },
