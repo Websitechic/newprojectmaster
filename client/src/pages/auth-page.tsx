@@ -267,7 +267,7 @@ export default function AuthPage() {
                 {role !== "client" && (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="breakOneTime">First Break Time</Label>
+                      <Label htmlFor="breakOneTime">Daily Break Time</Label>
                       <Input
                         id="breakOneTime"
                         type="time"
@@ -275,22 +275,6 @@ export default function AuthPage() {
                         onChange={(e) => setBreakOneTime(e.target.value)}
                         required
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Choose your first 1-hour break time
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="breakTwoTime">Second Break Time</Label>
-                      <Input
-                        id="breakTwoTime"
-                        type="time"
-                        value={breakTwoTime}
-                        onChange={(e) => setBreakTwoTime(e.target.value)}
-                        required
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Choose your second 1-hour break time (must be at least 1 hour from first break)
-                      </p>
                     </div>
                   </>
                 )}

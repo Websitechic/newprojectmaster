@@ -4,7 +4,7 @@ import { eq, and } from "drizzle-orm";
 
 interface BreakSession {
   userId: number;
-  breakType: 'first' | 'second';
+  breakType: 'daily';
   startTime: Date;
   endTime: Date;
   pausedTaskId?: number;
@@ -54,7 +54,7 @@ class BreakScheduler {
         await this.checkLeaveStatus(user);
 
         // Only check breaks for users not on leave
-        if (user.workStatus !== WorkStatus.ABSENT && user.breakOneTime && user.breakTwoTime) {
+        if (user.workStatus !== WorkStatus.ABSENT && user.breakOneTime) {
           // Check if user is already on break
           if (this.activeBreaks.has(user.id)) {
             await this.checkBreakEnd(user);
@@ -73,27 +73,15 @@ class BreakScheduler {
   }
 
   private async checkBreakStart(user: any, currentTime: string) {
-    if (!user || !user.breakOneTime || !user.breakTwoTime) {
+    if (!user || !user.breakOneTime) {
       return;
     }
 
-    const breakOneTime = user.breakOneTime;
-    const breakTwoTime = user.breakTwoTime;
+    const breakTime = user.breakOneTime;
 
-    let shouldStartBreak = false;
-    let breakType: 'first' | 'second' | null = null;
-
-    // Check if current time matches break times (within 1 minute window)
-    if (this.isTimeToBreak(currentTime, breakOneTime)) {
-      breakType = 'first';
-      shouldStartBreak = true;
-    } else if (this.isTimeToBreak(currentTime, breakTwoTime)) {
-      breakType = 'second';
-      shouldStartBreak = true;
-    }
-
-    if (shouldStartBreak && breakType) {
-      await this.startBreak(user, breakType);
+    // Check if current time matches break time (within 1 minute window)
+    if (this.isTimeToBreak(currentTime, breakTime)) {
+      await this.startBreak(user, 'daily');
     }
   }
 
@@ -147,7 +135,7 @@ class BreakScheduler {
     return true;
   }
 
-  private async startBreak(user: any, breakType: 'first' | 'second') {
+  private async startBreak(user: any, breakType: 'daily') {
     try {
       // Double-check business hours before starting break
       const now = new Date();
@@ -331,7 +319,7 @@ class BreakScheduler {
         const endTime = new Date(breakStartTime.getTime() + 60 * 60 * 1000); // 1 hour from start
         this.activeBreaks.set(user.id, {
           userId: user.id,
-          breakType: 'first', // Default type
+          breakType: 'daily',
           startTime: breakStartTime,
           endTime: endTime
         });

@@ -612,7 +612,7 @@ export default function StaffReport() {
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-800">
-                            Scheduled Break
+                            Daily Break
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
