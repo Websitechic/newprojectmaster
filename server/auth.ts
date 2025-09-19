@@ -7,7 +7,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users, type User as SelectUser, UserStatus } from "@db/schema";
 import { db } from "@db";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, or } from "drizzle-orm";
 import { z } from "zod";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./services/email";
 
@@ -32,7 +32,7 @@ const crypto = {
     }
 
     const [hashedPassword, salt] = parts;
-    
+
     if (!hashedPassword || !salt) {
       console.error('Missing hash or salt in stored password');
       return false;
@@ -74,6 +74,9 @@ const registerSchema = z.object({
   role: z.enum(["client", "project_manager", "staff", "intern", "product_owner", "operations_manager"]),
   breakOneTime: z.string().optional(),
   breakTwoTime: z.string().optional(),
+  specialization: z.string().optional(),
+  productService: z.string().optional(),
+  clientType: z.string().optional(),
 });
 
 export function setupAuth(app: Express) {
@@ -234,7 +237,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password, role, name, email, breakOneTime, breakTwoTime } = result.data;
+      const { username, password, role, name, email, breakOneTime, breakTwoTime, specialization, productService, clientType } = result.data;
 
       // Check if user already exists
       const [existingUser] = await db
@@ -266,19 +269,40 @@ export function setupAuth(app: Express) {
       // Hash the password
       const hashedPassword = await crypto.hash(password);
 
+      // Prepare user data
+      const userData: any = {
+        username,
+        password: hashedPassword,
+        name,
+        email,
+        role: role as any,
+        status: UserStatus.ONLINE, // Set to online since they'll be logged in
+        emailVerified: false,
+        onboardingStatus: "not_onboarded",
+      };
+
+      // Add specialization for staff and intern users
+      if ((role === "staff" || role === "intern") && specialization) {
+        userData.specialization = specialization as any;
+      }
+
+      // Add client-specific fields
+      if (role === "client") {
+        if (productService) userData.productService = productService as any;
+        if (clientType) userData.clientType = clientType as any;
+      }
+
+      // Add break times for non-client users
+      if (role !== "client") {
+        if (breakOneTime) userData.breakOneTime = breakOneTime;
+        if (breakTwoTime) userData.breakTwoTime = breakTwoTime;
+      }
+
+
       // Create the new user
       const [newUser] = await db
         .insert(users)
-        .values({
-          username,
-          password: hashedPassword,
-          role,
-          name,
-          email,
-          status: UserStatus.ONLINE, // Set to online since they'll be logged in
-          breakOneTime: role !== "client" ? breakOneTime : null,
-          breakTwoTime: role !== "client" ? breakTwoTime : null,
-        })
+        .values(userData)
         .returning();
 
       // Log the user in after registration
