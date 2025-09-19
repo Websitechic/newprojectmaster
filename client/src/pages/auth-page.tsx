@@ -222,15 +222,12 @@ export default function AuthPage() {
                         <SelectValue placeholder="Select your specialization" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="product_owner">Product Owner</SelectItem>
-                        <SelectItem value="product_manager">Product Manager</SelectItem>
                         <SelectItem value="automation">Automation</SelectItem>
                         <SelectItem value="copywriting">Copy Writing</SelectItem>
                         <SelectItem value="design">Design</SelectItem>
                         <SelectItem value="media_buying">Media Buying</SelectItem>
                         <SelectItem value="development">Development</SelectItem>
                         <SelectItem value="community_manager">Community Manager</SelectItem>
-                        <SelectItem value="operations_manager">Operations Manager</SelectItem>
                         <SelectItem value="technical_support">Technical Support</SelectItem>
                       </SelectContent>
                     </Select>
