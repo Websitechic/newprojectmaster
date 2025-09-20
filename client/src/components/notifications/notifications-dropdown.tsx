@@ -261,7 +261,7 @@ export function NotificationsDropdown() {
               {uniqueNotifications.map((notification, index) => (
                 <DropdownMenuItem
                   key={`notification-${notification.id}-${index}`}
-                  className="flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50 relative"
+                  className="group flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50 relative"
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex-shrink-0">
@@ -313,7 +313,7 @@ export function NotificationsDropdown() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                    className="absolute top-2 right-2 h-6 w-6 opacity-60 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity"
                     onClick={(e) => deleteNotification(notification.id, e)}
                   >
                     <X className="h-3 w-3" />
