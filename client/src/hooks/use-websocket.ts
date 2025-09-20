@@ -18,7 +18,16 @@ export function useWebSocket(userId: number | undefined) {
   const getWebSocketUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    return `${protocol}//${host}/api/ws`;
+    
+    // Ensure we have a valid host
+    if (!host || host === 'undefined' || host.includes('undefined')) {
+      console.error('Invalid host detected:', host);
+      // Fallback to current origin
+      const origin = window.location.origin;
+      return `${protocol}//${origin.replace(/^https?:\/\//, '')}/ws`;
+    }
+    
+    return `${protocol}//${host}/ws`;
   }, []);
 
   const connect = useCallback(() => {
@@ -46,6 +55,13 @@ export function useWebSocket(userId: number | undefined) {
 
     try {
       const wsUrl = getWebSocketUrl();
+      console.log('Attempting WebSocket connection to:', wsUrl);
+      
+      // Validate URL before creating WebSocket
+      if (!wsUrl || wsUrl.includes('undefined')) {
+        throw new Error(`Invalid WebSocket URL: ${wsUrl}`);
+      }
+      
       ws.current = new WebSocket(wsUrl);
 
       // Connection opened handler
