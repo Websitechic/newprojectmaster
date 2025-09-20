@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Clock, CheckSquare, MessageSquare, AlertTriangle } from "lucide-react"; // Imported necessary icons
+import { Bell, Clock, CheckSquare, MessageSquare, AlertTriangle, X } from "lucide-react"; // Imported necessary icons
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { formatDistanceToNow, format, isValid, parseISO } from "date-fns";
@@ -211,6 +212,29 @@ export function NotificationsDropdown() {
     }
   };
 
+  const deleteNotification = async (notificationId: number, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent triggering the notification click
+    try {
+      const response = await fetch(`/api/notifications/${notificationId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete notification: ${response.status}`);
+      }
+
+      // Remove from query cache
+      queryClient.setQueryData(["/api/notifications"], (old: Notification[] = []) =>
+        old.filter(n => n.id !== notificationId)
+      );
+      // Also update SSE local state
+      setSseNotifications(prev => prev.filter(n => n.id !== notificationId));
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -226,66 +250,78 @@ export function NotificationsDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-80 p-0">
         {uniqueNotifications.length === 0 ? (
-          <DropdownMenuItem key="no-notifications" disabled>
+          <div className="p-3">
             <span className="text-sm text-muted-foreground">No notifications</span>
-          </DropdownMenuItem>
+          </div>
         ) : (
-          uniqueNotifications.slice(0, 5).map((notification, index) => (
-            <DropdownMenuItem
-              key={`notification-${notification.id}-${index}`}
-              className="flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50"
-              onClick={() => handleNotificationClick(notification)}
-            >
-              <div className="flex-shrink-0">
-                {notification.type === "break_reminder" && (
-                  <Clock className="h-4 w-4 text-orange-500" />
-                )}
-                {notification.type === "task_assignment" && (
-                  <CheckSquare className="h-4 w-4 text-blue-500" />
-                )}
-                {notification.type === "message" && (
-                  <MessageSquare className="h-4 w-4 text-green-500" />
-                )}
-                {notification.type === "deadline" && (
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                )}
-                {/* Default icon if type is unknown or for general notifications */}
-                {(!notification.type || ["mention", "system"].includes(notification.type)) && (
-                   <Bell className="h-4 w-4 text-gray-500" />
-                )}
-              </div>
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm">{notification.content}</p>
-                <div className="text-xs text-muted-foreground">
-                  {(() => {
-                    if (!notification.createdAt) {
-                      console.log('Notification missing createdAt:', notification);
-                      return 'Just now';
-                    }
+          <ScrollArea className="h-96">
+            <div className="p-1">
+              {uniqueNotifications.map((notification, index) => (
+                <DropdownMenuItem
+                  key={`notification-${notification.id}-${index}`}
+                  className="flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50 relative"
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  <div className="flex-shrink-0">
+                    {notification.type === "break_reminder" && (
+                      <Clock className="h-4 w-4 text-orange-500" />
+                    )}
+                    {notification.type === "task_assignment" && (
+                      <CheckSquare className="h-4 w-4 text-blue-500" />
+                    )}
+                    {notification.type === "message" && (
+                      <MessageSquare className="h-4 w-4 text-green-500" />
+                    )}
+                    {notification.type === "deadline" && (
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                    )}
+                    {/* Default icon if type is unknown or for general notifications */}
+                    {(!notification.type || ["mention", "system"].includes(notification.type)) && (
+                       <Bell className="h-4 w-4 text-gray-500" />
+                    )}
+                  </div>
+                  <div className="flex flex-col space-y-1 flex-1 min-w-0">
+                    <p className="text-sm pr-6">{notification.content}</p>
+                    <div className="text-xs text-muted-foreground">
+                      {(() => {
+                        if (!notification.createdAt) {
+                          console.log('Notification missing createdAt:', notification);
+                          return 'Just now';
+                        }
 
-                    try {
-                      // Handle both ISO strings and Date objects
-                      const date = typeof notification.createdAt === 'string'
-                        ? parseISO(notification.createdAt)
-                        : new Date(notification.createdAt);
+                        try {
+                          // Handle both ISO strings and Date objects
+                          const date = typeof notification.createdAt === 'string'
+                            ? parseISO(notification.createdAt)
+                            : new Date(notification.createdAt);
 
-                      if (!isValid(date)) {
-                        console.log('Invalid date for notification:', notification.id, notification.createdAt);
-                        return 'Just now';
-                      }
+                          if (!isValid(date)) {
+                            console.log('Invalid date for notification:', notification.id, notification.createdAt);
+                            return 'Just now';
+                          }
 
-                      return formatDistanceToNow(date, { addSuffix: true });
-                    } catch (error) {
-                      console.error('Date parsing error for notification:', notification.id, notification.createdAt, error);
-                      return 'Just now';
-                    }
-                  })()}
-                </div>
-              </div>
-            </DropdownMenuItem>
-          ))
+                          return formatDistanceToNow(date, { addSuffix: true });
+                        } catch (error) {
+                          console.error('Date parsing error for notification:', notification.id, notification.createdAt, error);
+                          return 'Just now';
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={(e) => deleteNotification(notification.id, e)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuItem>
+              ))}
+            </div>
+          </ScrollArea>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

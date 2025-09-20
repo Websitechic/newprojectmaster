@@ -73,6 +73,18 @@ const upload = multer({
   }
 });
 
+// Middleware for authentication (assuming it's defined elsewhere and imported)
+// For demonstration purposes, we'll define a placeholder here.
+// In a real application, this would likely be imported from './auth' or a similar file.
+const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated() && req.user) {
+    next();
+  } else {
+    res.status(401).json({ error: "Not authenticated" });
+  }
+};
+
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -2921,7 +2933,7 @@ End of Report
 
       // Check if user has permission to delete (scheduler or participant)
       const canDelete = booking.scheduledBy === user.id || booking.participants.includes(user.id);
-      
+
       if (!canDelete) {
         return res.status(403).json({ error: "You don't have permission to delete this booking" });
       }
@@ -2962,7 +2974,7 @@ End of Report
 
       // Check if user has permission to update (scheduler or participant)
       const canUpdate = booking.scheduledBy === user.id || booking.participants.includes(user.id);
-      
+
       if (!canUpdate) {
         return res.status(403).json({ error: "You don't have permission to update this booking" });
       }
@@ -3452,7 +3464,7 @@ End of Report
       // If approved, update the task
       if (status === "approved") {
         const taskUpdateData: any = {};
-        
+
         if (approvedDeadline) {
           taskUpdateData.deadline = new Date(approvedDeadline);
         }
@@ -3562,7 +3574,7 @@ End of Report
         // Get Monday of target week
         const dayOfWeek = targetDate.getDay();
         const diff = targetDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-        const monday = new Date(targetDate.setDate(diff));
+        const monday =      new Date(targetDate.setDate(diff));
         monday.setHours(0, 0, 0, 0);
 
         const mondayStr = monday.toISOString().split('T')[0];
@@ -4526,35 +4538,63 @@ End of Report
   });
 
   // Mark notification as read
-  app.put("/api/notifications/:id/read", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const user = req.user!;
-    const notificationId = parseInt(req.params.id);
-
+  app.put("/api/notifications/:id/read", requireAuth, async (req, res) => {
     try {
-      // Update notification as read if it belongs to the user
-      const [updatedNotification] = await db
+      const notificationId = parseInt(req.params.id);
+      const userId = req.user!.id;
+
+      // Verify the notification belongs to the user
+      const notification = await db.query.notifications.findFirst({
+        where: and(
+          eq(notifications.id, notificationId),
+          eq(notifications.userId, userId)
+        ),
+      });
+
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      // Update the notification
+      await db
         .update(notifications)
         .set({ read: true })
-        .where(
-          and(
-            eq(notifications.id, notificationId),
-            eq(notifications.userId, user.id)
-          )
-        )
-        .returning();
-
-      if (!updatedNotification) {
-        return res.status(404).json({ error: "Notification not found" });
-      }
+        .where(eq(notifications.id, notificationId));
 
       res.json({ success: true });
     } catch (error) {
       console.error("Error marking notification as read:", error);
-      res.status(500).json({ error: "Failed to mark notification as read" });
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // Delete notification
+  app.delete("/api/notifications/:id", requireAuth, async (req, res) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      const userId = req.user!.id;
+
+      // Verify the notification belongs to the user
+      const notification = await db.query.notifications.findFirst({
+        where: and(
+          eq(notifications.id, notificationId),
+          eq(notifications.userId, userId)
+        ),
+      });
+
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      // Delete the notification
+      await db
+        .delete(notifications)
+        .where(eq(notifications.id, notificationId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      res.status(500).json({ message: "Failed to delete notification" });
     }
   });
 
