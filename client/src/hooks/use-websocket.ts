@@ -16,15 +16,24 @@ export function useWebSocket(userId: number | undefined) {
 
   // Determine WebSocket URL based on current location
   const getWebSocketUrl = useCallback(() => {
+    // In Replit environment, use the current origin directly
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+    
+    // For Replit, use the full hostname without port manipulation
+    if (hostname.includes('replit.dev') || hostname.includes('repl.co')) {
+      return `${protocol}//${hostname}/ws`;
+    }
+    
+    // For local development, construct URL properly
+    const host = port ? `${hostname}:${port}` : hostname;
     
     // Ensure we have a valid host
     if (!host || host === 'undefined' || host.includes('undefined')) {
       console.error('Invalid host detected:', host);
-      // Fallback to current origin
-      const origin = window.location.origin;
-      return `${protocol}//${origin.replace(/^https?:\/\//, '')}/ws`;
+      // Fallback - use current location's host
+      return `${protocol}//${window.location.host}/ws`;
     }
     
     return `${protocol}//${host}/ws`;
