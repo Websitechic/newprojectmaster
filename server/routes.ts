@@ -157,8 +157,7 @@ export function registerRoutes(app: Express): Server {
         .select()
         .from(notifications)
         .where(eq(notifications.userId, user.id))
-        .orderBy(desc(notifications.createdAt))
-        .limit(50);
+        .orderBy(desc(notifications.createdAt));
 
       console.log(`Found ${userNotifications.length} notifications for user ${user.id}`);
 

@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 import { useQuery } from "@tanstack/react-query";
+import { useSidebarIndicators } from "@/hooks/use-sidebar-indicators";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -47,9 +48,10 @@ interface SidebarItemProps {
   badge?: number;
   external?: boolean;
   onClick?: () => void;
+  hasUpdate?: boolean;
 }
 
-function SidebarItem({ icon, label, href, active, badge, external, onClick }: SidebarItemProps) {
+function SidebarItem({ icon, label, href, active, badge, external, onClick, hasUpdate }: SidebarItemProps) {
   const content = (
     <div
       className={cn(
@@ -64,9 +66,9 @@ function SidebarItem({ icon, label, href, active, badge, external, onClick }: Si
         {icon}
       </div>
       <span className="flex-1 truncate">{label}</span>
-      {badge && badge > 0 && (
+      {(badge && badge > 0) || hasUpdate ? (
         <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
-      )}
+      ) : null}
     </div>
   );
 
@@ -90,6 +92,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   const [, setLocation] = useLocation();
   const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const indicators = useSidebarIndicators();
   
   const { data: unreadCounts = {} } = useQuery({
     queryKey: ["/api/projects/unread-counts"],
@@ -256,6 +259,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       label: "Direct Messages",
       href: "/dashboard/direct-messages",
       badge: unreadDirectMessages,
+      hasUpdate: indicators.directMessages,
       key: "direct-messages",
     },
     {
@@ -326,6 +330,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Calendar size={20} />,
       label: "Leave Application",
       href: "/dashboard/leave-application",
+      hasUpdate: indicators.leaveApplications,
       key: "leave-application",
     },
     {
@@ -338,12 +343,14 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <MessageSquareX size={20} />,
       label: "Send Your Complaint",
       href: "/send-complaint",
+      hasUpdate: indicators.sendComplaint,
       key: "send-complaint",
     },
     {
       icon: <FileText size={20} />,
       label: "My Queries",
       href: "/dashboard/staff-queries",
+      hasUpdate: indicators.myQueries,
       key: "staff-queries",
     }
   ] : user?.role === "product_owner" ? [
@@ -351,12 +358,14 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <Calendar size={20} />,
       label: "Leave Application",
       href: "/dashboard/leave-application",
+      hasUpdate: indicators.leaveApplications,
       key: "leave-application",
     },
     {
       icon: <Users size={20} />,
       label: "Client Management",
       href: "/dashboard/client-management",
+      hasUpdate: indicators.clientManagement,
       key: "client-management",
     },
     {
@@ -369,6 +378,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <FileText size={20} />,
       label: "My Queries",
       href: "/dashboard/staff-queries",
+      hasUpdate: indicators.myQueries,
       key: "product-owner-queries",
     }
   ] : [];
@@ -399,11 +409,13 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     icon: <Clock size={20} />,
     label: "Deadline Extension Requests",
     href: "/dashboard/deadline-extension-requests",
+    hasUpdate: indicators.extensionRequests,
     key: "deadline-extension-requests",
   }] : user?.role === "staff" ? [{
     icon: <Clock size={20} />,
     label: "Extension Requests",
     href: "/dashboard/extension-requests",
+    hasUpdate: indicators.extensionRequests,
     key: "extension-requests",
   }] : [];
 
@@ -460,12 +472,14 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <TrendingUp size={20} />,
       label: "Client Sentiment Tracker",
       href: "/dashboard/client-sentiment-tracker",
+      hasUpdate: indicators.clientSentimentTracker,
       key: "operations-client-sentiment-tracker",
     },
     {
       icon: <MessageSquare size={20} />,
       label: "Staff Queries",
       href: "/dashboard/staff-queries",
+      hasUpdate: indicators.myQueries,
       key: "operations-staff-queries",
     },
     {
@@ -478,12 +492,14 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <MessageSquareX size={20} />,
       label: "Client Complaints",
       href: "/dashboard/client-complaints",
+      hasUpdate: indicators.clientComplaints,
       key: "operations-client-complaints",
     },
     {
       icon: <AlertTriangle size={20} />,
       label: "Staff Complaints",
       href: "/dashboard/staff-complaints",
+      hasUpdate: indicators.staffComplaints,
       key: "operations-staff-complaints",
     },
     {
@@ -518,12 +534,14 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       icon: <ThumbsUp size={20} />,
       label: "Client Sentiment",
       href: "/dashboard/client-sentiment",
+      hasUpdate: indicators.clientSentiment,
       key: "client-sentiment",
     },
     {
       icon: <AlertTriangle size={20} />,
       label: "Register Your Dissatisfaction",
       href: "/dashboard/register-dissatisfaction",
+      hasUpdate: indicators.registerDissatisfaction,
       key: "client-register-dissatisfaction",
     },
     ...(user?.clientType === "support_maintenance_client" ? [{
@@ -606,6 +624,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
                 key={key} 
                 {...itemProps} 
                 onClick={handleMenuItemClick}
+                active={currentPath === item.href || (item.href !== "/dashboard" && currentPath.startsWith(item.href))}
               />
             );
           })}
