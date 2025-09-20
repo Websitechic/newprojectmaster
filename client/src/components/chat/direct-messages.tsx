@@ -110,8 +110,12 @@ export function DirectMessages() {
 
   // Listen for real-time messages via SSE
   useEffect(() => {
+    if (!user?.id) return;
+    
     console.log("Setting up SSE connection for direct messages...");
-    const eventSource = new EventSource("/api/notifications/stream");
+    const eventSource = new EventSource("/api/notifications/stream", {
+      withCredentials: true
+    });
 
     eventSource.onopen = () => {
       console.log("SSE connection opened for direct messages");

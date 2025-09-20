@@ -3018,14 +3018,11 @@ End of Report
       // Send SSE notification to the receiver
       if (global.sseClients && global.sseClients.has(parseInt(receiverId))) {
         const receiverClient = global.sseClients.get(parseInt(receiverId));
-        if (receiverClient && !receiverClient.destroyed) {
+        if (receiverClient && !receiverClient.writableEnded) {
           try {
             receiverClient.write(`data: ${JSON.stringify({
               type: "direct_message",
-              data: {
-                ...newMessage, // Use newMessage directly here
-                senderName: user.name
-              }
+              data: messageWithSender
             })}\n\n`);
             console.log(`SSE notification sent to receiver ${receiverId}`);
           } catch (error) {
@@ -3040,14 +3037,11 @@ End of Report
       // Also send SSE notification to the sender for their own UI updates
       if (global.sseClients && global.sseClients.has(senderId)) {
         const senderClient = global.sseClients.get(senderId);
-        if (senderClient && !senderClient.destroyed) {
+        if (senderClient && !senderClient.writableEnded) {
           try {
             senderClient.write(`data: ${JSON.stringify({
               type: "direct_message",
-              data: {
-                ...newMessage, // Use newMessage directly here
-                senderName: user.name
-              }
+              data: messageWithSender
             })}\n\n`);
             console.log(`SSE notification sent to sender ${senderId}`);
           } catch (error) {
@@ -5063,6 +5057,9 @@ End of Report
       return res.status(401).send("Not authenticated");
     }
 
+    const userId = req.user!.id;
+    console.log(`SSE connection opened for user ${userId}`);
+
     // Set headers for SSE
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -5072,22 +5069,56 @@ End of Report
       'Access-Control-Allow-Headers': 'Cache-Control'
     });
 
-    // Send initial connection event
-    res.write('data: {"type":"connected"}\n\n');
+    // Update user's last active time and status
+    db.update(users)
+      .set({
+        lastActive: new Date(),
+        status: "online" as any
+      })
+      .where(eq(users.id, userId))
+      .catch(err => console.error("Error updating user activity status:", err));
+
+    // Send initial connection message
+    try {
+      res.write(`data: ${JSON.stringify({type: "connected"})}\n\n`);
+    } catch (error) {
+      console.error(`Error sending initial SSE message to user ${userId}:`, error);
+      return;
+    }
+
+    // Store the response object in a Map keyed by user ID
+    if (!global.sseClients) {
+      global.sseClients = new Map();
+    }
+    global.sseClients.set(userId, res);
 
     // Keep connection alive with periodic heartbeat
     const heartbeat = setInterval(() => {
-      res.write('data: {"type":"heartbeat"}\n\n');
+      if (res.writableEnded) {
+        clearInterval(heartbeat);
+        global.sseClients?.delete(userId);
+        return;
+      }
+      try {
+        res.write(`data: ${JSON.stringify({type: "heartbeat"})}\n\n`);
+      } catch (error) {
+        console.error(`Error sending heartbeat to user ${userId}:`, error);
+        clearInterval(heartbeat);
+        global.sseClients?.delete(userId);
+        res.end();
+      }
     }, 30000);
 
-    // Clean up on connection close
-    req.on('close', () => {
+    // Handle client disconnect
+    const cleanup = () => {
       clearInterval(heartbeat);
-    });
+      global.sseClients?.delete(userId);
+      console.log(`SSE connection closed for user ${userId}`);
+    };
 
-    req.on('aborted', () => {
-      clearInterval(heartbeat);
-    });
+    req.on('close', cleanup);
+    req.on('aborted', cleanup);
+    res.on('close', cleanup);
   });
 
   // Create project

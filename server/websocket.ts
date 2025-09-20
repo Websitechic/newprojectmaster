@@ -66,6 +66,8 @@ export function setupWebSocket(wss: WebSocketServer) {
       console.log('WebSocket connection established');
 
       let userId: number | null = null;
+      const extWs = ws as ExtendedWebSocket;
+      extWs.isAlive = true;
 
       // Check if user is authenticated - safely access session with proper error handling
       let session = null;
@@ -127,15 +129,18 @@ export function setupWebSocket(wss: WebSocketServer) {
         userId = session.passport.user;
         console.log(`WebSocket authenticated for user ${userId}`);
 
+        // Set user properties
+        extWs.userId = userId;
+
         // Store the connection
         if (!global.connectedClients) {
           global.connectedClients = new Map();
         }
-        global.connectedClients.set(userId, ws as ExtendedWebSocket);
+        global.connectedClients.set(userId, extWs);
 
         // Handle pong responses
         ws.on('pong', () => {
-          (ws as ExtendedWebSocket).isAlive = true;
+          extWs.isAlive = true;
         });
       }
 

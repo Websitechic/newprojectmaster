@@ -78,7 +78,7 @@ export function NotificationsDropdown() {
       console.log("Setting up SSE connection for notifications...");
 
       try {
-        const eventSource = new EventSource(`/api/notifications/stream?userId=${user.id}`, {
+        const eventSource = new EventSource(`/api/notifications/stream`, {
           withCredentials: true,
         });
 
