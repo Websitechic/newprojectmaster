@@ -119,7 +119,7 @@ let emailServiceInitialized = false;
       const url = new URL(request.url!, `http://${request.headers.host}`);
 
       // Only handle our application WebSocket upgrades, let Vite handle HMR WebSocket
-      if (url.pathname !== '/api/ws') {
+      if (url.pathname !== '/api/ws' && url.pathname !== '/ws') {
         console.log('Ignoring non-application WebSocket upgrade:', url.pathname);
         return;
       }
