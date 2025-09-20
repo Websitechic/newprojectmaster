@@ -1779,6 +1779,316 @@ End of Report
     }
   });
 
+  // API endpoints for sidebar indicators
+
+  // Check for unread direct messages updates
+  app.get("/api/direct-messages/has-updates", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      const unreadCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(directMessages)
+        .where(
+          and(
+            eq(directMessages.receiverId, user.id),
+            eq(directMessages.read, false)
+          )
+        );
+
+      res.json({ hasUpdates: (unreadCount[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking direct messages updates:", error);
+      res.status(500).json({ error: "Failed to check updates" });
+    }
+  });
+
+  // Check for leave application updates
+  app.get("/api/leave-applications/has-updates", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      const updatedApplications = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(leaveApplications)
+        .where(
+          and(
+            eq(leaveApplications.userId, user.id),
+            ne(leaveApplications.status, "pending"),
+            isNotNull(leaveApplications.reviewedAt)
+          )
+        );
+
+      res.json({ hasUpdates: (updatedApplications[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking leave application updates:", error);
+      res.status(500).json({ error: "Failed to check updates" });
+    }
+  });
+
+  // Check for staff complaint updates (for the person who submitted)
+  app.get("/api/staff-complaints/my-complaints/has-updates", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      const updatedComplaints = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(staffComplaints)
+        .where(
+          and(
+            eq(staffComplaints.submitterId, user.id),
+            ne(staffComplaints.status, "pending"),
+            isNotNull(staffComplaints.reviewedAt)
+          )
+        );
+
+      res.json({ hasUpdates: (updatedComplaints[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking staff complaint updates:", error);
+      res.status(500).json({ error: "Failed to check updates" });
+    }
+  });
+
+  // Check for extension request updates
+  app.get("/api/deadline-extension-requests/has-updates", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      let hasUpdates = false;
+
+      if (user.role === "staff") {
+        // For staff, check if their requests have been decided
+        const decidedRequests = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(deadlineExtensionRequests)
+          .where(
+            and(
+              eq(deadlineExtensionRequests.requesterId, user.id),
+              ne(deadlineExtensionRequests.status, "pending"),
+              isNotNull(deadlineExtensionRequests.decidedAt)
+            )
+          );
+
+        hasUpdates = (decidedRequests[0]?.count || 0) > 0;
+      } else if (user.role === "project_manager" || user.role === "operations_manager" || user.specialization === "operations_manager") {
+        // For managers, check if there are new pending requests
+        const whereCondition = user.role === "operations_manager" || user.specialization === "operations_manager"
+          ? eq(deadlineExtensionRequests.status, "pending")
+          : and(
+              eq(deadlineExtensionRequests.status, "pending"),
+              eq(deadlineExtensionRequests.projectManagerId, user.id)
+            );
+
+        const pendingRequests = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(deadlineExtensionRequests)
+          .where(whereCondition);
+
+        hasUpdates = (pendingRequests[0]?.count || 0) > 0;
+      }
+
+      res.json({ hasUpdates });
+    } catch (error) {
+      console.error("Error checking extension request updates:", error);
+      res.status(500).json({ error: "Failed to check updates" });
+    }
+  });
+
+  // Check for new client sentiments (for operations managers)
+  app.get("/api/client-sentiment/has-new", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+        return res.json({ hasNew: false });
+      }
+
+      // Check for sentiments submitted in the last week
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+
+      const recentSentiments = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(clientSentiment)
+        .where(gte(clientSentiment.createdAt, weekAgo));
+
+      res.json({ hasNew: (recentSentiments[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking new client sentiments:", error);
+      res.status(500).json({ error: "Failed to check new sentiments" });
+    }
+  });
+
+  // Check for new client complaints (for operations managers)
+  app.get("/api/complaints/has-new", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+        return res.json({ hasNew: false });
+      }
+
+      const pendingComplaints = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(complaints)
+        .where(eq(complaints.status, "pending"));
+
+      res.json({ hasNew: (pendingComplaints[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking new client complaints:", error);
+      res.status(500).json({ error: "Failed to check new complaints" });
+    }
+  });
+
+  // Check for new staff complaints (for operations managers)
+  app.get("/api/staff-complaints/has-new", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+        return res.json({ hasNew: false });
+      }
+
+      const pendingComplaints = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(staffComplaints)
+        .where(eq(staffComplaints.status, "pending"));
+
+      res.json({ hasNew: (pendingComplaints[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking new staff complaints:", error);
+      res.status(500).json({ error: "Failed to check new staff complaints" });
+    }
+  });
+
+  // Check for new clients (for product owners)
+  app.get("/api/clients/has-new", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "product_owner") {
+        return res.json({ hasNew: false });
+      }
+
+      // Check for clients created in the last week
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+
+      const recentClients = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(
+          and(
+            eq(users.role, "client"),
+            gte(users.createdAt, weekAgo)
+          )
+        );
+
+      res.json({ hasNew: (recentClients[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking new clients:", error);
+      res.status(500).json({ error: "Failed to check new clients" });
+    }
+  });
+
+  // Check for client complaint updates (for clients who sent complaints)
+  app.get("/api/complaints/my-complaints/has-updates", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      const updatedComplaints = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(complaints)
+        .where(
+          and(
+            eq(complaints.submitterId, user.id),
+            ne(complaints.status, "pending"),
+            isNotNull(complaints.reviewedAt)
+          )
+        );
+
+      res.json({ hasUpdates: (updatedComplaints[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking client complaint updates:", error);
+      res.status(500).json({ error: "Failed to check updates" });
+    }
+  });
+
+  // Check if client needs to submit weekly sentiment
+  app.get("/api/client-sentiment/needs-weekly-submission", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "client") {
+        return res.json({ needsSubmission: false });
+      }
+
+      // Get current week's start date (Monday)
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const monday = new Date(now.setDate(diff));
+      monday.setHours(0, 0, 0, 0);
+
+      const mondayStr = monday.toISOString().split('T')[0];
+
+      const existingSentiment = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(clientSentiment)
+        .where(
+          and(
+            eq(clientSentiment.clientId, user.id),
+            eq(clientSentiment.weekStart, mondayStr)
+          )
+        );
+
+      res.json({ needsSubmission: (existingSentiment[0]?.count || 0) === 0 });
+    } catch (error) {
+      console.error("Error checking weekly sentiment submission:", error);
+      res.status(500).json({ error: "Failed to check submission status" });
+    }
+  });
+
   // Staff Queries API Routes
   app.get("/api/staff-queries", async (req, res) => {
     if (!req.isAuthenticated()) {

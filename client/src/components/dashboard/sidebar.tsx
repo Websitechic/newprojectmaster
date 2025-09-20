@@ -66,7 +66,7 @@ function SidebarItem({ icon, label, href, active, badge, external, onClick, hasU
         {icon}
       </div>
       <span className="flex-1 truncate">{label}</span>
-      {(badge && badge > 0) || hasUpdate ? (
+      {((badge && badge > 0) || hasUpdate) ? (
         <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
       ) : null}
     </div>
