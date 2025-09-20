@@ -16,27 +16,37 @@ export function useWebSocket(userId: number | undefined) {
 
   // Determine WebSocket URL based on current location
   const getWebSocketUrl = useCallback(() => {
-    // In Replit environment, use the current origin directly
+    // Get current location details
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const hostname = window.location.hostname;
     const port = window.location.port;
     
-    // For Replit, use the full hostname without port manipulation
-    if (hostname.includes('replit.dev') || hostname.includes('repl.co')) {
-      return `${protocol}//${hostname}/ws`;
+    console.log('WebSocket URL generation - hostname:', hostname, 'port:', port, 'protocol:', protocol);
+    
+    // For Replit environments (including new domain formats)
+    if (hostname.includes('replit.dev') || hostname.includes('repl.co') || hostname.includes('.replit.dev')) {
+      const wsUrl = `${protocol}//${hostname}/ws`;
+      console.log('Replit WebSocket URL:', wsUrl);
+      return wsUrl;
     }
     
-    // For local development, construct URL properly
-    const host = port ? `${hostname}:${port}` : hostname;
+    // For local development, use explicit port 5000 (backend port)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      const wsUrl = `${protocol}//${hostname}:5000/ws`;
+      console.log('Local development WebSocket URL:', wsUrl);
+      return wsUrl;
+    }
     
-    // Ensure we have a valid host
+    // Fallback - construct from current location
+    const host = window.location.host;
     if (!host || host === 'undefined' || host.includes('undefined')) {
-      console.error('Invalid host detected:', host);
-      // Fallback - use current location's host
-      return `${protocol}//${window.location.host}/ws`;
+      console.error('Invalid host detected, using fallback');
+      return `${protocol}//${hostname}:5000/ws`;
     }
     
-    return `${protocol}//${host}/ws`;
+    const wsUrl = `${protocol}//${host}/ws`;
+    console.log('Fallback WebSocket URL:', wsUrl);
+    return wsUrl;
   }, []);
 
   const connect = useCallback(() => {
@@ -124,15 +134,26 @@ export function useWebSocket(userId: number | undefined) {
         const intentionalClose = event.code === 1000 || event.code === 1001;
         const authFailure = event.code === 1008;
         const serverError = event.code === 1011;
+        const abnormalClose = event.code === 1006; // Connection lost unexpectedly
 
         // Only attempt reconnection for unexpected closes and if we have a valid userId
         if (!intentionalClose && !authFailure && userId && reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current++;
-          // Longer delay for server errors to give server time to stabilize
-          const baseDelay = serverError ? 3000 : 1000;
-          const delay = baseDelay * Math.min(reconnectAttempts.current, 3);
-          console.log(`Attempting WebSocket reconnection ${reconnectAttempts.current}/${maxReconnectAttempts} in ${delay}ms`);
-          setTimeout(connect, delay);
+          
+          // Different delays based on close reason
+          let baseDelay = 1000;
+          if (serverError) baseDelay = 3000;
+          if (abnormalClose) baseDelay = 2000; // Special handling for abnormal closes
+          
+          const delay = baseDelay * Math.min(reconnectAttempts.current, 5);
+          console.log(`Attempting WebSocket reconnection ${reconnectAttempts.current}/${maxReconnectAttempts} in ${delay}ms (close code: ${event.code})`);
+          
+          setTimeout(() => {
+            // Double-check we still want to reconnect
+            if (reconnectAttempts.current < maxReconnectAttempts && userId) {
+              connect();
+            }
+          }, delay);
         } else if (reconnectAttempts.current >= maxReconnectAttempts) {
           console.error('Max WebSocket reconnect attempts reached.');
           toast({

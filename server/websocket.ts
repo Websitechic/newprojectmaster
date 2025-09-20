@@ -51,7 +51,7 @@ export function setupWebSocket(wss: WebSocketServer) {
     global.connectedClients = new Map();
   }
 
-  // Set up ping interval to keep connections alive (increased to 60 seconds to reduce aggressive pinging)
+  // Set up ping interval to keep connections alive (increased to 45 seconds for better balance)
   const interval = setInterval(() => {
     if (wss && wss.clients) {
       wss.clients.forEach((ws) => {
@@ -77,11 +77,13 @@ export function setupWebSocket(wss: WebSocketServer) {
             extWs.ping();
           } catch (error) {
             console.error('Error sending ping:', error);
+            // If ping fails, mark as not alive to terminate on next check
+            extWs.isAlive = false;
           }
         }
       });
     }
-  }, 60000);
+  }, 45000);
 
   wss.on('close', () => {
     clearInterval(interval);
@@ -117,10 +119,15 @@ export function setupWebSocket(wss: WebSocketServer) {
 
         isAlive = false;
         if (ws.readyState === WebSocket.OPEN) {
-          ws.ping();
-          ws.send(JSON.stringify({ type: 'heartbeat' }));
+          try {
+            ws.ping();
+            ws.send(JSON.stringify({ type: 'heartbeat' }));
+          } catch (error) {
+            console.error('Error in heartbeat:', error);
+            isAlive = false;
+          }
         }
-      }, 30000);
+      }, 25000); // Reduced to 25 seconds to match client ping interval
     };
 
     startHeartbeat();
