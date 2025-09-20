@@ -1989,6 +1989,47 @@ End of Report
     }
   });
 
+  // Check for staff query updates
+  app.get("/api/staff-queries/has-updates", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      let hasUpdates = false;
+
+      if (user.role === "staff") {
+        // For staff, check if they have pending queries
+        const pendingQueries = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(staffQueries)
+          .where(
+            and(
+              eq(staffQueries.staffId, user.id),
+              eq(staffQueries.status, "pending")
+            )
+          );
+
+        hasUpdates = (pendingQueries[0]?.count || 0) > 0;
+      } else if (user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "project_manager") {
+        // For managers, check if there are new queries in general
+        const totalQueries = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(staffQueries)
+          .where(eq(staffQueries.status, "pending"));
+
+        hasUpdates = (totalQueries[0]?.count || 0) > 0;
+      }
+
+      res.json({ hasUpdates });
+    } catch (error) {
+      console.error("Error checking staff query updates:", error);
+      res.status(500).json({ error: "Failed to check staff query updates" });
+    }
+  });
+
   // Check for new clients (for product owners)
   app.get("/api/clients/has-new", async (req, res) => {
     if (!req.isAuthenticated()) {
