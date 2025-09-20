@@ -595,8 +595,45 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     ...baseMenuItems.slice(2)
   ];
 
-  const handleMenuItemClick = () => {
+  const handleMenuItemClick = async (href: string) => {
     setIsMobileMenuOpen(false);
+    
+    // Clear indicators when visiting specific pages
+    try {
+      if (href === "/dashboard/staff-queries") {
+        // Mark staff queries as viewed
+        await fetch("/api/staff-queries/mark-viewed", { method: "POST" });
+      } else if (href === "/dashboard/leave-application") {
+        // Mark leave applications as viewed
+        await fetch("/api/leave-applications/mark-viewed", { method: "POST" });
+      } else if (href === "/send-complaint") {
+        // Mark complaints as viewed
+        await fetch("/api/staff-complaints/mark-viewed", { method: "POST" });
+      } else if (href === "/dashboard/extension-requests") {
+        // Mark extension requests as viewed
+        await fetch("/api/deadline-extension-requests/mark-viewed", { method: "POST" });
+      } else if (href === "/dashboard/client-sentiment-tracker") {
+        // Mark client sentiment tracker as viewed
+        await fetch("/api/client-sentiment/mark-viewed", { method: "POST" });
+      } else if (href === "/dashboard/client-complaints") {
+        // Mark client complaints as viewed
+        await fetch("/api/complaints/mark-viewed", { method: "POST" });
+      } else if (href === "/dashboard/staff-complaints") {
+        // Mark staff complaints as viewed
+        await fetch("/api/staff-complaints/mark-viewed", { method: "POST" });
+      } else if (href === "/dashboard/client-management") {
+        // Mark client management as viewed
+        await fetch("/api/clients/mark-viewed", { method: "POST" });
+      } else if (href === "/dashboard/register-dissatisfaction") {
+        // Mark dissatisfaction page as viewed
+        await fetch("/api/complaints/my-complaints/mark-viewed", { method: "POST" });
+      } else if (href === "/dashboard/client-sentiment") {
+        // Mark client sentiment as viewed
+        await fetch("/api/client-sentiment/mark-viewed", { method: "POST" });
+      }
+    } catch (error) {
+      console.error("Error clearing indicator:", error);
+    }
   };
 
   const SidebarContent = () => (
@@ -623,7 +660,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
               <SidebarItem 
                 key={key} 
                 {...itemProps} 
-                onClick={handleMenuItemClick}
+                onClick={() => handleMenuItemClick(item.href)}
                 active={currentPath === item.href || (item.href !== "/dashboard" && currentPath.startsWith(item.href))}
               />
             );
