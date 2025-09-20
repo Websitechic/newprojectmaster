@@ -5629,6 +5629,10 @@ End of Report
     });
   });
 
-  // Return the server for WebSocket setup in index.ts
+  // WebSocket setup
+  // The setupWebSocket function is responsible for initializing the WebSocket server
+  // and handling connections, messages, and disconnections.
+  // It's crucial for real-time communication features.
+  const wss = setupWebSocket(server);
   return server;
 }

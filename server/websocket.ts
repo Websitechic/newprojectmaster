@@ -43,15 +43,20 @@ function updateUserStatus(userId: number, status: 'online' | 'offline'): void {
 // might need a more centralized approach.
 const activeConnections = new Map<number, ExtendedWebSocket[]>();
 
-export function setupWebSocket(wss: WebSocketServer) {
-  // WebSocket server is now passed from index.ts
+export function setupWebSocket(server: http.Server) {
+  const wss = new WebSocketServer({
+    server,
+    path: '/ws',
+    perMessageDeflate: false,
+    clientTracking: true
+  });
 
   // Initialize global connected clients map if it doesn't exist
   if (typeof global.connectedClients === 'undefined') {
     global.connectedClients = new Map();
   }
 
-  // Set up ping interval to keep connections alive (increased to 45 seconds for better balance)
+  // Set up ping interval to keep connections alive (increased to 60 seconds to reduce aggressive pinging)
   const interval = setInterval(() => {
     if (wss && wss.clients) {
       wss.clients.forEach((ws) => {
@@ -77,13 +82,11 @@ export function setupWebSocket(wss: WebSocketServer) {
             extWs.ping();
           } catch (error) {
             console.error('Error sending ping:', error);
-            // If ping fails, mark as not alive to terminate on next check
-            extWs.isAlive = false;
           }
         }
       });
     }
-  }, 45000);
+  }, 60000);
 
   wss.on('close', () => {
     clearInterval(interval);
@@ -93,21 +96,13 @@ export function setupWebSocket(wss: WebSocketServer) {
   wss.on('connection', (ws: WebSocket, request: http.IncomingMessage) => {
     console.log('WebSocket connection established');
 
-    // Access session from request with fallback
-    const session = (request as any).session;
-    if (!session) {
-      console.log("WebSocket connection rejected: No session found");
-      ws.close(1008, "Session not found");
-      return;
+    // Type assertion to access session
+    const req = request as any;
+    if (!req.session?.user?.id) {
+      console.log('WebSocket connection without authenticated session - will wait for auth message');
     }
 
-    if (!session.user) {
-      console.log("WebSocket connection rejected: No authenticated user");
-      ws.close(1008, "Authentication required");
-      return;
-    }
-
-    let userId: number | null = session.user.id || null;
+    let userId: number | null = req.session?.user?.id || null;
     let heartbeatInterval: NodeJS.Timeout;
     let isAlive = true;
 
@@ -127,15 +122,10 @@ export function setupWebSocket(wss: WebSocketServer) {
 
         isAlive = false;
         if (ws.readyState === WebSocket.OPEN) {
-          try {
-            ws.ping();
-            ws.send(JSON.stringify({ type: 'heartbeat' }));
-          } catch (error) {
-            console.error('Error in heartbeat:', error);
-            isAlive = false;
-          }
+          ws.ping();
+          ws.send(JSON.stringify({ type: 'heartbeat' }));
         }
-      }, 25000); // Reduced to 25 seconds to match client ping interval
+      }, 30000);
     };
 
     startHeartbeat();

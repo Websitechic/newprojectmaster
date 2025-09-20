@@ -339,424 +339,201 @@ export default function Projects() {
                         {projects.map((project) => (
                           <div 
                             key={project.id} 
-                            className="block bg-card hover:bg-muted/50 border rounded-lg cursor-pointer transition-colors"
+                            className="flex items-center justify-between p-3 bg-card hover:bg-muted/50 border rounded-lg cursor-pointer transition-colors"
+
                           >
-                            {/* Mobile Layout */}
-                            <div className="block sm:hidden p-4 space-y-3" onClick={(e) => {
+                            <div className="flex items-center space-x-4 flex-1 min-w-0 cursor-pointer" onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               console.log('Navigating to project:', project.id);
                               window.location.href = `/dashboard/projects/${project.id}`;
                             }}>
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1 min-w-0 pr-2">
-                                  <h3 className="font-semibold text-base text-gray-900 mb-1" title={project.name}>
-                                    {project.name}
-                                  </h3>
-                                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                                    {project.description || "No description"}
-                                  </p>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-sm truncate" title={project.name}>
+                                  {project.name}
+                                </h3>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {project.description || "No description"}
+                                </p>
+                              </div>
+                              <div className="flex items-center space-x-3">
+                                <div className="w-24">
+                                  <div className="flex justify-between text-xs mb-1">
+                                    <span>Progress</span>
+                                    <span>{project.progress || 0}%</span>
+                                  </div>
+                                  <div className="w-full bg-secondary rounded-full h-1.5">
+                                    <div 
+                                      className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+                                      style={{ width: `${project.progress || 0}%` }}
+                                    />
+                                  </div>
                                 </div>
                                 <Badge
                                   variant="secondary"
                                   className={`${
                                     project.status === 'active' ? 'bg-green-500' :
                                     project.status === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
-                                  } text-white text-xs shrink-0`}
+                                  } text-white text-xs`}
                                 >
                                   {project.status}
                                 </Badge>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <div className="w-full">
-                                  <div className="flex justify-between text-sm mb-2">
-                                    <span className="font-medium">Progress</span>
-                                    <span className="font-semibold">{project.progress || 0}%</span>
-                                  </div>
-                                  <div className="w-full bg-secondary rounded-full h-2">
-                                    <div 
-                                      className="bg-primary h-2 rounded-full transition-all duration-300" 
-                                      style={{ width: `${project.progress || 0}%` }}
-                                    />
-                                  </div>
-                                </div>
-                                
-                                <div className="text-sm text-muted-foreground">
-                                  <div className="font-medium text-gray-700">Project Duration:</div>
-                                  <div>{new Date(project.startDate || '').toLocaleDateString()} - {new Date(project.endDate || '').toLocaleDateString()}</div>
-                                </div>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {new Date(project.startDate || '').toLocaleDateString()} - {new Date(project.endDate || '').toLocaleDateString()}
+                                </span>
                               </div>
                             </div>
-
-                            {/* Desktop Layout */}
-                            <div className="hidden sm:flex items-center justify-between p-3">
-                              <div className="flex items-center space-x-4 flex-1 min-w-0 cursor-pointer" onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                console.log('Navigating to project:', project.id);
-                                window.location.href = `/dashboard/projects/${project.id}`;
-                              }}>
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="font-semibold text-sm truncate" title={project.name}>
-                                    {project.name}
-                                  </h3>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {project.description || "No description"}
-                                  </p>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-24">
-                                    <div className="flex justify-between text-xs mb-1">
-                                      <span>Progress</span>
-                                      <span>{project.progress || 0}%</span>
-                                    </div>
-                                    <div className="w-full bg-secondary rounded-full h-1.5">
-                                      <div 
-                                        className="bg-primary h-1.5 rounded-full transition-all duration-300" 
-                                        style={{ width: `${project.progress || 0}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                  <Badge
-                                    variant="secondary"
-                                    className={`${
-                                      project.status === 'active' ? 'bg-green-500' :
-                                      project.status === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
-                                    } text-white text-xs`}
-                                  >
-                                    {project.status}
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                    {new Date(project.startDate || '').toLocaleDateString()} - {new Date(project.endDate || '').toLocaleDateString()}
-                                  </span>
-                                </div>
-                              </div>
-                            {/* Action buttons for both mobile and desktop */}
+                            {/* Check if user can edit projects (project managers, product owners, and operations managers) */}
                             {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
-                              <div className="flex space-x-2 sm:block sm:space-x-2 sm:flex">
-                                {/* Mobile: Show as full-width buttons */}
-                                <div className="flex w-full space-x-2 sm:hidden mt-3 pt-3 border-t border-gray-200">
-                                  <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
-                                    setIsEditDialogOpen(open);
-                                    if (!open) {
-                                      setEditingProject(null);
-                                    }
-                                  }}>
-                                    <DialogTrigger asChild>
-                                      <Button
-                                        className="flex-1"
-                                        variant="outline"
-                                        size="sm"
+                              <div className="flex space-x-2">
+                                <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
+                                  setIsEditDialogOpen(open);
+                                  if (!open) {
+                                    setEditingProject(null);
+                                  }
+                                }}>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingProject(project);
+                                        setIsEditDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
+                                    <DialogHeader>
+                                      <DialogTitle>Edit Project</DialogTitle>
+                                    </DialogHeader>
+                                    {editingProject && editingProject.id === project.id && (
+                                      <ProjectForm 
+                                        project={editingProject} 
+                                        onSuccess={() => {
+                                          setIsEditDialogOpen(false);
+                                          setEditingProject(null);
+                                          queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+                                          toast({
+                                            title: "Success",
+                                            description: "Project updated successfully.",
+                                          });
+                                        }}
+                                        restrictToSupportMaintenance={user?.role === "product_owner"}
+                                      />
+                                    )}
+                                  </DialogContent>
+                                </Dialog>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="icon" variant="ghost">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the project from our servers.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setEditingProject(project);
-                                          setIsEditDialogOpen(true);
+                                          deleteProjectMutation.mutate(project.id.toString());
                                         }}
+                                        disabled={deleteProjectMutation.isPending}
                                       >
-                                        <Edit className="h-4 w-4 mr-1" />
-                                        Edit
-                                      </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
-                                      <DialogHeader>
-                                        <DialogTitle>Edit Project</DialogTitle>
-                                      </DialogHeader>
-                                      {editingProject && editingProject.id === project.id && (
-                                        <ProjectForm 
-                                          project={editingProject} 
-                                          onSuccess={() => {
-                                            setIsEditDialogOpen(false);
-                                            setEditingProject(null);
-                                            queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-                                            toast({
-                                              title: "Success",
-                                              description: "Project updated successfully.",
-                                            });
-                                          }}
-                                          restrictToSupportMaintenance={user?.role === "product_owner"}
-                                        />
-                                      )}
-                                    </DialogContent>
-                                  </Dialog>
-                                  
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button variant="outline" size="sm" className="flex-1">
-                                        <Trash2 className="h-4 w-4 mr-1" />
-                                        Delete
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          This action cannot be undone. This will permanently delete the project from our servers.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            deleteProjectMutation.mutate(project.id.toString());
-                                          }}
-                                          disabled={deleteProjectMutation.isPending}
-                                        >
-                                          {deleteProjectMutation.isPending ? "Deleting..." : "Delete"}
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </div>
-
-                                {/* Desktop: Show as icon buttons */}
-                                <div className="hidden sm:flex space-x-2">
-                                  <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
-                                    setIsEditDialogOpen(open);
-                                    if (!open) {
-                                      setEditingProject(null);
-                                    }
-                                  }}>
-                                    <DialogTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditingProject(project);
-                                          setIsEditDialogOpen(true);
-                                        }}
-                                      >
-                                        <Edit className="h-4 w-4" />
-                                      </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
-                                      <DialogHeader>
-                                        <DialogTitle>Edit Project</DialogTitle>
-                                      </DialogHeader>
-                                      {editingProject && editingProject.id === project.id && (
-                                        <ProjectForm 
-                                          project={editingProject} 
-                                          onSuccess={() => {
-                                            setIsEditDialogOpen(false);
-                                            setEditingProject(null);
-                                            queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-                                            toast({
-                                              title: "Success",
-                                              description: "Project updated successfully.",
-                                            });
-                                          }}
-                                          restrictToSupportMaintenance={user?.role === "product_owner"}
-                                        />
-                                      )}
-                                    </DialogContent>
-                                  </Dialog>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button size="icon" variant="ghost">
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          This action cannot be undone. This will permanently delete the project from our servers.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            deleteProjectMutation.mutate(project.id.toString());
-                                          }}
-                                          disabled={deleteProjectMutation.isPending}
-                                        >
-                                          {deleteProjectMutation.isPending ? "Deleting..." : "Delete"}
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </div>
+                                        {deleteProjectMutation.isPending ? "Deleting..." : "Delete"}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             )}
                             {user?.role === "product_owner" && (
-                              <div className="flex gap-2 sm:block sm:gap-2 sm:flex">
+                              <div className="flex gap-2">
                                 {project.category === "support_maintenance" ? (
                                   <>
-                                    {/* Mobile: Show as full-width buttons */}
-                                    <div className="flex w-full space-x-2 sm:hidden mt-3 pt-3 border-t border-gray-200">
-                                      <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
-                                        setIsEditDialogOpen(open);
-                                        if (!open) {
-                                          setEditingProject(null);
-                                        }
-                                      }}>
-                                        <DialogTrigger asChild>
-                                          <Button
-                                            className="flex-1"
-                                            variant="outline"
-                                            size="sm"
+                                    <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
+                                      setIsEditDialogOpen(open);
+                                      if (!open) {
+                                        setEditingProject(null);
+                                      }
+                                    }}>
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingProject(project);
+                                            setIsEditDialogOpen(true);
+                                          }}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
+                                        <DialogHeader>
+                                          <DialogTitle>Edit Project</DialogTitle>
+                                        </DialogHeader>
+                                        {editingProject && editingProject.id === project.id && (
+                                          <ProjectForm 
+                                            project={editingProject} 
+                                            onSuccess={() => {
+                                              setIsEditDialogOpen(false);
+                                              setEditingProject(null);
+                                              queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+                                              toast({
+                                                title: "Success",
+                                                description: "Project updated successfully.",
+                                              });
+                                            }}
+                                            restrictToSupportMaintenance={user?.role === "product_owner"}
+                                          />
+                                        )}
+                                      </DialogContent>
+                                    </Dialog>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost">
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete the project from our servers.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setEditingProject(project);
-                                              setIsEditDialogOpen(true);
+                                              deleteProjectMutation.mutate(project.id.toString());
                                             }}
+                                            disabled={deleteProjectMutation.isPending}
                                           >
-                                            <Edit className="h-4 w-4 mr-1" />
-                                            Edit
-                                          </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
-                                          <DialogHeader>
-                                            <DialogTitle>Edit Project</DialogTitle>
-                                          </DialogHeader>
-                                          {editingProject && editingProject.id === project.id && (
-                                            <ProjectForm 
-                                              project={editingProject} 
-                                              onSuccess={() => {
-                                                setIsEditDialogOpen(false);
-                                                setEditingProject(null);
-                                                queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-                                                toast({
-                                                  title: "Success",
-                                                  description: "Project updated successfully.",
-                                                });
-                                              }}
-                                              restrictToSupportMaintenance={user?.role === "product_owner"}
-                                            />
-                                          )}
-                                        </DialogContent>
-                                      </Dialog>
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                          <Button variant="outline" size="sm" className="flex-1">
-                                            <Trash2 className="h-4 w-4 mr-1" />
-                                            Delete
-                                          </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                              This action cannot be undone. This will permanently delete the project from our servers.
-                                            </AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                deleteProjectMutation.mutate(project.id.toString());
-                                              }}
-                                              disabled={deleteProjectMutation.isPending}
-                                            >
-                                              {deleteProjectMutation.isPending ? "Deleting..." : "Delete"}
-                                            </AlertDialogAction>
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
-                                    </div>
-
-                                    {/* Desktop: Show as icon buttons */}
-                                    <div className="hidden sm:flex gap-2">
-                                      <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
-                                        setIsEditDialogOpen(open);
-                                        if (!open) {
-                                          setEditingProject(null);
-                                        }
-                                      }}>
-                                        <DialogTrigger asChild>
-                                          <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setEditingProject(project);
-                                              setIsEditDialogOpen(true);
-                                            }}
-                                          >
-                                            <Edit className="h-4 w-4" />
-                                          </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
-                                          <DialogHeader>
-                                            <DialogTitle>Edit Project</DialogTitle>
-                                          </DialogHeader>
-                                          {editingProject && editingProject.id === project.id && (
-                                            <ProjectForm 
-                                              project={editingProject} 
-                                              onSuccess={() => {
-                                                setIsEditDialogOpen(false);
-                                                setEditingProject(null);
-                                                queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-                                                toast({
-                                                  title: "Success",
-                                                  description: "Project updated successfully.",
-                                                });
-                                              }}
-                                              restrictToSupportMaintenance={user?.role === "product_owner"}
-                                            />
-                                          )}
-                                        </DialogContent>
-                                      </Dialog>
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                          <Button size="icon" variant="ghost">
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                              This action cannot be undone. This will permanently delete the project from our servers.
-                                            </AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                deleteProjectMutation.mutate(project.id.toString());
-                                              }}
-                                              disabled={deleteProjectMutation.isPending}
-                                            >
-                                              {deleteProjectMutation.isPending ? "Deleting..." : "Delete"}
-                                            </AlertDialogAction>
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
-                                    </div>
+                                            {deleteProjectMutation.isPending ? "Deleting..." : "Delete"}
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
                                   </>
                                 ) : (
-                                  <div className="text-xs text-muted-foreground px-2 py-1 bg-blue-50 rounded border border-blue-200 sm:block hidden">
+                                  <div className="text-xs text-muted-foreground px-2 py-1 bg-blue-50 rounded border border-blue-200">
                                     Read Only
                                   </div>
                                 )}
                               </div>
                             )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10">
-              <p className="text-muted-foreground">No projects found</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
                           </div>
                         ))}
                       </div>

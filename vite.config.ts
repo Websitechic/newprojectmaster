@@ -1,44 +1,23 @@
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
+import themePlugin from "@replit/vite-plugin-shadcn-theme-json";
+import path, { dirname } from "path";
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), runtimeErrorOverlay(), themePlugin()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./client/src"),
-      "@db": path.resolve(__dirname, "./db"),
+      "@db": path.resolve(__dirname, "db"),
+      "@": path.resolve(__dirname, "client", "src"),
     },
   },
-  root: "./client",
-  server: {
-    host: "0.0.0.0",
-    port: 5173,
-    hmr: {
-      port: 5173,
-      host: "0.0.0.0"
-    },
-    proxy: {
-      "/api": {
-        target: "http://0.0.0.0:5000",
-        changeOrigin: true,
-        secure: false,
-      },
-      "/ws": {
-        target: "ws://0.0.0.0:5000",
-        ws: true,
-        changeOrigin: true,
-      },
-    },
-  },
+  root: path.resolve(__dirname, "client"),
   build: {
-    outDir: "../dist/client",
+    outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
   },
 });
