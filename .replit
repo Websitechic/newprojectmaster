@@ -99,5 +99,14 @@ args = "npm install"
 task = "shell.exec"
 args = "npm run dev"
 
+[[workflows.workflow]]
+name = "Debug Server"
+author = 39032446
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
 [agent]
 integrations = ["javascript_websocket==1.0.0", "javascript_auth==1.0.0"]

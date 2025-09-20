@@ -118,72 +118,30 @@ let emailServiceInitialized = false;
     server.on('upgrade', (request, socket, head) => {
       const url = new URL(request.url!, `http://${request.headers.host}`);
 
-      // Only handle our application WebSocket upgrades, let Vite handle HMR WebSocket
-      // Vite HMR uses various paths, so we only handle /ws specifically
+      // Only handle WebSocket upgrades for /ws path, let Vite handle HMR on other paths
       if (url.pathname !== '/ws') {
-        console.log('Ignoring non-application WebSocket upgrade:', url.pathname);
-        return;
+        return; // Let other handlers (like Vite) handle this
       }
 
-      console.log('Application WebSocket upgrade request received for /api/ws');
+      log("WebSocket upgrade request received for /ws");
 
-      // Set upgrade timeout with longer duration
-      const upgradeTimeout = setTimeout(() => {
-        console.log('WebSocket upgrade timeout');
-        if (socket && !socket.destroyed) {
-          socket.write('HTTP/1.1 408 Request Timeout\r\n\r\n');
-          socket.destroy();
-        }
-      }, 15000);
-
-      // Parse session for WebSocket connection with improved error handling
-    sessionParser(request, {} as any, (err) => {
-      clearTimeout(upgradeTimeout);
-
-      if (err) {
-        console.error('Session parsing error during WebSocket upgrade:', err);
-        if (socket && !socket.destroyed) {
+      // Apply session middleware with proper error handling
+      sessionParser(request as any, {} as any, (err: any) => {
+        if (err) {
+          log(`Session middleware error: ${err.message}`);
           socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
           socket.destroy();
-        }
-        return;
-      }
-
-      try {
-        console.log('Session parsed for WebSocket upgrade');
-
-        // Ensure session is properly attached to request
-        if (!request.session && request.sessionStore) {
-          console.warn('Session not properly attached to WebSocket request');
+          return;
         }
 
-        // Log session info for debugging with safe access
-        const session = request.session || null;
-        console.log('Session exists:', !!session);
-        console.log('Session passport:', !!(session && session.passport));
-        console.log('Session user:', session && session.passport && session.passport.user);
-
+        try {
           wss.handleUpgrade(request, socket, head, (ws) => {
-            console.log('WebSocket upgrade completed, emitting connection');
-            // Set a timeout for connection setup
-            setTimeout(() => {
-              try {
-                wss.emit('connection', ws, request);
-              } catch (connectionError) {
-                console.error('Error emitting WebSocket connection:', connectionError);
-                // Close the WebSocket connection gracefully
-                if (ws && ws.readyState === ws.OPEN) {
-                  ws.close(1011, 'Server error during connection setup');
-                }
-              }
-            }, 100);
+            wss.emit('connection', ws, request);
           });
         } catch (error) {
-          console.error('WebSocket upgrade error:', error);
-          if (socket && !socket.destroyed) {
-            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-            socket.destroy();
-          }
+          log(`WebSocket upgrade error: ${error}`);
+          socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+          socket.destroy();
         }
       });
     });
@@ -197,7 +155,13 @@ let emailServiceInitialized = false;
     // Setup Vite or static serving
     if (app.get("env") === "development") {
       log("Setting up Vite development server...");
-      await setupVite(app, server);
+      try {
+        await setupVite(app, server);
+        log("Vite setup completed successfully");
+      } catch (viteError) {
+        log(`Vite setup failed: ${viteError}`);
+        throw viteError;
+      }
     } else {
       log("Setting up static file serving...");
       serveStatic(app);
@@ -206,16 +170,13 @@ let emailServiceInitialized = false;
     // Start the server
     const port = 5000;
     server.listen(port, "0.0.0.0", () => {
-      console.log(`Server running on port ${port}`);
-
-      // Start the break scheduler
-      breakScheduler.start();
-
-      // Initialize communication monitor
-      communicationMonitor.start();
+      log(`Server running on http://0.0.0.0:${port}`);
+      log("WebSocket server ready for connections on /ws");
     });
+
   } catch (error) {
     console.error("Fatal server initialization error:", error);
+    console.error("Stack trace:", error.stack);
     process.exit(1);
   }
 })();

@@ -93,13 +93,21 @@ export function setupWebSocket(wss: WebSocketServer) {
   wss.on('connection', (ws: WebSocket, request: http.IncomingMessage) => {
     console.log('WebSocket connection established');
 
-    // Type assertion to access session
-    const req = request as any;
-    if (!req.session?.user?.id) {
-      console.log('WebSocket connection without authenticated session - will wait for auth message');
+    // Access session from request with fallback
+    const session = (request as any).session;
+    if (!session) {
+      console.log("WebSocket connection rejected: No session found");
+      ws.close(1008, "Session not found");
+      return;
     }
 
-    let userId: number | null = req.session?.user?.id || null;
+    if (!session.user) {
+      console.log("WebSocket connection rejected: No authenticated user");
+      ws.close(1008, "Authentication required");
+      return;
+    }
+
+    let userId: number | null = session.user.id || null;
     let heartbeatInterval: NodeJS.Timeout;
     let isAlive = true;
 
