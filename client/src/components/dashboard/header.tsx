@@ -1,4 +1,3 @@
-
 import { Bell, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,8 +10,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { useUser } from "@/hooks/use-user";
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
+import { useLocation } from 'react-router-dom'; // Assuming useLocation is from react-router-dom
 
 export function Header() {
+  const [, setLocation] = useLocation();
   const { user, logout } = useUser();
 
   const handleLogout = async () => {
@@ -65,7 +66,7 @@ export function Header() {
               <p className="text-sm font-medium leading-none">{user?.name}</p>
               <p className="text-xs leading-none text-muted-foreground capitalize">
                 {user?.role === 'client' ?
-                  `${user?.clientType?.replace('_', ' ') || 'Client'}` :
+                  `${user?.clientType?.replace('_', ' ') || 'Client'} • ${user?.productService?.replace('_', ' ') || 'Service not specified'}` :
                   user?.role?.replace('_', ' ')
                 }
               </p>
@@ -76,7 +77,7 @@ export function Header() {
               <span>Profile</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={handleLogout}
             >

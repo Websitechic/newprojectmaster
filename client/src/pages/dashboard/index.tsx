@@ -173,7 +173,7 @@ export default function Dashboard() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 w-full mobile-menu-safe-area">
           <BookingAlert />
           {user?.role === "staff" ||
           (user?.role === "client" &&

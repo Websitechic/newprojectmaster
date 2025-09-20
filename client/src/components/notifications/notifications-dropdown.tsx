@@ -235,22 +235,31 @@ export function NotificationsDropdown() {
     }
   };
 
+  // Calculate total notifications for the badge
+  const totalNotifications = uniqueNotifications.length;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell size={20} />
-          {unreadCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-            >
-              {unreadCount}
-            </Badge>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full hover:bg-gray-100 touch-manipulation"
+        >
+          <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+          {totalNotifications > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-red-500 text-xs text-white flex items-center justify-center">
+              {totalNotifications > 99 ? '99+' : totalNotifications}
+            </span>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-0">
+      <DropdownMenuContent 
+        align="end" 
+        className="w-72 sm:w-80 max-h-80 sm:max-h-96 overflow-y-auto"
+        side="bottom"
+        sideOffset={5}
+      >
         {uniqueNotifications.length === 0 ? (
           <div className="p-3">
             <span className="text-sm text-muted-foreground">No notifications</span>

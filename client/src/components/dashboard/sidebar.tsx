@@ -55,17 +55,17 @@ function SidebarItem({ icon, label, href, active, badge, external, onClick, hasU
   const content = (
     <div
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative cursor-pointer",
+        "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 relative cursor-pointer touch-manipulation min-h-[40px] sm:min-h-[44px]",
         active
           ? "bg-purple-100 text-purple-700 shadow-sm"
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
       )}
       onClick={onClick}
     >
-      <div className={cn("w-5 h-5 flex-shrink-0", active ? "text-purple-700" : "text-gray-500")}>
+      <div className={cn("w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0", active ? "text-purple-700" : "text-gray-500")}>
         {icon}
       </div>
-      <span className="flex-1 truncate">{label}</span>
+      <span className="flex-1 truncate text-left">{label}</span>
       {((badge && badge > 0) || hasUpdate) ? (
         <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
       ) : null}
@@ -639,21 +639,21 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   const SidebarContent = () => (
     <>
       {/* Logo Section */}
-      <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">W</span>
+      <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6 border-b border-gray-100">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-sm sm:text-lg">W</span>
           </div>
           <div className="min-w-0">
-            <h1 className="text-lg font-bold text-gray-900 truncate">Websitechic</h1>
+            <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate">Websitechic</h1>
             <p className="text-xs text-gray-500 uppercase tracking-wide truncate">Digital Agency</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 sm:px-4 py-4 sm:py-6 overflow-y-auto">
-        <div className="space-y-1">
+      <nav className="flex-1 px-2 sm:px-3 lg:px-4 py-3 sm:py-4 lg:py-6 overflow-y-auto">
+        <div className="space-y-0.5 sm:space-y-1">
           {menuItems.map((item) => {
             const { key, ...itemProps } = item;
             return (
@@ -669,15 +669,15 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       </nav>
 
       {/* User Profile */}
-      <div className="px-2 sm:px-4 py-4 border-t border-gray-100">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
-          <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-sm font-medium">
+      <div className="px-2 sm:px-3 lg:px-4 py-3 sm:py-4 border-t border-gray-100">
+        <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 rounded-lg bg-gray-50">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-xs sm:text-sm font-medium">
               {user?.name?.charAt(0) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
+            <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">{user?.name}</p>
             <p className="text-xs text-gray-500 capitalize truncate">
               {user?.role === 'client' ?
                 `${user?.clientType?.replace('_', ' ') || 'Client'} • ${user?.productService?.replace('_', ' ') || 'Service not specified'}` :
@@ -688,7 +688,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
         </div>
         <Button
           variant="ghost"
-          className="w-full justify-start mt-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+          className="w-full justify-start mt-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 h-9 sm:h-10 touch-manipulation"
           onClick={async () => {
             try {
               await logout();
@@ -699,7 +699,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
             }
           }}
         >
-          <LogOut size={16} className="mr-3 flex-shrink-0" />
+          <LogOut size={14} className="mr-2 sm:mr-3 flex-shrink-0 sm:w-4 sm:h-4" />
           <span className="truncate">Logout</span>
         </Button>
       </div>
@@ -712,10 +712,11 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       <Button
         variant="ghost"
         size="sm"
-        className="mobile-menu-button fixed top-3 left-3 z-50 lg:hidden bg-white shadow-lg hover:bg-gray-50 touch-manipulation rounded-full p-2"
+        className="mobile-menu-button fixed top-2 left-2 sm:top-3 sm:left-3 z-50 lg:hidden bg-white shadow-lg hover:bg-gray-50 touch-manipulation rounded-full p-2 h-10 w-10 sm:h-11 sm:w-11"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       >
-        {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+        {isMobileMenuOpen ? <X size={20} className="sm:hidden" /> : <Menu size={20} className="sm:hidden" />}
+        {isMobileMenuOpen ? <X size={22} className="hidden sm:block" /> : <Menu size={22} className="hidden sm:block" />}
       </Button>
 
       {/* Mobile Overlay */}
@@ -727,13 +728,13 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
       )}
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex h-screen w-64 xl:w-72 bg-white border-r border-gray-200 flex-col">
+      <div className="hidden lg:flex h-screen w-56 xl:w-64 2xl:w-72 bg-white border-r border-gray-200 flex-col transition-all duration-300">
         <SidebarContent />
       </div>
 
       {/* Mobile Sidebar */}
       <div className={cn(
-        "mobile-sidebar fixed inset-y-0 left-0 z-50 w-72 sm:w-80 max-w-[85vw] bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:hidden shadow-xl",
+        "mobile-sidebar fixed inset-y-0 left-0 z-50 w-[280px] sm:w-[320px] md:w-[350px] max-w-[85vw] bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:hidden shadow-xl",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full overflow-hidden">
