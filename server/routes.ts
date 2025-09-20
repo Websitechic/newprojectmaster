@@ -2958,15 +2958,21 @@ End of Report
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const user = req.user!;
-
     try {
+      const userId = req.user!.id;
+
+      // Validate user ID
+      if (!userId || isNaN(Number(userId)) || !Number.isInteger(Number(userId))) {
+        console.error("Invalid user ID for unread count:", userId);
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
       const unreadCount = await db
         .select({ count: sql<number>`count(*)` })
         .from(directMessages)
         .where(
           and(
-            eq(directMessages.receiverId, user.id),
+            eq(directMessages.receiverId, userId),
             eq(directMessages.read, false)
           )
         );
@@ -2986,6 +2992,7 @@ End of Report
 
     const user = req.user!;
     const { receiverId, content } = req.body;
+    const senderId = user.id; // Define senderId here
 
     try {
       if (!receiverId || !content || !content.trim()) {
@@ -2995,7 +3002,7 @@ End of Report
       const [newMessage] = await db
         .insert(directMessages)
         .values({
-          senderId: user.id,
+          senderId: senderId,
           receiverId: parseInt(receiverId),
           content: content.trim(),
           read: false,
@@ -3007,6 +3014,48 @@ End of Report
         ...newMessage,
         senderName: user.name,
       };
+
+      // Send SSE notification to the receiver
+      if (global.sseClients && global.sseClients.has(parseInt(receiverId))) {
+        const receiverClient = global.sseClients.get(parseInt(receiverId));
+        if (receiverClient && !receiverClient.destroyed) {
+          try {
+            receiverClient.write(`data: ${JSON.stringify({
+              type: "direct_message",
+              data: {
+                ...newMessage, // Use newMessage directly here
+                senderName: user.name
+              }
+            })}\n\n`);
+            console.log(`SSE notification sent to receiver ${receiverId}`);
+          } catch (error) {
+            console.error("Error sending SSE notification to receiver:", error);
+            global.sseClients.delete(parseInt(receiverId));
+          }
+        }
+      } else {
+        console.log(`No SSE client found for receiver ${receiverId}`);
+      }
+
+      // Also send SSE notification to the sender for their own UI updates
+      if (global.sseClients && global.sseClients.has(senderId)) {
+        const senderClient = global.sseClients.get(senderId);
+        if (senderClient && !senderClient.destroyed) {
+          try {
+            senderClient.write(`data: ${JSON.stringify({
+              type: "direct_message",
+              data: {
+                ...newMessage, // Use newMessage directly here
+                senderName: user.name
+              }
+            })}\n\n`);
+            console.log(`SSE notification sent to sender ${senderId}`);
+          } catch (error) {
+            console.error("Error sending SSE notification to sender:", error);
+            global.sseClients.delete(senderId);
+          }
+        }
+      }
 
       res.json(messageWithSender);
     } catch (error) {

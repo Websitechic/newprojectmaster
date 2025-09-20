@@ -110,38 +110,70 @@ export function DirectMessages() {
 
   // Listen for real-time messages via SSE
   useEffect(() => {
+    console.log("Setting up SSE connection for direct messages...");
     const eventSource = new EventSource("/api/notifications/stream");
+
+    eventSource.onopen = () => {
+      console.log("SSE connection opened for direct messages");
+    };
 
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log("SSE message received in direct messages:", data);
+        
         if (data.type === "direct_message") {
           const message = data.data;
+          console.log("Direct message received:", message);
           
-          // If the message is from the currently selected user, add it to messages
+          // If the message is from the currently selected user, add it to messages immediately
           if (selectedUser && message.senderId === selectedUser.id) {
-            setMessages(prev => [...prev, message]);
+            console.log("Adding message to current conversation");
+            setMessages(prev => {
+              // Check if message already exists to avoid duplicates
+              const exists = prev.some(m => m.id === message.id);
+              if (!exists) {
+                return [...prev, message];
+              }
+              return prev;
+            });
+          }
+          
+          // If the message is TO the currently selected user (we sent it), also add it
+          if (selectedUser && message.receiverId === selectedUser.id && message.senderId === user?.id) {
+            console.log("Adding sent message to current conversation");
+            setMessages(prev => {
+              // Check if message already exists to avoid duplicates
+              const exists = prev.some(m => m.id === message.id);
+              if (!exists) {
+                return [...prev, message];
+              }
+              return prev;
+            });
           }
           
           // Update conversations list
           setConversations(prev => {
             const updated = [...prev];
-            const existingIndex = updated.findIndex(conv => conv.user.id === message.senderId);
+            const otherUserId = message.senderId === user?.id ? message.receiverId : message.senderId;
+            const existingIndex = updated.findIndex(conv => conv.user.id === otherUserId);
             
             if (existingIndex >= 0) {
-              // Update existing conversation
-              updated[existingIndex] = {
-                ...updated[existingIndex],
+              // Move conversation to top and update
+              const conversation = updated[existingIndex];
+              updated.splice(existingIndex, 1);
+              updated.unshift({
+                ...conversation,
                 lastMessage: {
                   content: message.content,
                   createdAt: message.createdAt,
                   senderId: message.senderId,
                 },
-                unreadCount: selectedUser?.id === message.senderId ? 0 : updated[existingIndex].unreadCount + 1,
-              };
+                unreadCount: selectedUser?.id === otherUserId ? 0 : conversation.unreadCount + (message.senderId === user?.id ? 0 : 1),
+              });
             } else {
               // Add new conversation (fetch user details)
-              fetch(`/api/users/${message.senderId}`)
+              fetch(`/api/users/${otherUserId}`)
                 .then(res => res.json())
                 .then(userData => {
                   setConversations(prev => [{
@@ -151,9 +183,10 @@ export function DirectMessages() {
                       createdAt: message.createdAt,
                       senderId: message.senderId,
                     },
-                    unreadCount: 1,
+                    unreadCount: message.senderId === user?.id ? 0 : 1,
                   }, ...prev]);
-                });
+                })
+                .catch(error => console.error("Error fetching user data:", error));
             }
             
             return updated;
@@ -164,10 +197,15 @@ export function DirectMessages() {
       }
     };
 
+    eventSource.onerror = (error) => {
+      console.error("SSE error in direct messages:", error);
+    };
+
     return () => {
+      console.log("Closing SSE connection for direct messages");
       eventSource.close();
     };
-  }, [selectedUser]);
+  }, [selectedUser, user?.id]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedUser) {
@@ -195,43 +233,12 @@ export function DirectMessages() {
         const sentMessage = await response.json();
         console.log("Message sent successfully:", sentMessage);
         
-        // Add sender name for display
-        const messageWithSender = {
-          ...sentMessage,
-          senderName: user?.name || "You"
-        };
-        
-        setMessages(prev => [...prev, messageWithSender]);
+        // Clear the input immediately
         setNewMessage("");
         
-        // Update conversations list
-        setConversations(prev => {
-          const updated = [...prev];
-          const existingIndex = updated.findIndex(conv => conv.user.id === selectedUser.id);
-          
-          if (existingIndex >= 0) {
-            updated[existingIndex] = {
-              ...updated[existingIndex],
-              lastMessage: {
-                content: sentMessage.content,
-                createdAt: sentMessage.createdAt,
-                senderId: sentMessage.senderId,
-              },
-            };
-          } else {
-            updated.unshift({
-              user: selectedUser,
-              lastMessage: {
-                content: sentMessage.content,
-                createdAt: sentMessage.createdAt,
-                senderId: sentMessage.senderId,
-              },
-              unreadCount: 0,
-            });
-          }
-          
-          return updated;
-        });
+        // Don't add the message to local state here - let SSE handle it to avoid duplicates
+        // The message will be added via the SSE event listener
+        
       } else {
         const errorText = await response.text();
         console.error("Failed to send message:", response.status, errorText);
