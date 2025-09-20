@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useUser } from "@/hooks/use-user";
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
-import { useLocation } from 'react-router-dom'; // Assuming useLocation is from react-router-dom
+import { useLocation } from 'wouter';
 
 export function Header() {
   const [, setLocation] = useLocation();
