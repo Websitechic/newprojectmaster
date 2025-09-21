@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { Sidebar } from "@/components/dashboard/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -271,16 +273,25 @@ export default function Bookings() {
     return new Date(startTime) > new Date();
   };
 
+  const [location] = useLocation();
+
   if (bookingsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      <div className="flex min-h-screen w-full max-w-full overflow-hidden">
+        <Sidebar currentPath={location} />
+        <div className="flex-1 flex items-center justify-center min-h-screen">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
+        <div className="flex-1 overflow-auto p-6 max-w-7xl mx-auto space-y-6 w-full"></div>
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Bookings Management</h1>
@@ -555,6 +566,7 @@ export default function Bookings() {
             </Card>
           ))
         )}
+        </div>
       </div>
     </div>
   );

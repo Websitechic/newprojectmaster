@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { Sidebar } from "@/components/dashboard/sidebar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -208,18 +210,29 @@ export default function TechnicalManagementPage() {
     });
   };
 
+  const [location] = useLocation();
+
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      <div className="flex min-h-screen w-full max-w-full overflow-hidden">
+        <Sidebar currentPath={location} />
+        <div className="flex-1 flex flex-col">
+          <div className="container mx-auto p-6">
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
+        <div className="flex-1 overflow-auto container mx-auto p-6 w-full"></div>
+      </div>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Technical Management</h1>
         <p className="text-gray-600 mt-2">
@@ -409,6 +422,8 @@ export default function TechnicalManagementPage() {
           </Form>
         </DialogContent>
       </Dialog>
+        </div>
+      </div>
     </div>
   );
 }
