@@ -1,81 +1,32 @@
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupWebSocket } from "./websocket";
-import { setupVideoSocket } from "./video-socket";
 import { setupVite, serveStatic, log } from "./vite";
-import { breakScheduler } from "./break-scheduler";
-import { communicationMonitor } from "./communication-monitor";
-import { setupAuth } from "./auth";
+import { WebSocketServer } from 'ws';
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import MemoryStore from "memorystore";
 import { initializeEmailService } from "./services/email";
-import { WebSocketServer } from "ws";
-
-// Declare global SSE clients map
-declare global {
-  var sseClients: Map<number, Response>;
-  var connectedClients: Map<number, WebSocket>;
-}
-
-// Initialize global SSE clients map
-if (!global.sseClients) {
-  global.sseClients = new Map();
-}
-
-// Initialize global WebSocket clients map
-if (!global.connectedClients) {
-  global.connectedClients = new Map();
-}
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
-// Session middleware setup with consistent configuration
-const MemoryStore = createMemoryStore(session);
+// Session configuration
 const sessionMiddleware = session({
-  secret: process.env.REPL_ID || "your-secret-key",
+  secret: process.env.REPL_ID || "fallback-secret-key",
   resave: false,
   saveUninitialized: false,
-  store: new MemoryStore({
+  store: new (MemoryStore(session))({
     checkPeriod: 86400000, // prune expired entries every 24h
   }),
   cookie: {
-    secure: false, // Set to false for development
+    secure: false,
     httpOnly: true,
-    sameSite: "lax",
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    path: "/"
+    maxAge: 86400000, // 24 hours
   },
-  name: "session_id" // Custom session cookie name
 });
 
-// Apply session middleware
 app.use(sessionMiddleware);
-
-// Setup authentication after session middleware
-setupAuth(app);
-
-// Request logging middleware
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
-    }
-  });
-  next();
-});
-
-// Error handling middleware
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("Server Error:", err);
-  res.status(500).json({
-    error: app.get("env") === "development" ? err.message : "Internal Server Error"
-  });
-});
 
 let emailServiceInitialized = false;
 
@@ -117,104 +68,120 @@ let emailServiceInitialized = false;
     // WebSocket upgrade handling with improved error management and path filtering
     server.on('upgrade', (request, socket, head) => {
       const url = new URL(request.url!, `http://${request.headers.host}`);
-
-      // Only handle our application WebSocket upgrades, let Vite handle HMR WebSocket
+      
+      // Only handle WebSocket upgrades for our API path, let Vite handle HMR
       if (url.pathname !== '/api/ws') {
-        console.log('Ignoring non-application WebSocket upgrade:', url.pathname);
-        return;
+        log(`WebSocket upgrade request for ${url.pathname} - ignoring (not our path)`);
+        return; // Let other handlers (like Vite) handle this
       }
 
-      console.log('Application WebSocket upgrade request received for /api/ws');
-
-      // Set upgrade timeout with longer duration
-      const upgradeTimeout = setTimeout(() => {
-        console.log('WebSocket upgrade timeout');
-        if (socket && !socket.destroyed) {
-          socket.write('HTTP/1.1 408 Request Timeout\r\n\r\n');
+      log(`WebSocket upgrade request for ${url.pathname}`);
+      
+      sessionParser(request, {} as any, (err: any) => {
+        if (err) {
+          log(`Session parsing error during WebSocket upgrade: ${err.message}`);
           socket.destroy();
+          return;
         }
-      }, 15000);
 
-      // Parse session for WebSocket connection with improved error handling
-    sessionParser(request, {} as any, (err) => {
-      clearTimeout(upgradeTimeout);
-
-      if (err) {
-        console.error('Session parsing error during WebSocket upgrade:', err);
-        if (socket && !socket.destroyed) {
-          socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+        // Ensure session exists before proceeding
+        if (!request.session) {
+          log("No session found during WebSocket upgrade");
           socket.destroy();
-        }
-        return;
-      }
-
-      try {
-        console.log('Session parsed for WebSocket upgrade');
-
-        // Ensure session is properly attached to request
-        if (!request.session && request.sessionStore) {
-          console.warn('Session not properly attached to WebSocket request');
+          return;
         }
 
-        // Log session info for debugging with safe access
-        const session = request.session || null;
-        console.log('Session exists:', !!session);
-        console.log('Session passport:', !!(session && session.passport));
-        console.log('Session user:', session && session.passport && session.passport.user);
-
-          wss.handleUpgrade(request, socket, head, (ws) => {
-            console.log('WebSocket upgrade completed, emitting connection');
-            // Set a timeout for connection setup
-            setTimeout(() => {
-              try {
-                wss.emit('connection', ws, request);
-              } catch (connectionError) {
-                console.error('Error emitting WebSocket connection:', connectionError);
-                // Close the WebSocket connection gracefully
-                if (ws && ws.readyState === ws.OPEN) {
-                  ws.close(1011, 'Server error during connection setup');
-                }
-              }
-            }, 100);
-          });
-        } catch (error) {
-          console.error('WebSocket upgrade error:', error);
-          if (socket && !socket.destroyed) {
-            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-            socket.destroy();
-          }
-        }
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request);
+        });
       });
     });
 
-    try {
-      setupWebSocket(wss);
-    } catch (error) {
-      console.error('Failed to setup WebSocket:', error);
-    }
+    // WebSocket connection handling
+    wss.on('connection', (ws, request) => {
+      try {
+        // Safely access session with null check
+        const session = (request as any).session;
+        if (!session) {
+          log("WebSocket connection attempted without valid session");
+          ws.close(1008, "No valid session");
+          return;
+        }
 
-    // Setup Vite or static serving
-    if (app.get("env") === "development") {
-      log("Setting up Vite development server...");
+        const userId = session.passport?.user?.id;
+        if (!userId) {
+          log("WebSocket connection attempted without authenticated user");
+          ws.close(1008, "Not authenticated");
+          return;
+        }
+
+        log(`WebSocket connection established for user ${userId}`);
+        
+        // Store user info on WebSocket connection
+        (ws as any).userId = userId;
+        (ws as any).sessionId = session.id;
+
+        // Handle WebSocket messages
+        ws.on('message', (message) => {
+          try {
+            const data = JSON.parse(message.toString());
+            log(`WebSocket message from user ${userId}: ${data.type}`);
+            
+            // Handle different message types here
+            switch (data.type) {
+              case 'ping':
+                ws.send(JSON.stringify({ type: 'pong' }));
+                break;
+              default:
+                log(`Unknown WebSocket message type: ${data.type}`);
+            }
+          } catch (error) {
+            log(`Error processing WebSocket message: ${error}`);
+          }
+        });
+
+        ws.on('close', (code, reason) => {
+          log(`WebSocket connection closed for user ${userId}: ${code} ${reason}`);
+        });
+
+        ws.on('error', (error) => {
+          log(`WebSocket error for user ${userId}: ${error.message}`);
+        });
+
+        // Send connection confirmation
+        ws.send(JSON.stringify({ type: 'connected', userId }));
+
+      } catch (error) {
+        log(`Error in WebSocket connection handler: ${error}`);
+        ws.close(1011, "Internal server error");
+      }
+    });
+
+    // In development, setup Vite middleware
+    if (process.env.NODE_ENV !== "production") {
       await setupVite(app, server);
     } else {
-      log("Setting up static file serving...");
       serveStatic(app);
     }
 
-    // Start the server
-    const port = 5000;
-    server.listen(port, "0.0.0.0", () => {
-      console.log(`Server running on port ${port}`);
-
-      // Start the break scheduler
-      breakScheduler.start();
-
-      // Initialize communication monitor
-      communicationMonitor.start();
+    // Global error handler
+    app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+      log(`Global error handler: ${err.message}`);
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ error: message });
     });
+
+    const port = parseInt(process.env.PORT || "5000");
+    server.listen(port, "0.0.0.0", () => {
+      log(`Server running on port ${port}`);
+      log(`Environment: ${process.env.NODE_ENV || "development"}`);
+      log(`Email service: ${emailServiceInitialized ? "initialized" : "disabled"}`);
+    });
+
   } catch (error) {
-    console.error("Fatal server initialization error:", error);
+    log(`Server startup error: ${error}`);
+    console.error("Full error:", error);
     process.exit(1);
   }
 })();
