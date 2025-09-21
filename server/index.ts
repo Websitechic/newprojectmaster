@@ -133,49 +133,27 @@ let emailServiceInitialized = false;
           socket.write('HTTP/1.1 408 Request Timeout\r\n\r\n');
           socket.destroy();
         }
-      }, 15000);
+      }, 10000);
 
       // Parse session for WebSocket connection with improved error handling
-    sessionParser(request, {} as any, (err) => {
-      clearTimeout(upgradeTimeout);
+      sessionParser(request, {} as any, (err) => {
+        clearTimeout(upgradeTimeout);
 
-      if (err) {
-        console.error('Session parsing error during WebSocket upgrade:', err);
-        if (socket && !socket.destroyed) {
-          socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-          socket.destroy();
-        }
-        return;
-      }
-
-      try {
-        console.log('Session parsed for WebSocket upgrade');
-
-        // Ensure session is properly attached to request
-        if (!request.session && request.sessionStore) {
-          console.warn('Session not properly attached to WebSocket request');
+        if (err) {
+          console.error('Session parsing error during WebSocket upgrade:', err);
+          if (socket && !socket.destroyed) {
+            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+            socket.destroy();
+          }
+          return;
         }
 
-        // Log session info for debugging with safe access
-        const session = request.session || null;
-        console.log('Session exists:', !!session);
-        console.log('Session passport:', !!(session && session.passport));
-        console.log('Session user:', session && session.passport && session.passport.user);
+        try {
+          console.log('Session parsed for WebSocket upgrade');
 
           wss.handleUpgrade(request, socket, head, (ws) => {
             console.log('WebSocket upgrade completed, emitting connection');
-            // Set a timeout for connection setup
-            setTimeout(() => {
-              try {
-                wss.emit('connection', ws, request);
-              } catch (connectionError) {
-                console.error('Error emitting WebSocket connection:', connectionError);
-                // Close the WebSocket connection gracefully
-                if (ws && ws.readyState === ws.OPEN) {
-                  ws.close(1011, 'Server error during connection setup');
-                }
-              }
-            }, 100);
+            wss.emit('connection', ws, request);
           });
         } catch (error) {
           console.error('WebSocket upgrade error:', error);
@@ -187,11 +165,7 @@ let emailServiceInitialized = false;
       });
     });
 
-    try {
-      setupWebSocket(wss);
-    } catch (error) {
-      console.error('Failed to setup WebSocket:', error);
-    }
+    setupWebSocket(wss);
 
     // Setup Vite or static serving
     if (app.get("env") === "development") {

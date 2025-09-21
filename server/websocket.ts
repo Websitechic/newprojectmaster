@@ -43,14 +43,7 @@ function updateUserStatus(userId: number, status: 'online' | 'offline'): void {
 // might need a more centralized approach.
 const activeConnections = new Map<number, ExtendedWebSocket[]>();
 
-export function setupWebSocket(server: http.Server) {
-  const wss = new WebSocketServer({
-    server,
-    path: '/ws',
-    perMessageDeflate: false,
-    clientTracking: true
-  });
-
+export function setupWebSocket(wss: WebSocketServer) {
   // Initialize global connected clients map if it doesn't exist
   if (typeof global.connectedClients === 'undefined') {
     global.connectedClients = new Map();
