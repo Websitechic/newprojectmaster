@@ -139,12 +139,12 @@ export default function ComplaintsManagement() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full max-w-none">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none">
+          <div className="w-full max-w-none space-y-4 lg:space-y-6">
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">

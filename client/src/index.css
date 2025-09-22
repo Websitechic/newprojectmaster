@@ -513,6 +513,34 @@
     max-width: none !important;
     width: 100% !important;
   }
+
+  /* Specific overrides for dashboard pages */
+  .dashboard-content,
+  .dashboard-layout,
+  .dashboard-main,
+  .dashboard-content-area {
+    @apply w-full max-w-none !important;
+  }
+}
+
+/* Force full width layout for all PC screens */
+@media (min-width: 1024px) {
+  /* Override any container constraints */
+  .container,
+  .mx-auto {
+    max-width: none !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Ensure dashboard pages use full width */
+  .space-y-6,
+  .space-y-4,
+  .space-y-8 {
+    width: 100% !important;
+    max-width: none !important;
+  }
 }
 
 @media (max-width: 1023px) {

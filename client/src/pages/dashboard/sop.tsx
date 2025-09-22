@@ -389,12 +389,12 @@ export default function SOPPage() {
     { [selectedDepartment]: sopsByDepartment[selectedDepartment] || [] };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full max-w-none">
       <Sidebar currentPath="/dashboard/sop" />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none">
         <Header />
-        <div className="flex-1 overflow-auto p-4 md:p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none">
+          <div className="w-full max-w-none space-y-4 lg:space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>

@@ -141,11 +141,11 @@ export default function StaffComplaints() {
 
   if (!isOperationsManager) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen w-full max-w-none">
         <Sidebar currentPath={location} />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none">
           <Header />
-          <div className="flex-1 overflow-auto p-6">
+          <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none">
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-10">
                 <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
@@ -166,12 +166,12 @@ export default function StaffComplaints() {
   const resolvedComplaints = complaints.filter(c => c.status === 'resolved');
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full max-w-none">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="mb-8">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none">
+          <div className="mb-6 lg:mb-8 w-full max-w-none">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Staff Complaints Management</h1>
             <p className="text-gray-600">
               Review and manage complaints submitted by staff members.
