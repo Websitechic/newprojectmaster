@@ -276,12 +276,12 @@ export default function CommunicationTracker() {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen dashboard-page-container">
       <Sidebar currentPath="/dashboard/communication-tracker" />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden max-w-none">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-7xl mx-auto">
+        <div className="flex-1 overflow-auto p-4 lg:p-6 w-full max-w-none page-content-wrapper">
+          <div className="w-full max-w-none main-content-area">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">

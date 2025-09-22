@@ -416,12 +416,12 @@ export default function Notes() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen dashboard-page-container">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden max-w-none">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="space-y-6">
+        <div className="flex-1 overflow-auto p-4 lg:p-6 w-full max-w-none page-content-wrapper">
+          <div className="space-y-6 w-full max-w-none main-content-area">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">

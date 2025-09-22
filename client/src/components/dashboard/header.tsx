@@ -26,9 +26,9 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
+    <header className="h-16 bg-white border-b border-gray-200 px-4 sm:px-6 flex items-center justify-between w-full max-w-none dashboard-page-container">
       {/* Left Section - Search (hidden on mobile to make room for hamburger menu) */}
-      <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
+      <div className="flex-1 max-w-none lg:max-w-none ml-12 lg:ml-0">
         <div className="relative hidden sm:block">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input

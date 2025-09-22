@@ -515,6 +515,86 @@
   }
 }
 
+/* Comprehensive PC responsiveness for all screen sizes above laptop */
+@media (min-width: 1024px) {
+  /* Remove all max-width constraints globally for PC screens */
+  * {
+    max-width: none !important;
+  }
+
+  /* Specific overrides for dashboard pages */
+  .dashboard-page-container {
+    @apply w-full max-w-none;
+  }
+
+  .page-content-wrapper {
+    @apply w-full max-w-none;
+  }
+
+  .main-content-area {
+    @apply w-full max-w-none;
+  }
+
+  /* Ensure all flex containers use full width */
+  .flex-1,
+  .flex-grow {
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  /* Override any container constraints */
+  .container,
+  .mx-auto,
+  .max-w-7xl,
+  .max-w-6xl,
+  .max-w-5xl,
+  .max-w-4xl,
+  .max-w-3xl,
+  .max-w-2xl,
+  .max-w-xl,
+  .max-w-lg,
+  .max-w-md,
+  .max-w-sm,
+  .max-w-xs {
+    @apply max-w-none !important;
+    width: 100% !important;
+  }
+
+  /* Specific fixes for dialog and modal content */
+  .dialog-content-max-width {
+    max-width: 90vw !important;
+  }
+
+  /* Card and content area fixes */
+  .card-container,
+  .content-container {
+    @apply w-full max-w-none;
+  }
+
+  /* Additional utility classes for full width */
+  .full-width-container {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .pc-full-width {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* Override any remaining width constraints */
+  .w-auto {
+    width: 100% !important;
+  }
+
+  /* Ensure grid and flex containers use full width */
+  .grid,
+  .flex {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
 @media (max-width: 1023px) {
   /* Desktop and below */
   .grid-cols-5,

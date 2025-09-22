@@ -166,11 +166,11 @@ export default function StaffComplaints() {
   const resolvedComplaints = complaints.filter(c => c.status === 'resolved');
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen dashboard-page-container">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden max-w-none">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 lg:p-6 w-full max-w-none page-content-wrapper">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Staff Complaints Management</h1>
             <p className="text-gray-600">
