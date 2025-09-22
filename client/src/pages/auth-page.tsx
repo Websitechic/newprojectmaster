@@ -52,7 +52,7 @@ export default function AuthPage() {
           }
         }
 
-        // Validate break times for non-client users
+        // Validate break time for non-client users
         if (role !== "client") {
           if (!breakOneTime) {
             toast({
@@ -62,8 +62,6 @@ export default function AuthPage() {
             });
             return;
           }
-
-          
         }
 
         await registerMutation.mutateAsync({
