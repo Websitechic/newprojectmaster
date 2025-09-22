@@ -110,11 +110,27 @@ let emailServiceInitialized = false;
       console.error("Email service error:", error);
     }
 
-    // Initialize and check database
+    // Initialize and check database with timeout
     log("Checking database connection...");
-    const dbReady = await initializeDatabase();
+    let dbReady = false;
+    
+    try {
+      dbReady = await Promise.race([
+        initializeDatabase(),
+        new Promise<boolean>((_, reject) => 
+          setTimeout(() => reject(new Error("Database initialization timeout")), 10000)
+        )
+      ]);
+    } catch (error) {
+      console.warn("Database initialization failed or timed out:", error);
+      dbReady = false;
+    }
+    
     if (!dbReady) {
-      log("Warning: Database not ready. Some features may not work correctly.");
+      log("Warning: Database not ready. Server will start in limited mode.");
+      log("Some features may not work correctly until database connection is established.");
+    } else {
+      log("Database connection established successfully");
     }
 
     log("Setting up routes and server...");
@@ -127,41 +143,65 @@ let emailServiceInitialized = false;
       path: "/api/ws"
     });
 
-    // Session parser middleware for WebSocket upgrades with better error handling
+    // Session parser middleware for WebSocket upgrades with comprehensive error handling
     const sessionParser = (req: any, res: any, next: any) => {
       try {
-        // Create a proper mock response object for WebSocket requests
+        // Create a comprehensive mock response object for WebSocket requests
         if (!res || typeof res.getHeader !== 'function') {
           res = {
             getHeader: () => null,
             setHeader: () => {},
+            removeHeader: () => {},
             end: () => {},
             writeHead: () => {},
             write: () => {},
             headersSent: false,
-            statusCode: 200
+            statusCode: 200,
+            locals: {}
           };
         }
+        
+        // Apply session middleware with error handling
         sessionMiddleware(req, res, (err: any) => {
           if (err) {
-            console.error('Session middleware error:', err);
-            // Ensure session object exists even if there's an error
-            if (!req.session) {
-              req.session = {};
-            }
+            console.warn('Session middleware warning during WebSocket upgrade:', err);
           }
+          
+          // Always ensure session object exists with safe defaults
+          if (!req.session || typeof req.session !== 'object') {
+            req.session = {
+              id: null,
+              cookie: {
+                originalMaxAge: 24 * 60 * 60 * 1000,
+                expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                secure: false,
+                httpOnly: true,
+                path: '/'
+              },
+              passport: {},
+              user: null
+            };
+            console.log('Created default session object for WebSocket');
+          }
+          
           if (typeof next === 'function') {
-            next(err);
+            next(); // Don't pass error to prevent connection failure
           }
         });
       } catch (error) {
-        console.error('Session parser error:', error);
-        // Ensure session object exists
+        console.error('Critical session parser error:', error);
+        
+        // Ensure minimal session object exists
         if (!req.session) {
-          req.session = {};
+          req.session = {
+            id: null,
+            passport: {},
+            user: null
+          };
         }
+        
         if (typeof next === 'function') {
-          next(error);
+          next(); // Continue without error
         }
       }
     };

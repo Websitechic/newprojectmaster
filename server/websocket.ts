@@ -89,34 +89,37 @@ export function setupWebSocket(wss: WebSocketServer) {
   wss.on('connection', (ws, request: any) => {
     console.log('WebSocket connection established');
 
-    // Safe session access with proper error handling
+    // Safe session access with comprehensive error handling
     let userId: number | undefined;
+    let authTimeout: NodeJS.Timeout;
+    
     try {
       // Try multiple session access patterns for compatibility
       if (request && typeof request === 'object') {
         const session = request.session;
         if (session && typeof session === 'object') {
-          userId = session.user?.id || session.passport?.user;
+          userId = session.user?.id || session.passport?.user || session.userId;
         }
       }
     } catch (error) {
       console.error('Error accessing session during WebSocket connection:', error);
+      // Continue without throwing - will handle via message authentication
     }
 
     if (!userId) {
-      console.log('WebSocket connection without session - waiting for authentication message');
-      // Set a timeout for authentication
-      const authTimeout = setTimeout(() => {
-        if (!userId) {
-          console.log('WebSocket authentication timeout');
-          ws.close(1008, 'Authentication timeout');
+      console.log('WebSocket connection without session - allowing message-based authentication');
+      
+      // Set a reasonable timeout for authentication
+      authTimeout = setTimeout(() => {
+        if (!userId && ws.readyState === ws.OPEN) {
+          console.log('WebSocket authentication timeout - closing connection');
+          try {
+            ws.close(1008, 'Authentication timeout');
+          } catch (closeError) {
+            console.error('Error closing WebSocket:', closeError);
+          }
         }
       }, 30000); // 30 second timeout
-
-      // Clear timeout if connection closes
-      ws.on('close', () => {
-        clearTimeout(authTimeout);
-      });
     }
     let heartbeatInterval: NodeJS.Timeout;
     let isAlive = true;
