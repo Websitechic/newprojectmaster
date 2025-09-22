@@ -469,6 +469,49 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get clients for management page with project counts
+  app.get("/api/clients/management", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    
+    // Only product owners can access client management
+    if (user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only product owners can access client management" });
+    }
+
+    try {
+      // Get all clients
+      const clients = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "client"))
+        .orderBy(desc(users.createdAt));
+
+      // Get project counts for each client
+      const clientsWithProjectCounts = await Promise.all(
+        clients.map(async (client) => {
+          const projectCount = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(projects)
+            .where(eq(projects.clientId, client.id));
+
+          return {
+            ...client,
+            projectCount: projectCount[0]?.count || 0,
+          };
+        })
+      );
+
+      res.json(clientsWithProjectCounts);
+    } catch (error) {
+      console.error("Error fetching clients for management:", error);
+      res.status(500).json({ error: "Failed to fetch clients for management" });
+    }
+  });
+
   // Get all users (for bookings participant selection)
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -2061,6 +2104,28 @@ End of Report
     } catch (error) {
       console.error("Error checking new clients:", error);
       res.status(500).json({ error: "Failed to check new clients" });
+    }
+  });
+
+  // Mark clients as viewed (for product owners)
+  app.post("/api/clients/mark-viewed", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "product_owner") {
+        return res.status(403).json({ error: "Only product owners can mark clients as viewed" });
+      }
+
+      // This endpoint just acknowledges that the user has viewed the clients
+      // In a more complex implementation, you might track view timestamps
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking clients as viewed:", error);
+      res.status(500).json({ error: "Failed to mark clients as viewed" });
     }
   });
 
