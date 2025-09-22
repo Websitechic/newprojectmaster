@@ -3370,7 +3370,7 @@ End of Report
           content: content || "",
           type: type || "freetext",
           todoItems: type === "todo" ? todoItems : null,
-          userId: user.id,
+                    userId: user.id,
           createdBy: user.id,
           category: category || "general",
         })
@@ -5822,7 +5822,7 @@ End of Report
       await db
         .update(tasks)
         .set({
-          status: "review",
+          status,
           updatedAt: new Date(),
         })
         .where(eq(tasks.id, taskId));
