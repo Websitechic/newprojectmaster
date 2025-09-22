@@ -3136,11 +3136,12 @@ End of Report
     const user = req.user!;
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
     const isProductOwner = user.role === "product_owner";
+    const isReplitDeveloper = user.specialization === "replit_development" || user.specialization === "Replit Development";
 
     try {
       let reports;
 
-      if (isOperationsManager || isProductOwner) {
+      if (isOperationsManager || isProductOwner || isReplitDeveloper) {
         // Operations managers and product owners can see all reports
         reports = await db
           .select({
@@ -3249,9 +3250,10 @@ End of Report
     const user = req.user!;
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
     const isProductOwner = user.role === "product_owner";
+    const isReplitDeveloper = user.specialization === "replit_development" || user.specialization === "Replit Development";
 
-    if (!isOperationsManager && !isProductOwner) {
-      return res.status(403).json({ error: "Only operations managers and product owners can update issue reports" });
+    if (!isOperationsManager && !isProductOwner && !isReplitDeveloper) {
+      return res.status(403).json({ error: "Only operations managers, product owners, and Replit developers can update issue reports" });
     }
 
     try {

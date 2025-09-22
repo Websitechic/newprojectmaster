@@ -51,7 +51,7 @@ export default function ReportManagement() {
 
   // Check if user has access
   const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
-  const isReplitDevelopment = user?.specialization === "replit_development";
+  const isReplitDevelopment = user?.specialization === "replit_development" || user?.specialization === "Replit Development";
   const hasAccess = isOperationsManager || isReplitDevelopment;
 
   // Fetch issue reports
@@ -195,6 +195,9 @@ export default function ReportManagement() {
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
                 <p className="text-gray-500 text-center">
                   Only operations managers and staff with Replit Development specialization can access report management.
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  Your role: {user?.role}, Specialization: {user?.specialization}
                 </p>
               </CardContent>
             </Card>
