@@ -86,24 +86,23 @@ export function setupWebSocket(wss: WebSocketServer) {
   });
 
   // Authentication middleware and connection handling
-  wss.on('connection', (ws: WebSocket, request: http.IncomingMessage) => {
+  wss.on('connection', (ws, request: any) => {
     console.log('WebSocket connection established');
 
-    // Type assertion to access session with safe access
-    const req = request as any;
-    let userId: number | null = null;
-    
-    // Safely access session data with proper error handling
+    // Safe session access with proper error handling
+    let userId: number | undefined;
     try {
-      if (req && req.session && req.session.user && req.session.user.id) {
-        userId = req.session.user.id;
-        console.log('WebSocket connection with authenticated session for user:', userId);
-      } else {
-        console.log('WebSocket connection without authenticated session - will wait for auth message');
-      }
-    } catch (sessionError) {
-      console.log('Error accessing session during WebSocket connection:', sessionError.message);
-      console.log('WebSocket connection will wait for auth message');
+      userId = request?.session?.user?.id;
+    } catch (error) {
+      console.error('Error accessing session during WebSocket connection:', error);
+      ws.close(1008, 'Session access error');
+      return;
+    }
+
+    if (!userId) {
+      console.log('WebSocket connection rejected: No authenticated user');
+      ws.close(1008, 'Authentication required');
+      return;
     }
     let heartbeatInterval: NodeJS.Timeout;
     let isAlive = true;
@@ -178,7 +177,7 @@ export function setupWebSocket(wss: WebSocketServer) {
 
         // Handle authentication message if not authenticated via session
         if (message.type === 'auth' && message.userId) {
-          if (userId !== null) {
+          if (userId !== null && userId !== undefined) {
             console.warn(`User ${userId} trying to re-authenticate with ID ${message.userId}`);
             return; // User already authenticated, ignore re-auth attempt
           }

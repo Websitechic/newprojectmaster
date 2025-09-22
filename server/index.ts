@@ -112,17 +112,36 @@ let emailServiceInitialized = false;
     // Session parser middleware for WebSocket upgrades with better error handling
     const sessionParser = (req: any, res: any, next: any) => {
       try {
-        // Create a mock response object for WebSocket requests
-        if (!res) {
+        // Create a proper mock response object for WebSocket requests
+        if (!res || typeof res.getHeader !== 'function') {
           res = {
             getHeader: () => null,
             setHeader: () => {},
-            end: () => {}
+            end: () => {},
+            writeHead: () => {},
+            write: () => {},
+            headersSent: false,
+            statusCode: 200
           };
         }
-        sessionMiddleware(req, res, next);
+        sessionMiddleware(req, res, (err: any) => {
+          if (err) {
+            console.error('Session middleware error:', err);
+            // Ensure session object exists even if there's an error
+            if (!req.session) {
+              req.session = {};
+            }
+          }
+          if (typeof next === 'function') {
+            next(err);
+          }
+        });
       } catch (error) {
         console.error('Session parser error:', error);
+        // Ensure session object exists
+        if (!req.session) {
+          req.session = {};
+        }
         if (typeof next === 'function') {
           next(error);
         }
@@ -154,17 +173,20 @@ let emailServiceInitialized = false;
       sessionParser(request, {} as any, (err) => {
         clearTimeout(upgradeTimeout);
 
+        // Don't fail WebSocket connection for session parsing errors
         if (err) {
-          console.error('Session parsing error during WebSocket upgrade:', err);
-          if (socket && !socket.destroyed) {
-            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-            socket.destroy();
-          }
-          return;
+          console.warn('Session parsing warning during WebSocket upgrade:', err);
+          // Continue with upgrade even if session parsing fails
         }
 
         try {
-          console.log('Session parsed for WebSocket upgrade');
+          console.log('Processing WebSocket upgrade with session state:', !!request.session);
+
+          // Ensure session exists for WebSocket handler
+          if (!request.session) {
+            request.session = {};
+            console.log('Created empty session object for WebSocket');
+          }
 
           wss.handleUpgrade(request, socket, head, (ws) => {
             console.log('WebSocket upgrade completed, emitting connection');
