@@ -444,11 +444,11 @@
 @media (min-width: 1024px) and (max-width: 1279px) {
   /* Laptop devices */
   .container-responsive {
-    @apply max-w-full px-4;
+    @apply w-full max-w-none px-3;
   }
   
   .dashboard-main {
-    @apply p-4;
+    @apply p-3;
   }
   
   .grid-cols-4 {
