@@ -229,6 +229,7 @@ export default function AuthPage() {
                         <SelectItem value="development">Development</SelectItem>
                         <SelectItem value="community_manager">Community Manager</SelectItem>
                         <SelectItem value="technical_support">Technical Support</SelectItem>
+                        <SelectItem value="replit_development">Replit Development</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

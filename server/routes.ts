@@ -555,7 +555,8 @@ export function registerRoutes(app: Express): Server {
         "Automation",
         "Community manager",
         "Project manager",
-        "Product owner"
+        "Product owner",
+        "Replit development"
       ];
 
       res.json(departmentList);
@@ -1500,7 +1501,8 @@ End of Report
         "Automation",
         "Community manager",
         "Project manager",
-        "Product owner"
+        "Product owner",
+        "Replit development"
       ];
 
       res.json(departmentList);

@@ -23,6 +23,7 @@ export const UserSpecialization = {
   COMMUNITY_MANAGER: "community_manager",
   OPERATIONS_MANAGER: "operations_manager",
   TECHNICAL_SUPPORT: "technical_support",
+  REPLIT_DEVELOPMENT: "replit_development",
 } as const;
 
 export const WorkStatus = {

@@ -117,12 +117,16 @@ const statusColors = {
 };
 
 const specializationLabels: Record<string, string> = {
-  developer: "Developer",
-  designer: "Designer",
-  copywriter: "Copywriter",
-  media_buyer: "Media Buyer",
-  automation_expert: "Automation Expert",
-  marketing_specialist: "Marketing Specialist"
+  automation: "Automation",
+  copywriting: "Copy Writing", 
+  design: "Design",
+  media_buying: "Media Buying",
+  development: "Development",
+  community_manager: "Community Manager",
+  operations_manager: "Operations Manager",
+  technical_support: "Technical Support",
+  product_owner: "Product Owner",
+  replit_development: "Replit Development",
 };
 
 const workStatusLabels: Record<string, string> = {
