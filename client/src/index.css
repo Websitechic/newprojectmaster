@@ -334,11 +334,18 @@
     width: 100% !important;
   }
 
-  /* Allow auth forms to maintain their intended width */
-  body:has([style*="maxWidth: '28rem'"]) .max-w-md,
-  body:has([style*="maxWidth: '28rem'"]) .max-w-sm {
-    max-width: 28rem !important;
+  /* Auth form specific styling to prevent full width */
+  .auth-form-container {
     width: auto !important;
+    max-width: 28rem !important;
+    min-width: 320px !important;
+  }
+  
+  /* Override any global width constraints for auth forms */
+  .auth-form-container.max-w-md,
+  .auth-form-container.w-full {
+    width: auto !important;
+    max-width: 28rem !important;
   }
 }
 

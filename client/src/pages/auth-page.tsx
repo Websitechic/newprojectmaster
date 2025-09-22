@@ -98,7 +98,7 @@ export default function AuthPage() {
   if (resetMode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <Card className="w-full max-w-md" style={{ maxWidth: '28rem', width: 'auto' }}>
+        <Card className="auth-form-container">
           <CardHeader className="text-center">
             <h1 className="text-2xl font-bold">Reset Password</h1>
           </CardHeader>
@@ -136,7 +136,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md" style={{ maxWidth: '28rem', width: 'auto' }}>
+      <Card className="auth-form-container">
         <CardHeader className="text-center">
           <h1 className="text-2xl font-bold">
             {isLogin ? "Login" : "Register"}
