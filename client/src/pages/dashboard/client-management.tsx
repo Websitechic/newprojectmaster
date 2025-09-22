@@ -135,8 +135,8 @@ export default function ClientManagement() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="space-y-6">
+        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6">
+          <div className="space-y-6 w-full max-w-none">
             {/* Header */}
             <div className="flex items-center gap-4">
               <div>
@@ -151,7 +151,7 @@ export default function ClientManagement() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
@@ -224,7 +224,8 @@ export default function ClientManagement() {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 ) : clients && clients.length > 0 ? (
-                  <Table>
+                  <div className="overflow-x-auto w-full">
+                    <Table className="min-w-full">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Client Name</TableHead>
@@ -277,7 +278,7 @@ export default function ClientManagement() {
                                 onValueChange={(value) => handleStatusChange(client.id, value)}
                                 disabled={updateStatusMutation.isPending}
                               >
-                                <SelectTrigger className="w-[180px]">
+                                <SelectTrigger className="w-full min-w-[180px]">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -293,6 +294,7 @@ export default function ClientManagement() {
                       })}
                     </TableBody>
                   </Table>
+                  </div>
                 ) : (
                   <div className="text-center py-8">
                     <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

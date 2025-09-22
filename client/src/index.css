@@ -541,6 +541,24 @@
     width: 100% !important;
     max-width: none !important;
   }
+
+  /* Specific overrides for table containers */
+  .overflow-x-auto {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure table cells don't wrap unnecessarily */
+  td, th {
+    white-space: nowrap;
+  }
+
+  /* Allow text wrapping in specific columns */
+  td:first-child,
+  td:nth-child(2) {
+    white-space: normal;
+    min-width: 120px;
+  }
 }
 
 @media (max-width: 1023px) {
