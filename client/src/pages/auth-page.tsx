@@ -63,19 +63,7 @@ export default function AuthPage() {
             return;
           }
 
-          // Check if break times are at least 1 hour apart
-          const break1 = new Date(`2000-01-01T${breakOneTime}:00`);
-          const break2 = new Date(`2000-01-01T${breakTwoTime}:00`);
-          const timeDiff = Math.abs(break2.getTime() - break1.getTime()) / (1000 * 60 * 60);
-
-          if (breakTwoTime && timeDiff < 1) {
-            toast({
-              title: "Error",
-              description: "Break times must be at least 1 hour apart",
-              variant: "destructive",
-            });
-            return;
-          }
+          
         }
 
         await registerMutation.mutateAsync({
@@ -88,7 +76,7 @@ export default function AuthPage() {
           productService: role === "client" ? productService : undefined,
           clientType: role === "client" ? clientType : undefined,
           breakOneTime: role !== "client" ? breakOneTime : undefined,
-          breakTwoTime: role !== "client" ? breakTwoTime : undefined
+          breakTwoTime: undefined
         });
       }
     } catch (error: any) {
