@@ -380,7 +380,7 @@ export function registerRoutes(app: Express): Server {
     const isProjectManager = user.role === "project_manager";
     const isProductOwner = user.role === "product_owner";
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-    const isReplitDeveloper = user.specialization === "replit_development";
+    const isReplitDeveloper = user.specialization === "replit_development" || user.specialization === "Replit Development";
 
     // Only project managers, product owners, operations managers, and Replit developers can view staff
     if (!isProjectManager && !isProductOwner && !isOperationsManager && !isReplitDeveloper) {
@@ -1185,7 +1185,7 @@ End of Report
     }
 
     const user = req.user!;
-    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager" && user.specialization !== "replit_development") {
+    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager" && user.specialization !== "replit_development" && user.specialization !== "Replit Development") {
       return res.status(403).json({ error: "Only project managers, operations managers, and Replit developers can export staff reports" });
     }
 

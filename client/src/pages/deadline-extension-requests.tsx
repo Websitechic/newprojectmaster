@@ -171,7 +171,8 @@ export default function DeadlineExtensionRequestsPage() {
   const hasAccess = user?.role === "project_manager" || 
                    user?.role === "operations_manager" || 
                    user?.specialization === "operations_manager" ||
-                   user?.specialization === "replit_development";
+                   user?.specialization === "replit_development" ||
+                   user?.specialization === "Replit Development";
 
   if (!hasAccess) {
     return (
