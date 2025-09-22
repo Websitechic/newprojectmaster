@@ -315,6 +315,42 @@ export default function GuideVideos() {
                   </div>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How To Report Issues On Application</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/XDj3OO5pZkw"
+                      title="How to report issues on application"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How To Update A New Client Status As A Customer Rep/Product Manager</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/GZwSA8lv5e8"
+                      title="How to update a new client status as a customer rep/product manager"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <Card className="bg-blue-50 border-blue-200">
