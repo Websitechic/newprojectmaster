@@ -3,7 +3,7 @@ import express from "express";
 import { createServer, Server } from "http";
 import { setupWebSocket } from "./websocket";
 import { setupAuth } from "./auth";
-import { db } from "@db";
+import { db } from "../db";
 import { breakScheduler } from "./break-scheduler";
 import multer from "multer";
 import path from "path";
