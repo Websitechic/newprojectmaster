@@ -18,7 +18,7 @@ export function useWebSocket(userId: number | undefined) {
   const getWebSocketUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    return `${protocol}//${host}/ws`;
+    return `${protocol}//${host}/api/ws`;
   }, []);
 
   const connect = useCallback(() => {

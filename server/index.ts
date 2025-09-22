@@ -184,7 +184,7 @@ let emailServiceInitialized = false;
 
           // Ensure session exists for WebSocket handler
           if (!request.session) {
-            request.session = {};
+            request.session = {} as any;
             console.log('Created empty session object for WebSocket');
           }
 

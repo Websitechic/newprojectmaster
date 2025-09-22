@@ -92,17 +92,15 @@ export function setupWebSocket(wss: WebSocketServer) {
     // Safe session access with proper error handling
     let userId: number | undefined;
     try {
-      userId = request?.session?.user?.id;
+      // Try multiple session access patterns for compatibility
+      userId = request?.session?.user?.id || request?.session?.passport?.user;
     } catch (error) {
       console.error('Error accessing session during WebSocket connection:', error);
-      ws.close(1008, 'Session access error');
-      return;
     }
 
     if (!userId) {
-      console.log('WebSocket connection rejected: No authenticated user');
-      ws.close(1008, 'Authentication required');
-      return;
+      console.log('WebSocket connection without session - waiting for authentication message');
+      // Don't close immediately, allow for authentication via message
     }
     let heartbeatInterval: NodeJS.Timeout;
     let isAlive = true;
@@ -177,7 +175,7 @@ export function setupWebSocket(wss: WebSocketServer) {
 
         // Handle authentication message if not authenticated via session
         if (message.type === 'auth' && message.userId) {
-          if (userId !== null && userId !== undefined) {
+          if (userId) {
             console.warn(`User ${userId} trying to re-authenticate with ID ${message.userId}`);
             return; // User already authenticated, ignore re-auth attempt
           }
