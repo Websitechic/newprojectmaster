@@ -24,7 +24,7 @@
 @layer components {
   /* Responsive containers */
   .container-responsive {
-    @apply w-full max-w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8;
+    @apply w-full max-w-none mx-auto px-3 sm:px-4 md:px-6 lg:px-8;
   }
 
   /* Enhanced responsive grid layouts */
@@ -90,11 +90,11 @@
   }
 
   .dashboard-content {
-    @apply flex-1 flex flex-col min-h-screen w-full min-w-0;
+    @apply flex-1 flex flex-col min-h-screen w-full min-w-0 max-w-none;
   }
 
   .dashboard-main {
-    @apply flex-1 overflow-auto p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-full;
+    @apply flex-1 overflow-auto p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-none;
   }
 
   .dashboard-header {
@@ -320,7 +320,7 @@
     @apply bg-gray-400;
   }
 
-  /* Ensure all containers respect viewport */
+  /* Force full width for all containers */
   .container,
   .max-w-7xl,
   .max-w-6xl,
@@ -332,7 +332,8 @@
   .max-w-lg,
   .max-w-md,
   .max-w-sm {
-    @apply max-w-full;
+    @apply max-w-none !important;
+    width: 100% !important;
   }
 }
 
@@ -444,11 +445,11 @@
 @media (min-width: 1024px) and (max-width: 1279px) {
   /* Laptop devices - Full width optimization */
   .container-responsive {
-    @apply w-full max-w-none px-2;
+    @apply w-full max-w-none px-4;
   }
   
   .dashboard-main {
-    @apply p-2;
+    @apply p-4 max-w-none;
   }
   
   .grid-cols-4 {
@@ -460,12 +461,57 @@
     @apply w-full max-w-none;
   }
 
-  /* Remove any max-width constraints */
+  /* Remove any max-width constraints globally */
   .max-w-7xl,
   .max-w-6xl,
   .max-w-5xl,
-  .max-w-4xl {
+  .max-w-4xl,
+  .max-w-3xl,
+  .max-w-2xl,
+  .max-w-xl,
+  .max-w-lg,
+  .max-w-md,
+  .max-w-sm {
     @apply max-w-none !important;
+    width: 100% !important;
+  }
+
+  /* Ensure all content areas use full width */
+  .flex-1 {
+    max-width: none !important;
+    width: 100% !important;
+  }
+}
+
+/* Add desktop specific rules for screens larger than laptops */
+@media (min-width: 1280px) {
+  /* Desktop devices - Full width utilization */
+  .container-responsive {
+    @apply w-full max-w-none px-4;
+  }
+  
+  .dashboard-main {
+    @apply p-6 max-w-none;
+  }
+
+  /* Force full width for all containers on desktop */
+  .max-w-7xl,
+  .max-w-6xl,
+  .max-w-5xl,
+  .max-w-4xl,
+  .max-w-3xl,
+  .max-w-2xl,
+  .max-w-xl,
+  .max-w-lg,
+  .max-w-md,
+  .max-w-sm {
+    @apply max-w-none !important;
+    width: 100% !important;
+  }
+
+  .flex-1 {
+    max-width: none !important;
+    width: 100% !important;
   }
 }
 
