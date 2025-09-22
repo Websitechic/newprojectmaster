@@ -54,10 +54,10 @@ export default function AuthPage() {
 
         // Validate break times for non-client users
         if (role !== "client") {
-          if (!breakOneTime || !breakTwoTime) {
+          if (!breakOneTime) {
             toast({
               title: "Error",
-              description: "Please select both break times",
+              description: "Please select a break time",
               variant: "destructive",
             });
             return;
@@ -68,7 +68,7 @@ export default function AuthPage() {
           const break2 = new Date(`2000-01-01T${breakTwoTime}:00`);
           const timeDiff = Math.abs(break2.getTime() - break1.getTime()) / (1000 * 60 * 60);
 
-          if (timeDiff < 1) {
+          if (breakTwoTime && timeDiff < 1) {
             toast({
               title: "Error",
               description: "Break times must be at least 1 hour apart",
