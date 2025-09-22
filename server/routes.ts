@@ -530,6 +530,7 @@ export function registerRoutes(app: Express): Server {
           specialization: users.specialization,
         })
         .from(users)
+        .where(ne(users.role, "client"))
         .orderBy(asc(users.name));
 
       res.json(allUsers);
