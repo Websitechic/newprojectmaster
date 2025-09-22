@@ -689,8 +689,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
             active={currentPath === "/report-issues"}
           />
 
-          {/* Report Management - Only for operations managers and product owners */}
-          {(user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "product_owner") && (
+          {/* Report Management - Only for operations managers and Replit Development staff */}
+          {(user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.specialization === "replit_development") && (
             <SidebarItem
               icon={<Bug size={20} />}
               label="Report Management"
