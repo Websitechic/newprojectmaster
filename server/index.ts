@@ -109,9 +109,24 @@ let emailServiceInitialized = false;
       path: "/api/ws"
     });
 
-    // Session parser middleware for WebSocket upgrades
+    // Session parser middleware for WebSocket upgrades with better error handling
     const sessionParser = (req: any, res: any, next: any) => {
-      sessionMiddleware(req, res, next);
+      try {
+        // Create a mock response object for WebSocket requests
+        if (!res) {
+          res = {
+            getHeader: () => null,
+            setHeader: () => {},
+            end: () => {}
+          };
+        }
+        sessionMiddleware(req, res, next);
+      } catch (error) {
+        console.error('Session parser error:', error);
+        if (typeof next === 'function') {
+          next(error);
+        }
+      }
     };
 
     // WebSocket upgrade handling with improved error management and path filtering

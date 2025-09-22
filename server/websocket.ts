@@ -89,13 +89,22 @@ export function setupWebSocket(wss: WebSocketServer) {
   wss.on('connection', (ws: WebSocket, request: http.IncomingMessage) => {
     console.log('WebSocket connection established');
 
-    // Type assertion to access session
+    // Type assertion to access session with safe access
     const req = request as any;
-    if (!req.session?.user?.id) {
-      console.log('WebSocket connection without authenticated session - will wait for auth message');
+    let userId: number | null = null;
+    
+    // Safely access session data with proper error handling
+    try {
+      if (req && req.session && req.session.user && req.session.user.id) {
+        userId = req.session.user.id;
+        console.log('WebSocket connection with authenticated session for user:', userId);
+      } else {
+        console.log('WebSocket connection without authenticated session - will wait for auth message');
+      }
+    } catch (sessionError) {
+      console.log('Error accessing session during WebSocket connection:', sessionError.message);
+      console.log('WebSocket connection will wait for auth message');
     }
-
-    let userId: number | null = req.session?.user?.id || null;
     let heartbeatInterval: NodeJS.Timeout;
     let isAlive = true;
 
@@ -125,23 +134,34 @@ export function setupWebSocket(wss: WebSocketServer) {
 
     // Handle connection close
     ws.on('close', (code: number, reason: Buffer) => {
-      const reasonString = reason.toString() || 'no reason provided';
+      const reasonString = reason ? reason.toString() : 'no reason provided';
       console.log(`WebSocket connection closed for user ${userId || 'unknown'}, code: ${code || 'unknown'}, reason: ${reasonString}`);
 
-      clearInterval(heartbeatInterval);
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
 
       if (userId) {
-        // Remove from active connections
-        const userConnections = activeConnections.get(userId);
-        if (userConnections) {
-          const index = userConnections.indexOf(ws as ExtendedWebSocket);
-          if (index > -1) {
-            userConnections.splice(index, 1);
-            if (userConnections.length === 0) {
-              activeConnections.delete(userId);
-              updateUserStatus(userId, 'offline');
+        try {
+          // Remove from active connections
+          const userConnections = activeConnections.get(userId);
+          if (userConnections) {
+            const index = userConnections.indexOf(ws as ExtendedWebSocket);
+            if (index > -1) {
+              userConnections.splice(index, 1);
+              if (userConnections.length === 0) {
+                activeConnections.delete(userId);
+                updateUserStatus(userId, 'offline');
+              }
             }
           }
+
+          // Remove from global connected clients
+          if (global.connectedClients && global.connectedClients.has(userId)) {
+            global.connectedClients.delete(userId);
+          }
+        } catch (cleanupError) {
+          console.error('Error during WebSocket cleanup:', cleanupError);
         }
       }
     });
