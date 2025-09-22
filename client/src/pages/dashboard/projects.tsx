@@ -176,7 +176,7 @@ export default function Projects() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <div className="flex-1 overflow-auto p-4 lg:p-6 xl:p-8">
-          <div className="max-w-full mx-auto space-y-6">
+          <div className="w-full space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Projects</h1>

@@ -94,7 +94,7 @@
   }
 
   .dashboard-main {
-    @apply flex-1 overflow-auto p-3 sm:p-4 lg:p-6 xl:p-8 w-full max-w-full;
+    @apply flex-1 overflow-auto p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-full;
   }
 
   .dashboard-header {
@@ -444,11 +444,11 @@
 @media (min-width: 1024px) and (max-width: 1279px) {
   /* Laptop devices */
   .container-responsive {
-    @apply max-w-6xl px-6;
+    @apply max-w-full px-4;
   }
   
   .dashboard-main {
-    @apply p-6;
+    @apply p-4;
   }
   
   .grid-cols-4 {
