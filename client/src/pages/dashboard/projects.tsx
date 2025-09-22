@@ -336,12 +336,28 @@ export default function Projects() {
 
                     <CollapsibleContent>
                       <div className="p-3 lg:p-4 xl:p-6 space-y-4 lg:space-y-6">
-                        {projects.map((project) => (
-                          <div 
-                            key={project.id} 
-                            className="flex items-center justify-between p-4 lg:p-5 bg-card hover:bg-muted/50 border rounded-lg cursor-pointer transition-colors"
-
-                          >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+                          {projects.map((project) => (
+                            <ProjectCard
+                              key={project.id}
+                              project={project}
+                              handleClick={() => {
+                                const targetPath = user?.role === 'staff'
+                                  ? `/dashboard/projects/${project.id}/staff`
+                                  : `/dashboard/projects/${project.id}`;
+                                window.location.href = targetPath;
+                              }}
+                            />
+                          ))}
+                        </div>
+                        
+                        {/* Keep the original list view for larger screens as fallback */}
+                        <div className="hidden">
+                          {projects.map((project) => (
+                            <div 
+                              key={project.id} 
+                              className="flex items-center justify-between p-4 lg:p-5 bg-card hover:bg-muted/50 border rounded-lg cursor-pointer transition-colors"
+                            >
                             <div className="flex items-center space-x-4 flex-1 min-w-0 cursor-pointer" onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -536,6 +552,7 @@ export default function Projects() {
                             )}
                           </div>
                         ))}
+                        </div>
                       </div>
                     </CollapsibleContent>
                   </Collapsible>

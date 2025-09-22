@@ -133,25 +133,27 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
   return (
     <>
     <Card className="h-full hover:shadow-lg transition-all duration-200 cursor-pointer border border-gray-200 rounded-xl bg-white" onClick={handleCardClick}>
-      <CardHeader className="pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">{project.name}</CardTitle>
+      <CardHeader className="pb-3 sm:pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start gap-2 mb-1">
+              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 line-clamp-2 break-words hyphens-auto leading-tight">
+                {project.name}
+              </CardTitle>
               {unreadCount > 0 && (
-                <Badge className="bg-red-500 text-white px-2 py-0.5 text-xs rounded-full">
+                <Badge className="bg-red-500 text-white px-1.5 py-0.5 text-xs rounded-full shrink-0">
                   {unreadCount}
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-1 capitalize">
+            <p className="text-xs sm:text-sm text-gray-500 capitalize">
               {project.category?.replace(/_/g, ' ')}
             </p>
           </div>
           <Badge 
             variant={project.status === "completed" ? "default" : "secondary"}
             className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium",
+              "rounded-full px-2 sm:px-3 py-1 text-xs font-medium shrink-0 self-start",
               project.status === "completed" 
                 ? "bg-green-100 text-green-700"
                 : project.status === "in_progress"
@@ -166,34 +168,34 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
 
       <CardContent className="pt-0">
         {project.description && (
-          <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+          <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3">
             {project.description}
           </p>
         )}
 
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm">
-            <div className="w-5 h-5 flex items-center justify-center">
-              <Calendar className="h-4 w-4 text-gray-400" />
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex items-center gap-2 text-xs sm:text-sm">
+            <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center shrink-0">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
             </div>
-            <span className="text-gray-600">
+            <span className="text-gray-600 truncate">
               {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
             </span>
           </div>
 
           {project.client && (
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <User className="h-4 w-4 text-gray-400" />
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center shrink-0">
+                <User className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
               </div>
-              <span className="text-gray-600">{project.client.name}</span>
+              <span className="text-gray-600 truncate">{project.client.name}</span>
             </div>
           )}
 
           {project.teamMembers && project.teamMembers.length > 0 && (
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Users className="h-4 w-4 text-gray-400" />
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center shrink-0">
+                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
               </div>
               <span className="text-gray-600">
                 {project.teamMembers.length} team member{project.teamMembers.length !== 1 ? 's' : ''}
@@ -201,6 +203,61 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
             </div>
           )}
         </div>
+
+        {/* Mobile Action Buttons */}
+        {isProjectManager && (
+          <div className="flex sm:hidden items-center justify-end gap-1 mt-3 pt-3 border-t border-gray-100">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleVideoClick}
+              className="h-8 w-8 p-0"
+            >
+              <Video className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleEditClick}
+              className="h-8 w-8 p-0"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleDeleteClick}
+                  className="h-8 w-8 p-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the project "{project.name}" from our servers.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteProject.mutate();
+                      setIsDeleteDialogOpen(false);
+                    }}
+                    disabled={deleteProject.isPending}
+                  >
+                    {deleteProject.isPending ? "Deleting..." : "Delete"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </CardContent>
     </Card>
 
