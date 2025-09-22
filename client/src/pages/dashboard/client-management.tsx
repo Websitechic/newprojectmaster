@@ -131,12 +131,12 @@ export default function ClientManagement() {
   const summary = getStatusSummary();
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6">
-          <div className="space-y-6 w-full max-w-none">
+        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
+          <div className="space-y-6 w-full max-w-none min-w-0">
             {/* Header */}
             <div className="flex items-center gap-4">
               <div>
@@ -151,7 +151,7 @@ export default function ClientManagement() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
@@ -211,22 +211,23 @@ export default function ClientManagement() {
             </div>
 
             {/* Clients Table */}
-            <Card>
+            <Card className="w-full">
               <CardHeader>
                 <CardTitle>Client Accounts</CardTitle>
                 <CardDescription>
                   Manage onboarding status for all client accounts
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="w-full p-0">
                 {isLoading ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 ) : clients && clients.length > 0 ? (
-                  <div className="overflow-x-auto w-full">
-                    <Table className="min-w-full">
-                    <TableHeader>
+                  <div className="w-full">
+                    <div className="overflow-x-auto">
+                      <Table className="w-full min-w-[1000px]">
+                        <TableHeader>
                       <TableRow>
                         <TableHead>Client Name</TableHead>
                         <TableHead>Email</TableHead>
@@ -292,8 +293,9 @@ export default function ClientManagement() {
                           </TableRow>
                         );
                       })}
-                    </TableBody>
-                  </Table>
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-8">

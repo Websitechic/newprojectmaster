@@ -542,15 +542,29 @@
     max-width: none !important;
   }
 
+  /* Force full width for client management specific elements */
+  .flex-1 {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
   /* Specific overrides for table containers */
   .overflow-x-auto {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  /* Table optimizations */
+  table {
+    table-layout: fixed;
+    width: 100%;
   }
 
   /* Ensure table cells don't wrap unnecessarily */
   td, th {
     white-space: nowrap;
+    padding: 8px 12px;
   }
 
   /* Allow text wrapping in specific columns */
@@ -558,6 +572,20 @@
   td:nth-child(2) {
     white-space: normal;
     min-width: 120px;
+    word-wrap: break-word;
+  }
+
+  /* Optimize select dropdowns in tables */
+  td select,
+  td .w-full {
+    min-width: 160px;
+    max-width: 200px;
+  }
+
+  /* Ensure cards grid doesn't exceed viewport */
+  .grid {
+    width: 100%;
+    max-width: 100%;
   }
 }
 
