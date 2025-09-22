@@ -72,8 +72,7 @@ const registerSchema = z.object({
   name: z.string(),
   email: z.string().email(),
   role: z.enum(["client", "project_manager", "staff", "intern", "product_owner", "operations_manager"]),
-  breakOneTime: z.string().optional(),
-  breakTwoTime: z.string().optional(),
+  breakOneTime: z.string().optional(), // Daily break time
   specialization: z.string().optional(),
   productService: z.string().optional(),
   clientType: z.string().optional(),
@@ -163,7 +162,7 @@ export function setupAuth(app: Express) {
         try {
           await db
             .update(users)
-            .set({ 
+            .set({
               status: UserStatus.ONLINE,
               lastActive: new Date()
             })
@@ -174,7 +173,7 @@ export function setupAuth(app: Express) {
           console.error('Error updating user status on login:', error);
         }
 
-        return res.json({ 
+        return res.json({
           message: "Login successful",
           user: {
             id: user.id,
@@ -193,7 +192,7 @@ export function setupAuth(app: Express) {
       try {
         await db
           .update(users)
-          .set({ 
+          .set({
             status: UserStatus.OFFLINE,
             lastActive: new Date()
           })
@@ -237,7 +236,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password, role, name, email, breakOneTime, breakTwoTime, specialization, productService, clientType } = result.data;
+      const { username, password, role, name, email, breakOneTime, specialization, productService, clientType } = result.data;
 
       // Check if user already exists
       const [existingUser] = await db
@@ -250,21 +249,10 @@ export function setupAuth(app: Express) {
         return res.status(400).send("Username already exists");
       }
 
-      // Validate break times for non-client users
+      // Validate break time for non-client users
       if (role !== "client") {
-        if (!breakOneTime) { // Only breakOneTime is required now
-          return res.status(400).send("Break time is required for staff and project managers");
-        }
-
-        // Check if break times are at least 1 hour apart if both exist
-        if (breakOneTime && breakTwoTime) {
-          const break1 = new Date(`2000-01-01T${breakOneTime}:00`);
-          const break2 = new Date(`2000-01-01T${breakTwoTime}:00`);
-          const timeDiff = Math.abs(break2.getTime() - break1.getTime()) / (1000 * 60 * 60);
-
-          if (timeDiff < 1) {
-            return res.status(400).send("Break times must be at least 1 hour apart");
-          }
+        if (!breakOneTime) {
+          return res.status(400).send("Daily break time is required for staff and project managers");
         }
       }
 
@@ -297,7 +285,6 @@ export function setupAuth(app: Express) {
       // Add break times for non-client users
       if (role !== "client") {
         if (breakOneTime) userData.breakOneTime = breakOneTime;
-        // Removed breakTwoTime from here as it's no longer used
       }
 
 
@@ -314,9 +301,9 @@ export function setupAuth(app: Express) {
         }
         return res.json({
           message: "Registration successful",
-          user: { 
-            id: newUser.id, 
-            username: newUser.username, 
+          user: {
+            id: newUser.id,
+            username: newUser.username,
             role: newUser.role,
             name: newUser.name
           },
