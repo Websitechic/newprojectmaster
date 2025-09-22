@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
@@ -40,6 +39,20 @@ import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 import { useQuery } from "@tanstack/react-query";
 import { useSidebarIndicators } from "@/hooks/use-sidebar-indicators";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
