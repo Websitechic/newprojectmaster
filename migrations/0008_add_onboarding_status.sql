@@ -1,7 +1,6 @@
 
--- Add onboarding_status column to users table
-ALTER TABLE users ADD COLUMN onboarding_status TEXT DEFAULT 'not_onboarded';
+-- This migration is no longer needed as onboarding_status was already added in migration 0004
+-- Keeping this file for migration history but making it a no-op
 
--- Add check constraint for valid onboarding status values
-ALTER TABLE users ADD CONSTRAINT users_onboarding_status_check 
-  CHECK (onboarding_status IN ('onboarded', 'not_onboarded', 'onboarding_in_progress', 'onboarding_pending'));
+-- The onboarding_status column was already added in migration 0004_reflective_meteorite.sql
+-- No action needed here

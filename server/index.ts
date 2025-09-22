@@ -90,7 +90,16 @@ let emailServiceInitialized = false;
       .then(() => {
         console.log("Database migrations completed");
       })
-      .catch(console.error);
+      .catch((error) => {
+        console.error("Database migration error:", error);
+        // Continue startup even if migrations fail (they might already be applied)
+        if (!error.message.includes('already exists')) {
+          console.error("Critical migration error, exiting...");
+          process.exit(1);
+        } else {
+          console.log("Migration warning ignored (columns already exist)");
+        }
+      });
 
     // Initialize email service with timeout
     try {

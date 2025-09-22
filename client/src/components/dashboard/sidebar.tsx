@@ -1,3 +1,4 @@
+
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
@@ -39,20 +40,6 @@ import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
 import { useQuery } from "@tanstack/react-query";
 import { useSidebarIndicators } from "@/hooks/use-sidebar-indicators";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-} from "@/components/ui/sidebar";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -101,7 +88,7 @@ function SidebarItem({ icon, label, href, active, badge, external, onClick, hasU
   );
 }
 
-export function Sidebar({ currentPath }: { currentPath: string }) {
+export function AppSidebar({ currentPath }: { currentPath: string }) {
   const { logout, user } = useUser();
   const [, setLocation] = useLocation();
   const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
@@ -252,7 +239,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     }
   }, [currentPath]);
 
-  // Menu items configuration (same as before)
+  // Menu items configuration
   const isClientWithSpecialAccess = user?.role === "client" && user?.clientType === "support_maintenance_client";
   const baseMenuItems = (user?.role !== "client" || isClientWithSpecialAccess) ? [
     {
@@ -679,47 +666,25 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
               />
             );
           })}
-          {(user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
-            <>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={currentPath === "/dashboard/staff-report"}>
-                  <Link href="/dashboard/staff-report">
-                    <Users className="h-4 w-4" />
-                    <span>Staff Report</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={currentPath === "/dashboard/kpi-report"}>
-                  <Link href="/dashboard/kpi-report">
-                    <BarChart3 className="h-4 w-4" />
-                    <span>KPI Report</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </>
-          )}
 
           {/* Report Issues - Available to all users */}
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={currentPath === "/report-issues"}>
-              <Link href="/report-issues">
-                <Bug className="h-4 w-4" />
-                <span>Report Issues</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <SidebarItem
+            icon={<Bug size={20} />}
+            label="Report Issues"
+            href="/report-issues"
+            onClick={() => handleMenuItemClick("/report-issues")}
+            active={currentPath === "/report-issues"}
+          />
 
           {/* Report Management - Only for operations managers and product owners */}
           {(user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "product_owner") && (
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={currentPath === "/dashboard/report-management"}>
-                <Link href="/dashboard/report-management">
-                  <Bug className="h-4 w-4" />
-                  <span>Report Management</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <SidebarItem
+              icon={<Bug size={20} />}
+              label="Report Management"
+              href="/dashboard/report-management"
+              onClick={() => handleMenuItemClick("/dashboard/report-management")}
+              active={currentPath === "/dashboard/report-management"}
+            />
           )}
         </div>
       </nav>
@@ -801,3 +766,6 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
     </>
   );
 }
+
+// Export as Sidebar for backward compatibility
+export { AppSidebar as Sidebar };
