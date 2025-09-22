@@ -175,8 +175,8 @@ export default function Projects() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto p-3 lg:p-4 xl:p-6">
-          <div className="w-full max-w-none space-y-4 lg:space-y-6">
+        <div className="flex-1 overflow-auto p-2 lg:p-3 xl:p-4">
+          <div className="w-full max-w-none space-y-3 lg:space-y-4">
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
@@ -186,7 +186,7 @@ export default function Projects() {
 
             {/* Project Status Dashboard Cards - Only for Operations Managers and Project Managers */}
             {(user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-4 xl:gap-6 mb-4 lg:mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 lg:gap-3 xl:gap-4 mb-3 lg:mb-4">
               {/* Project Overdue Card */}
               <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer ${
                 statusFilter === 'overdue' ? 'bg-red-100 border-red-300' : 'bg-red-50 border-red-200'
@@ -335,7 +335,7 @@ export default function Projects() {
                     </CollapsibleTrigger>
 
                     <CollapsibleContent>
-                      <div className="p-3 lg:p-4 xl:p-6 space-y-3 lg:space-y-4">
+                      <div className="p-2 lg:p-3 xl:p-4 space-y-3 lg:space-y-4">
                         {projects.map((project) => (
                           <div 
                             key={project.id} 
