@@ -122,6 +122,7 @@ export function setupAuth(app: Express) {
         }
         return done(null, user);
       } catch (err) {
+        console.error('Authentication error:', err);
         return done(err);
       }
     })

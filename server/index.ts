@@ -6,6 +6,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { breakScheduler } from "./break-scheduler";
 import { communicationMonitor } from "./communication-monitor";
 import { setupAuth } from "./auth";
+import { initializeDatabase } from "./init-db";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { initializeEmailService } from "./services/email";
@@ -69,6 +70,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Global error handler
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error("Server Error:", err);
@@ -97,6 +108,13 @@ let emailServiceInitialized = false;
     } catch (error) {
       log("Warning: Email service initialization failed - continuing without email service");
       console.error("Email service error:", error);
+    }
+
+    // Initialize and check database
+    log("Checking database connection...");
+    const dbReady = await initializeDatabase();
+    if (!dbReady) {
+      log("Warning: Database not ready. Some features may not work correctly.");
     }
 
     log("Setting up routes and server...");
@@ -213,16 +231,27 @@ let emailServiceInitialized = false;
       serveStatic(app);
     }
 
+    // Validate environment variables
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is required');
+    }
+
     // Start the server
     const port = 5000;
     server.listen(port, "0.0.0.0", () => {
       console.log(`Server running on port ${port}`);
+      
+      try {
+        // Start the break scheduler
+        breakScheduler.start();
+        console.log('Break scheduler started');
 
-      // Start the break scheduler
-      breakScheduler.start();
-
-      // Initialize communication monitor
-      communicationMonitor.start();
+        // Initialize communication monitor
+        communicationMonitor.start();
+        console.log('Communication monitor started');
+      } catch (error) {
+        console.error('Error starting schedulers:', error);
+      }
     });
   } catch (error) {
     console.error("Fatal server initialization error:", error);

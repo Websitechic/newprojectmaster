@@ -1,15 +1,35 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
-import ws from "ws";
-import * as schema from "@db/schema";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Client } from "pg";
+import * as schema from "./schema";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Add connection error handling
+client.on('error', (err) => {
+  console.error('Database client error:', err);
+});
+
+// Connect with retry logic
+async function connectWithRetry(retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await client.connect();
+      console.log('Database connected successfully');
+      break;
+    } catch (error) {
+      console.error(`Database connection attempt ${i + 1} failed:`, error);
+      if (i === retries - 1) {
+        console.error('Failed to connect to database after', retries, 'attempts');
+        throw error;
+      }
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
 }
 
-export const db = drizzle({
-  connection: process.env.DATABASE_URL,
-  schema,
-  ws: ws,
-});
+await connectWithRetry();
+
+export const db = drizzle(client, { schema });

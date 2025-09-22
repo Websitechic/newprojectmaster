@@ -93,14 +93,30 @@ export function setupWebSocket(wss: WebSocketServer) {
     let userId: number | undefined;
     try {
       // Try multiple session access patterns for compatibility
-      userId = request?.session?.user?.id || request?.session?.passport?.user;
+      if (request && typeof request === 'object') {
+        const session = request.session;
+        if (session && typeof session === 'object') {
+          userId = session.user?.id || session.passport?.user;
+        }
+      }
     } catch (error) {
       console.error('Error accessing session during WebSocket connection:', error);
     }
 
     if (!userId) {
       console.log('WebSocket connection without session - waiting for authentication message');
-      // Don't close immediately, allow for authentication via message
+      // Set a timeout for authentication
+      const authTimeout = setTimeout(() => {
+        if (!userId) {
+          console.log('WebSocket authentication timeout');
+          ws.close(1008, 'Authentication timeout');
+        }
+      }, 30000); // 30 second timeout
+
+      // Clear timeout if connection closes
+      ws.on('close', () => {
+        clearTimeout(authTimeout);
+      });
     }
     let heartbeatInterval: NodeJS.Timeout;
     let isAlive = true;
