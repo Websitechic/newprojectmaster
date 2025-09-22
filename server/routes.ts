@@ -1179,6 +1179,65 @@ End of Report
     }
   });
 
+  // Update client onboarding status endpoint
+  app.put("/api/clients/:id/onboarding-status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    
+    // Only product owners can update client onboarding status
+    if (user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only product owners can update client onboarding status" });
+    }
+
+    try {
+      const clientId = parseInt(req.params.id);
+      const { onboardingStatus } = req.body;
+
+      console.log("Updating client onboarding status:", { clientId, onboardingStatus, userId: user.id });
+
+      if (!onboardingStatus) {
+        return res.status(400).json({ error: "Onboarding status is required" });
+      }
+
+      // Validate onboarding status
+      const validStatuses = ["onboarded", "not_onboarded", "onboarding_in_progress", "onboarding_pending"];
+      if (!validStatuses.includes(onboardingStatus)) {
+        return res.status(400).json({ error: "Invalid onboarding status" });
+      }
+
+      // Check if client exists
+      const [existingClient] = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.id, clientId), eq(users.role, "client")))
+        .limit(1);
+
+      if (!existingClient) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Update the client's onboarding status
+      const [updatedClient] = await db
+        .update(users)
+        .set({
+          onboardingStatus,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, clientId))
+        .returning();
+
+      console.log("Client onboarding status updated successfully:", updatedClient);
+      res.json({ success: true, client: updatedClient });
+
+    } catch (error) {
+      console.error("Error updating client onboarding status:", error);
+      res.status(500).json({ error: "Failed to update client onboarding status", details: error.message });
+    }
+  });
+
   // Export staff report (Project Managers and Operations Managers only)
   app.post("/api/staff-report/export", async (req, res) => {
     if (!req.isAuthenticated()) {
