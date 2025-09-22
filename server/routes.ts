@@ -380,9 +380,10 @@ export function registerRoutes(app: Express): Server {
     const isProjectManager = user.role === "project_manager";
     const isProductOwner = user.role === "product_owner";
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    const isReplitDeveloper = user.specialization === "replit_development";
 
-    // Only project managers, product owners, and operations managers can view staff
-    if (!isProjectManager && !isProductOwner && !isOperationsManager) {
+    // Only project managers, product owners, operations managers, and Replit developers can view staff
+    if (!isProjectManager && !isProductOwner && !isOperationsManager && !isReplitDeveloper) {
       return res.status(403).send("Access denied");
     }
 
@@ -1184,8 +1185,8 @@ End of Report
     }
 
     const user = req.user!;
-    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
-      return res.status(403).json({ error: "Only project managers and operations managers can export staff reports" });
+    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager" && user.specialization !== "replit_development") {
+      return res.status(403).json({ error: "Only project managers, operations managers, and Replit developers can export staff reports" });
     }
 
     try {
