@@ -10,6 +10,8 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { initializeEmailService } from "./services/email";
 import { WebSocketServer } from "ws";
+import { migrate } from "drizzle-orm/migrator";
+import { db } from "./db";
 
 // Declare global SSE clients map
 declare global {
@@ -82,6 +84,13 @@ let emailServiceInitialized = false;
 (async () => {
   try {
     log("Starting server initialization...");
+
+    // Auto-migrate database on startup
+    migrate(db, { migrationsFolder: "./migrations" })
+      .then(() => {
+        console.log("Database migrations completed");
+      })
+      .catch(console.error);
 
     // Initialize email service with timeout
     try {

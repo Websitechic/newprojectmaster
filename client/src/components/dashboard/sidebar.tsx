@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
@@ -32,6 +31,7 @@ import {
   MessageSquare,
   Menu,
   X,
+  Bug,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
   const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const indicators = useSidebarIndicators();
-  
+
   const { data: unreadCounts = {} } = useQuery({
     queryKey: ["/api/projects/unread-counts"],
     refetchInterval: 30000,
@@ -597,7 +597,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
 
   const handleMenuItemClick = async (href: string) => {
     setIsMobileMenuOpen(false);
-    
+
     // Clear indicators when visiting specific pages
     try {
       if (href === "/dashboard/staff-queries") {
@@ -657,14 +657,56 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
           {menuItems.map((item) => {
             const { key, ...itemProps } = item;
             return (
-              <SidebarItem 
-                key={key} 
-                {...itemProps} 
+              <SidebarItem
+                key={key}
+                {...itemProps}
                 onClick={() => handleMenuItemClick(item.href)}
                 active={currentPath === item.href || (item.href !== "/dashboard" && currentPath.startsWith(item.href))}
               />
             );
           })}
+          {(user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
+            <>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={currentPath === "/dashboard/staff-report"}>
+                  <Link href="/dashboard/staff-report">
+                    <Users className="h-4 w-4" />
+                    <span>Staff Report</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={currentPath === "/dashboard/kpi-report"}>
+                  <Link href="/dashboard/kpi-report">
+                    <BarChart3 className="h-4 w-4" />
+                    <span>KPI Report</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </>
+          )}
+
+          {/* Report Issues - Available to all users */}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={currentPath === "/report-issues"}>
+              <Link href="/report-issues">
+                <Bug className="h-4 w-4" />
+                <span>Report Issues</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {/* Report Management - Only for operations managers and product owners */}
+          {(user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "product_owner") && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={currentPath === "/dashboard/report-management"}>
+                <Link href="/dashboard/report-management">
+                  <Bug className="h-4 w-4" />
+                  <span>Report Management</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </div>
       </nav>
 
@@ -720,7 +762,7 @@ export function Sidebar({ currentPath }: { currentPath: string }) {
 
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-300 touch-manipulation"
           onClick={() => setIsMobileMenuOpen(false)}
         />

@@ -41,6 +41,7 @@ import {
   notes,
   sops,
   sopSegments,
+  issueReports,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
@@ -3120,6 +3121,194 @@ End of Report
     } catch (error) {
       console.error("Error sending direct message:", error);
       res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Issue Reports API Routes
+  app.get("/api/issue-reports", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    const isProductOwner = user.role === "product_owner";
+
+    try {
+      let reports;
+
+      if (isOperationsManager || isProductOwner) {
+        // Operations managers and product owners can see all reports
+        reports = await db
+          .select({
+            id: issueReports.id,
+            title: issueReports.title,
+            description: issueReports.description,
+            suggestions: issueReports.suggestions,
+            reporterName: issueReports.reporterName,
+            reporterEmail: issueReports.reporterEmail,
+            priority: issueReports.priority,
+            category: issueReports.category,
+            status: issueReports.status,
+            submitterId: issueReports.submitterId,
+            reviewedBy: issueReports.reviewedBy,
+            reviewedAt: issueReports.reviewedAt,
+            reviewComments: issueReports.reviewComments,
+            createdAt: issueReports.createdAt,
+            updatedAt: issueReports.updatedAt,
+            submitterName: users.name,
+          })
+          .from(issueReports)
+          .leftJoin(users, eq(issueReports.submitterId, users.id))
+          .orderBy(desc(issueReports.createdAt));
+      } else {
+        // Regular users can only see their own reports
+        reports = await db
+          .select()
+          .from(issueReports)
+          .where(eq(issueReports.submitterId, user.id))
+          .orderBy(desc(issueReports.createdAt));
+      }
+
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching issue reports:", error);
+      res.status(500).json({ error: "Failed to fetch issue reports" });
+    }
+  });
+
+  app.post("/api/issue-reports", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const { title, description, suggestions, priority, category } = req.body;
+
+      if (!title || !description) {
+        return res.status(400).json({ error: "Title and description are required" });
+      }
+
+      const [newReport] = await db
+        .insert(issueReports)
+        .values({
+          title: title.trim(),
+          description: description.trim(),
+          suggestions: suggestions?.trim() || null,
+          reporterName: user.name,
+          reporterEmail: user.email,
+          priority: priority || "medium",
+          category: category || "other",
+          submitterId: user.id,
+        })
+        .returning();
+
+      // Create notifications for operations managers and product owners
+      try {
+        const managers = await db
+          .select()
+          .from(users)
+          .where(or(
+            eq(users.role, "operations_manager"),
+            eq(users.specialization, "operations_manager"),
+            eq(users.role, "product_owner")
+          ));
+
+        for (const manager of managers) {
+          await db
+            .insert(notifications)
+            .values({
+              userId: manager.id,
+              type: "task_assigned",
+              content: `New issue report from ${user.name}: ${title}`,
+              referenceId: newReport.id,
+              referenceType: "project",
+            });
+        }
+      } catch (notificationError) {
+        console.error("Error creating issue report notifications:", notificationError);
+      }
+
+      res.json({ success: true, reportId: newReport.id });
+    } catch (error) {
+      console.error("Error creating issue report:", error);
+      res.status(500).json({ error: "Failed to create issue report" });
+    }
+  });
+
+  app.put("/api/issue-reports/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    const isProductOwner = user.role === "product_owner";
+
+    if (!isOperationsManager && !isProductOwner) {
+      return res.status(403).json({ error: "Only operations managers and product owners can update issue reports" });
+    }
+
+    try {
+      const reportId = parseInt(req.params.id);
+      const { status, reviewComments } = req.body;
+
+      if (!status) {
+        return res.status(400).json({ error: "Status is required" });
+      }
+
+      const validStatuses = ["pending", "reviewing", "resolved", "closed"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      // Check if report exists
+      const [existingReport] = await db
+        .select()
+        .from(issueReports)
+        .where(eq(issueReports.id, reportId))
+        .limit(1);
+
+      if (!existingReport) {
+        return res.status(404).json({ error: "Issue report not found" });
+      }
+
+      // Update the report
+      const [updatedReport] = await db
+        .update(issueReports)
+        .set({
+          status,
+          reviewComments: reviewComments || null,
+          reviewedBy: user.id,
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(issueReports.id, reportId))
+        .returning();
+
+      // Create notification for the reporter
+      if (existingReport.submitterId) {
+        try {
+          await db
+            .insert(notifications)
+            .values({
+              userId: existingReport.submitterId,
+              type: "task_updated",
+              content: `Your issue report "${existingReport.title}" has been updated to ${status}`,
+              referenceId: reportId,
+              referenceType: "project",
+            });
+        } catch (notificationError) {
+          console.error("Error creating notification for issue report update:", notificationError);
+        }
+      }
+
+      res.json({ success: true, report: updatedReport });
+    } catch (error) {
+      console.error("Error updating issue report:", error);
+      res.status(500).json({ error: "Failed to update issue report" });
     }
   });
 

@@ -47,6 +47,8 @@ import SOPPage from "@/pages/dashboard/sop";
 import { Suspense, lazy } from "react";
 import CommunicationTrackerPage from "@/pages/dashboard/communication-tracker";
 import KPIReportPage from "@/pages/dashboard/kpi-report";
+import ReportIssues from "@/pages/report-issues";
+import ReportManagement from "@/pages/dashboard/report-management";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -286,16 +288,12 @@ function Router() {
               <KPIReportPage />
             </div>
           </Route>
-          <Route path="/technical-management">
-            <div className="lg:flex min-h-screen">
-              <TechnicalManagementFixed />
-            </div>
-          </Route>
-          <Route path="/send-complaint">
-            <div className="lg:flex min-h-screen">
-              <SendComplaint />
-            </div>
-          </Route>
+          <Route path="/technical-support" component={TechnicalSupport} />
+          <Route path="/technical-management" component={TechnicalManagementFixed} />
+          <Route path="/deadline-extension-requests" component={DeadlineExtensionRequests} />
+          <Route path="/send-complaint" component={SendComplaint} />
+          <Route path="/report-issues" component={ReportIssues} />
+          <Route path="/dashboard/report-management" component={ReportManagement} />
           <Route path="*" component={NotFound} />
         </Switch>
       </Suspense>

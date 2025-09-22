@@ -813,6 +813,46 @@ export const selectSopSchema = createSelectSchema(sops);
 export const insertSopSegmentSchema = createInsertSchema(sopSegments);
 export const selectSopSegmentSchema = createSelectSchema(sopSegments);
 
+// Issue Reports table
+export const issueReports = pgTable("issue_reports", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  suggestions: text("suggestions"),
+  reporterName: text("reporter_name").notNull(),
+  reporterEmail: text("reporter_email").notNull(),
+  priority: text("priority", { 
+    enum: ["low", "medium", "high", "urgent"] 
+  }).default("medium"),
+  category: text("category", {
+    enum: ["bug", "feature_request", "improvement", "other"]
+  }).default("other"),
+  status: text("status", { 
+    enum: ["pending", "reviewing", "resolved", "closed"] 
+  }).default("pending"),
+  submitterId: integer("submitter_id").references(() => users.id),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewComments: text("review_comments"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const issueReportsRelations = relations(issueReports, ({ one }) => ({
+  submitter: one(users, {
+    fields: [issueReports.submitterId],
+    references: [users.id],
+  }),
+  reviewer: one(users, {
+    fields: [issueReports.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+export type IssueReport = typeof issueReports.$inferSelect;
+export const insertIssueReportSchema = createInsertSchema(issueReports);
+export const selectIssueReportSchema = createSelectSchema(issueReports);
+
 // Removed duplicate notes declaration - keeping the earlier definition
 
 export type Note = typeof notes.$inferSelect;
