@@ -477,7 +477,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const user = req.user!;
-    
+
     // Only product owners can access client management
     if (user.role !== "product_owner") {
       return res.status(403).json({ error: "Only product owners can access client management" });

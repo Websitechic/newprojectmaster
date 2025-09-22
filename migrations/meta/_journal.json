@@ -36,6 +36,13 @@
       "when": 1755197749267,
       "tag": "0004_reflective_meteorite",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1758530986486,
+      "tag": "0005_blushing_energizer",
+      "breakpoints": true
     }
   ]
 }

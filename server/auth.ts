@@ -252,17 +252,19 @@ export function setupAuth(app: Express) {
 
       // Validate break times for non-client users
       if (role !== "client") {
-        if (!breakOneTime || !breakTwoTime) {
-          return res.status(400).send("Break times are required for staff and project managers");
+        if (!breakOneTime) { // Only breakOneTime is required now
+          return res.status(400).send("Break time is required for staff and project managers");
         }
 
-        // Check if break times are at least 1 hour apart
-        const break1 = new Date(`2000-01-01T${breakOneTime}:00`);
-        const break2 = new Date(`2000-01-01T${breakTwoTime}:00`);
-        const timeDiff = Math.abs(break2.getTime() - break1.getTime()) / (1000 * 60 * 60);
+        // Check if break times are at least 1 hour apart if both exist
+        if (breakOneTime && breakTwoTime) {
+          const break1 = new Date(`2000-01-01T${breakOneTime}:00`);
+          const break2 = new Date(`2000-01-01T${breakTwoTime}:00`);
+          const timeDiff = Math.abs(break2.getTime() - break1.getTime()) / (1000 * 60 * 60);
 
-        if (timeDiff < 1) {
-          return res.status(400).send("Break times must be at least 1 hour apart");
+          if (timeDiff < 1) {
+            return res.status(400).send("Break times must be at least 1 hour apart");
+          }
         }
       }
 
@@ -295,7 +297,7 @@ export function setupAuth(app: Express) {
       // Add break times for non-client users
       if (role !== "client") {
         if (breakOneTime) userData.breakOneTime = breakOneTime;
-        if (breakTwoTime) userData.breakTwoTime = breakTwoTime;
+        // Removed breakTwoTime from here as it's no longer used
       }
 
 

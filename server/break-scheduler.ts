@@ -62,7 +62,7 @@ class BreakScheduler {
             // Handle users who are on break but not in activeBreaks (e.g., after server restart)
             await this.handleOrphanedBreak(user);
           } else {
-            // Check if it's time for a break
+            // Check if it's time for the daily break
             await this.checkBreakStart(user, currentTime);
           }
         }
