@@ -175,8 +175,8 @@ export default function Projects() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="space-y-6">
+        <div className="flex-1 overflow-auto p-4 lg:p-6 xl:p-8">
+          <div className="max-w-full mx-auto space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
@@ -186,7 +186,7 @@ export default function Projects() {
 
             {/* Project Status Dashboard Cards - Only for Operations Managers and Project Managers */}
             {(user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager") && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-6">
               {/* Project Overdue Card */}
               <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer ${
                 statusFilter === 'overdue' ? 'bg-red-100 border-red-300' : 'bg-red-50 border-red-200'
@@ -335,11 +335,11 @@ export default function Projects() {
                     </CollapsibleTrigger>
 
                     <CollapsibleContent>
-                      <div className="p-3 space-y-2">
+                      <div className="p-4 lg:p-6 space-y-3 lg:space-y-4">
                         {projects.map((project) => (
                           <div 
                             key={project.id} 
-                            className="flex items-center justify-between p-3 bg-card hover:bg-muted/50 border rounded-lg cursor-pointer transition-colors"
+                            className="flex items-center justify-between p-4 lg:p-5 bg-card hover:bg-muted/50 border rounded-lg cursor-pointer transition-colors"
 
                           >
                             <div className="flex items-center space-x-4 flex-1 min-w-0 cursor-pointer" onClick={(e) => {
@@ -357,7 +357,7 @@ export default function Projects() {
                                 </p>
                               </div>
                               <div className="flex items-center space-x-3">
-                                <div className="w-24">
+                                <div className="w-28 lg:w-32">
                                   <div className="flex justify-between text-xs mb-1">
                                     <span>Progress</span>
                                     <span>{project.progress || 0}%</span>
