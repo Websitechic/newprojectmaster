@@ -10,7 +10,7 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { initializeEmailService } from "./services/email";
 import { WebSocketServer } from "ws";
-import { migrate } from "drizzle-orm/migrator";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { db } from "../db";
 
 // Declare global SSE clients map
