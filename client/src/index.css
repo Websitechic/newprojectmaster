@@ -320,7 +320,7 @@
     @apply bg-gray-400;
   }
 
-  /* Force full width for all containers */
+  /* Force full width for all containers except auth forms */
   .container,
   .max-w-7xl,
   .max-w-6xl,
@@ -329,11 +329,16 @@
   .max-w-3xl,
   .max-w-2xl,
   .max-w-xl,
-  .max-w-lg,
-  .max-w-md,
-  .max-w-sm {
+  .max-w-lg {
     @apply max-w-none !important;
     width: 100% !important;
+  }
+
+  /* Allow auth forms to maintain their intended width */
+  body:has([style*="maxWidth: '28rem'"]) .max-w-md,
+  body:has([style*="maxWidth: '28rem'"]) .max-w-sm {
+    max-width: 28rem !important;
+    width: auto !important;
   }
 }
 
