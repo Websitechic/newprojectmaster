@@ -261,6 +261,150 @@ export default function GuideVideos() {
                   </div>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How To Request Leave</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/i4-qhuwdZg8"
+                      title="How to request leave"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How To Start A Task, Start Timer, Pause Timer</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/_at3i_KneGE"
+                      title="How to start a task, start timer, pause timer"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How To Request Technical Support As A Staff</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/ZbPBP5DrhC0"
+                      title="How to request technical support as a staff"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How To Lodge A Complaint As A Staff</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/wdsNCwctegA"
+                      title="How to lodge a complaint as a staff"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How To Review And Approve Task Deadline Extension Request As A Project Manager</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/7PtMbF8E9Os"
+                      title="How to review and approve task deadline extension request as a project manager"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How To Request Task Deadline Extension As Staff</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/lxZsZOhHnAw"
+                      title="How to request task deadline extension as staff"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Understanding My Dashboard As A Staff</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/4sepOsjLxA8"
+                      title="Understanding my dashboard as a staff"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Understanding My Dashboard As A Project Manager</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src="https://www.youtube.com/embed/2S5dacvKsSw"
+                      title="Understanding my dashboard as a project manager"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full rounded-lg"
+                    ></iframe>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <Card className="bg-blue-50 border-blue-200">
