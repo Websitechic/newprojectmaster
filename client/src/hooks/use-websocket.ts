@@ -12,13 +12,12 @@ export function useWebSocket(userId: number | undefined) {
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const { toast } = useToast();
-  const pingInterval = useRef<NodeJS.Timeout | null>(null); // Use ref for interval ID
 
   // Determine WebSocket URL based on current location
   const getWebSocketUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    return `${protocol}//${host}/api/ws`;
+    return `${protocol}//${host}/ws`;
   }, []);
 
   const connect = useCallback(() => {
@@ -56,27 +55,12 @@ export function useWebSocket(userId: number | undefined) {
         if (ws.current?.readyState === WebSocket.OPEN && userId) {
           ws.current.send(JSON.stringify({ type: "auth", userId }));
         }
-
-        // Start ping interval
-        if (pingInterval.current) {
-          clearInterval(pingInterval.current);
-        }
-        pingInterval.current = setInterval(() => {
-          if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-            ws.current.send(JSON.stringify({ type: 'ping' }));
-          }
-        }, 25000);
       };
 
       // Message received handler
       ws.current.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          // Handle heartbeat/pong messages
-          if (message.type === 'heartbeat' || message.type === 'pong') {
-            // Keep connection alive
-            return;
-          }
           // This is where you would typically handle incoming messages
           // For example: if (message.type === 'chat_message') { ... }
           // console.log("Received message:", message);
@@ -88,12 +72,6 @@ export function useWebSocket(userId: number | undefined) {
       // Connection closed handler
       ws.current.onclose = (event) => {
         console.log('WebSocket connection closed:', event.code, event.reason);
-
-        // Clear ping interval on close
-        if (pingInterval.current) {
-          clearInterval(pingInterval.current);
-          pingInterval.current = null;
-        }
 
         // Don't reconnect if the close was intentional or if we don't have a userId
         const intentionalClose = event.code === 1000 || event.code === 1001;
@@ -151,18 +129,14 @@ export function useWebSocket(userId: number | undefined) {
       connect(); // Initiate connection when userId is available
     }
 
-    // Cleanup function to close the WebSocket connection and clear intervals when the component unmounts
+    // Cleanup function to close the WebSocket connection when the component unmounts
     return () => {
-      if (pingInterval.current) {
-        clearInterval(pingInterval.current);
-      }
       if (ws.current) {
         ws.current.close(1000, "Component unmounted"); // Clean close code
         ws.current = null;
       }
-      // Clear any pending reconnect timers if they exist
-      // Note: This hook doesn't directly manage reconnect timers, but if setTimeout was called
-      // directly within this effect, it would need clearing. The 'connect' function manages its own timers.
+      // Clear any pending reconnect timers if they exist (though not explicitly set in this block, it's good practice)
+      // If setTimeout was called directly here, clear it.
     };
   }, [connect, userId]); // Re-run effect if connect or userId changes
 

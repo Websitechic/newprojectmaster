@@ -85,28 +85,6 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
 };
 
 
-// Async error handler wrapper
-const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
-};
-
-// Global route error handler
-const handleRouteError = (error: any, req: any, res: any, next: any) => {
-  console.error('Route error:', error);
-  
-  if (res.headersSent) {
-    return next(error);
-  }
-  
-  if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-    return res.status(503).json({ error: 'Database connection error' });
-  }
-  
-  res.status(500).json({ 
-    error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' 
-  });
-};
-
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 

@@ -2,8 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
-import { Sidebar } from "@/components/dashboard/sidebar";
 import { 
   Card, 
   CardContent, 
@@ -150,29 +148,22 @@ export default function StaffReport() {
   const { toast } = useToast();
   const [filterSpecialization, setFilterSpecialization] = useState<string | null>(null);
   const [taskView, setTaskView] = useState<'active' | 'all'>('active');
-  const [location] = useLocation();
 
   // Check if user is authenticated and has proper role
   if (!user) {
     return (
-      <div className="flex min-h-screen w-full max-w-full overflow-hidden">
-        <Sidebar currentPath={location} />
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
-          <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-          <p className="text-sm text-destructive">You must be logged in to view this page</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm text-destructive">You must be logged in to view this page</p>
       </div>
     );
   }
 
   if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
     return (
-      <div className="flex min-h-screen w-full max-w-full overflow-hidden">
-        <Sidebar currentPath={location} />
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
-          <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-          <p className="text-sm text-destructive">Only project managers and operations managers can access the staff report</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm text-destructive">Only project managers and operations managers can access the staff report</p>
       </div>
     );
   }
@@ -353,13 +344,8 @@ export default function StaffReport() {
   }) || [];
 
   return (
-    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
-      <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
-        <div className="flex-1 overflow-auto p-6 w-full">
-          <div className="flex flex-col space-y-6"></div>
-        </div>
-      </div>
+    <div className="p-6">
+      <div className="flex flex-col space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Staff Report</h1>
@@ -812,7 +798,6 @@ export default function StaffReport() {
             </CardContent>
           </Card>
         </div>
-      </div>
       </div>
     </div>
   );

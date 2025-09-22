@@ -6,7 +6,6 @@ import { setupVite, serveStatic, log } from "./vite";
 import { breakScheduler } from "./break-scheduler";
 import { communicationMonitor } from "./communication-monitor";
 import { setupAuth } from "./auth";
-import { initializeDatabase } from "./init-db";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { initializeEmailService } from "./services/email";
@@ -70,16 +69,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Global error handler
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  process.exit(1);
-});
-
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error("Server Error:", err);
@@ -110,29 +99,6 @@ let emailServiceInitialized = false;
       console.error("Email service error:", error);
     }
 
-    // Initialize and check database with timeout
-    log("Checking database connection...");
-    let dbReady = false;
-    
-    try {
-      dbReady = await Promise.race([
-        initializeDatabase(),
-        new Promise<boolean>((_, reject) => 
-          setTimeout(() => reject(new Error("Database initialization timeout")), 10000)
-        )
-      ]);
-    } catch (error) {
-      console.warn("Database initialization failed or timed out:", error);
-      dbReady = false;
-    }
-    
-    if (!dbReady) {
-      log("Warning: Database not ready. Server will start in limited mode.");
-      log("Some features may not work correctly until database connection is established.");
-    } else {
-      log("Database connection established successfully");
-    }
-
     log("Setting up routes and server...");
     const server = registerRoutes(app);
 
@@ -143,67 +109,9 @@ let emailServiceInitialized = false;
       path: "/api/ws"
     });
 
-    // Session parser middleware for WebSocket upgrades with comprehensive error handling
+    // Session parser middleware for WebSocket upgrades
     const sessionParser = (req: any, res: any, next: any) => {
-      try {
-        // Create a comprehensive mock response object for WebSocket requests
-        if (!res || typeof res.getHeader !== 'function') {
-          res = {
-            getHeader: () => null,
-            setHeader: () => {},
-            removeHeader: () => {},
-            end: () => {},
-            writeHead: () => {},
-            write: () => {},
-            headersSent: false,
-            statusCode: 200,
-            locals: {}
-          };
-        }
-        
-        // Apply session middleware with error handling
-        sessionMiddleware(req, res, (err: any) => {
-          if (err) {
-            console.warn('Session middleware warning during WebSocket upgrade:', err);
-          }
-          
-          // Always ensure session object exists with safe defaults
-          if (!req.session || typeof req.session !== 'object') {
-            req.session = {
-              id: null,
-              cookie: {
-                originalMaxAge: 24 * 60 * 60 * 1000,
-                expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-                secure: false,
-                httpOnly: true,
-                path: '/'
-              },
-              passport: {},
-              user: null
-            };
-            console.log('Created default session object for WebSocket');
-          }
-          
-          if (typeof next === 'function') {
-            next(); // Don't pass error to prevent connection failure
-          }
-        });
-      } catch (error) {
-        console.error('Critical session parser error:', error);
-        
-        // Ensure minimal session object exists
-        if (!req.session) {
-          req.session = {
-            id: null,
-            passport: {},
-            user: null
-          };
-        }
-        
-        if (typeof next === 'function') {
-          next(); // Continue without error
-        }
-      }
+      sessionMiddleware(req, res, next);
     };
 
     // WebSocket upgrade handling with improved error management and path filtering
@@ -225,30 +133,49 @@ let emailServiceInitialized = false;
           socket.write('HTTP/1.1 408 Request Timeout\r\n\r\n');
           socket.destroy();
         }
-      }, 10000);
+      }, 15000);
 
       // Parse session for WebSocket connection with improved error handling
-      sessionParser(request, {} as any, (err) => {
-        clearTimeout(upgradeTimeout);
+    sessionParser(request, {} as any, (err) => {
+      clearTimeout(upgradeTimeout);
 
-        // Don't fail WebSocket connection for session parsing errors
-        if (err) {
-          console.warn('Session parsing warning during WebSocket upgrade:', err);
-          // Continue with upgrade even if session parsing fails
+      if (err) {
+        console.error('Session parsing error during WebSocket upgrade:', err);
+        if (socket && !socket.destroyed) {
+          socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+          socket.destroy();
+        }
+        return;
+      }
+
+      try {
+        console.log('Session parsed for WebSocket upgrade');
+
+        // Ensure session is properly attached to request
+        if (!request.session && request.sessionStore) {
+          console.warn('Session not properly attached to WebSocket request');
         }
 
-        try {
-          console.log('Processing WebSocket upgrade with session state:', !!request.session);
-
-          // Ensure session exists for WebSocket handler
-          if (!request.session) {
-            request.session = {} as any;
-            console.log('Created empty session object for WebSocket');
-          }
+        // Log session info for debugging with safe access
+        const session = request.session || null;
+        console.log('Session exists:', !!session);
+        console.log('Session passport:', !!(session && session.passport));
+        console.log('Session user:', session && session.passport && session.passport.user);
 
           wss.handleUpgrade(request, socket, head, (ws) => {
             console.log('WebSocket upgrade completed, emitting connection');
-            wss.emit('connection', ws, request);
+            // Set a timeout for connection setup
+            setTimeout(() => {
+              try {
+                wss.emit('connection', ws, request);
+              } catch (connectionError) {
+                console.error('Error emitting WebSocket connection:', connectionError);
+                // Close the WebSocket connection gracefully
+                if (ws && ws.readyState === ws.OPEN) {
+                  ws.close(1011, 'Server error during connection setup');
+                }
+              }
+            }, 100);
           });
         } catch (error) {
           console.error('WebSocket upgrade error:', error);
@@ -260,7 +187,11 @@ let emailServiceInitialized = false;
       });
     });
 
-    setupWebSocket(wss);
+    try {
+      setupWebSocket(wss);
+    } catch (error) {
+      console.error('Failed to setup WebSocket:', error);
+    }
 
     // Setup Vite or static serving
     if (app.get("env") === "development") {
@@ -271,27 +202,16 @@ let emailServiceInitialized = false;
       serveStatic(app);
     }
 
-    // Validate environment variables
-    if (!process.env.DATABASE_URL) {
-      throw new Error('DATABASE_URL environment variable is required');
-    }
-
     // Start the server
     const port = 5000;
     server.listen(port, "0.0.0.0", () => {
       console.log(`Server running on port ${port}`);
-      
-      try {
-        // Start the break scheduler
-        breakScheduler.start();
-        console.log('Break scheduler started');
 
-        // Initialize communication monitor
-        communicationMonitor.start();
-        console.log('Communication monitor started');
-      } catch (error) {
-        console.error('Error starting schedulers:', error);
-      }
+      // Start the break scheduler
+      breakScheduler.start();
+
+      // Initialize communication monitor
+      communicationMonitor.start();
     });
   } catch (error) {
     console.error("Fatal server initialization error:", error);

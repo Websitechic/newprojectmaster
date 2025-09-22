@@ -2,8 +2,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
-import { Sidebar } from "@/components/dashboard/sidebar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -240,20 +238,13 @@ export default function TechnicalManagementPage() {
     }
   };
 
-  const [location] = useLocation();
-
   // Product owners, project managers, and technical support can access
   if (!user || (!isProductOwner && !isProjectManager && !isTechnicalSupport)) {
     return (
-      <div className="flex min-h-screen w-full max-w-full overflow-hidden">
-        <Sidebar currentPath={location} />
-        <div className="flex-1 flex flex-col">
-          <div className="container mx-auto p-6">
-            <div className="text-center py-12">
-              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-              <p className="text-gray-600">You don't have permission to access this page.</p>
-            </div>
-          </div>
+      <div className="container mx-auto p-6">
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+          <p className="text-gray-600">You don't have permission to access this page.</p>
         </div>
       </div>
     );
@@ -265,11 +256,7 @@ export default function TechnicalManagementPage() {
   const highCount = requests.filter(r => r.priority === 'high').length;
 
   return (
-    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
-      <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
-        <div className="flex-1 overflow-auto container mx-auto p-4 space-y-6 w-full"></div>
-      </div>
+    <div className="container mx-auto p-4 space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
         <div>
@@ -867,8 +854,6 @@ export default function TechnicalManagementPage() {
           </Form>
         </DialogContent>
       </Dialog>
-        </div>
-      </div>
     </div>
   );
 }

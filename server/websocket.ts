@@ -3,18 +3,6 @@ import type { Session } from "express-session";
 import type { Message } from "@db/schema";
 import { db } from "@db";
 import { messages } from "@db/schema";
-import type http from "http"; // Ensure http is imported for type safety
-
-// Global map to store active WebSocket connections, keyed by userId
-// This is a placeholder; a more robust solution might use a dedicated class or module
-// for managing connections.
-declare global {
-  namespace NodeJS {
-    interface Global {
-      connectedClients: Map<number, ExtendedWebSocket>;
-    }
-  }
-}
 
 interface ExtendedWebSocket extends WebSocket {
   userId?: number;
@@ -30,22 +18,9 @@ interface ExtendedRequest extends Request {
   };
 }
 
-// Placeholder for updateUserStatus function, assuming it exists elsewhere
-// This function would typically update a user's status in the database or cache.
-function updateUserStatus(userId: number, status: 'online' | 'offline'): void {
-  console.log(`User ${userId} status updated to: ${status}`);
-  // Implement actual status update logic here
-}
-
-// Placeholder for activeConnections map, assuming it's managed elsewhere or globally
-// This map would track all active WebSocket connections for each user.
-// For simplicity, we'll manage it within setupWebSocket for now, but a real app
-// might need a more centralized approach.
-const activeConnections = new Map<number, ExtendedWebSocket[]>();
-
 export function setupWebSocket(wss: WebSocketServer) {
-  // Initialize global connected clients map if it doesn't exist
-  if (typeof global.connectedClients === 'undefined') {
+  // Initialize global connected clients map
+  if (!global.connectedClients) {
     global.connectedClients = new Map();
   }
 
@@ -85,185 +60,171 @@ export function setupWebSocket(wss: WebSocketServer) {
     clearInterval(interval);
   });
 
-  // Authentication middleware and connection handling
-  wss.on('connection', (ws, request: any) => {
-    console.log('WebSocket connection established');
-
-    // Safe session access with comprehensive error handling
-    let userId: number | undefined;
-    let authTimeout: NodeJS.Timeout;
-    
+  // Authentication middleware
+  wss.on('connection', (ws: WebSocket, request: any) => {
     try {
-      // Try multiple session access patterns for compatibility
-      if (request && typeof request === 'object') {
-        const session = request.session;
-        if (session && typeof session === 'object') {
-          userId = session.user?.id || session.passport?.user || session.userId;
-        }
-      }
-    } catch (error) {
-      console.error('Error accessing session during WebSocket connection:', error);
-      // Continue without throwing - will handle via message authentication
-    }
+      console.log('WebSocket connection established');
 
-    if (!userId) {
-      console.log('WebSocket connection without session - allowing message-based authentication');
-      
-      // Set a reasonable timeout for authentication
-      authTimeout = setTimeout(() => {
-        if (!userId && ws.readyState === ws.OPEN) {
-          console.log('WebSocket authentication timeout - closing connection');
-          try {
+      let userId: number | null = null;
+      const extWs = ws as ExtendedWebSocket;
+      extWs.isAlive = true;
+
+      // Check if user is authenticated - safely access session with proper error handling
+      let session = null;
+      try {
+        // Handle different request object structures
+        if (request && typeof request === 'object') {
+          session = request.session || (request.req && request.req.session) || null;
+        }
+      } catch (error) {
+        console.error('Error accessing session in WebSocket connection:', error);
+        session = null;
+      }
+
+      if (!session || !session.passport || !session.passport.user) {
+        console.log('WebSocket connection without authenticated session - will wait for auth message');
+
+        // Set a timeout to close unauthenticated connections
+        const authTimeout = setTimeout(() => {
+          if (!userId && ws.readyState === ws.OPEN) {
+            console.log('Closing unauthenticated WebSocket connection after timeout');
             ws.close(1008, 'Authentication timeout');
-          } catch (closeError) {
-            console.error('Error closing WebSocket:', closeError);
           }
+        }, 30000); // 30 seconds timeout
+
+        // Clear timeout if connection closes
+        ws.on('close', () => {
+          clearTimeout(authTimeout);
+        });
+
+        // Handle auth message for unauthenticated connections
+        ws.once('message', (data) => {
+          try {
+            const message = JSON.parse(data.toString());
+            if (message.type === 'auth' && message.userId) { // Corrected to use userId from message
+              userId = message.userId;
+              if (!global.connectedClients) {
+                global.connectedClients = new Map();
+              }
+              global.connectedClients.set(message.userId, ws as ExtendedWebSocket);
+              console.log(`WebSocket user authenticated via message: ${message.userId}`);
+
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                  type: 'auth_success',
+                  userId: message.userId
+                }));
+              }
+            } else if (message.type === 'ping') {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'pong' }));
+              }
+            }
+          } catch (error) {
+            console.error("Error parsing WebSocket auth message:", error);
+          }
+        });
+
+      } else {
+        userId = session.passport.user;
+        console.log(`WebSocket authenticated for user ${userId}`);
+
+        // Set user properties
+        extWs.userId = userId;
+
+        // Store the connection
+        if (!global.connectedClients) {
+          global.connectedClients = new Map();
         }
-      }, 30000); // 30 second timeout
-    }
-    let heartbeatInterval: NodeJS.Timeout;
-    let isAlive = true;
+        global.connectedClients.set(userId, extWs);
 
-    // Ping/pong mechanism for connection health
-    ws.on('pong', () => {
-      isAlive = true;
-    });
-
-    // Start heartbeat with ping/pong
-    const startHeartbeat = () => {
-      heartbeatInterval = setInterval(() => {
-        if (!isAlive) {
-          console.log(`Terminating inactive WebSocket connection for user ${userId}`);
-          ws.terminate();
-          return;
-        }
-
-        isAlive = false;
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.ping();
-          ws.send(JSON.stringify({ type: 'heartbeat' }));
-        }
-      }, 30000);
-    };
-
-    startHeartbeat();
-
-    // Handle connection close
-    ws.on('close', (code: number, reason: Buffer) => {
-      const reasonString = reason ? reason.toString() : 'no reason provided';
-      console.log(`WebSocket connection closed for user ${userId || 'unknown'}, code: ${code || 'unknown'}, reason: ${reasonString}`);
-
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
+        // Handle pong responses
+        ws.on('pong', () => {
+          extWs.isAlive = true;
+        });
       }
 
-      if (userId) {
+      // Handle connection close
+      ws.on('close', (code: number, reason: Buffer) => {
+        const reasonString = reason ? reason.toString() : 'no reason provided';
+        console.log(`WebSocket connection closed for user ${userId || 'unknown'}, code: ${code}, reason: ${reasonString}`);
+
+        if (userId) {
+          global.connectedClients.delete(userId);
+        }
+      });
+
+      // Handle WebSocket errors
+      ws.on('error', (error: Error) => {
+        console.error('WebSocket error:', error);
+        if (userId) {
+          global.connectedClients.delete(userId);
+        }
+
+        // Close the connection gracefully on error
+        if (ws.readyState === ws.OPEN) {
+          ws.close(1011, 'Server error');
+        }
+      });
+
+      // Handle messages
+      ws.on('message', (data) => {
         try {
-          // Remove from active connections
-          const userConnections = activeConnections.get(userId);
-          if (userConnections) {
-            const index = userConnections.indexOf(ws as ExtendedWebSocket);
-            if (index > -1) {
-              userConnections.splice(index, 1);
-              if (userConnections.length === 0) {
-                activeConnections.delete(userId);
-                updateUserStatus(userId, 'offline');
+          const message = JSON.parse(data.toString());
+
+          // Handle auth message (if not handled during initial connection setup)
+          if (message.type === 'auth' && message.userId) {
+            userId = message.userId;
+            if (!global.connectedClients) {
+              global.connectedClients = new Map();
+            }
+            global.connectedClients.set(message.userId, ws as ExtendedWebSocket);
+            console.log(`WebSocket user authenticated via message: ${message.userId}`);
+
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'auth_success',
+                userId: message.userId
+              }));
+            }
+          } else if (message.type === 'ping') {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'pong' }));
+            }
+          } else {
+            // Handle other message types here
+            console.log('Received message:', message);
+            // Example: broadcast message to other clients in the same project
+            if (message.projectId && message.text && userId) {
+              const projectId = message.projectId;
+              const senderUserId = userId;
+              if (global.connectedClients) {
+                global.connectedClients.forEach((client, clientId) => {
+                  if (client.userId === senderUserId) return; // Don't send back to sender
+                  if (client.projectId === projectId && client.readyState === WebSocket.OPEN) {
+                    try {
+                      client.send(JSON.stringify({
+                        type: 'message',
+                        sender: senderUserId,
+                        text: message.text,
+                        projectId: projectId
+                      }));
+                    } catch (sendError) {
+                      console.error(`Error sending message to client ${clientId}:`, sendError);
+                    }
+                  }
+                });
               }
             }
           }
-
-          // Remove from global connected clients
-          if (global.connectedClients && global.connectedClients.has(userId)) {
-            global.connectedClients.delete(userId);
-          }
-        } catch (cleanupError) {
-          console.error('Error during WebSocket cleanup:', cleanupError);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
         }
-      }
-    });
-
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
-      clearInterval(heartbeatInterval);
-    });
-
-    // Handle messages
-    ws.on('message', (data) => {
-      try {
-        const message = JSON.parse(data.toString());
-
-        // Handle authentication message if not authenticated via session
-        if (message.type === 'auth' && message.userId) {
-          if (userId) {
-            console.warn(`User ${userId} trying to re-authenticate with ID ${message.userId}`);
-            return; // User already authenticated, ignore re-auth attempt
-          }
-          userId = message.userId;
-          console.log(`WebSocket user authenticated via message: ${userId}`);
-
-          // Update global connected clients map
-          if (!global.connectedClients) {
-            global.connectedClients = new Map();
-          }
-          global.connectedClients.set(userId, ws as ExtendedWebSocket);
-
-          // Add to activeConnections for user-specific management
-          if (!activeConnections.has(userId)) {
-            activeConnections.set(userId, []);
-          }
-          activeConnections.get(userId)?.push(ws as ExtendedWebSocket);
-          updateUserStatus(userId, 'online');
-
-          // Send authentication success response
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
-              type: 'auth_success',
-              userId: userId
-            }));
-          }
-        } else if (message.type === 'ping') {
-          // Respond to ping with pong
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'pong' }));
-          }
-        } else {
-          // Handle other message types
-          console.log('Received message:', message);
-
-          // Handle project-specific messages (e.g., chat)
-          if (message.projectId && message.text && userId) {
-            const projectId = message.projectId;
-            const senderUserId = userId;
-
-            // Broadcast message to other clients in the same project
-            if (global.connectedClients) {
-              global.connectedClients.forEach((client, clientId) => {
-                // Ensure client is not the sender and is in the same project and is open
-                if (client.userId === senderUserId) return; // Don't send back to sender
-                if (client.projectId === projectId && client.readyState === WebSocket.OPEN) {
-                  try {
-                    client.send(JSON.stringify({
-                      type: 'message',
-                      sender: senderUserId,
-                      text: message.text,
-                      projectId: projectId
-                    }));
-                  } catch (sendError) {
-                    console.error(`Error sending message to client ${clientId}:`, sendError);
-                  }
-                }
-              });
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-        // Optionally send an error back to the client
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
-        }
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Error in WebSocket connection setup:', error);
+      ws.close(1011, 'Server error during connection setup');
+    }
   });
 
   return wss;

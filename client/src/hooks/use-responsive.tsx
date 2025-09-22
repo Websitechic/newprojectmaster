@@ -59,8 +59,6 @@ export function useResponsive() {
     return () => window.removeEventListener('resize', updateSize);
   }, []);
 
-  const { width, height } = windowSize;
-
   // Device categorization
   const isMobile = width < breakpoints.md;
   const isTablet = width >= breakpoints.md && width < breakpoints.lg;
@@ -70,7 +68,7 @@ export function useResponsive() {
   // Screen size helpers
   const isExtraSmall = width < breakpoints.xs;
   const isSmall = width < breakpoints.sm;
-  const isTouchDevice = typeof window !== 'undefined' && 'ontouchstart' in window;
+  const isTouchDevice = 'ontouchstart' in window;
   
   return {
     ...breakpointValues,
