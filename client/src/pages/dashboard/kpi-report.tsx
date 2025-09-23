@@ -84,8 +84,8 @@ export default function KPIReportPage() {
   const [selectedStaff, setSelectedStaff] = useState<string>("");
   const [dateRange, setDateRange] = useState<number>(30); // Last 30 days
 
-  // Check if user is operations manager
-  if (user?.role !== "operations_manager" && user?.specialization !== "operations_manager") {
+  // Check if user is operations manager or team lead
+  if (user?.role !== "operations_manager" && user?.role !== "team_lead" && user?.specialization !== "operations_manager") {
     return (
       <div className="flex h-screen">
         <Sidebar currentPath="/dashboard/kpi-report" />
@@ -94,7 +94,7 @@ export default function KPIReportPage() {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-              <p className="text-gray-600">Only operations managers can access KPI reports.</p>
+              <p className="text-gray-600">Only operations managers and team leads can access KPI reports.</p>
             </div>
           </div>
         </div>

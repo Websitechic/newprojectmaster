@@ -167,7 +167,7 @@ export default function StaffReport() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-        <p className="text-sm text-destructive">Only project managers, operations managers, and Replit developers can access the staff report</p>
+        <p className="text-sm text-destructive">Only project managers, operations managers, team leads, and Replit developers can access the staff report</p>
         <p className="text-xs text-muted-foreground mt-1">Your role: {user?.role}, Specialization: {user?.specialization}</p>
       </div>
     );

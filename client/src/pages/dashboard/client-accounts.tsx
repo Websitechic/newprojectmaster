@@ -67,7 +67,7 @@ export default function ClientAccounts() {
             <div className="text-center">
               <h3 className="text-lg font-semibold">Access Restricted</h3>
               <p className="text-sm text-gray-600">
-                Only Project Managers, Product Owners, and Operations Managers can access client account management.
+                Only Project Managers, Product Owners, Operations Managers, and Team Leads can access client account management.
               </p>
             </div>
           </CardContent>

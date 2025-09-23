@@ -570,15 +570,15 @@ export function registerRoutes(app: Express): Server {
 
   // KPI Report API Routes
 
-  // Get productivity data for KPI report (Operations Manager only)
+  // Get productivity data for KPI report (Operations Manager and Team Lead only)
   app.get("/api/kpi-report/productivity", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
-      return res.status(403).json({ error: "Only operations managers can access KPI reports" });
+    if (user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers and team leads can access KPI reports" });
     }
 
     try {
@@ -914,15 +914,15 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Export KPI report (Operations Manager only)
+  // Export KPI report (Operations Manager and Team Lead only)
   app.post("/api/kpi-report/export", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    if (user.role !== "operations_manager" && user.specialization !== "operations_manager") {
-      return res.status(403).json({ error: "Only operations managers can export KPI reports" });
+    if (user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers and team leads can export KPI reports" });
     }
 
     try {
@@ -1036,15 +1036,15 @@ End of Report
     }
   });
 
-  // Staff Report API Route (Project Managers and Operations Managers only)
+  // Staff Report API Route (Project Managers, Operations Managers, and Team Leads only)
   app.get("/api/staff-report", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
-      return res.status(403).send("Access denied - Project Manager or Operations Manager role required");
+    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
+      return res.status(403).send("Access denied - Project Manager, Operations Manager, or Team Lead role required");
     }
 
     try {
@@ -1369,14 +1369,14 @@ End of Report
     }
   });
 
-  // Client Accounts API Routes (Project Managers, Product Owners, and Operations Managers only)
+  // Client Accounts API Routes (Project Managers, Product Owners, Operations Managers, and Team Leads only)
   app.get("/api/client-accounts", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
       return res.status(403).json({ error: "Access denied" });
     }
 
