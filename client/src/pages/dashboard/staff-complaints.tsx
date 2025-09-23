@@ -44,7 +44,9 @@ export default function StaffComplaints() {
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
 
   // Check if user is operations manager or team lead
-  const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "team_lead";
+  const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
+  const isTeamLead = user?.role === "team_lead";
+  const hasAccess = isOperationsManager || isTeamLead;
 
   // Fetch staff complaints
   const { data: complaints = [], isLoading } = useQuery<StaffComplaint[]>({
@@ -56,7 +58,7 @@ export default function StaffComplaints() {
       }
       return response.json();
     },
-    enabled: isOperationsManager,
+    enabled: hasAccess,
   });
 
   // Update complaint status mutation
@@ -139,7 +141,7 @@ export default function StaffComplaints() {
     return departments[department] || department;
   };
 
-  if (!isOperationsManager) {
+  if (!hasAccess) {
     return (
       <div className="flex h-screen w-full max-w-none">
         <Sidebar currentPath={location} />

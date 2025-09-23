@@ -238,8 +238,10 @@ export default function TechnicalManagementPage() {
     }
   };
 
-  // Product owners, project managers, team leads, and technical support can access
-  if (!user || (!isProductOwner && !isProjectManager && !isTechnicalSupport && !isTeamLead)) {
+  // Product owners, project managers, team leads, operations managers, and technical support can access
+  const hasAccess = user && (isProductOwner || isProjectManager || isTechnicalSupport || isTeamLead || user.role === "operations_manager" || user.specialization === "operations_manager");
+  
+  if (!hasAccess) {
     return (
       <div className="container mx-auto p-6">
         <div className="text-center py-12">

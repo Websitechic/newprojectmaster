@@ -3916,10 +3916,10 @@ End of Report
     try {
       let requests;
 
-      if (user.role === "project_manager" || user.role === "operations_manager" || user.specialization === "operations_manager") {
-        // Project managers see requests for their projects, operations managers see all requests
-        const whereCondition = user.role === "operations_manager" || user.specialization === "operations_manager"
-          ? undefined // Operations managers see all requests
+      if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
+        // Project managers see requests for their projects, operations managers and team leads see all requests
+        const whereCondition = user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager"
+          ? undefined // Operations managers and team leads see all requests
           : eq(deadlineExtensionRequests.projectManagerId, user.id); // Project managers see only their projects
 
         requests = await db
