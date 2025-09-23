@@ -89,7 +89,7 @@ export default function TechnicalManagementPage() {
   const isProductOwner = user?.role === "product_owner";
   const isTeamLead = user?.role === "team_lead";
   const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
-  
+
 
   const { data: requests = [], isLoading } = useQuery<TechnicalSupportRequest[]>({
     queryKey: ["/api/technical-support/requests"],
@@ -146,6 +146,11 @@ export default function TechnicalManagementPage() {
       if (typeof aValue === "string") {
         return sortOrder === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
       }
+
+      if (typeof aValue === "string") {
+        return sortOrder === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+      }
+
 
       if (aValue instanceof Date || typeof aValue === "string") {
         const dateA = new Date(aValue).getTime();
@@ -461,6 +466,8 @@ export default function TechnicalManagementPage() {
                                 {request.task && (
                                   <div className="text-xs text-blue-600 truncate mt-0.5">
                                     Task: {request.task.title}
+                                    <br />
+                                    Project: {projectMap[request.task.projectId] || `ID: ${request.task.projectId}`}
                                   </div>
                                 )}
                                 <div className="text-xs text-gray-500 truncate mt-0.5" title={request.description}>
