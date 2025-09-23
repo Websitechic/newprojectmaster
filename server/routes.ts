@@ -256,8 +256,8 @@ export function registerRoutes(app: Express): Server {
           .select()
           .from(projects)
           .orderBy(desc(projects.updatedAt));
-      } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
-        // Operations managers see all projects with full access
+      } else if (user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
+        // Operations managers and team leads see all projects with full access
         projectsList = await db
           .select()
           .from(projects)
