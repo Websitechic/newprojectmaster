@@ -10,6 +10,7 @@ export const UserRole = {
   INTERN: "intern",
   PRODUCT_OWNER: "product_owner",
   OPERATIONS_MANAGER: "operations_manager",
+  TEAM_LEAD: "team_lead",
 } as const;
 
 export const UserSpecialization = {

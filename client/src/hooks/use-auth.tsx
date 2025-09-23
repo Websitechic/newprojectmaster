@@ -32,7 +32,7 @@ type LoginData = {
 type RegisterData = LoginData & {
   name: string;
   email: string;
-  role: "client" | "project_manager" | "staff" | "intern" | "operations_manager";
+  role: "client" | "project_manager" | "staff" | "intern" | "operations_manager" | "team_lead";
   specialization?: string;
   productService?: string;
   clientType?: string;
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (data: {
       username: string;
       password: string;
-      role: "client" | "project_manager" | "staff" | "intern" | "operations_manager";
+      role: "client" | "project_manager" | "staff" | "intern" | "operations_manager" | "team_lead";
       name: string;
       email: string;
       specialization?: string;

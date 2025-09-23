@@ -13,7 +13,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager">("staff");
+  const [role, setRole] = useState<"client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager" | "team_lead">("staff");
   const [specialization, setSpecialization] = useState("");
   const [productService, setProductService] = useState("");
   const [clientType, setClientType] = useState("");
@@ -30,8 +30,8 @@ export default function AuthPage() {
       if (isLogin) {
         await loginMutation.mutateAsync({ username, password });
       } else {
-        // Validate specialization for staff and intern users
-        if ((role === "staff" || role === "intern") && !specialization) {
+        // Validate specialization for staff, intern, and team lead users
+        if ((role === "staff" || role === "intern" || role === "team_lead") && !specialization) {
           toast({
             title: "Error",
             description: "Please select a specialization",
@@ -70,7 +70,7 @@ export default function AuthPage() {
           name,
           email,
           role,
-          specialization: (role === "staff" || role === "intern") ? specialization : undefined,
+          specialization: (role === "staff" || role === "intern" || role === "team_lead") ? specialization : undefined,
           productService: role === "client" ? productService : undefined,
           clientType: role === "client" ? clientType : undefined,
           breakOneTime: role !== "client" ? breakOneTime : undefined,
@@ -186,7 +186,7 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={(value: "client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager") => setRole(value)}>
+                  <Select value={role} onValueChange={(value: "client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager" | "team_lead") => setRole(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -195,12 +195,13 @@ export default function AuthPage() {
                       <SelectItem value="project_manager">Project Manager</SelectItem>
                       <SelectItem value="product_owner">Product Owner</SelectItem>
                       <SelectItem value="operations_manager">Operations Manager</SelectItem>
+                      <SelectItem value="team_lead">Team Lead</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
                       <SelectItem value="intern">Intern</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {(role === "staff" || role === "intern") && (
+                {(role === "staff" || role === "intern" || role === "team_lead") && (
                   <div className="space-y-2">
                     <Label htmlFor="specialization">Specialization</Label>
                     <Select value={specialization} onValueChange={setSpecialization}>
