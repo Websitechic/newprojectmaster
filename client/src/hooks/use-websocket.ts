@@ -12,6 +12,7 @@ export function useWebSocket(userId: number | undefined) {
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const { toast } = useToast();
+  let authTimeout: NodeJS.Timeout;
 
   // Determine WebSocket URL based on current location
   const getWebSocketUrl = useCallback(() => {
@@ -54,6 +55,13 @@ export function useWebSocket(userId: number | undefined) {
         // Send authentication message with userId if available
         if (ws.current?.readyState === WebSocket.OPEN && userId) {
           ws.current.send(JSON.stringify({ type: "auth", userId }));
+          // Set a timeout for authentication
+          authTimeout = setTimeout(() => {
+            if (ws.current?.readyState === WebSocket.OPEN) {
+              console.error('WebSocket authentication timed out.');
+              ws.current.close(1008, 'Authentication timeout'); // Use 1008 for policy violation
+            }
+          }, 5000); // 5 seconds timeout
         }
       };
 
@@ -61,7 +69,26 @@ export function useWebSocket(userId: number | undefined) {
       ws.current.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          // This is where you would typically handle incoming messages
+          // Handle auth message (if not handled during initial connection setup)
+          if (message.type === 'auth' && message.userId) {
+            userId = message.userId;
+            console.log(`WebSocket user authenticated via message: ${message.userId}`);
+
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'auth_success',
+                userId: message.userId
+              }));
+            }
+          } else if (message.type === 'auth_success') {
+            console.log('WebSocket authentication successful');
+            clearTimeout(authTimeout);
+          } else if (message.type === 'ping') {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'pong' }));
+            }
+          }
+          // This is where you would typically handle other incoming messages
           // For example: if (message.type === 'chat_message') { ... }
           // console.log("Received message:", message);
         } catch (error) {
@@ -137,6 +164,7 @@ export function useWebSocket(userId: number | undefined) {
       }
       // Clear any pending reconnect timers if they exist (though not explicitly set in this block, it's good practice)
       // If setTimeout was called directly here, clear it.
+      clearTimeout(authTimeout);
     };
   }, [connect, userId]); // Re-run effect if connect or userId changes
 

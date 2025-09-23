@@ -174,7 +174,11 @@ export default function TechnicalManagementPage() {
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate multiple related queries for real-time updates
       queryClient.invalidateQueries({ queryKey: ["/api/technical-support/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       toast({ title: "Success", description: "Request assigned to you successfully" });
     },
     onError: () => {
@@ -193,7 +197,11 @@ export default function TechnicalManagementPage() {
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate multiple related queries for real-time updates
       queryClient.invalidateQueries({ queryKey: ["/api/technical-support/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       setIsUpdateDialogOpen(false);
       setSelectedRequest(null);
       toast({ title: "Success", description: "Request updated successfully" });

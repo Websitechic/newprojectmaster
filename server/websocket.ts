@@ -71,43 +71,64 @@ export function setupWebSocket(wss: WebSocketServer) {
 
       // Check if user is authenticated - safely access session with proper error handling
       let session = null;
+      let userId = null;
+      
       try {
         // Handle different request object structures
         if (request && typeof request === 'object') {
           session = request.session || (request.req && request.req.session) || null;
+          
+          // Extract userId from session if available
+          if (session && session.passport && session.passport.user) {
+            userId = session.passport.user;
+            console.log(`WebSocket authenticated for user ${userId} via session`);
+            
+            // Set user properties immediately
+            extWs.userId = userId;
+            
+            // Store the connection
+            if (!global.connectedClients) {
+              global.connectedClients = new Map();
+            }
+            global.connectedClients.set(userId, extWs);
+          }
         }
       } catch (error) {
         console.error('Error accessing session in WebSocket connection:', error);
         session = null;
       }
 
-      if (!session || !session.passport || !session.passport.user) {
+      if (!userId) {
         console.log('WebSocket connection without authenticated session - will wait for auth message');
 
         // Set a timeout to close unauthenticated connections
         const authTimeout = setTimeout(() => {
-          if (!userId && ws.readyState === ws.OPEN) {
+          if (!extWs.userId && ws.readyState === ws.OPEN) {
             console.log('Closing unauthenticated WebSocket connection after timeout');
             ws.close(1008, 'Authentication timeout');
           }
         }, 30000); // 30 seconds timeout
 
-        // Clear timeout if connection closes
-        ws.on('close', () => {
+        // Clear timeout if connection closes or user authenticates
+        const clearAuthTimeout = () => {
           clearTimeout(authTimeout);
-        });
+        };
+        
+        ws.on('close', clearAuthTimeout);
 
         // Handle auth message for unauthenticated connections
         ws.once('message', (data) => {
           try {
             const message = JSON.parse(data.toString());
-            if (message.type === 'auth' && message.userId) { // Corrected to use userId from message
-              userId = message.userId;
+            if (message.type === 'auth' && message.userId) {
+              extWs.userId = message.userId;
               if (!global.connectedClients) {
                 global.connectedClients = new Map();
               }
-              global.connectedClients.set(message.userId, ws as ExtendedWebSocket);
+              global.connectedClients.set(message.userId, extWs);
               console.log(`WebSocket user authenticated via message: ${message.userId}`);
+              
+              clearAuthTimeout(); // Clear timeout on successful auth
 
               if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
