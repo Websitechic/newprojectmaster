@@ -90,6 +90,23 @@ class BreakScheduler {
     if (!breakSession) return;
 
     const now = new Date();
+    const breakDuration = Math.floor((now.getTime() - breakSession.startTime.getTime()) / 60000); // minutes
+
+    // Send overtime notification if break exceeds 1 hour (60 minutes)
+    if (breakDuration > 60 && breakDuration <= 65) { // Send once between 60-65 minutes
+      try {
+        const { createNotification } = await import('./routes');
+        await createNotification(
+          user.id,
+          "break_reminder",
+          "Your break time has exceeded the limit. Please return to work.",
+          null,
+          null
+        );
+      } catch (notificationError) {
+        console.error("Error sending break overtime notification:", notificationError);
+      }
+    }
 
     // Break ends after 1 hour
     if (now >= breakSession.endTime) {
@@ -145,6 +162,20 @@ class BreakScheduler {
       }
 
       console.log(`Starting ${breakType} break for user ${user.name}`);
+
+      // Send break reminder notification
+      try {
+        const { createNotification } = await import('./routes');
+        await createNotification(
+          user.id,
+          "break_reminder",
+          "It's time for your scheduled break! Please take a moment to rest.",
+          null,
+          null
+        );
+      } catch (notificationError) {
+        console.error("Error sending break reminder notification:", notificationError);
+      }
 
       // Check if user has a running task timer
       const [runningTask] = await db

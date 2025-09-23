@@ -46,6 +46,48 @@ import {
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
 
+// Helper function to create notifications
+async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
+  try {
+    const [newNotification] = await db
+      .insert(notifications)
+      .values({
+        userId,
+        type,
+        content,
+        referenceId,
+        referenceType,
+        read: false,
+        createdAt: new Date(),
+      })
+      .returning();
+
+    console.log(`Notification created for user ${userId}: ${content}`);
+
+    // Send SSE notification if user is connected
+    if (global.sseClients && global.sseClients.has(userId)) {
+      const userClient = global.sseClients.get(userId);
+      if (userClient && !userClient.writableEnded) {
+        try {
+          userClient.write(`data: ${JSON.stringify({
+            type: 'notification',
+            notification: newNotification
+          })}\n\n`);
+          console.log(`SSE notification sent to user ${userId}`);
+        } catch (error) {
+          console.error(`Error sending SSE notification to user ${userId}:`, error);
+          global.sseClients.delete(userId);
+        }
+      }
+    }
+
+    return newNotification;
+  } catch (error) {
+    console.error("Error creating notification:", error);
+    throw error;
+  }
+}
+
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), 'uploads', 'leave-proof');
 if (!fs.existsSync(uploadDir)) {
@@ -6006,7 +6048,7 @@ End of Report
     const taskId = parseInt(req.params.id);
 
     try {
-      // Check if task exists and user has access
+      // Check if task exists and user is assigned to it
       const [task] = await db
         .select()
         .from(tasks)
@@ -6021,6 +6063,10 @@ End of Report
         return res.status(403).json({ error: "You can only start timer for tasks assigned to you" });
       }
 
+      if (task.isTimerRunning) {
+        return res.status(400).json({ error: "Timer is already running for this task" });
+      }
+
       // Stop any other running timers for this user
       await db
         .update(tasks)
@@ -6031,21 +6077,30 @@ End of Report
         .where(and(eq(tasks.assigneeId, user.id), eq(tasks.isTimerRunning, true)));
 
       // Start timer for this task and update status to in_progress
+      const now = new Date();
       const [updatedTask] = await db
         .update(tasks)
         .set({
           isTimerRunning: true,
-          timerStartTime: new Date(),
+          timerStartTime: now,
           hasBeenStarted: true,
-          status: "in_progress", // Always set to in_progress when timer starts
-          updatedAt: new Date(),
+          status: task.status === 'todo' ? 'in_progress' : task.status,
         })
         .where(eq(tasks.id, taskId))
         .returning();
 
-      // Get project info for notification
+      // Update user's current task
+      await db
+        .update(users)
+        .set({
+          currentTaskId: taskId,
+          taskStartTime: now,
+        })
+        .where(eq(users.id, user.id));
+
+      // Get project manager for notification
       const [project] = await db
-        .select()
+        .select({ managerId: projects.managerId })
         .from(projects)
         .where(eq(projects.id, task.projectId))
         .limit(1);
@@ -6055,7 +6110,7 @@ End of Report
         await createNotification(
           project.managerId,
           "task_updated",
-          `${user.name} started working on task: ${task.title}`,
+          `${user.name} started working on task: "${task.title}"`,
           taskId,
           "task"
         );
@@ -6068,7 +6123,7 @@ End of Report
     }
   });
 
-  app.post("/api/tasks/:id/pause-timer", async (req, res) => {
+  app.post("/api/tasks/:id/stop-timer", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
@@ -6089,7 +6144,7 @@ End of Report
       }
 
       if (task.assigneeId !== user.id) {
-        return res.status(403).json({ error: "You can only pause timer for tasks assigned to you" });
+        return res.status(403).json({ error: "You can only stop timer for tasks assigned to you" });
       }
 
       if (!task.isTimerRunning || !task.timerStartTime) {
@@ -6101,19 +6156,50 @@ End of Report
       const newTimeSpent = (task.timeSpent || 0) + sessionDuration;
 
       // Update task with accumulated time
-      await db
+      const [updatedTask] = await db
         .update(tasks)
         .set({
           isTimerRunning: false,
           timerStartTime: null,
           timeSpent: newTimeSpent,
         })
-        .where(eq(tasks.id, taskId));
+        .where(eq(tasks.id, taskId))
+        .returning();
 
-      res.json({ success: true });
+      // Clear user's current task
+      await db
+        .update(users)
+        .set({
+          currentTaskId: null,
+          taskStartTime: null,
+        })
+        .where(eq(users.id, user.id));
+
+      // Get project manager for notification
+      const [project] = await db
+        .select({ managerId: projects.managerId })
+        .from(projects)
+        .where(eq(projects.id, task.projectId))
+        .limit(1);
+
+      if (project && project.managerId !== user.id) {
+        const hours = Math.floor(sessionDuration / 3600);
+        const minutes = Math.floor((sessionDuration % 3600) / 60);
+        const timeWorked = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+        await createNotification(
+          project.managerId,
+          "task_updated",
+          `${user.name} stopped working on task: "${task.title}" (worked ${timeWorked})`,
+          taskId,
+          "task"
+        );
+      }
+
+      res.json({ success: true, timeSpent: newTimeSpent, task: updatedTask });
     } catch (error) {
-      console.error("Error pausing task timer:", error);
-      res.status(500).json({ error: "Failed to pause timer" });
+      console.error("Error stopping task timer:", error);
+      res.status(500).json({ error: "Failed to stop timer" });
     }
   });
 
@@ -6174,7 +6260,7 @@ End of Report
         await createNotification(
           project.managerId,
           "task_completed",
-          `${user.name} completed task: ${task.title}`,
+          `${user.name} completed task: "${task.title}"`,
           taskId,
           "task"
         );
@@ -6185,7 +6271,7 @@ End of Report
         await createNotification(
           project.clientId,
           "task_completed",
-          `Task completed in your project "${project.name}": ${task.title}`,
+          `Task completed in your project "${project.name}": "${task.title}"`,
           taskId,
           "task"
         );
