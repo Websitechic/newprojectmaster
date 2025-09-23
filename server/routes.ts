@@ -2463,12 +2463,13 @@ End of Report
 
     const user = req.user!;
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    const isTeamLead = user.role === "team_lead";
 
     try {
       let complaints;
 
-      if (isOperationsManager) {
-        // Operations managers can see all complaints
+      if (isOperationsManager || isTeamLead) {
+        // Operations managers and team leads can see all complaints
         complaints = await db
           .select()
           .from(staffComplaints)
@@ -2569,9 +2570,10 @@ End of Report
 
     const user = req.user!;
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    const isTeamLead = user.role === "team_lead";
 
-    if (!isOperationsManager) {
-      return res.status(403).json({ error: "Only operations managers can update staff complaints" });
+    if (!isOperationsManager && !isTeamLead) {
+      return res.status(403).json({ error: "Only operations managers and team leads can update staff complaints" });
     }
 
     try {
@@ -3718,8 +3720,8 @@ End of Report
     try {
       let requests;
 
-      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'operations_manager' || user.specialization === 'operations_manager') {
-        // Technical support staff, project managers, product owners, and operations managers see all requests
+      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'operations_manager' || user.role === 'team_lead' || user.specialization === 'operations_manager') {
+        // Technical support staff, project managers, product owners, operations managers, and team leads see all requests
         requests = await db
           .select({
             id: technicalSupportRequests.id,

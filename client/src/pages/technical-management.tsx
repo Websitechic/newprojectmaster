@@ -88,6 +88,7 @@ export default function TechnicalManagementPage() {
   const isProductOwner = user?.role === "product_owner";
   const isTeamLead = user?.role === "team_lead";
   const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
+  const isProjectManager = user?.role === "project_manager";
 
   const { data: requests = [], isLoading } = useQuery<TechnicalSupportRequest[]>({
     queryKey: ["/api/technical-support/requests"],
