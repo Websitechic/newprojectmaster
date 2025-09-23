@@ -3092,9 +3092,9 @@ End of Report
     try {
       const userId = req.user!.id;
 
-      // Validate user ID - fix validation logic
-      if (!userId || typeof userId !== 'number' || userId <= 0) {
-        console.error("Invalid user ID for unread count:", userId, typeof userId);
+      // Validate user ID
+      if (!userId || isNaN(Number(userId)) || !Number.isInteger(Number(userId))) {
+        console.error("Invalid user ID for unread count:", userId);
         return res.status(400).json({ error: "Invalid user ID" });
       }
 
@@ -5415,31 +5415,18 @@ End of Report
 
     // Keep connection alive with periodic heartbeat
     const heartbeat = setInterval(() => {
-      if (res.writableEnded || res.destroyed) {
+      if (res.writableEnded) {
         clearInterval(heartbeat);
         global.sseClients?.delete(userId);
         return;
       }
       try {
-        // Check if response is still writable before sending heartbeat
-        if (res.writable) {
-          res.write(`data: ${JSON.stringify({type: "heartbeat"})}\n\n`);
-        } else {
-          console.log(`SSE response no longer writable for user ${userId}`);
-          clearInterval(heartbeat);
-          global.sseClients?.delete(userId);
-        }
+        res.write(`data: ${JSON.stringify({type: "heartbeat"})}\n\n`);
       } catch (error) {
         console.error(`Error sending heartbeat to user ${userId}:`, error);
         clearInterval(heartbeat);
         global.sseClients?.delete(userId);
-        try {
-          if (!res.headersSent && res.writable) {
-            res.end();
-          }
-        } catch (endError) {
-          console.error(`Error ending SSE response for user ${userId}:`, endError);
-        }
+        res.end();
       }
     }, 30000);
 

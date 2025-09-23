@@ -19,14 +19,9 @@ export const queryClient = new QueryClient({
         return res.json();
       },
       refetchInterval: false,
-      refetchOnWindowFocus: true, // Enable refetch on window focus for better real-time updates
-      staleTime: 30000, // Reduce stale time to 30 seconds for more frequent updates
-      gcTime: 5 * 60 * 1000, // 5 minutes garbage collection time
-      retry: (failureCount, error) => {
-        // Retry failed requests up to 3 times, except for auth errors
-        if (error.message.includes('401')) return false;
-        return failureCount < 3;
-      },
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
+      retry: false,
     },
     mutations: {
       retry: false,
