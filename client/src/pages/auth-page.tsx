@@ -30,8 +30,8 @@ export default function AuthPage() {
       if (isLogin) {
         await loginMutation.mutateAsync({ username, password });
       } else {
-        // Validate specialization for staff, intern, and team lead users
-        if ((role === "staff" || role === "intern" || role === "team_lead") && !specialization) {
+        // Validate specialization for staff and intern users
+        if ((role === "staff" || role === "intern") && !specialization) {
           toast({
             title: "Error",
             description: "Please select a specialization",
@@ -70,7 +70,7 @@ export default function AuthPage() {
           name,
           email,
           role,
-          specialization: (role === "staff" || role === "intern" || role === "team_lead") ? specialization : undefined,
+          specialization: (role === "staff" || role === "intern") ? specialization : undefined,
           productService: role === "client" ? productService : undefined,
           clientType: role === "client" ? clientType : undefined,
           breakOneTime: role !== "client" ? breakOneTime : undefined,
@@ -201,7 +201,7 @@ export default function AuthPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {(role === "staff" || role === "intern" || role === "team_lead") && (
+                {(role === "staff" || role === "intern") && (
                   <div className="space-y-2">
                     <Label htmlFor="specialization">Specialization</Label>
                     <Select value={specialization} onValueChange={setSpecialization}>
