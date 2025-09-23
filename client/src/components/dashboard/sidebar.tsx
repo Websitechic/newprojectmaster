@@ -304,8 +304,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
   ];
 
-  const pmMenuItems = user?.role === "project_manager" || isClientWithSpecialAccess ? [
-    ...(user?.role === "project_manager" ? [
+  const pmMenuItems = user?.role === "project_manager" || user?.role === "team_lead" || isClientWithSpecialAccess ? [
+    ...(user?.role === "project_manager" || user?.role === "team_lead" ? [
       {
         icon: <Users size={20} />,
         label: "Staff Report",
@@ -419,7 +419,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     }
   ] : [];
 
-  const extensionMenuItems = user?.role === "project_manager" ? [{
+  const extensionMenuItems = user?.role === "project_manager" || user?.role === "team_lead" ? [{
     icon: <Clock size={20} />,
     label: "Deadline Extension Requests",
     href: "/dashboard/deadline-extension-requests",
@@ -433,7 +433,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     key: "extension-requests",
   }] : [];
 
-  const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" ? [
+  const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" || user?.role === "team_lead" ? [
     {
       icon: <Users size={20} />,
       label: "Staff Report",
@@ -599,7 +599,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     ...technicalSupportMenuItems,
     ...extensionMenuItems,
     ...operationsManagerMenuItems,
-    ...(user?.role !== "operations_manager" && user?.specialization !== "operations_manager" ? [{
+    ...(user?.role !== "operations_manager" && user?.specialization !== "operations_manager" && user?.role !== "team_lead" ? [{
       icon: <FileText size={20} />,
       label: "Memos",
       href: "/dashboard/memos",
@@ -689,8 +689,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
             active={currentPath === "/report-issues"}
           />
 
-          {/* Report Management - Only for operations managers and Replit Development staff */}
-          {(user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.specialization === "replit_development") && (
+          {/* Report Management - Only for operations managers, team leads and Replit Development staff */}
+          {(user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "team_lead" || user?.specialization === "replit_development") && (
             <SidebarItem
               icon={<Bug size={20} />}
               label="Report Management"

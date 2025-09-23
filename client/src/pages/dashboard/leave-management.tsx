@@ -91,8 +91,8 @@ export default function LeaveManagement() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [reviewAction, setReviewAction] = useState<"approved" | "rejected" | null>(null);
 
-  // Check if user is project manager or operations manager
-  if (!user || (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager")) {
+  // Check if user is project manager, operations manager, or team lead
+  if (!user || (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager")) {
     return (
       <div className="flex h-screen">
         <Sidebar currentPath="/dashboard/leave-management" />

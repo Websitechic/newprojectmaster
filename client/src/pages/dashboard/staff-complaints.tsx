@@ -43,8 +43,8 @@ export default function StaffComplaints() {
   });
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
 
-  // Check if user is operations manager
-  const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
+  // Check if user is operations manager or team lead
+  const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "team_lead";
 
   // Fetch staff complaints
   const { data: complaints = [], isLoading } = useQuery<StaffComplaint[]>({
@@ -151,7 +151,7 @@ export default function StaffComplaints() {
                 <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
                 <p className="text-gray-500 text-center">
-                  Only operations managers can access staff complaints.
+                  Only operations managers and team leads can access staff complaints.
                 </p>
               </CardContent>
             </Card>

@@ -163,7 +163,7 @@ export default function StaffReport() {
     );
   }
 
-  if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager" && user.specialization !== "replit_development" && user.specialization !== "Replit Development") {
+  if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager" && user.specialization !== "replit_development" && user.specialization !== "Replit Development") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <AlertCircle className="h-8 w-8 text-destructive mb-2" />
@@ -197,7 +197,7 @@ export default function StaffReport() {
 
       return response.json();
     },
-    enabled: user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.specialization === "replit_development" || user?.specialization === "Replit Development",
+    enabled: user?.role === "project_manager" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager" || user?.specialization === "replit_development" || user?.specialization === "Replit Development",
     retry: (failureCount, error) => {
       // Don't retry on 401/403 errors (authentication/authorization)
       if (error?.message?.includes('Authentication') || error?.message?.includes('Access denied')) {

@@ -87,6 +87,7 @@ export default function TechnicalManagementPage() {
   const isProjectManager = user?.role === "project_manager";
   const isTechnicalSupport = user?.specialization === "technical_support";
   const isProductOwner = user?.role === "product_owner";
+  const isTeamLead = user?.role === "team_lead";
 
   const { data: requests = [], isLoading } = useQuery<TechnicalSupportRequest[]>({
     queryKey: ["/api/technical-support/requests"],
@@ -238,8 +239,8 @@ export default function TechnicalManagementPage() {
     }
   };
 
-  // Product owners, project managers, and technical support can access
-  if (!user || (!isProductOwner && !isProjectManager && !isTechnicalSupport)) {
+  // Product owners, project managers, team leads, and technical support can access
+  if (!user || (!isProductOwner && !isProjectManager && !isTechnicalSupport && !isTeamLead)) {
     return (
       <div className="container mx-auto p-6">
         <div className="text-center py-12">

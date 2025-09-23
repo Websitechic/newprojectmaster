@@ -82,7 +82,7 @@ export default function Memos() {
     recipients: [] as any[],
   });
 
-  const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
+  const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "team_lead";
 
   // Fetch memos (operations managers see all, others see their own)
   const { data: memos = [], isLoading: memosLoading } = useQuery<Memo[]>({
