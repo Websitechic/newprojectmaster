@@ -6197,46 +6197,6 @@ End of Report
       res.status(500).json({ error: "Failed to submit task" });
     }
   });
-    const taskId = parseInt(req.params.id);
-
-    try {
-      const [task] = await db
-        .select()
-        .from(tasks)
-        .where(eq(tasks.id, taskId))
-        .limit(1);
-
-      if (!task) {
-        return res.status(404).json({ error: "Task not found" });
-      }
-
-      if (task.assigneeId !== user.id) {
-        return res.status(403).json({ error: "You can only submit tasks assigned to you" });
-      }
-
-      if (!task.hasBeenStarted) {
-        return res.status(400).json({ error: "Task must be started before submitting" });
-      }
-
-      if (task.isTimerRunning) {
-        return res.status(400).json({ error: "Stop the timer before submitting" });
-      }
-
-      // Update task status to review
-      await db
-        .update(tasks)
-        .set({
-          status,
-          updatedAt: new Date(),
-        })
-        .where(eq(tasks.id, taskId));
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error submitting task:", error);
-      res.status(500).json({ error: "Failed to submit task" });
-    }
-  });
 
   app.put("/api/tasks/:id/status", async (req, res) => {
     if (!req.isAuthenticated()) {
