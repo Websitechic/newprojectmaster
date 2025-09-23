@@ -71,7 +71,7 @@ const registerSchema = z.object({
   password: z.string().min(6),
   name: z.string(),
   email: z.string().email(),
-  role: z.enum(["client", "project_manager", "staff", "intern", "product_owner", "operations_manager"]),
+  role: z.enum(["client", "project_manager", "staff", "intern", "product_owner", "operations_manager", "team_lead"]),
   breakOneTime: z.string().optional(), // Daily break time
   specialization: z.string().optional(),
   productService: z.string().optional(),

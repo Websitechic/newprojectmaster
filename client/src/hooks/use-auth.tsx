@@ -32,7 +32,7 @@ type LoginData = {
 type RegisterData = LoginData & {
   name: string;
   email: string;
-  role: "client" | "project_manager" | "staff" | "intern" | "operations_manager" | "team_lead";
+  role: "client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager" | "team_lead";
   specialization?: string;
   productService?: string;
   clientType?: string;
