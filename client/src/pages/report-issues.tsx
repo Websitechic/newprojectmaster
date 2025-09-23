@@ -175,7 +175,7 @@ export default function ReportIssues() {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Report Issues
+          Report app issue/Error
         </h1>
         <p className="text-gray-600">
           Help us improve the app by reporting bugs, requesting features, or suggesting improvements.

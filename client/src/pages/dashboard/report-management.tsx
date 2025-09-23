@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -237,7 +236,7 @@ export default function ReportManagement() {
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <Bug className="h-6 w-6 text-orange-600" />
-                  Report Management
+                  App Issue/Error management
                 </h1>
                 <p className="text-muted-foreground">
                   Review and manage user-submitted issue reports
@@ -258,7 +257,7 @@ export default function ReportManagement() {
                       className="pl-10"
                     />
                   </div>
-                  
+
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger>
                       <SelectValue placeholder="Status" />
@@ -469,7 +468,7 @@ export default function ReportManagement() {
                         {getCategoryIcon(selectedReport.category)}
                         <h3 className="text-lg font-semibold">{selectedReport.title}</h3>
                       </div>
-                      
+
                       <div className="flex gap-2">
                         <Badge variant="outline" className={getStatusColor(selectedReport.status)}>
                           {selectedReport.status.charAt(0).toUpperCase() + selectedReport.status.slice(1)}
@@ -607,7 +606,7 @@ function ReportCard({
           <p className="text-sm text-gray-600 line-clamp-2">
             {report.description}
           </p>
-          
+
           {report.suggestions && (
             <div className="bg-blue-50 p-3 rounded-lg">
               <p className="text-xs font-medium text-blue-900 mb-1">Suggestions:</p>

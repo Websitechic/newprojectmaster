@@ -756,7 +756,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
           {/* Report Issues - Available to all users */}
           <SidebarItem
             icon={<Bug size={20} />}
-            label="Report Issues"
+            label="Report app issue/Error"
             href="/report-issues"
             onClick={() => handleMenuItemClick("/report-issues")}
             active={currentPath === "/report-issues"}
@@ -766,7 +766,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
           {((user?.role === "operations_manager" || user?.specialization === "operations_manager") && user?.role !== "team_lead" || user?.specialization === "replit_development") && (
             <SidebarItem
               icon={<Bug size={20} />}
-              label="Report Management"
+              label="App Issue/Error management"
               href="/dashboard/report-management"
               onClick={() => handleMenuItemClick("/dashboard/report-management")}
               active={currentPath === "/dashboard/report-management"}
