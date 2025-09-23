@@ -92,25 +92,61 @@ class BreakScheduler {
     const now = new Date();
     const breakDuration = Math.floor((now.getTime() - breakSession.startTime.getTime()) / 60000); // minutes
 
-    // Send overtime notification if break exceeds 1 hour (60 minutes)
-    if (breakDuration > 60 && breakDuration <= 65) { // Send once between 60-65 minutes
+    // Send multiple overtime notifications
+    try {
+      const { createNotification } = await import('./routes');
+      
+      // First warning at 60 minutes
+      if (breakDuration === 60) {
+        await createNotification(
+          user.id,
+          "break_overtime",
+          "⏰ Your 1-hour break is complete. Please return to work.",
+          null,
+          "break"
+        );
+      }
+      // Second warning at 75 minutes
+      else if (breakDuration === 75) {
+        await createNotification(
+          user.id,
+          "break_overtime",
+          "⚠️ Your break has exceeded the limit by 15 minutes. Please return to work immediately.",
+          null,
+          "break"
+        );
+      }
+      // Final warning at 90 minutes
+      else if (breakDuration === 90) {
+        await createNotification(
+          user.id,
+          "break_overtime",
+          "🔴 URGENT: Your break has exceeded 1.5 hours. Return to work now to avoid disciplinary action.",
+          null,
+          "break"
+        );
+      }
+    } catch (notificationError) {
+      console.error("Error sending break overtime notification:", notificationError);
+    }
+
+    // Break ends automatically after 2 hours (120 minutes)
+    if (breakDuration >= 120) {
+      await this.endBreak(user.id);
+      
+      // Send forced end notification
       try {
         const { createNotification } = await import('./routes');
         await createNotification(
           user.id,
-          "break_reminder",
-          "Your break time has exceeded the limit. Please return to work.",
+          "break_overtime",
+          "🔴 Your break has been automatically ended after 2 hours. Please contact your supervisor.",
           null,
-          null
+          "break"
         );
       } catch (notificationError) {
-        console.error("Error sending break overtime notification:", notificationError);
+        console.error("Error sending break forced end notification:", notificationError);
       }
-    }
-
-    // Break ends after 1 hour
-    if (now >= breakSession.endTime) {
-      await this.endBreak(user.id);
     }
   }
 
@@ -163,15 +199,15 @@ class BreakScheduler {
 
       console.log(`Starting ${breakType} break for user ${user.name}`);
 
-      // Send break reminder notification
+      // Send break reminder notification with more detail
       try {
         const { createNotification } = await import('./routes');
         await createNotification(
           user.id,
           "break_reminder",
-          "It's time for your scheduled break! Please take a moment to rest.",
+          "☕ Break time! Your scheduled break has started. Take 1 hour to rest and recharge.",
           null,
-          null
+          "break"
         );
       } catch (notificationError) {
         console.error("Error sending break reminder notification:", notificationError);
@@ -248,6 +284,7 @@ class BreakScheduler {
       console.log(`Ending break for user ${userId}`);
 
       const resumeTime = new Date();
+      const breakDuration = Math.floor((resumeTime.getTime() - breakSession.startTime.getTime()) / 60000); // minutes
 
       // Update user status back to active
       await db
@@ -271,6 +308,24 @@ class BreakScheduler {
           .where(eq(tasks.id, breakSession.pausedTaskId));
 
         console.log(`Resumed timer for task ${breakSession.pausedTaskId} after break`);
+      }
+
+      // Send break end notification
+      try {
+        const { createNotification } = await import('./routes');
+        const message = breakDuration <= 60 
+          ? "✅ Break ended. Welcome back to work!" 
+          : `⚠️ Break ended after ${breakDuration} minutes. Welcome back to work.`;
+        
+        await createNotification(
+          userId,
+          "break_ended",
+          message,
+          null,
+          "break"
+        );
+      } catch (notificationError) {
+        console.error("Error sending break end notification:", notificationError);
       }
 
       // Remove from active breaks

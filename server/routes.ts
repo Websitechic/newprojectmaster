@@ -244,18 +244,19 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Daily notification check for deadlines and break reminders
+  // Enhanced deadline and notification checking - runs every hour
   setInterval(async () => {
     try {
+      const now = new Date();
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(23, 59, 59, 999);
 
       const today = new Date();
-      today.setHours(23, 59, 59, 999);
+      today.setHours(0, 0, 0, 0);
 
-      // Get tasks due tomorrow
-      const tasksDueTomorrow = await db
+      // Get tasks due within 24 hours
+      const tasksDueSoon = await db
         .select({
           id: tasks.id,
           title: tasks.title,
@@ -265,19 +266,30 @@ export function registerRoutes(app: Express): Server {
         .from(tasks)
         .where(
           and(
-            gte(tasks.deadline, today),
+            gte(tasks.deadline, now),
             sql`${tasks.deadline} <= ${tomorrow}`,
             ne(tasks.status, "completed")
           )
         );
 
       // Send deadline reminder notifications
-      for (const task of tasksDueTomorrow) {
-        if (task.assigneeId) {
+      for (const task of tasksDueSoon) {
+        if (task.assigneeId && task.deadline) {
+          const hoursUntilDeadline = Math.ceil((new Date(task.deadline).getTime() - now.getTime()) / (1000 * 60 * 60));
+          let reminderMessage = "";
+          
+          if (hoursUntilDeadline <= 2) {
+            reminderMessage = `⚠️ URGENT: Task "${task.title}" is due in ${hoursUntilDeadline} hour${hoursUntilDeadline !== 1 ? 's' : ''}`;
+          } else if (hoursUntilDeadline <= 8) {
+            reminderMessage = `⏰ Task "${task.title}" is due in ${hoursUntilDeadline} hours`;
+          } else {
+            reminderMessage = `📅 Reminder: Task "${task.title}" is due tomorrow`;
+          }
+
           await createNotification(
             task.assigneeId,
-            "task_updated",
-            `Reminder: Task "${task.title}" is due tomorrow`,
+            "deadline_reminder",
+            reminderMessage,
             task.id,
             "task"
           );
@@ -302,11 +314,12 @@ export function registerRoutes(app: Express): Server {
 
       // Send overdue notifications
       for (const task of overdueTasks) {
-        if (task.assigneeId) {
+        if (task.assigneeId && task.deadline) {
+          const daysOverdue = Math.ceil((today.getTime() - new Date(task.deadline).getTime()) / (1000 * 60 * 60 * 24));
           await createNotification(
             task.assigneeId,
-            "task_updated",
-            `Task "${task.title}" is overdue`,
+            "task_overdue",
+            `🔴 Task "${task.title}" is ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue`,
             task.id,
             "task"
           );
@@ -314,9 +327,9 @@ export function registerRoutes(app: Express): Server {
       }
 
     } catch (error) {
-      console.error("Error in daily notification check:", error);
+      console.error("Error in deadline notification check:", error);
     }
-  }, 24 * 60 * 60 * 1000); // Run once per day
+  }, 60 * 60 * 1000); // Run every hour
 
   // User heartbeat endpoint
   app.post("/api/user/heartbeat", async (req, res) => {
@@ -3959,6 +3972,26 @@ End of Report
         })
         .returning();
 
+      // Notify technical support staff about new request
+      try {
+        const technicalSupportStaff = await db
+          .select()
+          .from(users)
+          .where(eq(users.specialization, "technical_support"));
+
+        for (const staff of technicalSupportStaff) {
+          await createNotification(
+            staff.id,
+            "task_assigned",
+            `New technical support request from ${user.name}: ${title}`,
+            newRequest.id,
+            "technical_support_request"
+          );
+        }
+      } catch (notificationError) {
+        console.error("Error creating technical support notifications:", notificationError);
+      }
+
       res.json({ success: true, requestId: newRequest.id });
     } catch (error) {
       console.error("Error creating technical support request:", error);
@@ -3998,7 +4031,7 @@ End of Report
       // Notify requester about assignment
       await createNotification(
         request.requesterId,
-        "task_updated",
+        "task_assigned",
         `Your technical support request "${request.title}" has been assigned to ${user.name}`,
         requestId,
         "technical_support_request"
@@ -4016,6 +4049,7 @@ End of Report
       return res.status(401).send("Not authenticated");
     }
 
+    const user = req.user!;
     const requestId = parseInt(req.params.id);
     const { status, resolution } = req.body;
 
@@ -4049,11 +4083,22 @@ End of Report
         .set(updateData)
         .where(eq(technicalSupportRequests.id, requestId));
 
-      // Notify requester about status change
+      // Notify requester about status change with better messages
+      let notificationContent = "";
+      if (status === "resolved") {
+        notificationContent = `Your technical support request "${request.title}" has been resolved${resolution ? `: ${resolution}` : ''}`;
+      } else if (status === "closed") {
+        notificationContent = `Your technical support request "${request.title}" has been closed${resolution ? `. ${resolution}` : ''}`;
+      } else if (status === "in_progress") {
+        notificationContent = `Your technical support request "${request.title}" is now being worked on by ${user.name}`;
+      } else {
+        notificationContent = `Your technical support request "${request.title}" status has been updated to ${status}${resolution ? `: ${resolution}` : ''}`;
+      }
+
       await createNotification(
         request.requesterId,
-        "task_updated",
-        `Your technical support request "${request.title}" has been ${status}${resolution ? `: ${resolution}` : ''}`,
+        status === "resolved" ? "task_completed" : "task_updated",
+        notificationContent,
         requestId,
         "technical_support_request"
       );

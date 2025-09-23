@@ -265,8 +265,11 @@ export function NotificationsDropdown() {
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex-shrink-0">
-                    {notification.type === "break_reminder" && (
+                    {(notification.type === "break_reminder" || notification.type === "break_ended") && (
                       <Clock className="h-4 w-4 text-orange-500" />
+                    )}
+                    {notification.type === "break_overtime" && (
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
                     )}
                     {notification.type === "task_assignment" && (
                       <CheckSquare className="h-4 w-4 text-blue-500" />
@@ -274,8 +277,11 @@ export function NotificationsDropdown() {
                     {notification.type === "message" && (
                       <MessageSquare className="h-4 w-4 text-green-500" />
                     )}
-                    {notification.type === "deadline" && (
+                    {(notification.type === "deadline_reminder" || notification.type === "task_overdue") && (
                       <AlertTriangle className="h-4 w-4 text-red-500" />
+                    )}
+                    {notification.type === "task_completed" && (
+                      <CheckSquare className="h-4 w-4 text-green-500" />
                     )}
                     {/* Default icon if type is unknown or for general notifications */}
                     {(!notification.type || ["mention", "system"].includes(notification.type)) && (
