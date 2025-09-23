@@ -87,6 +87,7 @@ export default function TechnicalManagementPage() {
   const isTechnicalSupport = user?.specialization === "technical_support";
   const isProductOwner = user?.role === "product_owner";
   const isTeamLead = user?.role === "team_lead";
+  const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
 
   const { data: requests = [], isLoading } = useQuery<TechnicalSupportRequest[]>({
     queryKey: ["/api/technical-support/requests"],
@@ -239,7 +240,7 @@ export default function TechnicalManagementPage() {
   };
 
   // Product owners, project managers, team leads, operations managers, and technical support can access
-  const hasAccess = user && (isProductOwner || isProjectManager || isTechnicalSupport || isTeamLead || user.role === "operations_manager" || user.specialization === "operations_manager");
+  const hasAccess = user && (isProductOwner || isProjectManager || isTechnicalSupport || isTeamLead || isOperationsManager);
   
   if (!hasAccess) {
     return (
