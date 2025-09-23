@@ -5541,20 +5541,47 @@ End of Report
         .returning();
 
       // Update team members if provided
-      if (teamMembers && Array.isArray(teamMembers)) {
-        // Remove existing members
-        await db.delete(projectMembers).where(eq(projectMembers.projectId, projectId));
+      if (teamMembers !== undefined) {
+        // Get all team leads to ensure they're always included
+        const teamLeads = await db
+          .select()
+          .from(users)
+          .where(eq(users.role, "team_lead"));
 
-        // Add new members
+        // Remove existing members except the project manager and team leads
+        await db
+          .delete(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              ne(projectMembers.userId, project.managerId),
+              // Don't remove team leads
+              sql`${projectMembers.userId} NOT IN (${teamLeads.map(tl => tl.id).join(', ') || 'NULL'})`
+            )
+          );
+
+        // Combine team members with team leads
+        const allMemberIds = new Set<number>();
+
+        // Add selected team members
         if (teamMembers.length > 0) {
-          const memberData = teamMembers.map((memberId: string) => ({
+          teamMembers.forEach(memberId => allMemberIds.add(parseInt(memberId)));
+        }
+
+        // Add all team leads automatically
+        teamLeads.forEach(teamLead => allMemberIds.add(teamLead.id));
+
+        // Add new team members (this will include team leads)
+        if (allMemberIds.size > 0) {
+          const memberData = Array.from(allMemberIds).map((memberId: number) => ({
             projectId,
-            userId: parseInt(memberId),
+            userId: memberId,
             invitedBy: user.id,
             invitationStatus: "accepted" as const,
           }));
 
-          await db.insert(projectMembers).values(memberData);
+          // Use onConflictDoNothing to avoid duplicate entries
+          await db.insert(projectMembers).values(memberData).onConflictDoNothing();
         }
       }
 
