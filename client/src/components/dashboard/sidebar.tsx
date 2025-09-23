@@ -304,33 +304,31 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
   ];
 
-  const pmMenuItems = user?.role === "project_manager" || user?.role === "team_lead" || isClientWithSpecialAccess ? [
-    ...(user?.role === "project_manager" || user?.role === "team_lead" ? [
-      {
-        icon: <Users size={20} />,
-        label: "Staff Report",
-        href: "/dashboard/staff-report",
-        key: "staff-report",
-      },
-      {
-        icon: <Building2 size={20} />,
-        label: "Client Accounts",
-        href: "/dashboard/client-accounts",
-        key: "client-accounts",
-      },
-      {
-        icon: <CalendarDays size={20} />,
-        label: "Bookings",
-        href: "/dashboard/bookings",
-        key: "bookings",
-      },
-      {
-        icon: <Calendar size={20} />,
-        label: "Leave Management",
-        href: "/dashboard/leave-management",
-        key: "leave-management",
-      },
-    ] : []),
+  const pmMenuItems = (user?.role === "project_manager" && user?.role !== "team_lead") || isClientWithSpecialAccess ? [
+    {
+      icon: <Users size={20} />,
+      label: "Staff Report",
+      href: "/dashboard/staff-report",
+      key: "staff-report",
+    },
+    {
+      icon: <Building2 size={20} />,
+      label: "Client Accounts",
+      href: "/dashboard/client-accounts",
+      key: "client-accounts",
+    },
+    {
+      icon: <CalendarDays size={20} />,
+      label: "Bookings",
+      href: "/dashboard/bookings",
+      key: "bookings",
+    },
+    {
+      icon: <Calendar size={20} />,
+      label: "Leave Management",
+      href: "/dashboard/leave-management",
+      key: "leave-management",
+    },
     {
       icon: <Wrench size={20} />,
       label: "Technical Management",
@@ -419,7 +417,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     }
   ] : [];
 
-  const extensionMenuItems = user?.role === "project_manager" || user?.role === "team_lead" ? [{
+  const extensionMenuItems = (user?.role === "project_manager" && user?.role !== "team_lead") ? [{
     icon: <Clock size={20} />,
     label: "Deadline Extension Requests",
     href: "/dashboard/deadline-extension-requests",
