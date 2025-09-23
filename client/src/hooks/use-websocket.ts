@@ -21,14 +21,16 @@ export function useWebSocket(userId: number | undefined) {
   }, []);
 
   const connect = useCallback(() => {
-    // Don't try to connect if we've exceeded max attempts
-    if (reconnectAttempts.current >= maxReconnectAttempts) {
-      console.error('Max WebSocket reconnect attempts reached.');
-      toast({
-        title: "Connection Warning",
-        description: "Chat features may be limited. Try refreshing the page.",
-        variant: "destructive",
-      });
+    // Don't try to connect if we've exceeded max attempts or no userId
+    if (reconnectAttempts.current >= maxReconnectAttempts || !userId) {
+      if (reconnectAttempts.current >= maxReconnectAttempts) {
+        console.error('Max WebSocket reconnect attempts reached.');
+        toast({
+          title: "Connection Warning",
+          description: "Chat features may be limited. Try refreshing the page.",
+          variant: "destructive",
+        });
+      }
       return;
     }
 
@@ -39,7 +41,11 @@ export function useWebSocket(userId: number | undefined) {
 
     // Close existing connection if it's in connecting or closing state
     if (ws.current && ws.current.readyState !== WebSocket.CLOSED) {
-      ws.current.close();
+      try {
+        ws.current.close();
+      } catch (error) {
+        console.error('Error closing existing WebSocket:', error);
+      }
       ws.current = null;
     }
 
@@ -53,7 +59,11 @@ export function useWebSocket(userId: number | undefined) {
         reconnectAttempts.current = 0; // Reset reconnect attempts on successful connection
         // Send authentication message with userId if available
         if (ws.current?.readyState === WebSocket.OPEN && userId) {
-          ws.current.send(JSON.stringify({ type: "auth", userId }));
+          try {
+            ws.current.send(JSON.stringify({ type: "auth", userId }));
+          } catch (error) {
+            console.error('Error sending auth message:', error);
+          }
         }
       };
 

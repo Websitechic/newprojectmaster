@@ -88,9 +88,13 @@ export function setupWebSocket(wss: WebSocketServer) {
         const authTimeout = setTimeout(() => {
           if (!userId && ws.readyState === ws.OPEN) {
             console.log('Closing unauthenticated WebSocket connection after timeout');
-            ws.close(1008, 'Authentication timeout');
+            try {
+              ws.close(1008, 'Authentication timeout');
+            } catch (error) {
+              console.error('Error closing WebSocket on timeout:', error);
+            }
           }
-        }, 30000); // 30 seconds timeout
+        }, 10000); // Reduced to 10 seconds timeout
 
         // Clear timeout if connection closes
         ws.on('close', () => {

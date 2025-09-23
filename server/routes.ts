@@ -202,6 +202,80 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Daily notification check for deadlines and break reminders
+  setInterval(async () => {
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(23, 59, 59, 999);
+
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
+      // Get tasks due tomorrow
+      const tasksDueTomorrow = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          assigneeId: tasks.assigneeId,
+          deadline: tasks.deadline,
+        })
+        .from(tasks)
+        .where(
+          and(
+            gte(tasks.deadline, today),
+            sql`${tasks.deadline} <= ${tomorrow}`,
+            ne(tasks.status, "completed")
+          )
+        );
+
+      // Send deadline reminder notifications
+      for (const task of tasksDueTomorrow) {
+        if (task.assigneeId) {
+          await createNotification(
+            task.assigneeId,
+            "task_updated",
+            `Reminder: Task "${task.title}" is due tomorrow`,
+            task.id,
+            "task"
+          );
+        }
+      }
+
+      // Get overdue tasks
+      const overdueTasks = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          assigneeId: tasks.assigneeId,
+          deadline: tasks.deadline,
+        })
+        .from(tasks)
+        .where(
+          and(
+            sql`${tasks.deadline} < ${today}`,
+            ne(tasks.status, "completed")
+          )
+        );
+
+      // Send overdue notifications
+      for (const task of overdueTasks) {
+        if (task.assigneeId) {
+          await createNotification(
+            task.assigneeId,
+            "task_updated",
+            `Task "${task.title}" is overdue`,
+            task.id,
+            "task"
+          );
+        }
+      }
+
+    } catch (error) {
+      console.error("Error in daily notification check:", error);
+    }
+  }, 24 * 60 * 60 * 1000); // Run once per day
+
   // User heartbeat endpoint
   app.post("/api/user/heartbeat", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -3090,12 +3164,13 @@ End of Report
     }
 
     try {
-      const userId = req.user!.id;
+      const user = req.user!;
+      const userId = user.id;
 
-      // Validate user ID
-      if (!userId || isNaN(Number(userId)) || !Number.isInteger(Number(userId))) {
-        console.error("Invalid user ID for unread count:", userId);
-        return res.status(400).json({ error: "Invalid user ID" });
+      // Validate user ID exists and is valid
+      if (!userId || typeof userId !== 'number' || userId <= 0) {
+        console.error("Invalid user ID for unread count:", userId, typeof userId);
+        return res.status(400).json({ error: "Invalid user session" });
       }
 
       const unreadCount = await db
@@ -3108,7 +3183,8 @@ End of Report
           )
         );
 
-      res.json({ count: unreadCount[0]?.count || 0 });
+      const count = unreadCount[0]?.count || 0;
+      res.json({ count });
     } catch (error) {
       console.error("Error fetching unread count:", error);
       res.status(500).json({ error: "Failed to fetch unread count" });
@@ -3857,6 +3933,17 @@ End of Report
     const requestId = parseInt(req.params.id);
 
     try {
+      // Get request details
+      const [request] = await db
+        .select()
+        .from(technicalSupportRequests)
+        .where(eq(technicalSupportRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
       await db
         .update(technicalSupportRequests)
         .set({
@@ -3865,6 +3952,15 @@ End of Report
           updatedAt: new Date(),
         })
         .where(eq(technicalSupportRequests.id, requestId));
+
+      // Notify requester about assignment
+      await createNotification(
+        request.requesterId,
+        "task_updated",
+        `Your technical support request "${request.title}" has been assigned to ${user.name}`,
+        requestId,
+        "technical_support_request"
+      );
 
       res.json({ success: true });
     } catch (error) {
@@ -3882,6 +3978,17 @@ End of Report
     const { status, resolution } = req.body;
 
     try {
+      // Get request details
+      const [request] = await db
+        .select()
+        .from(technicalSupportRequests)
+        .where(eq(technicalSupportRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
       const updateData: any = {
         status,
         updatedAt: new Date(),
@@ -3899,6 +4006,15 @@ End of Report
         .update(technicalSupportRequests)
         .set(updateData)
         .where(eq(technicalSupportRequests.id, requestId));
+
+      // Notify requester about status change
+      await createNotification(
+        request.requesterId,
+        "task_updated",
+        `Your technical support request "${request.title}" has been ${status}${resolution ? `: ${resolution}` : ''}`,
+        requestId,
+        "technical_support_request"
+      );
 
       res.json({ success: true });
     } catch (error) {
@@ -5215,6 +5331,62 @@ End of Report
         })
         .returning();
 
+      // Get all project members for notifications
+      const projectMembers = await db
+        .select({ userId: projectMembers.userId })
+        .from(projectMembers)
+        .where(
+          and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.invitationStatus, "accepted"),
+            ne(projectMembers.userId, user.id) // Don't notify sender
+          )
+        );
+
+      // Get project info
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      // Check for @mentions in the message
+      const mentionRegex = /@(\w+)/g;
+      const mentions = content.match(mentionRegex);
+
+      if (mentions) {
+        // Get mentioned users by username
+        const usernames = mentions.map(mention => mention.substring(1));
+        const mentionedUsers = await db
+          .select()
+          .from(users)
+          .where(inArray(users.username, usernames));
+
+        // Send mention notifications
+        for (const mentionedUser of mentionedUsers) {
+          if (mentionedUser.id !== user.id) {
+            await createNotification(
+              mentionedUser.id,
+              "mention",
+              `${user.name} mentioned you in ${project?.name || "project"}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
+              newMessage.id,
+              "message"
+            );
+          }
+        }
+      } else {
+        // Send general team message notifications to all members
+        for (const member of projectMembers) {
+          await createNotification(
+            member.userId,
+            "task_updated",
+            `New message in ${project?.name || "project"} from ${user.name}`,
+            newMessage.id,
+            "message"
+          );
+        }
+      }
+
       res.json({ success: true, messageId: newMessage.id });
     } catch (error) {
       console.error("Error sending team message:", error);
@@ -5541,6 +5713,17 @@ End of Report
         .where(eq(projects.id, projectId))
         .returning();
 
+      // Notify client about project updates
+      if (updatedProject.clientId && updatedProject.clientId !== user.id) {
+        await createNotification(
+          updatedProject.clientId,
+          "task_updated",
+          `Your project "${updatedProject.name}" has been updated`,
+          projectId,
+          "project"
+        );
+      }
+
       // Update team members if provided
       if (teamMembers !== undefined) {
         // Get all team leads to ensure they're always included
@@ -5592,6 +5775,47 @@ End of Report
       res.status(500).json({ error: "Failed to update project" });
     }
   });
+
+  // Helper function to create notifications with proper error handling
+  async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
+    try {
+      await db
+        .insert(notifications)
+        .values({
+          userId,
+          type,
+          content,
+          referenceId: referenceId || null,
+          referenceType: referenceType || null,
+        });
+
+      // Send real-time notification via SSE
+      if (global.sseClients && global.sseClients.has(userId)) {
+        const client = global.sseClients.get(userId);
+        if (client && !client.writableEnded) {
+          try {
+            client.write(`data: ${JSON.stringify({
+              type: "notification",
+              notification: {
+                userId,
+                type,
+                content,
+                referenceId,
+                referenceType,
+                read: false,
+                createdAt: new Date().toISOString()
+              }
+            })}\n\n`);
+          } catch (error) {
+            console.error(`Error sending real-time notification to user ${userId}:`, error);
+            global.sseClients.delete(userId);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error creating notification:", error);
+    }
+  }
 
   // Create project plan
   app.post("/api/projects/:id/plans", async (req, res) => {
@@ -5819,6 +6043,24 @@ End of Report
         .where(eq(tasks.id, taskId))
         .returning();
 
+      // Get project info for notification
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, task.projectId))
+        .limit(1);
+
+      // Notify project manager about task being started
+      if (project && project.managerId && project.managerId !== user.id) {
+        await createNotification(
+          project.managerId,
+          "task_updated",
+          `${user.name} started working on task: ${task.title}`,
+          taskId,
+          "task"
+        );
+      }
+
       res.json({ success: true, task: updatedTask });
     } catch (error) {
       console.error("Error starting task timer:", error);
@@ -5881,6 +6123,80 @@ End of Report
     }
 
     const user = req.user!;
+    const taskId = parseInt(req.params.id);
+
+    try {
+      // Get task with current timer info
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      if (task.assigneeId !== user.id) {
+        return res.status(403).json({ error: "You can only submit tasks assigned to you" });
+      }
+
+      // Calculate final time if timer is running
+      let finalTimeSpent = task.timeSpent || 0;
+      if (task.isTimerRunning && task.timerStartTime) {
+        const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
+        finalTimeSpent += sessionDuration;
+      }
+
+      // Update task as completed and stop timer
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          status: "completed",
+          progress: 100,
+          isTimerRunning: false,
+          timerStartTime: null,
+          timeSpent: finalTimeSpent,
+          updatedAt: new Date(),
+        })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      // Get project info for notifications
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, task.projectId))
+        .limit(1);
+
+      // Notify project manager about task completion
+      if (project && project.managerId && project.managerId !== user.id) {
+        await createNotification(
+          project.managerId,
+          "task_completed",
+          `${user.name} completed task: ${task.title}`,
+          taskId,
+          "task"
+        );
+      }
+
+      // Notify client about task completion if it's a client project
+      if (project && project.clientId) {
+        await createNotification(
+          project.clientId,
+          "task_completed",
+          `Task completed in your project "${project.name}": ${task.title}`,
+          taskId,
+          "task"
+        );
+      }
+
+      res.json({ success: true, task: updatedTask });
+    } catch (error) {
+      console.error("Error submitting task:", error);
+      res.status(500).json({ error: "Failed to submit task" });
+    }
+  });
     const taskId = parseInt(req.params.id);
 
     try {
