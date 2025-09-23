@@ -4831,6 +4831,7 @@ End of Report
       // Check if user has access to this project
       const hasAccess = 
         user.role === "operations_manager" || 
+        user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
         project.managerId === user.id ||
