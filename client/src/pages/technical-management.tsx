@@ -49,6 +49,7 @@ interface TechnicalSupportRequest {
   task?: {
     id: number;
     title: string;
+    projectId: number;
   };
 }
 
@@ -56,14 +57,14 @@ const priorityColors = {
   low: "bg-green-100 text-green-800 border-green-200",
   medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
   high: "bg-orange-100 text-orange-800 border-orange-200",
-  urgent: "bg-red-100 text-red-800 border-red-200"
+  urgent: "bg-red-100 text-red-800 border-red-200",
 };
 
 const statusColors = {
   pending: "bg-gray-100 text-gray-800 border-gray-200",
   in_progress: "bg-blue-100 text-blue-800 border-blue-200",
   resolved: "bg-green-100 text-green-800 border-green-200",
-  closed: "bg-slate-100 text-slate-800 border-slate-200"
+  closed: "bg-slate-100 text-slate-800 border-slate-200",
 };
 
 export default function TechnicalManagementPage() {
@@ -88,7 +89,7 @@ export default function TechnicalManagementPage() {
   const isProductOwner = user?.role === "product_owner";
   const isTeamLead = user?.role === "team_lead";
   const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
-  const isProjectManager = user?.role === "project_manager";
+  
 
   const { data: requests = [], isLoading } = useQuery<TechnicalSupportRequest[]>({
     queryKey: ["/api/technical-support/requests"],
@@ -98,6 +99,24 @@ export default function TechnicalManagementPage() {
       return res.json();
     },
   });
+
+  const { data: projects = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/projects"],
+    queryFn: async () => {
+      const res = await fetch("/api/projects");
+      if (!res.ok) throw new Error("Failed to fetch projects");
+      return res.json();
+    },
+  });
+
+  const projectMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    projects.forEach(project => {
+      map[project.id] = project.name;
+    });
+    return map;
+  }, [projects]);
+
 
   // Filter and sort requests
   const filteredAndSortedRequests = useMemo(() => {
@@ -242,7 +261,7 @@ export default function TechnicalManagementPage() {
 
   // Product owners, project managers, team leads, operations managers, and technical support can access
   const hasAccess = user && (isProductOwner || isProjectManager || isTechnicalSupport || isTeamLead || isOperationsManager);
-  
+
   if (!hasAccess) {
     return (
       <div className="container mx-auto p-6">
@@ -759,6 +778,7 @@ export default function TechnicalManagementPage() {
                 <div>
                   <span className="font-medium text-gray-700">Related Task:</span>
                   <p className="text-blue-600">{selectedRequest.task.title}</p>
+                  <p className="text-gray-500 text-xs">Project: {projectMap[selectedRequest.task.projectId] || `ID: ${selectedRequest.task.projectId}`}</p>
                 </div>
               )}
 
