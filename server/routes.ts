@@ -1186,7 +1186,7 @@ End of Report
     }
 
     const user = req.user!;
-    
+
     // Only product owners can update client onboarding status
     if (user.role !== "product_owner") {
       return res.status(403).json({ error: "Only product owners can update client onboarding status" });
@@ -4669,15 +4669,15 @@ End of Report
     }
   });
 
+  // Get all leave applications (for project managers, operations managers, and team leads)
   app.get("/api/leave-applications/all", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
-    const user = req.user!;
-
-    // Check if user is project manager or operations manager
-    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+    const user = req.user;
+    // Only project managers, operations managers, and team leads can view all applications
+    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
       return res.status(403).json({ error: "Access denied" });
     }
 
@@ -4709,16 +4709,15 @@ End of Report
     }
   });
 
-  // Review leave application (approve or reject)
+  // Review leave application (approve/reject)
   app.put("/api/leave-applications/:id/review", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
-    const user = req.user!;
-
-    // Check if user is project manager or operations manager
-    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+    const user = req.user;
+    // Only project managers, operations managers, and team leads can review applications
+    if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
       return res.status(403).json({ error: "Access denied" });
     }
 

@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -55,7 +54,7 @@ interface TechnicalSupportRequest {
 
 const priorityColors = {
   low: "bg-green-100 text-green-800 border-green-200",
-  medium: "bg-yellow-100 text-yellow-800 border-yellow-200", 
+  medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
   high: "bg-orange-100 text-orange-800 border-orange-200",
   urgent: "bg-red-100 text-red-800 border-red-200"
 };
@@ -75,7 +74,7 @@ export default function TechnicalManagementPage() {
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-  
+
   // Filters and search
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -106,7 +105,7 @@ export default function TechnicalManagementPage() {
                            request.requester.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || request.status === statusFilter;
       const matchesPriority = priorityFilter === "all" || request.priority === priorityFilter;
-      
+
       return matchesSearch && matchesStatus && matchesPriority;
     });
 
@@ -114,7 +113,7 @@ export default function TechnicalManagementPage() {
     filtered.sort((a, b) => {
       let aValue: any = a[sortBy as keyof TechnicalSupportRequest];
       let bValue: any = b[sortBy as keyof TechnicalSupportRequest];
-      
+
       if (sortBy === "requester") {
         aValue = a.requester.name;
         bValue = b.requester.name;
@@ -122,17 +121,17 @@ export default function TechnicalManagementPage() {
         aValue = a.assignedTo?.name || "";
         bValue = b.assignedTo?.name || "";
       }
-      
+
       if (typeof aValue === "string") {
         return sortOrder === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
       }
-      
+
       if (aValue instanceof Date || typeof aValue === "string") {
         const dateA = new Date(aValue).getTime();
         const dateB = new Date(bValue).getTime();
         return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
       }
-      
+
       return 0;
     });
 
@@ -312,7 +311,7 @@ export default function TechnicalManagementPage() {
                   <SelectItem value="closed">Closed</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                 <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="Priority" />
@@ -341,7 +340,7 @@ export default function TechnicalManagementPage() {
             {requests.length === 0 ? "No Support Requests" : "No Matching Requests"}
           </h2>
           <p className="text-gray-600">
-            {requests.length === 0 
+            {requests.length === 0
               ? "No technical support requests have been submitted yet."
               : "Try adjusting your search or filter criteria."}
           </p>
@@ -365,42 +364,42 @@ export default function TechnicalManagementPage() {
                   <thead className="bg-gray-50 border-b sticky top-0 z-10">
                     <tr>
                       <th className="w-6"></th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 min-w-[200px]" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 min-w-[200px]"
                           onClick={() => handleSort('title')}>
                         <div className="flex items-center gap-1">
                           Title
                           {sortBy === 'title' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[100px]" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[100px]"
                           onClick={() => handleSort('status')}>
                         <div className="flex items-center gap-1">
                           Status
                           {sortBy === 'status' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[80px]" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[80px]"
                           onClick={() => handleSort('priority')}>
                         <div className="flex items-center gap-1">
                           Priority
                           {sortBy === 'priority' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[120px]" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[120px]"
                           onClick={() => handleSort('requester')}>
                         <div className="flex items-center gap-1">
                           Requester
                           {sortBy === 'requester' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[120px]" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[120px]"
                           onClick={() => handleSort('assignedTo')}>
                         <div className="flex items-center gap-1">
                           Assigned
                           {sortBy === 'assignedTo' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[100px]" 
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[100px]"
                           onClick={() => handleSort('createdAt')}>
                         <div className="flex items-center gap-1">
                           Created
@@ -423,8 +422,8 @@ export default function TechnicalManagementPage() {
                               onClick={() => toggleRowExpansion(request.id)}
                               className="text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded p-1"
                             >
-                              {expandedRows.has(request.id) ? 
-                                <ChevronDown className="h-3 w-3" /> : 
+                              {expandedRows.has(request.id) ?
+                                <ChevronDown className="h-3 w-3" /> :
                                 <ChevronRight className="h-3 w-3" />
                               }
                             </button>
@@ -449,7 +448,7 @@ export default function TechnicalManagementPage() {
                           </td>
                           <td className="py-2 px-2">
                             <Badge className={`${statusColors[request.status]} text-xs`}>
-                              {request.status === 'in_progress' ? 'In Progress' : 
+                              {request.status === 'in_progress' ? 'In Progress' :
                                request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                             </Badge>
                           </td>
@@ -615,7 +614,7 @@ export default function TechnicalManagementPage() {
                           <h3 className="font-semibold text-base truncate">{request.title}</h3>
                           <div className="flex gap-1 mt-1">
                             <Badge className={`${statusColors[request.status]} text-xs`}>
-                              {request.status === 'in_progress' ? 'In Progress' : 
+                              {request.status === 'in_progress' ? 'In Progress' :
                                request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                             </Badge>
                             <Badge className={`${priorityColors[request.priority]} text-xs`}>
@@ -662,7 +661,7 @@ export default function TechnicalManagementPage() {
                     <p className="text-gray-600 text-sm mb-2 line-clamp-2" title={request.description}>
                       {request.description}
                     </p>
-                    
+
                     <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-2">
                       <div className="flex items-center gap-1">
                         <User className="h-3 w-3 flex-shrink-0" />
@@ -678,7 +677,7 @@ export default function TechnicalManagementPage() {
                         })}</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center justify-between text-xs">
                       {request.assignedTo ? (
                         <div className="flex items-center gap-1">
@@ -688,7 +687,7 @@ export default function TechnicalManagementPage() {
                       ) : (
                         <span className="text-gray-500">Unassigned</span>
                       )}
-                      
+
                       {request.task && (
                         <span className="text-blue-600 truncate ml-2">Task: {request.task.title}</span>
                       )}
@@ -720,7 +719,7 @@ export default function TechnicalManagementPage() {
                 {getStatusIcon(selectedRequest.status)}
                 <h3 className="text-lg font-semibold">{selectedRequest.title}</h3>
               </div>
-              
+
               <div className="flex gap-2">
                 <Badge className={statusColors[selectedRequest.status]}>
                   {selectedRequest.status.replace("_", " ")}
@@ -729,12 +728,12 @@ export default function TechnicalManagementPage() {
                   {selectedRequest.priority}
                 </Badge>
               </div>
-              
+
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Description</h4>
                 <p className="text-gray-700 bg-gray-50 p-3 rounded">{selectedRequest.description}</p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="font-medium text-gray-700">Requester:</span>
@@ -751,14 +750,14 @@ export default function TechnicalManagementPage() {
                   )}
                 </div>
               </div>
-              
+
               {selectedRequest.task && (
                 <div>
                   <span className="font-medium text-gray-700">Related Task:</span>
                   <p className="text-blue-600">{selectedRequest.task.title}</p>
                 </div>
               )}
-              
+
               <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
                 <div>
                   <span className="font-medium">Created:</span>
@@ -769,7 +768,7 @@ export default function TechnicalManagementPage() {
                   <p>{formatDate(selectedRequest.updatedAt)}</p>
                 </div>
               </div>
-              
+
               {selectedRequest.resolution && (
                 <div>
                   <h4 className="font-medium text-green-800 mb-2">Resolution</h4>
@@ -783,7 +782,7 @@ export default function TechnicalManagementPage() {
                   </div>
                 </div>
               )}
-              
+
               <div className="text-xs text-gray-400">
                 Request ID: {selectedRequest.id}
               </div>
@@ -830,7 +829,7 @@ export default function TechnicalManagementPage() {
                   <FormItem>
                     <FormLabel>Resolution (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Describe how the issue was resolved..."
                         {...field}
                       />

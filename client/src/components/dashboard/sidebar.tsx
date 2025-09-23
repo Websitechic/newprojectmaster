@@ -431,7 +431,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     key: "extension-requests",
   }] : [];
 
-  const operationsManagerMenuItems = user?.specialization === "operations_manager" || user?.role === "operations_manager" || user?.role === "team_lead" ? [
+  // Operations Manager menu items (full access)
+  const operationsManagerMenuItems = (user?.specialization === "operations_manager" || user?.role === "operations_manager") && user?.role !== "team_lead" ? [
     {
       icon: <Users size={20} />,
       label: "Staff Report",
@@ -528,6 +529,79 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
   ] : [];
 
+  // Team Lead menu items (limited access - no Client Sentiment Tracker, Communication Tracker, Notes, SOP, Report Management)
+  const teamLeadMenuItems = user?.role === "team_lead" ? [
+    {
+      icon: <Users size={20} />,
+      label: "Staff Report",
+      href: "/dashboard/staff-report",
+      key: "team-lead-staff-report",
+    },
+    {
+      icon: <BarChart3 size={20} />,
+      label: "KPI Report",
+      href: "/dashboard/kpi-report",
+      key: "team-lead-kpi-report",
+    },
+    {
+      icon: <Building2 size={20} />,
+      label: "Client Accounts",
+      href: "/dashboard/client-accounts",
+      key: "team-lead-client-accounts",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Memos",
+      href: "/dashboard/memos",
+      key: "team-lead-memos",
+    },
+    {
+      icon: <Wrench size={20} />,
+      label: "Technical Management",
+      href: "/dashboard/technical-management",
+      key: "team-lead-technical-management",
+    },
+    {
+      icon: <CalendarDays size={20} />,
+      label: "Bookings",
+      href: "/dashboard/bookings",
+      key: "team-lead-bookings",
+    },
+    {
+      icon: <Calendar size={20} />,
+      label: "Leave Management",
+      href: "/dashboard/leave-management",
+      key: "team-lead-leave-management",
+    },
+    {
+      icon: <Clock size={20} />,
+      label: "Deadline Extension Requests",
+      href: "/dashboard/deadline-extension-requests",
+      key: "team-lead-deadline-extension-requests",
+    },
+    {
+      icon: <MessageSquare size={20} />,
+      label: "Staff Queries",
+      href: "/dashboard/staff-queries",
+      hasUpdate: indicators.myQueries,
+      key: "team-lead-staff-queries",
+    },
+    {
+      icon: <MessageSquareX size={20} />,
+      label: "Client Complaints",
+      href: "/dashboard/client-complaints",
+      hasUpdate: indicators.clientComplaints,
+      key: "team-lead-client-complaints",
+    },
+    {
+      icon: <AlertTriangle size={20} />,
+      label: "Staff Complaints",
+      href: "/dashboard/staff-complaints",
+      hasUpdate: indicators.staffComplaints,
+      key: "team-lead-staff-complaints",
+    },
+  ] : [];
+
   const clientMenuItems = user?.role === "client" ? [
     ...(user?.clientType === "support_maintenance_client" ? [{
       icon: <FileText size={20} />,
@@ -597,6 +671,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     ...technicalSupportMenuItems,
     ...extensionMenuItems,
     ...operationsManagerMenuItems,
+    ...teamLeadMenuItems,
     ...(user?.role !== "operations_manager" && user?.specialization !== "operations_manager" && user?.role !== "team_lead" ? [{
       icon: <FileText size={20} />,
       label: "Memos",
@@ -687,8 +762,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
             active={currentPath === "/report-issues"}
           />
 
-          {/* Report Management - Only for operations managers, team leads and Replit Development staff */}
-          {(user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "team_lead" || user?.specialization === "replit_development") && (
+          {/* Report Management - Only for operations managers and Replit Development staff */}
+          {((user?.role === "operations_manager" || user?.specialization === "operations_manager") && user?.role !== "team_lead" || user?.specialization === "replit_development") && (
             <SidebarItem
               icon={<Bug size={20} />}
               label="Report Management"

@@ -100,7 +100,7 @@ export default function LeaveManagement() {
           <Header />
           <div className="flex flex-col items-center justify-center min-h-[400px]">
             <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-            <p className="text-sm text-destructive">Only project managers and operations managers can access leave management</p>
+            <p className="text-sm text-destructive">Only project managers, operations managers, and team leads can access leave management</p>
           </div>
         </div>
       </div>
