@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, MessageCircle, Users, Search } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface User {
   id: number;
@@ -49,6 +49,7 @@ export function DirectMessages() {
   const [view, setView] = useState<"conversations" | "new">("conversations");
   const { user } = useUser();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   // Fetch conversations
   useEffect(() => {
@@ -111,7 +112,7 @@ export function DirectMessages() {
   // Listen for real-time messages via SSE
   useEffect(() => {
     if (!user?.id) return;
-    
+
     console.log("Setting up SSE connection for direct messages...");
     const eventSource = new EventSource("/api/notifications/stream", {
       withCredentials: true
@@ -125,11 +126,11 @@ export function DirectMessages() {
       try {
         const data = JSON.parse(event.data);
         console.log("SSE message received in direct messages:", data);
-        
+
         if (data.type === "direct_message") {
           const message = data.data;
           console.log("Direct message received:", message);
-          
+
           // If the message is from the currently selected user, add it to messages immediately
           if (selectedUser && message.senderId === selectedUser.id) {
             console.log("Adding message to current conversation");
@@ -142,7 +143,7 @@ export function DirectMessages() {
               return prev;
             });
           }
-          
+
           // If the message is TO the currently selected user (we sent it), also add it
           if (selectedUser && message.receiverId === selectedUser.id && message.senderId === user?.id) {
             console.log("Adding sent message to current conversation");
@@ -155,13 +156,13 @@ export function DirectMessages() {
               return prev;
             });
           }
-          
+
           // Update conversations list
           setConversations(prev => {
             const updated = [...prev];
             const otherUserId = message.senderId === user?.id ? message.receiverId : message.senderId;
             const existingIndex = updated.findIndex(conv => conv.user.id === otherUserId);
-            
+
             if (existingIndex >= 0) {
               // Move conversation to top and update
               const conversation = updated[existingIndex];
@@ -192,7 +193,7 @@ export function DirectMessages() {
                 })
                 .catch(error => console.error("Error fetching user data:", error));
             }
-            
+
             return updated;
           });
         }
@@ -211,6 +212,43 @@ export function DirectMessages() {
     };
   }, [selectedUser, user?.id]);
 
+  // WebSocket event listeners for direct messages
+    const handleDirectMessage = (event: CustomEvent) => {
+      const messageData = event.detail;
+      console.log("Direct message received via WebSocket:", messageData);
+
+      // If the message is from the currently selected user, add it to messages immediately
+      if (selectedUser && messageData.senderId === selectedUser.id) {
+        console.log("Adding message to current conversation");
+        setMessages(prev => {
+          // Check if message already exists to avoid duplicates
+          const exists = prev.some(m => m.id === messageData.id);
+          if (!exists) {
+            return [...prev, messageData];
+          }
+          return prev;
+        });
+      }
+
+      // If the message is TO the currently selected user (we sent it), also add it
+      if (selectedUser && messageData.receiverId === selectedUser.id && messageData.senderId === user?.id) {
+        console.log("Adding sent message to current conversation");
+        setMessages(prev => {
+          // Check if message already exists to avoid duplicates
+          const exists = prev.some(m => m.id === messageData.id);
+          if (!exists) {
+            return [...prev, messageData];
+          }
+          return prev;
+        });
+      }
+
+      // Update conversations list
+      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
+    };
+
+    window.addEventListener('websocket:direct_message', handleDirectMessage as EventListener);
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedUser) {
       console.log("Cannot send message: missing content or selected user");
@@ -219,7 +257,7 @@ export function DirectMessages() {
 
     try {
       console.log("Sending message to user:", selectedUser.id, "Content:", newMessage);
-      
+
       const response = await fetch("/api/direct-messages", {
         method: "POST",
         headers: {
@@ -236,13 +274,13 @@ export function DirectMessages() {
       if (response.ok) {
         const sentMessage = await response.json();
         console.log("Message sent successfully:", sentMessage);
-        
+
         // Clear the input immediately
         setNewMessage("");
-        
+
         // Don't add the message to local state here - let SSE handle it to avoid duplicates
         // The message will be added via the SSE event listener
-        
+
       } else {
         const errorText = await response.text();
         console.error("Failed to send message:", response.status, errorText);
@@ -257,12 +295,12 @@ export function DirectMessages() {
   const handleUserSelect = (selectedUser: User) => {
     setSelectedUser(selectedUser);
     setView("conversations");
-    
+
     // Mark messages as read
     fetch(`/api/direct-messages/${selectedUser.id}/read`, {
       method: "PUT",
     });
-    
+
     // Update unread count in conversations
     setConversations(prev => 
       prev.map(conv => 
@@ -306,7 +344,7 @@ export function DirectMessages() {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full p-4">
             <div className="space-y-4">
@@ -342,7 +380,7 @@ export function DirectMessages() {
             </div>
           </ScrollArea>
         </CardContent>
-        
+
         <CardFooter className="border-t p-4">
           <div className="flex gap-2 w-full">
             <Input
@@ -399,7 +437,7 @@ export function DirectMessages() {
           />
         </div>
       </CardHeader>
-      
+
       <CardContent className="flex-1 overflow-hidden p-0">
         <ScrollArea className="h-full">
           {view === "conversations" ? (

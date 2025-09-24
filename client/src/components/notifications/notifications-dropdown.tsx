@@ -157,6 +157,29 @@ export function NotificationsDropdown() {
     };
   }, [user?.id, queryClient]); // Added queryClient to dependency array
 
+  // Auto-refresh notifications every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [queryClient]);
+
+  // Set up WebSocket real-time updates for notifications
+  useEffect(() => {
+    const handleNotification = (event: CustomEvent) => {
+      console.log("Notification received via WebSocket, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    };
+
+    window.addEventListener('websocket:notification', handleNotification as EventListener);
+
+    return () => {
+      window.removeEventListener('websocket:notification', handleNotification as EventListener);
+    };
+  }, [queryClient]);
+
   // Combine fetched notifications with SSE notifications and sort by createdAt descending
   const combinedNotifications = [...sseNotifications, ...notifications].sort((a, b) => {
     const dateA = a.createdAt ? parseISO(a.createdAt) : null;

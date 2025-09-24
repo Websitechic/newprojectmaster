@@ -105,13 +105,17 @@ export function setupWebSocket(wss: WebSocketServer) {
         ws.once('message', (data) => {
           try {
             const message = JSON.parse(data.toString());
-            if (message.type === 'auth' && message.userId) { // Corrected to use userId from message
+            if (message.type === 'auth' && message.userId) {
               userId = message.userId;
+              extWs.userId = userId;
+              
               if (!global.connectedClients) {
                 global.connectedClients = new Map();
               }
               global.connectedClients.set(message.userId, ws as ExtendedWebSocket);
               console.log(`WebSocket user authenticated via message: ${message.userId}`);
+
+              clearTimeout(authTimeout);
 
               if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
@@ -198,28 +202,78 @@ export function setupWebSocket(wss: WebSocketServer) {
           } else {
             // Handle other message types here
             console.log('Received message:', message);
-            // Example: broadcast message to other clients in the same project
-            if (message.projectId && message.text && userId) {
+            
+            // Handle project messages
+            if (message.type === 'project_message' && message.projectId && message.content && userId) {
               const projectId = message.projectId;
               const senderUserId = userId;
               if (global.connectedClients) {
                 global.connectedClients.forEach((client, clientId) => {
                   if (client.userId === senderUserId) return; // Don't send back to sender
-                  if (client.projectId === projectId && client.readyState === WebSocket.OPEN) {
+                  if (client.readyState === WebSocket.OPEN) {
                     try {
                       client.send(JSON.stringify({
-                        type: 'message',
-                        sender: senderUserId,
-                        text: message.text,
-                        projectId: projectId
+                        type: 'project_message',
+                        data: {
+                          projectId: projectId,
+                          content: message.content,
+                          senderId: senderUserId,
+                          createdAt: new Date().toISOString()
+                        }
                       }));
                     } catch (sendError) {
-                      console.error(`Error sending message to client ${clientId}:`, sendError);
+                      console.error(`Error sending project message to client ${clientId}:`, sendError);
                     }
                   }
                 });
               }
             }
+            
+            // Handle direct messages
+            if (message.type === 'direct_message' && message.receiverId && message.content && userId) {
+              const receiverId = message.receiverId;
+              const receiverClient = global.connectedClients?.get(receiverId);
+              if (receiverClient && receiverClient.readyState === WebSocket.OPEN) {
+                try {
+                  receiverClient.send(JSON.stringify({
+                    type: 'direct_message',
+                    data: {
+                      senderId: userId,
+                      receiverId: receiverId,
+                      content: message.content,
+                      createdAt: new Date().toISOString()
+                    }
+                  }));
+                } catch (sendError) {
+                  console.error(`Error sending direct message to user ${receiverId}:`, sendError);
+                }
+              }
+            }
+            
+            // Handle task status updates
+            if (message.type === 'task_update' && message.taskId && userId) {
+              if (global.connectedClients) {
+                global.connectedClients.forEach((client, clientId) => {
+                  if (client.userId === userId) return; // Don't send back to sender
+                  if (client.readyState === WebSocket.OPEN) {
+                    try {
+                      client.send(JSON.stringify({
+                        type: 'task_update',
+                        data: {
+                          taskId: message.taskId,
+                          status: message.status,
+                          updatedBy: userId,
+                          updatedAt: new Date().toISOString()
+                        }
+                      }));
+                    } catch (sendError) {
+                      console.error(`Error sending task update to client ${clientId}:`, sendError);
+                    }
+                  }
+                });
+              }
+            }
+          }
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { useLocation } from "wouter";
@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Task, Project } from "@db/schema";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
 export default function Tasks() {
@@ -20,8 +20,9 @@ export default function Tasks() {
   const [filter, setFilter] = useState("all");
   const [selectedProject, setSelectedProject] = useState<string>("");
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
+  const { data: tasks, isLoading: tasksLoading, error: tasksError } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
     refetchOnWindowFocus: true,
     staleTime: 0, // Always fetch fresh data
@@ -29,7 +30,7 @@ export default function Tasks() {
     enabled: !!user, // Only fetch if user is authenticated
   });
 
-  const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
+  const { data: projects, isLoading: projectsLoading, error: projectsError } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     refetchOnWindowFocus: true,
     staleTime: 0, // Always fetch fresh data
@@ -58,6 +59,41 @@ export default function Tasks() {
       </div>
     );
   }
+
+  // Handle potential errors from queries
+  if (tasksError) {
+    return (
+      <div className="flex items-center justify-center h-screen text-red-500">
+        Error loading tasks: {tasksError.message}
+      </div>
+    );
+  }
+  if (projectsError) {
+    return (
+      <div className="flex items-center justify-center h-screen text-red-500">
+        Error loading projects: {projectsError.message}
+      </div>
+    );
+  }
+
+
+  // Set up WebSocket real-time updates for tasks
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const handleTaskUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log("Task update received via WebSocket, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    };
+
+    window.addEventListener('websocket:task_update', handleTaskUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('websocket:task_update', handleTaskUpdate as EventListener);
+    };
+  }, [user?.id, queryClient]);
+
 
   return (
     <div className="flex h-screen">

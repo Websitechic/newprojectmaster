@@ -71,9 +71,24 @@ export function useWebSocket(userId: number | undefined) {
       ws.current.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          // This is where you would typically handle incoming messages
-          // For example: if (message.type === 'chat_message') { ... }
-          // console.log("Received message:", message);
+          console.log("Received WebSocket message:", message);
+          
+          // Handle different message types
+          if (message.type === 'auth_success') {
+            console.log('WebSocket authentication successful');
+          } else if (message.type === 'project_message') {
+            // Trigger page refresh for project messages
+            window.dispatchEvent(new CustomEvent('websocket:project_message', { detail: message.data }));
+          } else if (message.type === 'direct_message') {
+            // Trigger page refresh for direct messages
+            window.dispatchEvent(new CustomEvent('websocket:direct_message', { detail: message.data }));
+          } else if (message.type === 'task_update') {
+            // Trigger page refresh for task updates
+            window.dispatchEvent(new CustomEvent('websocket:task_update', { detail: message.data }));
+          } else if (message.type === 'notification') {
+            // Trigger notification updates
+            window.dispatchEvent(new CustomEvent('websocket:notification', { detail: message.data }));
+          }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
         }

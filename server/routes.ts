@@ -277,7 +277,7 @@ export function registerRoutes(app: Express): Server {
         if (task.assigneeId && task.deadline) {
           const hoursUntilDeadline = Math.ceil((new Date(task.deadline).getTime() - now.getTime()) / (1000 * 60 * 60));
           let reminderMessage = "";
-          
+
           if (hoursUntilDeadline <= 2) {
             reminderMessage = `⚠️ URGENT: Task "${task.title}" is due in ${hoursUntilDeadline} hour${hoursUntilDeadline !== 1 ? 's' : ''}`;
           } else if (hoursUntilDeadline <= 8) {
@@ -385,7 +385,7 @@ export function registerRoutes(app: Express): Server {
           .select()
           .from(projects)
           .orderBy(desc(projects.updatedAt));
-      } else if (user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
+      } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
         // Operations managers and team leads see all projects with full access
         projectsList = await db
           .select()
@@ -2756,7 +2756,6 @@ End of Report
               referenceId: complaintId,
               referenceType: "project", // Using existing type
             });
-          console.log("Notification sent to staff member:", existingComplaint.submitterId);
         } catch (notificationError) {
           console.error("Error creating notification for staff complaint update:", notificationError);
           // Continue execution even if notification fails
@@ -3727,7 +3726,7 @@ End of Report
       return res.status(401).send("Not authenticated");
     }
 
-    const user = req.user!;
+    const user= req.user!;
 
     try {
       const { title, description, type, participants, startTime, endTime, meetingLink, notes } = req.body;
@@ -3925,7 +3924,6 @@ End of Report
         resolution: request.resolution,
         createdAt: request.createdAt,
         updatedAt: request.updatedAt,
-        resolvedAt: request.resolvedAt,
         requester: {
           id: request.requesterId,
           name: request.requesterName,
@@ -6227,7 +6225,7 @@ End of Report
         .where(eq(projects.id, task.projectId))
         .limit(1);
 
-      if (project && project.managerId !== user.id) {
+      if (project && project.managerId && project.managerId !== user.id) {
         const hours = Math.floor(sessionDuration / 3600);
         const minutes = Math.floor((sessionDuration % 3600) / 60);
         const timeWorked = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;

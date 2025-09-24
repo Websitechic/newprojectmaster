@@ -109,31 +109,30 @@ export default function TeamChat() {
     },
   });
 
-  // Set up SSE for real-time updates
+  // Set up SSE and WebSocket for real-time updates
   useEffect(() => {
     if (!user?.id || !projectId) return;
 
-    let isMounted = true;
-    console.log("Setting up SSE connection for team chat");
-    const eventSource = new EventSource("/api/notifications/stream");
+    console.log(`Setting up real-time updates for team chat in project ${projectId}`);
+
+    // SSE connection
+    const eventSource = new EventSource("/api/notifications/stream", {
+      withCredentials: true
+    });
 
     eventSource.onopen = () => {
-      if (isMounted) {
-        console.log("SSE connection opened for team chat");
-      }
+      console.log("SSE connection opened for team chat");
     };
 
     eventSource.onmessage = (event) => {
-      if (!isMounted) return;
-
       try {
         const data = JSON.parse(event.data);
         console.log("SSE message received in team chat:", data);
-        if (data.type === "team_message") {
+        if (data.type === "project_message" && data.data.projectId === projectId) {
           console.log("Team message received via SSE, invalidating queries");
           queryClient.invalidateQueries({ 
             queryKey: [`/api/projects/${projectId}/team-messages`] 
-          }).catch(console.error);
+          });
         }
       } catch (error) {
         console.error("Error parsing SSE message in team chat:", error);
@@ -141,15 +140,26 @@ export default function TeamChat() {
     };
 
     eventSource.onerror = (error) => {
-      if (isMounted) {
-        console.error("SSE error in team chat:", error);
+      console.error("SSE error in team chat:", error);
+    };
+
+    // WebSocket event listeners
+    const handleProjectMessage = (event: CustomEvent) => {
+      const messageData = event.detail;
+      if (messageData.projectId === projectId) {
+        console.log("Team message received via WebSocket, invalidating queries");
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/projects/${projectId}/team-messages`] 
+        });
       }
     };
 
+    window.addEventListener('websocket:project_message', handleProjectMessage as EventListener);
+
     return () => {
-      isMounted = false;
-      console.log("Closing SSE connection for team chat");
+      console.log("Cleaning up real-time connections for team chat");
       eventSource.close();
+      window.removeEventListener('websocket:project_message', handleProjectMessage as EventListener);
     };
   }, [user?.id, projectId, queryClient]);
 
