@@ -1730,6 +1730,88 @@ End of Report
     }
   });
 
+  // Delete task (DELETE endpoint for operations managers and project managers)
+  app.delete("/api/tasks/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const taskId = parseInt(req.params.id);
+
+    try {
+      // Check if task exists
+      const [existingTask] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+
+      if (!existingTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Get project information to check permissions
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, existingTask.projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check permissions
+      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+      const isProductOwner = user.role === "product_owner";
+      const isTechnicalSupport = user.role === "staff" && user.specialization === "technical_support";
+
+      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isTechnicalSupport) {
+        return res.status(403).json({ error: "Access denied - insufficient permissions to delete this task" });
+      }
+
+      // For product owners, check if the project is Support & Maintenance category
+      if (isProductOwner && project.category !== "support_maintenance") {
+        return res.status(403).json({
+          error: "Product owners can only delete tasks in Support & Maintenance category projects"
+        });
+      }
+
+      // Delete the task
+      await db
+        .delete(tasks)
+        .where(eq(tasks.id, taskId));
+
+      // Send real-time notification via WebSocket to all connected clients
+      if (global.connectedClients) {
+        global.connectedClients.forEach((client, clientId) => {
+          if (client.readyState === 1) { // WebSocket.OPEN
+            try {
+              client.send(JSON.stringify({
+                type: 'task_deleted',
+                data: {
+                  taskId: taskId,
+                  projectId: existingTask.projectId,
+                  deletedBy: user.id,
+                  deletedAt: new Date().toISOString()
+                }
+              }));
+            } catch (sendError) {
+              console.error(`Error sending task deletion notification to client ${clientId}:`, sendError);
+            }
+          }
+        });
+      }
+
+      return res.json({ success: true, message: "Task deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      return res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
   // Upload file for SOP segments
   app.post("/api/sops/upload-file", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -5929,7 +6011,7 @@ End of Report
         });
       }
 
-      return res.status(201).json(result);
+      return res.status(201).json(newTask);
     } catch (error) {
       console.error("Error creating task:", error);
       return res.status(500).json({ error: "Failed to create task" });
