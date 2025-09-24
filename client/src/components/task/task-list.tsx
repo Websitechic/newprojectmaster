@@ -96,12 +96,23 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       }
     };
 
+    const handleTaskDeleted = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log("Task deletion received in task list, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+      }
+    };
+
     window.addEventListener('websocket:task_update', handleTaskUpdate as EventListener);
     window.addEventListener('websocket:task_created', handleTaskCreated as EventListener);
+    window.addEventListener('websocket:task_deleted', handleTaskDeleted as EventListener);
 
     return () => {
       window.removeEventListener('websocket:task_update', handleTaskUpdate as EventListener);
       window.removeEventListener('websocket:task_created', handleTaskCreated as EventListener);
+      window.removeEventListener('websocket:task_deleted', handleTaskDeleted as EventListener);
     };
   }, [user?.id, queryClient, projectId]);
 

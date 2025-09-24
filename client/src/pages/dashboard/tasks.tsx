@@ -95,12 +95,21 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
     };
 
+    const handleTaskDeleted = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log("Task deletion received via WebSocket, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    };
+
     window.addEventListener('websocket:task_update', handleTaskUpdate as EventListener);
     window.addEventListener('websocket:task_created', handleTaskCreated as EventListener);
+    window.addEventListener('websocket:task_deleted', handleTaskDeleted as EventListener);
 
     return () => {
       window.removeEventListener('websocket:task_update', handleTaskUpdate as EventListener);
       window.removeEventListener('websocket:task_created', handleTaskCreated as EventListener);
+      window.removeEventListener('websocket:task_deleted', handleTaskDeleted as EventListener);
     };
   }, [user?.id, queryClient]);
 
