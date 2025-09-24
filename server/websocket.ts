@@ -109,9 +109,11 @@ export function setupWebSocket(wss: WebSocketServer) {
         });
 
         // Handle auth message for unauthenticated connections
-        ws.once('message', (data) => {
+        const handleAuthMessage = (data: Buffer) => {
           try {
             const message = JSON.parse(data.toString());
+            console.log('Received WebSocket message for unauthenticated connection:', message);
+            
             if (message.type === 'auth' && message.userId) {
               userId = message.userId;
               extWs.userId = userId;
@@ -130,6 +132,10 @@ export function setupWebSocket(wss: WebSocketServer) {
                   userId: message.userId
                 }));
               }
+
+              // Remove the auth-specific message handler and set up the main message handler
+              ws.removeListener('message', handleAuthMessage);
+              setupMessageHandler();
             } else if (message.type === 'ping') {
               if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'pong' }));
@@ -138,7 +144,9 @@ export function setupWebSocket(wss: WebSocketServer) {
           } catch (error) {
             console.error("Error parsing WebSocket auth message:", error);
           }
-        });
+        };
+
+        ws.on('message', handleAuthMessage);
 
       } else {
         userId = session.passport.user;
@@ -182,27 +190,18 @@ export function setupWebSocket(wss: WebSocketServer) {
         }
       });
 
+      // Set up the main message handler
+      const setupMessageHandler = () => {
+        ws.on('message', handleMainMessages);
+      };
+
       // Handle messages
-      ws.on('message', (data) => {
+      const handleMainMessages = (data: Buffer) => {
         try {
           const message = JSON.parse(data.toString());
+          console.log('Received WebSocket message from authenticated user:', message);
 
-          // Handle auth message (if not handled during initial connection setup)
-          if (message.type === 'auth' && message.userId) {
-            userId = message.userId;
-            if (!global.connectedClients) {
-              global.connectedClients = new Map();
-            }
-            global.connectedClients.set(message.userId, ws as ExtendedWebSocket);
-            console.log(`WebSocket user authenticated via message: ${message.userId}`);
-
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({
-                type: 'auth_success',
-                userId: message.userId
-              }));
-            }
-          } else if (message.type === 'ping') {
+          if (message.type === 'ping') {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ type: 'pong' }));
             }
@@ -284,7 +283,12 @@ export function setupWebSocket(wss: WebSocketServer) {
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
         }
-      });
+      };
+
+      // If user is already authenticated, set up main message handler immediately
+      if (userId) {
+        setupMessageHandler();
+      }
     } catch (error) {
       console.error('Error in WebSocket connection setup:', error);
       ws.close(1011, 'Server error during connection setup');

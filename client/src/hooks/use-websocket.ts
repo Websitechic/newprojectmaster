@@ -57,9 +57,10 @@ export function useWebSocket(userId: number | undefined) {
       ws.current.onopen = () => {
         console.log('WebSocket connection opened');
         reconnectAttempts.current = 0; // Reset reconnect attempts on successful connection
-        // Send authentication message with userId if available
+        // Send authentication message with userId immediately
         if (ws.current?.readyState === WebSocket.OPEN && userId) {
           try {
+            console.log('Sending WebSocket auth message for user:', userId);
             ws.current.send(JSON.stringify({ type: "auth", userId }));
           } catch (error) {
             console.error('Error sending auth message:', error);

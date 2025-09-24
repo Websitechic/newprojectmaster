@@ -2543,7 +2543,7 @@ End of Report
     try {
       const { name, email, department, detailedExplanation } = req.body;
 
-      console.log("Staff complaint submission:", { name, email, department, userId: user.id });
+      console.log("Staff complaint submission:", { name, email, department, detailedExplanation, userId: user.id });
 
       if (!name || !email || !detailedExplanation) {
         return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
@@ -5418,7 +5418,7 @@ End of Report
       res.json({ success: true });
     } catch (error) {
       console.error("Error marking messages as read:", error);
-      res.status(500).json({ error: "Failed to mark messages as read" });
+      res.status(500).json({ error: ""Failed to mark messages as read" });
     }
   });
 
@@ -5989,11 +5989,13 @@ End of Report
         .returning();
 
       // Send real-time notification via WebSocket to all connected clients
+      console.log(`Sending task creation WebSocket notification for task ${newTask.id}`);
       if (global.connectedClients) {
+        console.log(`Broadcasting to ${global.connectedClients.size} connected clients`);
         global.connectedClients.forEach((client, clientId) => {
           if (client.readyState === 1) { // WebSocket.OPEN
             try {
-              client.send(JSON.stringify({
+              const notification = {
                 type: 'task_created',
                 data: {
                   taskId: newTask.id,
@@ -6003,12 +6005,16 @@ End of Report
                   createdBy: user.id,
                   createdAt: new Date().toISOString()
                 }
-              }));
+              };
+              console.log(`Sending task creation notification to client ${clientId}:`, notification);
+              client.send(JSON.stringify(notification));
             } catch (sendError) {
               console.error(`Error sending task creation notification to client ${clientId}:`, sendError);
             }
           }
         });
+      } else {
+        console.log('No connected WebSocket clients found');
       }
 
       return res.status(201).json(newTask);
