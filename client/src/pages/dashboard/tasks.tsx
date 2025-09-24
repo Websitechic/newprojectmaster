@@ -85,12 +85,22 @@ export default function Tasks() {
       const customEvent = event as CustomEvent;
       console.log("Task update received via WebSocket, invalidating queries");
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    };
+
+    const handleTaskCreated = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log("Task creation received via WebSocket, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
     };
 
     window.addEventListener('websocket:task_update', handleTaskUpdate as EventListener);
+    window.addEventListener('websocket:task_created', handleTaskCreated as EventListener);
 
     return () => {
       window.removeEventListener('websocket:task_update', handleTaskUpdate as EventListener);
+      window.removeEventListener('websocket:task_created', handleTaskCreated as EventListener);
     };
   }, [user?.id, queryClient]);
 

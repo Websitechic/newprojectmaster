@@ -204,6 +204,37 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     },
   });
 
+  // Set up WebSocket real-time updates for tasks
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const handleTaskUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log("Task update received in staff task list, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+      }
+    };
+
+    const handleTaskCreated = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log("Task creation received in staff task list, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+      }
+    };
+
+    window.addEventListener('websocket:task_update', handleTaskUpdate as EventListener);
+    window.addEventListener('websocket:task_created', handleTaskCreated as EventListener);
+
+    return () => {
+      window.removeEventListener('websocket:task_update', handleTaskUpdate as EventListener);
+      window.removeEventListener('websocket:task_created', handleTaskCreated as EventListener);
+    };
+  }, [user?.id, queryClient, projectId]);
+
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);

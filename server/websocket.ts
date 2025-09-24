@@ -81,6 +81,13 @@ export function setupWebSocket(wss: WebSocketServer) {
         session = null;
       }
 
+      // Log session details for debugging
+      console.log('WebSocket connection session check:', {
+        hasSession: !!session,
+        hasPassport: !!(session && session.passport),
+        hasUser: !!(session && session.passport && session.passport.user)
+      });
+
       if (!session || !session.passport || !session.passport.user) {
         console.log('WebSocket connection without authenticated session - will wait for auth message');
 

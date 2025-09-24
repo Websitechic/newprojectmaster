@@ -85,6 +85,12 @@ export function useWebSocket(userId: number | undefined) {
           } else if (message.type === 'task_update') {
             // Trigger page refresh for task updates
             window.dispatchEvent(new CustomEvent('websocket:task_update', { detail: message.data }));
+          } else if (message.type === 'task_created') {
+            // Trigger page refresh for task creation
+            window.dispatchEvent(new CustomEvent('websocket:task_created', { detail: message.data }));
+          } else if (message.type === 'task_updated') {
+            // Trigger page refresh for task updates (alternative event name)
+            window.dispatchEvent(new CustomEvent('websocket:task_update', { detail: message.data }));
           } else if (message.type === 'notification') {
             // Trigger notification updates
             window.dispatchEvent(new CustomEvent('websocket:notification', { detail: message.data }));
