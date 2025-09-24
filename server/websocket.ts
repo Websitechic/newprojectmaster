@@ -274,7 +274,6 @@ export function setupWebSocket(wss: WebSocketServer) {
               }
             }
           }
-          }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
         }
