@@ -5418,7 +5418,7 @@ End of Report
       res.json({ success: true });
     } catch (error) {
       console.error("Error marking messages as read:", error);
-      res.status(500).json({ error: ""Failed to mark messages as read" });
+      res.status(500).json({ error: "Failed to mark messages as read" });
     }
   });
 
