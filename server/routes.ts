@@ -6168,6 +6168,65 @@ End of Report
     }
   });
 
+  app.post("/api/tasks/:id/pause-timer", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const taskId = parseInt(req.params.id);
+
+    try {
+      // Get task with current timer info
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      if (task.assigneeId !== user.id) {
+        return res.status(403).json({ error: "You can only pause timer for tasks assigned to you" });
+      }
+
+      if (!task.isTimerRunning || !task.timerStartTime) {
+        return res.status(400).json({ error: "Timer is not running" });
+      }
+
+      // Calculate session duration
+      const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
+      const newTimeSpent = (task.timeSpent || 0) + sessionDuration;
+
+      // Update task with accumulated time and pause timer
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          isTimerRunning: false,
+          timerStartTime: null,
+          timeSpent: newTimeSpent,
+        })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      // Clear user's current task
+      await db
+        .update(users)
+        .set({
+          currentTaskId: null,
+          taskStartTime: null,
+        })
+        .where(eq(users.id, user.id));
+
+      res.json({ success: true, timeSpent: newTimeSpent, task: updatedTask });
+    } catch (error) {
+      console.error("Error pausing task timer:", error);
+      res.status(500).json({ error: "Failed to pause timer" });
+    }
+  });
+
   app.post("/api/tasks/:id/stop-timer", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
