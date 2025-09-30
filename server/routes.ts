@@ -4118,7 +4118,7 @@ End of Report
 
     const user = req.user!;
 
-    // Only non-project manager staff can create requests
+    // Only project manager staff can create requests
     if (user.role === "project_manager") {
       return res.status(403).json({ error: "Project managers cannot create deadline extension requests" });
     }
@@ -5775,6 +5775,110 @@ End of Report
     }
   });
 
+  // Delete project
+  app.delete("/api/projects/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+
+    try {
+      // Check if project exists
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check permissions
+      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+      const isProductOwner = user.role === "product_owner";
+
+      if (!isOperationsManager && !isProjectManager && !isProductOwner) {
+        return res.status(403).json({ error: "Access denied - insufficient permissions to delete this project" });
+      }
+
+      // For product owners, check if the project is Support & Maintenance category
+      if (isProductOwner && project.category !== "support_maintenance") {
+        return res.status(403).json({
+          error: "Product owners can only delete Support & Maintenance category projects"
+        });
+      }
+
+      // Delete related data first (in order of dependencies)
+
+      // Delete deliverables
+      const projectPlanIds = await db
+        .select({ id: projectPlans.id })
+        .from(projectPlans)
+        .where(eq(projectPlans.projectId, projectId));
+
+      if (projectPlanIds.length > 0) {
+        await db
+          .delete(deliverables)
+          .where(inArray(deliverables.projectPlanId, projectPlanIds.map(p => p.id)));
+      }
+
+      // Delete project plans
+      await db
+        .delete(projectPlans)
+        .where(eq(projectPlans.projectId, projectId));
+
+      // Delete project messages and read receipts
+      const projectMessageIds = await db
+        .select({ id: projectMessages.id })
+        .from(projectMessages)
+        .where(eq(projectMessages.projectId, projectId));
+
+      if (projectMessageIds.length > 0) {
+        await db
+          .delete(messageReadReceipts)
+          .where(inArray(messageReadReceipts.messageId, projectMessageIds.map(m => m.id)));
+      }
+
+      await db
+        .delete(projectMessages)
+        .where(eq(projectMessages.projectId, projectId));
+
+      // Delete resources
+      await db
+        .delete(resources)
+        .where(eq(resources.projectId, projectId));
+
+      // Delete tasks
+      await db
+        .delete(tasks)
+        .where(eq(tasks.projectId, projectId));
+
+      // Delete project members
+      await db
+        .delete(projectMembers)
+        .where(eq(projectMembers.projectId, projectId));
+
+      // Delete client invitations
+      await db
+        .delete(clientInvitations)
+        .where(eq(clientInvitations.projectId, projectId));
+
+      // Finally delete the project
+      await db
+        .delete(projects)
+        .where(eq(projects.id, projectId));
+
+      res.json({ success: true, message: "Project deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      res.status(500).json({ error: "Failed to delete project" });
+    }
+  });
+
   // Helper function to create notifications with proper error handling
   async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
     try {
@@ -6206,66 +6310,7 @@ End of Report
     } catch (error) {
       console.error("Error starting task timer:", error);
       res.status(500).json({ error: "Failed to start timer" });
-    }
-  });
-
-  app.post("/api/tasks/:id/pause-timer", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    const user = req.user!;
-    const taskId = parseInt(req.params.id);
-
-    try {
-      // Get task with current timer info
-      const [task] = await db
-        .select()
-        .from(tasks)
-        .where(eq(tasks.id, taskId))
-        .limit(1);
-
-      if (!task) {
-        return res.status(404).json({ error: "Task not found" });
-      }
-
-      if (task.assigneeId !== user.id) {
-        return res.status(403).json({ error: "You can only pause timer for tasks assigned to you" });
-      }
-
-      if (!task.isTimerRunning || !task.timerStartTime) {
-        return res.status(400).json({ error: "Timer is not running" });
-      }
-
-      // Calculate session duration
-      const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
-      const newTimeSpent = (task.timeSpent || 0) + sessionDuration;
-
-      // Update task with accumulated time and pause timer
-      const [updatedTask] = await db
-        .update(tasks)
-        .set({
-          isTimerRunning: false,
-          timerStartTime: null,
-          timeSpent: newTimeSpent,
-        })
-        .where(eq(tasks.id, taskId))
-        .returning();
-
-      // Clear user's current task
-      await db
-        .update(users)
-        .set({
-          currentTaskId: null,
-          taskStartTime: null,
-        })
-        .where(eq(users.id, user.id));
-
-      res.json({ success: true, timeSpent: newTimeSpent, task: updatedTask });
-    } catch (error) {
-      console.error("Error pausing task timer:", error);
-      res.status(500).json({ error: "Failed to pause timer" });
-    }
+}
   });
 
   app.post("/api/tasks/:id/pause-timer", async (req, res) => {
