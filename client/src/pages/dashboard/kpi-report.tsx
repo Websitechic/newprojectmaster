@@ -60,7 +60,8 @@ const departments = [
   { value: "automation", label: "Automation" },
   { value: "community_manager", label: "Community Manager" },
   { value: "project_manager", label: "Project Manager" },
-  { value: "product_owner", label: "Product Owner" }
+  { value: "product_owner", label: "Product Owner" },
+  { value: "replit_development", label: "Replit Development" }
 ];
 
 const getStatusColor = (status: string) => {
