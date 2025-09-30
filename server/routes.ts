@@ -5886,6 +5886,106 @@ End of Report
     }
   });
 
+  // Update project plan
+  app.put("/api/project-plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const planId = parseInt(req.params.id);
+    const { name, description, startDate, endDate, deliverables: planDeliverables } = req.body;
+
+    try {
+      console.log("Updating project plan:", planId);
+      console.log("Plan data:", {name, description, startDate, endDate, deliverables: planDeliverables});
+
+      if (!name) {
+        return res.status(400).json({ error: "Plan name is required" });
+      }
+
+      if (!planDeliverables || !Array.isArray(planDeliverables) || planDeliverables.length === 0) {
+        return res.status(400).json({ error: "At least one deliverable is required" });
+      }
+
+      // Verify project plan exists
+      const [existingPlan] = await db
+        .select()
+        .from(projectPlans)
+        .where(eq(projectPlans.id, planId))
+        .limit(1);
+
+      if (!existingPlan) {
+        return res.status(404).json({ error: "Project plan not found" });
+      }
+
+      // Parse dates
+      let parsedStartDate: Date | null = null;
+      let parsedEndDate: Date | null = null;
+
+      if (startDate) {
+        parsedStartDate = new Date(startDate);
+        if (isNaN(parsedStartDate.getTime())) {
+          return res.status(400).json({ error: "Invalid start date format" });
+        }
+      }
+
+      if (endDate) {
+        parsedEndDate = new Date(endDate);
+        if (isNaN(parsedEndDate.getTime())) {
+          return res.status(400).json({ error: "Invalid end date format" });
+        }
+      }
+
+      if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+        return res.status(400).json({ error: "Start date cannot be after end date" });
+      }
+
+      // Update project plan
+      const [updatedPlan] = await db
+        .update(projectPlans)
+        .set({
+          name,
+          description: description || "",
+          startDate: parsedStartDate,
+          endDate: parsedEndDate,
+          status: "draft",
+          updatedAt: new Date(),
+        })
+        .where(eq(projectPlans.id, planId))
+        .returning();
+
+      // Delete existing deliverables
+      await db
+        .delete(deliverables)
+        .where(eq(deliverables.projectPlanId, planId));
+
+      // Create new deliverables
+      if (planDeliverables && planDeliverables.length > 0) {
+        const deliverableData = planDeliverables.map((deliverable: any, index: number) => ({
+          projectPlanId: planId,
+          name: deliverable.name || `Deliverable ${index + 1}`,
+          description: deliverable.description || "",
+          startDate: deliverable.startDate ? new Date(deliverable.startDate) : parsedStartDate,
+          endDate: deliverable.endDate ? new Date(deliverable.endDate) : parsedEndDate,
+          duration: deliverable.duration || 1,
+          status: "pending",
+          order: deliverable.order || index,
+        }));
+
+        await db.insert(deliverables).values(deliverableData);
+      }
+
+      res.json(updatedPlan);
+    } catch (error) {
+      console.error("Error updating project plan:", error);
+      res.status(500).json({
+        error: "Failed to update project plan",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Get all tasks (filtered by user role)
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) {
