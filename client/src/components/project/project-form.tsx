@@ -81,7 +81,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
   const queryClient = useQueryClient();
 
   // Fetch existing project members if editing a project
-  const { data: existingMembers = [] } = useQuery({
+  const { data: existingMembers = [], isSuccess: membersLoaded } = useQuery({
     queryKey: [`/api/projects/${project?.id}/members`],
     queryFn: async () => {
       if (!project?.id) return [];
@@ -121,18 +121,15 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
   // Update form when existing members are loaded
   useEffect(() => {
-    if (project?.id && existingMembers && existingMembers.length > 0) {
+    if (project?.id && membersLoaded && existingMembers.length >= 0) {
       const memberIds = existingMembers
         .filter((member: any) => member.invitationStatus === 'accepted')
         .map((member: any) => member.userId.toString());
       
-      // Only update if the current value is empty (initial load)
-      const currentTeamMembers = form.getValues('teamMembers');
-      if (!currentTeamMembers || currentTeamMembers.length === 0) {
-        form.setValue('teamMembers', memberIds);
-      }
+      console.log('Setting team members:', memberIds);
+      form.setValue('teamMembers', memberIds, { shouldValidate: false });
     }
-  }, [existingMembers, project?.id]);
+  }, [membersLoaded, existingMembers, project?.id, form]);
 
   // Fetch clients for dropdown
   const { data: clients } = useQuery({
