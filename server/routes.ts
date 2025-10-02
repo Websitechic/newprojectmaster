@@ -4984,6 +4984,55 @@ End of Report
     }
   });
 
+  // Get project members
+  app.get("/api/projects/:id/members", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+
+    try {
+      // Check if project exists and user has access
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const hasAccess = 
+        user.role === "operations_manager" || 
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        user.role === "project_manager" ||
+        project.managerId === user.id;
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const members = await db
+        .select({
+          id: projectMembers.id,
+          projectId: projectMembers.projectId,
+          userId: projectMembers.userId,
+          role: projectMembers.role,
+          invitationStatus: projectMembers.invitationStatus,
+          userName: users.name,
+          userEmail: users.email,
+        })
+        .from(projectMembers)
+        .leftJoin(users, eq(projectMembers.userId, users.id))
+        .where(eq(projectMembers.projectId, projectId));
+
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching project members:", error);
+      res.status(500).json({ error: "Failed to fetch project members" });
+    }
+  });
+
   // Get project tasks
   app.get("/api/projects/:id/tasks", async (req, res) => {
     if (!req.isAuthenticated()) {
