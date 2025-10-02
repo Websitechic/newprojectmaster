@@ -521,11 +521,17 @@ export default function TechnicalManagementPage() {
                             </div>
                           </td>
                           <td className="py-2 px-2">
-                            {request.task && (
-                              <div className="text-xs text-blue-600 truncate mt-0.5">
-                                <div className="font-medium">{request.task.projectName || 'Unknown Project'}</div>
-                                <div className="text-gray-600">Task: {request.task.title}</div>
+                            {request.task ? (
+                              <div className="text-xs">
+                                <div className="font-medium text-blue-600 truncate" title={request.task.projectName || 'Unknown Project'}>
+                                  {request.task.projectName || 'Unknown Project'}
+                                </div>
+                                <div className="text-gray-600 truncate" title={request.task.title}>
+                                  {request.task.title}
+                                </div>
                               </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">No task linked</span>
                             )}
                           </td>
                           <td className="py-2 px-2">
@@ -727,9 +733,13 @@ export default function TechnicalManagementPage() {
                       )}
 
                       {request.task && (
-                        <div className="text-blue-600 truncate ml-2 text-xs">
-                          <div className="font-medium">{request.task.projectName || 'Unknown Project'}</div>
-                          <div>Task: {request.task.title}</div>
+                        <div className="truncate ml-2 text-xs">
+                          <div className="font-medium text-blue-600" title={request.task.projectName || 'Unknown Project'}>
+                            {request.task.projectName || 'Unknown Project'}
+                          </div>
+                          <div className="text-gray-600" title={request.task.title}>
+                            {request.task.title}
+                          </div>
                         </div>
                       )}
                     </div>
