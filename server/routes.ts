@@ -3855,7 +3855,7 @@ End of Report
           id: request.taskId,
           title: request.taskTitle,
           projectId: request.taskProjectId,
-          projectName: request.projectName,
+          projectName: request.projectName || null,
         } : null,
       }));
 
