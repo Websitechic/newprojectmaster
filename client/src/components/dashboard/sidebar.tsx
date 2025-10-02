@@ -304,7 +304,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
   ];
 
-  const pmMenuItems = (user?.role === "project_manager" && user?.role !== "team_lead") || (user?.role === "customer_support_officer") || isClientWithSpecialAccess ? [
+  const pmMenuItems = (user?.role === "project_manager" && user?.role !== "team_lead") || isClientWithSpecialAccess ? [
     {
       icon: <Users size={20} />,
       label: "Staff Report",
@@ -365,7 +365,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       hasUpdate: indicators.myQueries,
       key: "staff-queries",
     }
-  ] : user?.role === "customer_support_officer" ? [
+  ] : user?.role === "product_owner" ? [
     {
       icon: <Calendar size={20} />,
       label: "Leave Application",
@@ -391,7 +391,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "My Queries",
       href: "/dashboard/staff-queries",
       hasUpdate: indicators.myQueries,
-      key: "customer-support-officer-queries",
+      key: "product-owner-queries",
     }
   ] : [];
 
@@ -408,7 +408,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/technical-support",
       key: "technical-support",
     }] : [])
-  ] : user?.role === "customer_support_officer" ? [
+  ] : user?.role === "product_owner" ? [
     {
       icon: <Settings size={20} />,
       label: "Technical Management",
@@ -762,8 +762,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
             active={currentPath === "/report-issues"}
           />
 
-          {/* Report Management - Only for operations managers, customer support officers, and Replit Development staff */}
-          {((user?.role === "operations_manager" || user?.specialization === "operations_manager") && user?.role !== "team_lead" || user?.role === "customer_support_officer" || user?.specialization === "replit_development") && (
+          {/* Report Management - Only for operations managers and Replit Development staff */}
+          {((user?.role === "operations_manager" || user?.specialization === "operations_manager") && user?.role !== "team_lead" || user?.specialization === "replit_development") && (
             <SidebarItem
               icon={<Bug size={20} />}
               label="App Issue/Error management"

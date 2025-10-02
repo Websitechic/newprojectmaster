@@ -518,7 +518,7 @@ export function registerRoutes(app: Express): Server {
 
     const {specialization} = req.query;
 
-    // Only apply specialization filter to staff members, not customer support officers
+    // Only apply specialization filter to staff members, not product owners
     let whereCondition;
 
     if (specialization) {
@@ -527,12 +527,12 @@ export function registerRoutes(app: Express): Server {
           eq(users.role, "staff"),
           eq(users.specialization, specialization as string)
         ),
-        eq(users.role, "customer_support_officer")
+        eq(users.role, "product_owner")
       );
     } else {
       whereCondition = or(
         eq(users.role, "staff"),
-        eq(users.role, "customer_support_officer")
+        eq(users.role, "product_owner")
       );
     }
 
@@ -541,8 +541,8 @@ export function registerRoutes(app: Express): Server {
       .from(users)
       .where(whereCondition);
 
-    const staffAndCustomerSupport = await query.orderBy(desc(users.lastActive));
-    res.json(staffAndCustomerSupport);
+    const staffAndProductOwners = await query.orderBy(desc(users.lastActive));
+    res.json(staffAndProductOwners);
   });
 
   // Get all users (for staff queries dropdown)
@@ -579,11 +579,11 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
     const isProjectManager = user.role === "project_manager";
-    const isCustomerSupportOfficer = user.role === "customer_support_officer";
+    const isProductOwner = user.role === "product_owner";
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
 
-    if (!isProjectManager && !isCustomerSupportOfficer && !isOperationsManager) {
-      return res.status(403).json({ error: "Only project managers, customer support officers, and operations managers can access clients" });
+    if (!isProjectManager && !isProductOwner && !isOperationsManager) {
+      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can access clients" });
     }
 
     try {
@@ -608,9 +608,9 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
 
-    // Only customer support officers can access client management
-    if (user.role !== "customer_support_officer") {
-      return res.status(403).json({ error: "Only customer support officers can access client management" });
+    // Only product owners can access client management
+    if (user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only product owners can access client management" });
     }
 
     try {
@@ -3764,8 +3764,8 @@ End of Report
     try {
       let requests;
 
-      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'customer_support_officer' || user.role === 'operations_manager' || user.role === 'team_lead' || user.specialization === 'operations_manager') {
-        // Technical support staff, project managers, product owners, customer support officers, and operations managers see all requests
+      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'operations_manager' || user.role === 'team_lead' || user.specialization === 'operations_manager') {
+        // Technical support staff, project managers, product owners, operations managers, and team leads see all requests
         requests = await db
           .select({
             id: technicalSupportRequests.id,
@@ -4657,9 +4657,9 @@ End of Report
 
     const user = req.user!;
 
-    // Check if user is staff or customer support officer
-    if (user.role !== "staff" && user.role !== "customer_support_officer") {
-      return res.status(403).json({ error: "Only staff members and customer support officers can submit leave applications" });
+    // Check if user is staff or product owner
+    if (user.role !== "staff" && user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only staff members and product owners can submit leave applications" });
     }
 
     try {
@@ -4775,9 +4775,9 @@ End of Report
 
     const user = req.user!;
 
-    // Check if user is staff or customer support officer
-    if (user.role !== "staff" && user.role !== "customer_support_officer") {
-      return res.status(403).json({ error: "Only staff members and customer support officers can access leave applications" });
+    // Check if user is staff or product owner
+    if (user.role !== "staff" && user.role !== "product_owner") {
+      return res.status(403).json({ error: "Only staff members and product owners can access leave applications" });
     }
 
     try {
@@ -5067,7 +5067,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-
+      
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const projectTasks = await db
@@ -5117,7 +5117,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-
+      
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const projectResources = await db
@@ -5385,7 +5385,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-
+      
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const members = await db
@@ -5447,7 +5447,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-
+      
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const messages = await db
@@ -5513,7 +5513,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-
+      
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const [newMessage] = await db
@@ -5705,7 +5705,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-
+      
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const plans = await db
@@ -5765,7 +5765,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-
+      
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       // Get deliverables for this plan
@@ -6517,7 +6517,7 @@ End of Report
 
       res.json(tasksList);
     } catch (error) {
-      console.error("Error fetching tasks:", error);
+      console      .error("Error fetching tasks:", error);
       res.status(500).json({ error: "Failed to fetch tasks" });
     }
   });

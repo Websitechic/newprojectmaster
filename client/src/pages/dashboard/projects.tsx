@@ -292,7 +292,7 @@ export default function Projects() {
             )}
 
             <div className="flex justify-between items-center">
-              {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "customer_support_officer" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager") && (
+              {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager") && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-4 py-2 font-medium">
@@ -399,8 +399,8 @@ export default function Projects() {
                                 </span>
                               </div>
                             </div>
-                            {/* Check if user can edit projects (project managers, product owners, customer support officers, and operations managers) */}
-                            {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "customer_support_officer" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager") && (
+                            {/* Check if user can edit projects (project managers, product owners, and operations managers) */}
+                            {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager") && (
                               <div className="flex space-x-2">
                                 <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
                                   setIsEditDialogOpen(open);
