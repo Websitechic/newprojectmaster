@@ -50,6 +50,7 @@ interface TechnicalSupportRequest {
     id: number;
     title: string;
     projectId: number;
+    projectName: string | null;
   };
 }
 
@@ -141,16 +142,15 @@ export default function TechnicalManagementPage() {
       } else if (sortBy === "assignedTo") {
         aValue = a.assignedTo?.name || "";
         bValue = b.assignedTo?.name || "";
+      } else if (sortBy === "task") {
+        aValue = a.task?.title || "";
+        bValue = b.task?.title || "";
       }
+
 
       if (typeof aValue === "string") {
         return sortOrder === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
       }
-
-      if (typeof aValue === "string") {
-        return sortOrder === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-      }
-
 
       if (aValue instanceof Date || typeof aValue === "string") {
         const dateA = new Date(aValue).getTime();
@@ -434,6 +434,13 @@ export default function TechnicalManagementPage() {
                           {sortBy === 'createdAt' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[150px]"
+                          onClick={() => handleSort('task')}>
+                        <div className="flex items-center gap-1">
+                          Task/Project
+                          {sortBy === 'task' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
+                        </div>
+                      </th>
                       <th className="text-center py-2 px-2 font-medium text-gray-700 w-[100px]">Actions</th>
                     </tr>
                   </thead>
@@ -463,13 +470,6 @@ export default function TechnicalManagementPage() {
                                 <span className="font-medium text-gray-900 block truncate" title={request.title}>
                                   {request.title}
                                 </span>
-                                {request.task && (
-                                  <div className="text-xs text-blue-600 truncate mt-0.5">
-                                    Task: {request.task.title}
-                                    <br />
-                                    Project: {projectMap[request.task.projectId] || `ID: ${request.task.projectId}`}
-                                  </div>
-                                )}
                                 <div className="text-xs text-gray-500 truncate mt-0.5" title={request.description}>
                                   {request.description.substring(0, 60)}...
                                 </div>
@@ -521,6 +521,14 @@ export default function TechnicalManagementPage() {
                             </div>
                           </td>
                           <td className="py-2 px-2">
+                            {request.task && (
+                              <div className="text-xs text-blue-600 truncate mt-0.5">
+                                <div className="font-medium">{request.task.projectName || 'Unknown Project'}</div>
+                                <div className="text-gray-600">Task: {request.task.title}</div>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2 px-2">
                             <div className="flex gap-1 justify-center">
                               <Button
                                 size="sm"
@@ -562,7 +570,7 @@ export default function TechnicalManagementPage() {
                         {expandedRows.has(request.id) && (
                           <tr className="bg-gray-50">
                             <td></td>
-                            <td colSpan={7} className="py-3 px-2">
+                            <td colSpan={8} className="py-3 px-2">
                               <div className="space-y-3 max-w-4xl">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div>
@@ -719,7 +727,10 @@ export default function TechnicalManagementPage() {
                       )}
 
                       {request.task && (
-                        <span className="text-blue-600 truncate ml-2">Task: {request.task.title}</span>
+                        <div className="text-blue-600 truncate ml-2 text-xs">
+                          <div className="font-medium">{request.task.projectName || 'Unknown Project'}</div>
+                          <div>Task: {request.task.title}</div>
+                        </div>
                       )}
                     </div>
 
@@ -785,7 +796,7 @@ export default function TechnicalManagementPage() {
                 <div>
                   <span className="font-medium text-gray-700">Related Task:</span>
                   <p className="text-blue-600">{selectedRequest.task.title}</p>
-                  <p className="text-gray-500 text-xs">Project: {projectMap[selectedRequest.task.projectId] || `ID: ${selectedRequest.task.projectId}`}</p>
+                  <p className="text-gray-500 text-xs">Project: {selectedRequest.task.projectName || `ID: ${selectedRequest.task.projectId}`}</p>
                 </div>
               )}
 

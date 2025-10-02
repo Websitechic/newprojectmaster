@@ -3783,6 +3783,7 @@ End of Report
             requesterName: users.name,
             requesterEmail: users.email,
             taskTitle: tasks.title,
+            taskProjectId: tasks.projectId,
           })
           .from(technicalSupportRequests)
           .leftJoin(users, eq(technicalSupportRequests.requesterId, users.id))
@@ -3807,6 +3808,7 @@ End of Report
             requesterName: users.name,
             requesterEmail: users.email,
             taskTitle: tasks.title,
+            taskProjectId: tasks.projectId,
           })
           .from(technicalSupportRequests)
           .leftJoin(users, eq(technicalSupportRequests.requesterId, users.id))
@@ -3814,6 +3816,19 @@ End of Report
           .where(eq(technicalSupportRequests.requesterId, user.id))
           .orderBy(desc(technicalSupportRequests.createdAt));
       }
+
+      // Get project names for all tasks
+      const projectIds = requests.filter(r => r.taskProjectId).map(r => r.taskProjectId);
+      const uniqueProjectIds = [...new Set(projectIds)];
+      const projectsData = uniqueProjectIds.length > 0 ? await db
+        .select({
+          id: projects.id,
+          name: projects.name,
+        })
+        .from(projects)
+        .where(inArray(projects.id, uniqueProjectIds)) : [];
+
+      const projectMap = new Map(projectsData.map(p => [p.id, p.name]));
 
       // For requests that have assignedToId, get the assigned user info separately
       const assignedUserIds = requests.filter(r => r.assignedToId).map(r => r.assignedToId);
@@ -3848,6 +3863,8 @@ End of Report
         task: request.taskId ? {
           id: request.taskId,
           title: request.taskTitle,
+          projectId: request.taskProjectId,
+          projectName: request.taskProjectId ? projectMap.get(request.taskProjectId) : null,
         } : null,
       }));
 
