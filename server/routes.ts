@@ -6115,9 +6115,11 @@ End of Report
 
     const user = req.user!;
     const projectId = parseInt(req.params.id);
-    const { name, description, startDate, endDate, deliverables } = req.body;
+    const { name, description, startDate, endDate, deliverables: requestDeliverables } = req.body;
 
     try {
+      console.log("Creating project plan with data:", { name, description, startDate, endDate, deliverables: requestDeliverables });
+
       if (!name || !startDate || !endDate) {
         return res.status(400).json({ error: "Name, start date, and end date are required" });
       }
@@ -6140,6 +6142,14 @@ End of Report
         return res.status(403).json({ error: "Access denied" });
       }
 
+      // Parse and validate dates
+      const parsedStartDate = new Date(startDate);
+      const parsedEndDate = new Date(endDate);
+
+      if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+
       // Create project plan
       const [newPlan] = await db
         .insert(projectPlans)
@@ -6147,35 +6157,42 @@ End of Report
           projectId,
           name,
           description: description || "",
-          startDate: new Date(startDate),
-          endDate: new Date(endDate),
+          startDate: parsedStartDate,
+          endDate: parsedEndDate,
           status: "draft",
           createdBy: user.id,
         })
         .returning();
 
+      console.log("Project plan created:", newPlan);
+
       // Create deliverables if provided
-      if (deliverables && deliverables.length > 0) {
-        const deliverableData = deliverables.map((deliverable: any, index: number) => {
-          const deliverableStartDate = deliverable.startDate ? new Date(deliverable.startDate) : new Date(startDate);
-          const deliverableEndDate = deliverable.endDate ? new Date(deliverable.endDate) : new Date(endDate);
+      if (requestDeliverables && Array.isArray(requestDeliverables) && requestDeliverables.length > 0) {
+        const deliverableData = requestDeliverables
+          .filter((deliverable: any) => deliverable && deliverable.name) // Filter out empty/invalid deliverables
+          .map((deliverable: any, index: number) => {
+            const deliverableStartDate = deliverable.startDate ? new Date(deliverable.startDate) : parsedStartDate;
+            const deliverableEndDate = deliverable.endDate ? new Date(deliverable.endDate) : parsedEndDate;
 
-          // Calculate duration in days
-          const duration = Math.ceil((deliverableEndDate.getTime() - deliverableStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+            // Calculate duration in days
+            const duration = Math.ceil((deliverableEndDate.getTime() - deliverableStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-          return {
-            projectPlanId: newPlan.id,
-            name: deliverable.name || `Deliverable ${index + 1}`,
-            description: deliverable.description || "",
-            startDate: deliverableStartDate,
-            endDate: deliverableEndDate,
-            duration,
-            status: "pending" as const,
-            order: deliverable.order || index,
-          };
-        });
+            return {
+              projectPlanId: newPlan.id,
+              name: deliverable.name,
+              description: deliverable.description || "",
+              startDate: deliverableStartDate,
+              endDate: deliverableEndDate,
+              duration,
+              status: "pending" as const,
+              order: typeof deliverable.order === 'number' ? deliverable.order : index,
+            };
+          });
 
-        await db.insert(deliverables).values(deliverableData);
+        if (deliverableData.length > 0) {
+          console.log("Creating deliverables:", deliverableData);
+          await db.insert(deliverables).values(deliverableData);
+        }
       }
 
       res.json({ success: true, planId: newPlan.id });
