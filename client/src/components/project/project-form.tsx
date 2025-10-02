@@ -121,13 +121,18 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
   // Update form when existing members are loaded
   useEffect(() => {
-    if (existingMembers.length > 0 && project?.id) {
+    if (project?.id && existingMembers && existingMembers.length > 0) {
       const memberIds = existingMembers
         .filter((member: any) => member.invitationStatus === 'accepted')
         .map((member: any) => member.userId.toString());
-      form.setValue('teamMembers', memberIds);
+      
+      // Only update if the current value is empty (initial load)
+      const currentTeamMembers = form.getValues('teamMembers');
+      if (!currentTeamMembers || currentTeamMembers.length === 0) {
+        form.setValue('teamMembers', memberIds);
+      }
     }
-  }, [existingMembers, project?.id, form]);
+  }, [existingMembers, project?.id]);
 
   // Fetch clients for dropdown
   const { data: clients } = useQuery({

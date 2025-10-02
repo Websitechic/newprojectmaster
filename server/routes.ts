@@ -4984,7 +4984,7 @@ End of Report
     }
   });
 
-  // Get project members
+  // Get project members (dedicated endpoint for form editing)
   app.get("/api/projects/:id/members", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
