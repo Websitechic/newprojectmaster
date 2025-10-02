@@ -365,7 +365,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       hasUpdate: indicators.myQueries,
       key: "staff-queries",
     }
-  ] : user?.role === "product_owner" ? [
+  ] : user?.role === "customer_support_officer" ? [
     {
       icon: <Calendar size={20} />,
       label: "Leave Application",
@@ -391,7 +391,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "My Queries",
       href: "/dashboard/staff-queries",
       hasUpdate: indicators.myQueries,
-      key: "product-owner-queries",
+      key: "customer-support-officer-queries",
     }
   ] : [];
 
@@ -408,7 +408,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/technical-support",
       key: "technical-support",
     }] : [])
-  ] : user?.role === "product_owner" ? [
+  ] : user?.role === "customer_support_officer" ? [
     {
       icon: <Settings size={20} />,
       label: "Technical Management",

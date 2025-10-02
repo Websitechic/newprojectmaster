@@ -518,7 +518,7 @@ export function registerRoutes(app: Express): Server {
 
     const {specialization} = req.query;
 
-    // Only apply specialization filter to staff members, not product owners
+    // Only apply specialization filter to staff members, not customer support officers
     let whereCondition;
 
     if (specialization) {
@@ -527,12 +527,12 @@ export function registerRoutes(app: Express): Server {
           eq(users.role, "staff"),
           eq(users.specialization, specialization as string)
         ),
-        eq(users.role, "product_owner")
+        eq(users.role, "customer_support_officer")
       );
     } else {
       whereCondition = or(
         eq(users.role, "staff"),
-        eq(users.role, "product_owner")
+        eq(users.role, "customer_support_officer")
       );
     }
 
@@ -541,8 +541,8 @@ export function registerRoutes(app: Express): Server {
       .from(users)
       .where(whereCondition);
 
-    const staffAndProductOwners = await query.orderBy(desc(users.lastActive));
-    res.json(staffAndProductOwners);
+    const staffAndCustomerSupport = await query.orderBy(desc(users.lastActive));
+    res.json(staffAndCustomerSupport);
   });
 
   // Get all users (for staff queries dropdown)
@@ -579,11 +579,11 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
     const isProjectManager = user.role === "project_manager";
-    const isProductOwner = user.role === "product_owner";
+    const isCustomerSupportOfficer = user.role === "customer_support_officer";
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
 
-    if (!isProjectManager && !isProductOwner && !isOperationsManager) {
-      return res.status(403).json({ error: "Only project managers, product owners, and operations managers can access clients" });
+    if (!isProjectManager && !isCustomerSupportOfficer && !isOperationsManager) {
+      return res.status(403).json({ error: "Only project managers, customer support officers, and operations managers can access clients" });
     }
 
     try {
@@ -608,9 +608,9 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
 
-    // Only product owners can access client management
-    if (user.role !== "product_owner") {
-      return res.status(403).json({ error: "Only product owners can access client management" });
+    // Only customer support officers can access client management
+    if (user.role !== "customer_support_officer") {
+      return res.status(403).json({ error: "Only customer support officers can access client management" });
     }
 
     try {
@@ -4657,9 +4657,9 @@ End of Report
 
     const user = req.user!;
 
-    // Check if user is staff or product owner
-    if (user.role !== "staff" && user.role !== "product_owner") {
-      return res.status(403).json({ error: "Only staff members and product owners can submit leave applications" });
+    // Check if user is staff or customer support officer
+    if (user.role !== "staff" && user.role !== "customer_support_officer") {
+      return res.status(403).json({ error: "Only staff members and customer support officers can submit leave applications" });
     }
 
     try {
@@ -4775,9 +4775,9 @@ End of Report
 
     const user = req.user!;
 
-    // Check if user is staff or product owner
-    if (user.role !== "staff" && user.role !== "product_owner") {
-      return res.status(403).json({ error: "Only staff members and product owners can access leave applications" });
+    // Check if user is staff or customer support officer
+    if (user.role !== "staff" && user.role !== "customer_support_officer") {
+      return res.status(403).json({ error: "Only staff members and customer support officers can access leave applications" });
     }
 
     try {

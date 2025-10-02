@@ -57,8 +57,8 @@ export default function ClientManagement() {
   const queryClient = useQueryClient();
   const [location] = useLocation();
 
-  // Check if user is product owner
-  if (!user || user.role !== "product_owner") {
+  // Check if user is customer support officer
+  if (!user || user.role !== "customer_support_officer") {
     return (
       <div className="flex h-screen">
         <Sidebar currentPath="/dashboard/client-management" />
@@ -66,7 +66,7 @@ export default function ClientManagement() {
           <Header />
           <div className="flex flex-col items-center justify-center min-h-[400px]">
             <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-            <p className="text-sm text-destructive">Only product owners can access client management</p>
+            <p className="text-sm text-destructive">Only customer support officers can access client management</p>
           </div>
         </div>
       </div>
