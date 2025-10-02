@@ -3764,8 +3764,8 @@ End of Report
     try {
       let requests;
 
-      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'operations_manager' || user.role === 'team_lead' || user.specialization === 'operations_manager') {
-        // Technical support staff, project managers, product owners, operations managers, and team leads see all requests
+      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'customer_support_officer' || user.role === 'operations_manager' || user.role === 'team_lead' || user.specialization === 'operations_manager') {
+        // Technical support staff, project managers, product owners, customer support officers, and operations managers see all requests
         requests = await db
           .select({
             id: technicalSupportRequests.id,
@@ -5067,7 +5067,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const projectTasks = await db
@@ -5117,7 +5117,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const projectResources = await db
@@ -5385,7 +5385,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const members = await db
@@ -5447,7 +5447,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const messages = await db
@@ -5513,7 +5513,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const [newMessage] = await db
@@ -5705,7 +5705,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const plans = await db
@@ -5765,7 +5765,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       // Get deliverables for this plan
@@ -6517,7 +6517,7 @@ End of Report
 
       res.json(tasksList);
     } catch (error) {
-      console      .error("Error fetching tasks:", error);
+      console.error("Error fetching tasks:", error);
       res.status(500).json({ error: "Failed to fetch tasks" });
     }
   });

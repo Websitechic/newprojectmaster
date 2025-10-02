@@ -304,7 +304,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
   ];
 
-  const pmMenuItems = (user?.role === "project_manager" && user?.role !== "team_lead") || isClientWithSpecialAccess ? [
+  const pmMenuItems = (user?.role === "project_manager" && user?.role !== "team_lead") || (user?.role === "customer_support_officer") || isClientWithSpecialAccess ? [
     {
       icon: <Users size={20} />,
       label: "Staff Report",
@@ -762,8 +762,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
             active={currentPath === "/report-issues"}
           />
 
-          {/* Report Management - Only for operations managers and Replit Development staff */}
-          {((user?.role === "operations_manager" || user?.specialization === "operations_manager") && user?.role !== "team_lead" || user?.specialization === "replit_development") && (
+          {/* Report Management - Only for operations managers, customer support officers, and Replit Development staff */}
+          {((user?.role === "operations_manager" || user?.specialization === "operations_manager") && user?.role !== "team_lead" || user?.role === "customer_support_officer" || user?.specialization === "replit_development") && (
             <SidebarItem
               icon={<Bug size={20} />}
               label="App Issue/Error management"
