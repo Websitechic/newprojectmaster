@@ -6205,6 +6205,195 @@ End of Report
     }
   });
 
+  // Update project plan
+  app.put("/api/project-plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const planId = parseInt(req.params.id);
+    const { name, description, startDate, endDate, status, deliverables: planDeliverables } = req.body;
+
+    try {
+      console.log("Updating project plan:", planId);
+      console.log("Plan data:", { name, description, startDate, endDate, deliverables: planDeliverables });
+
+      if (!name) {
+        return res.status(400).json({ error: "Plan name is required" });
+      }
+
+      if (!planDeliverables || !Array.isArray(planDeliverables) || planDeliverables.length === 0) {
+        return res.status(400).json({ error: "At least one deliverable is required" });
+      }
+
+      // Verify project plan exists
+      const [existingPlan] = await db
+        .select()
+        .from(projectPlans)
+        .where(eq(projectPlans.id, planId))
+        .limit(1);
+
+      if (!existingPlan) {
+        return res.status(404).json({ error: "Project plan not found" });
+      }
+
+      // Check if user has access to the project
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, existingPlan.projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+
+      if (!isOperationsManager && !isProjectManager) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Parse dates
+      let parsedStartDate: Date | null = null;
+      let parsedEndDate: Date | null = null;
+
+      if (startDate) {
+        parsedStartDate = new Date(startDate);
+        if (isNaN(parsedStartDate.getTime())) {
+          return res.status(400).json({ error: "Invalid start date format" });
+        }
+      }
+
+      if (endDate) {
+        parsedEndDate = new Date(endDate);
+        if (isNaN(parsedEndDate.getTime())) {
+          return res.status(400).json({ error: "Invalid end date format" });
+        }
+      }
+
+      if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+        return res.status(400).json({ error: "Start date cannot be after end date" });
+      }
+
+      // Update project plan
+      const [updatedPlan] = await db
+        .update(projectPlans)
+        .set({
+          name,
+          description: description || "",
+          startDate: parsedStartDate || existingPlan.startDate,
+          endDate: parsedEndDate || existingPlan.endDate,
+          status: status || existingPlan.status,
+          updatedAt: new Date(),
+        })
+        .where(eq(projectPlans.id, planId))
+        .returning();
+
+      // Delete existing deliverables
+      await db
+        .delete(deliverables)
+        .where(eq(deliverables.projectPlanId, planId));
+
+      // Create new deliverables
+      if (planDeliverables && Array.isArray(planDeliverables) && planDeliverables.length > 0) {
+        const deliverableValues = planDeliverables
+          .filter((deliverable: any) => deliverable && deliverable.name)
+          .map((deliverable: any, index: number) => {
+            const deliverableStartDate = deliverable.startDate ? new Date(deliverable.startDate) : (parsedStartDate || existingPlan.startDate);
+            const deliverableEndDate = deliverable.endDate ? new Date(deliverable.endDate) : (parsedEndDate || existingPlan.endDate);
+
+            if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableEndDate.getTime())) {
+              throw new Error(`Invalid date format in deliverable ${index + 1}`);
+            }
+
+            const duration = Math.ceil((deliverableEndDate.getTime() - deliverableStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+            return {
+              projectPlanId: planId,
+              name: deliverable.name,
+              description: deliverable.description || "",
+              startDate: deliverableStartDate,
+              endDate: deliverableEndDate,
+              duration,
+              status: deliverable.status || "pending" as const,
+              order: typeof deliverable.order === 'number' ? deliverable.order : index,
+            };
+          });
+
+        if (deliverableValues.length > 0) {
+          await db.insert(deliverables).values(deliverableValues);
+        }
+      }
+
+      res.json(updatedPlan);
+    } catch (error) {
+      console.error("Error updating project plan:", error);
+      res.status(500).json({
+        error: "Failed to update project plan",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Delete project plan
+  app.delete("/api/project-plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const planId = parseInt(req.params.id);
+
+    try {
+      // Verify plan exists
+      const [plan] = await db
+        .select()
+        .from(projectPlans)
+        .where(eq(projectPlans.id, planId))
+        .limit(1);
+
+      if (!plan) {
+        return res.status(404).json({ error: "Project plan not found" });
+      }
+
+      // Check if user has access to the project
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, plan.projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+
+      if (!isOperationsManager && !isProjectManager) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Delete deliverables first
+      await db
+        .delete(deliverables)
+        .where(eq(deliverables.projectPlanId, planId));
+
+      // Delete project plan
+      await db
+        .delete(projectPlans)
+        .where(eq(projectPlans.id, planId));
+
+      res.json({ success: true, message: "Project plan deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting project plan:", error);
+      res.status(500).json({ error: "Failed to delete project plan" });
+    }
+  });
+
   // Get all tasks (filtered by user role)
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) {
