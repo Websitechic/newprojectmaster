@@ -434,7 +434,7 @@ export default function TechnicalManagementPage() {
                           {sortBy === 'createdAt' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[150px]"
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[180px]"
                           onClick={() => handleSort('task')}>
                         <div className="flex items-center gap-1">
                           Task/Project
@@ -523,9 +523,11 @@ export default function TechnicalManagementPage() {
                           <td className="py-2 px-2">
                             {request.task ? (
                               <div className="text-xs">
-                                <div className="font-medium text-blue-600 truncate" title={request.task.projectName || 'Unknown Project'}>
-                                  {request.task.projectName || 'Unknown Project'}
-                                </div>
+                                {request.task.projectName && (
+                                  <div className="font-medium text-blue-600 truncate" title={request.task.projectName}>
+                                    {request.task.projectName}
+                                  </div>
+                                )}
                                 <div className="text-gray-600 truncate" title={request.task.title}>
                                   {request.task.title}
                                 </div>
@@ -734,14 +736,16 @@ export default function TechnicalManagementPage() {
 
                       {request.task && (
                         <div className="truncate ml-2 text-xs">
-                          <div className="font-medium text-blue-600" title={request.task.projectName || 'Unknown Project'}>
-                            {request.task.projectName || 'Unknown Project'}
-                          </div>
+                          {request.task.projectName && (
+                            <div className="font-medium text-blue-600" title={request.task.projectName}>
+                              {request.task.projectName}
+                            </div>
+                          )}
                           <div className="text-gray-600" title={request.task.title}>
                             {request.task.title}
                           </div>
                         </div>
-                      )}
+                      )}</div>
                     </div>
 
                     {request.resolution && (
@@ -806,7 +810,9 @@ export default function TechnicalManagementPage() {
                 <div>
                   <span className="font-medium text-gray-700">Related Task:</span>
                   <p className="text-blue-600">{selectedRequest.task.title}</p>
-                  <p className="text-gray-500 text-xs">Project: {selectedRequest.task.projectName || `ID: ${selectedRequest.task.projectId}`}</p>
+                  {selectedRequest.task.projectName && (
+                    <p className="text-gray-500 text-xs">Project: {selectedRequest.task.projectName}</p>
+                  )}
                 </div>
               )}
 
