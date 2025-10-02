@@ -4986,6 +4986,33 @@ End of Report
     const projectId = parseInt(req.params.id);
 
     try {
+      // Check project access
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (!project) return res.status(404).json({ error: "Project not found" });
+
+      const hasAccess = 
+        user.role === "operations_manager" || 
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        project.managerId === user.id ||
+        project.clientId === user.id ||
+        (user.role === "staff" && await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .limit(1)
+          .then(members => members.length > 0)
+        );
+      
+      if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+
       const projectTasks = await db
         .select()
         .from(tasks)
@@ -5005,9 +5032,37 @@ End of Report
       return res.status(401).send("Not authenticated");
     }
 
+    const user = req.user!;
     const projectId = parseInt(req.params.id);
 
     try {
+      // Check project access
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (!project) return res.status(404).json({ error: "Project not found" });
+
+      const hasAccess = 
+        user.role === "operations_manager" || 
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        project.managerId === user.id ||
+        project.clientId === user.id ||
+        (user.role === "staff" && await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .limit(1)
+          .then(members => members.length > 0)
+        );
+      
+      if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+
       const projectResources = await db
         .select({
           id: resources.id,
@@ -5245,9 +5300,37 @@ End of Report
       return res.status(401).send("Not authenticated");
     }
 
+    const user = req.user!;
     const projectId = parseInt(req.params.id);
 
     try {
+       // Check project access
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (!project) return res.status(404).json({ error: "Project not found" });
+
+      const hasAccess = 
+        user.role === "operations_manager" || 
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        project.managerId === user.id ||
+        project.clientId === user.id ||
+        (user.role === "staff" && await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .limit(1)
+          .then(members => members.length > 0)
+        );
+      
+      if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+
       const members = await db
         .select({
           id: users.id,
@@ -5279,9 +5362,37 @@ End of Report
       return res.status(401).send("Not authenticated");
     }
 
+    const user = req.user!;
     const projectId = parseInt(req.params.id);
 
     try {
+       // Check project access
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (!project) return res.status(404).json({ error: "Project not found" });
+
+      const hasAccess = 
+        user.role === "operations_manager" || 
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        project.managerId === user.id ||
+        project.clientId === user.id ||
+        (user.role === "staff" && await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .limit(1)
+          .then(members => members.length > 0)
+        );
+      
+      if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+
       const messages = await db
         .select({
           id: projectMessages.id,
@@ -5321,6 +5432,33 @@ End of Report
         return res.status(400).json({ error: "Message content is required" });
       }
 
+      // Check project access
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (!project) return res.status(404).json({ error: "Project not found" });
+
+      const hasAccess = 
+        user.role === "operations_manager" || 
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        project.managerId === user.id ||
+        project.clientId === user.id ||
+        (user.role === "staff" && await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .limit(1)
+          .then(members => members.length > 0)
+        );
+      
+      if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+
       const [newMessage] = await db
         .insert(projectMessages)
         .values({
@@ -5341,13 +5479,6 @@ End of Report
             ne(projectMembers.userId, user.id) // Don't notify sender
           )
         );
-
-      // Get project info
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, projectId))
-        .limit(1);
 
       // Check for @mentions in the message
       const mentionRegex = /@(\w+)/g;
@@ -5489,9 +5620,37 @@ End of Report
       return res.status(401).send("Not authenticated");
     }
 
+    const user = req.user!;
     const projectId = parseInt(req.params.id);
 
     try {
+       // Check project access
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (!project) return res.status(404).json({ error: "Project not found" });
+
+      const hasAccess = 
+        user.role === "operations_manager" || 
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        project.managerId === user.id ||
+        project.clientId === user.id ||
+        (user.role === "staff" && await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .limit(1)
+          .then(members => members.length > 0)
+        );
+      
+      if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+
       const plans = await db
         .select()
         .from(projectPlans)
@@ -5511,6 +5670,7 @@ End of Report
       return res.status(401).send("Not authenticated");
     }
 
+    const user = req.user!;
     const planId = parseInt(req.params.id);
 
     try {
@@ -5524,12 +5684,39 @@ End of Report
         return res.status(404).json({ error: "Project plan not found" });
       }
 
+       // Check project access
+      const [project] = await db.select().from(projects).where(eq(projects.id, plan.projectId)).limit(1);
+      if (!project) return res.status(404).json({ error: "Project not found" });
+
+      const hasAccess = 
+        user.role === "operations_manager" || 
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        project.managerId === user.id ||
+        project.clientId === user.id ||
+        (user.role === "staff" && await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, project.id),
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .limit(1)
+          .then(members => members.length > 0)
+        );
+      
+      if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+
       // Get deliverables for this plan
       const planDeliverables = await db
         .select()
         .from(deliverables)
         .where(eq(deliverables.projectPlanId, planId))
-        .orderBy(asc(deliverables.startDate));
+        .orderBy(asc(deliverables.order)); // Order by order field
 
       const planWithDeliverables = {
         ...plan,
@@ -5969,330 +6156,24 @@ End of Report
 
       // Create deliverables if provided
       if (deliverables && deliverables.length > 0) {
-        const deliverableData = deliverables.map((deliverable: any, index: number) => ({
-          projectPlanId: newPlan.id,
-          name: deliverable.name || `Deliverable ${index + 1}`,
-          description: deliverable.description || "",
-          startDate: deliverable.startDate ? new Date(deliverable.startDate) : new Date(startDate),
-          endDate: deliverable.endDate ? new Date(deliverable.endDate) : new Date(endDate),
-          duration: deliverable.duration || 1,
-          status: "pending",
-          order: deliverable.order || index,
-        }));
+        const deliverableData = deliverables.map((deliverable: any, index: number) => {
+          const deliverableStartDate = deliverable.startDate ? new Date(deliverable.startDate) : new Date(startDate);
+          const deliverableEndDate = deliverable.endDate ? new Date(deliverable.endDate) : new Date(endDate);
 
-        await db.insert(deliverables).values(deliverableData);
-      }
+          // Calculate duration in days
+          const duration = Math.ceil((deliverableEndDate.getTime() - deliverableStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-      res.json({ success: true, planId: newPlan.id });
-    } catch (error) {
-      console.error("Error creating project plan:", error);
-      res.status(500).json({ 
-        error: "Failed to create project plan",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Update project plan
-  app.put("/api/project-plans/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    const user = req.user!;
-    const planId = parseInt(req.params.id);
-    const { name, description, startDate, endDate, deliverables: planDeliverables } = req.body;
-
-    try {
-      console.log("Updating project plan:", planId);
-      console.log("Plan data:", {name, description, startDate, endDate, deliverables: planDeliverables});
-
-      if (!name) {
-        return res.status(400).json({ error: "Plan name is required" });
-      }
-
-      if (!planDeliverables || !Array.isArray(planDeliverables) || planDeliverables.length === 0) {
-        return res.status(400).json({ error: "At least one deliverable is required" });
-      }
-
-      // Verify project plan exists
-      const [existingPlan] = await db
-        .select()
-        .from(projectPlans)
-        .where(eq(projectPlans.id, planId))
-        .limit(1);
-
-      if (!existingPlan) {
-        return res.status(404).json({ error: "Project plan not found" });
-      }
-
-      // Get project to check permissions
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, existingPlan.projectId))
-        .limit(1);
-
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
-      // Check permissions
-      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
-      const isProductOwner = user.role === "product_owner";
-
-      if (!isOperationsManager && !isProjectManager && !isProductOwner) {
-        return res.status(403).json({ error: "Access denied - insufficient permissions to update project plans" });
-      }
-
-      // Parse dates
-      let parsedStartDate: Date | null = null;
-      let parsedEndDate: Date | null = null;
-
-      if (startDate) {
-        parsedStartDate = new Date(startDate);
-        if (isNaN(parsedStartDate.getTime())) {
-          return res.status(400).json({ error: "Invalid start date format" });
-        }
-      }
-
-      if (endDate) {
-        parsedEndDate = new Date(endDate);
-        if (isNaN(parsedEndDate.getTime())) {
-          return res.status(400).json({ error: "Invalid end date format" });
-        }
-      }
-
-      if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
-        return res.status.status(400).json({ error: "Start date cannot be after end date" });
-      }
-
-      // Update project plan
-      const [updatedPlan] = await db
-        .update(projectPlans)
-        .set({
-          name,
-          description: description || "",
-          startDate: parsedStartDate,
-          endDate: parsedEndDate,
-          updatedAt: new Date(),
-        })
-        .where(eq(projectPlans.id, planId))
-        .returning();
-
-      // Update deliverables if provided
-      if (planDeliverables && Array.isArray(planDeliverables)) {
-        // Delete existing deliverables
-        await db
-          .delete(deliverables)
-          .where(eq(deliverables.projectPlanId, planId));
-
-        // Create new deliverables
-        if (planDeliverables.length > 0) {
-          const deliverableValues = planDeliverables.map((deliverable: any, index: number) => {
-            const deliverableStartDate = new Date(deliverable.startDate);
-            const deliverableEndDate = new Date(deliverable.endDate);
-
-            if (isNaN(deliverableStartDate.getTime()) || isNaN(deliverableEndDate.getTime())) {
-              throw new Error(`Invalid date format in deliverable ${index + 1}`);
-            }
-
-            // Calculate duration in days
-            const duration = Math.ceil((deliverableEndDate.getTime() - deliverableStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-            return {
-              projectPlanId: planId,
-              name: deliverable.name,
-              description: deliverable.description || "",
-              startDate: deliverableStartDate,
-              endDate: deliverableEndDate,
-              duration,
-              order: deliverable.order || index,
-              dependencies: deliverable.dependencies || [],
-              assigneeId: deliverable.assigneeId || null,
-            };
-          });
-
-          await db.insert(deliverables).values(deliverableValues);
-        }
-      }
-
-      // Fetch updated plan with deliverables
-      const updatedDeliverables = await db
-        .select()
-        .from(deliverables)
-        .where(eq(deliverables.projectPlanId, planId))
-        .orderBy(asc(deliverables.order));
-
-      res.json({ ...updatedPlan, deliverables: updatedDeliverables });
-    } catch (error) {
-      console.error("Error updating project plan:", error);
-      res.status(500).json({
-        error: "Failed to update project plan",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Delete project plan
-  app.delete("/api/project-plans/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    const user = req.user!;
-    const planId = parseInt(req.params.id);
-
-    try {
-      // Check if plan exists
-      const [existingPlan] = await db
-        .select()
-        .from(projectPlans)
-        .where(eq(projectPlans.id, planId))
-        .limit(1);
-
-      if (!existingPlan) {
-        return res.status(404).json({ error: "Project plan not found" });
-      }
-
-      // Get project to check permissions
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, existingPlan.projectId))
-        .limit(1);
-
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
-      // Check permissions
-      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
-      const isProductOwner = user.role === "product_owner";
-
-      if (!isOperationsManager && !isProjectManager && !isProductOwner) {
-        return res.status(403).json({ error: "Access denied - insufficient permissions to delete project plans" });
-      }
-
-      // Delete deliverables first
-      await db
-        .delete(deliverables)
-        .where(eq(deliverables.projectPlanId, planId));
-
-      // Delete project plan
-      await db
-        .delete(projectPlans)
-        .where(eq(projectPlans.id, planId));
-
-      res.json({ success: true, message: "Project plan deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting project plan:", error);
-      res.status(500).json({ error: "Failed to delete project plan" });
-    }
-  });
-
-  // Helper function to create notifications with proper error handling
-  async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
-    try {
-      await db
-        .insert(notifications)
-        .values({
-          userId,
-          type,
-          content,
-          referenceId: referenceId || null,
-          referenceType: referenceType || null,
+          return {
+            projectPlanId: newPlan.id,
+            name: deliverable.name || `Deliverable ${index + 1}`,
+            description: deliverable.description || "",
+            startDate: deliverableStartDate,
+            endDate: deliverableEndDate,
+            duration,
+            status: "pending" as const,
+            order: deliverable.order || index,
+          };
         });
-
-      // Send real-time notification via SSE
-      if (global.sseClients && global.sseClients.has(userId)) {
-        const client = global.sseClients.get(userId);
-        if (client && !client.writableEnded) {
-          try {
-            client.write(`data: ${JSON.stringify({
-              type: "notification",
-              notification: {
-                userId,
-                type,
-                content,
-                referenceId,
-                referenceType,
-                read: false,
-                createdAt: new Date().toISOString()
-              }
-            })}\n\n`);
-          } catch (error) {
-            console.error(`Error sending real-time notification to user ${userId}:`, error);
-            global.sseClients.delete(userId);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error creating notification:", error);
-    }
-  }
-
-  // Create project plan
-  app.post("/api/projects/:id/plans", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    const user = req.user!;
-    const projectId = parseInt(req.params.id);
-    const { name, description, startDate, endDate, deliverables } = req.body;
-
-    try {
-      if (!name || !startDate || !endDate) {
-        return res.status(400).json({ error: "Name, start date, and end date are required" });
-      }
-
-      // Check if project exists and user has access
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, projectId))
-        .limit(1);
-
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
-      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
-
-      if (!isOperationsManager && !isProjectManager) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-
-      // Create project plan
-      const [newPlan] = await db
-        .insert(projectPlans)
-        .values({
-          projectId,
-          name,
-          description: description || "",
-          startDate: new Date(startDate),
-          endDate: new Date(endDate),
-          status: "draft",
-          createdBy: user.id,
-        })
-        .returning();
-
-      // Create deliverables if provided
-      if (deliverables && deliverables.length > 0) {
-        const deliverableData = deliverables.map((deliverable: any, index: number) => ({
-          projectPlanId: newPlan.id,
-          name: deliverable.name || `Deliverable ${index + 1}`,
-          description: deliverable.description || "",
-          startDate: deliverable.startDate ? new Date(deliverable.startDate) : new Date(startDate),
-          endDate: deliverable.endDate ? new Date(deliverable.endDate) : new Date(endDate),
-          duration: deliverable.duration || 1,
-          status: "pending",
-          order: deliverable.order || index,
-        }));
 
         await db.insert(deliverables).values(deliverableData);
       }
@@ -6485,7 +6366,7 @@ End of Report
 
       // Start timer for this task and update status to in_progress
       const now = new Date();
-      const [updatedTask] = await db
+      const [updatedTask] =await db
         .update(tasks)
         .set({
           isTimerRunning: true,
