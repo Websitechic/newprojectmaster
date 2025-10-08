@@ -5394,6 +5394,19 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
+      // Check if user is a member (for staff, any invitation status is fine for viewing members)
+      const staffMembership = user.role === "staff" ? await db
+        .select()
+        .from(projectMembers)
+        .where(
+          and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.userId, user.id)
+          )
+        )
+        .limit(1)
+        .then(members => members.length > 0) : false;
+
       const hasAccess = 
         user.role === "operations_manager" || 
         user.role === "team_lead" ||
@@ -5401,21 +5414,9 @@ End of Report
         user.role === "product_owner" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        (user.role === "staff" && await db
-          .select()
-          .from(projectMembers)
-          .where(
-            and(
-              eq(projectMembers.projectId, projectId),
-              eq(projectMembers.userId, user.id),
-              eq(projectMembers.invitationStatus, "accepted")
-            )
-          )
-          .limit(1)
-          .then(members => members.length > 0)
-        );
+        staffMembership;
       
-      if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+      if (!hasAccess) return res.status(403).send("Access denied");
 
       const members = await db
         .select({
@@ -5456,15 +5457,14 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      // Check if user is a member of the project
+      // Check if user is a member of the project (check all invitation statuses for staff)
       const [membership] = await db
         .select()
         .from(projectMembers)
         .where(
           and(
             eq(projectMembers.projectId, projectId),
-            eq(projectMembers.userId, user.id),
-            eq(projectMembers.invitationStatus, "accepted")
+            eq(projectMembers.userId, user.id)
           )
         )
         .limit(1);
@@ -5476,11 +5476,11 @@ End of Report
         user.role === "product_owner" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        !!membership;
+        (!!membership && membership.invitationStatus === "accepted");
       
       if (!hasAccess) {
-        console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} team chat. Membership:`, membership);
-        return res.status(403).json({ error: "Access denied - You must be a project member to access team chat" });
+        console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} team chat. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
+        return res.status(403).send("Access denied - You must be a project member to access team chat");
       }
 
       const messages = await db
