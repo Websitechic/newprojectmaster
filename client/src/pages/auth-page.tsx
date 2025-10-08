@@ -41,7 +41,20 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        await loginMutation.mutateAsync({ username, password });
+        // Validate login credentials
+        if (!formData.username || !formData.password) {
+          toast({
+            title: "Error",
+            description: "Please enter both username and password",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        await loginMutation.mutateAsync({ 
+          username: formData.username, 
+          password: formData.password 
+        });
       } else {
         // Validate specialization for staff and intern users
         if ((role === "staff" || role === "intern") && !specialization) {
@@ -104,7 +117,7 @@ export default function AuthPage() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Login failed. Please check your credentials.",
         variant: "destructive",
       });
     }

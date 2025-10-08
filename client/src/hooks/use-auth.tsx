@@ -82,6 +82,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
+      if (!credentials.username || !credentials.password) {
+        throw new Error("Username and password are required");
+      }
+
       const res = await fetch("/api/login", {
         method: "POST",
         headers: {
@@ -94,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!res.ok) {
         const error = await res.text();
-        throw new Error(error || "Login failed");
+        throw new Error(error || "Invalid username or password");
       }
 
       return res.json();
@@ -109,8 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onError: (error: Error) => {
       console.error("Login error:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to login",
+        title: "Login Failed",
+        description: error.message || "Invalid username or password",
         variant: "destructive",
       });
     },
