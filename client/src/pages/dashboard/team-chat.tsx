@@ -40,32 +40,34 @@ export default function TeamChat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const projectId = parseInt(id!);
 
-  const { data: project, isLoading: projectLoading } = useQuery<Project>({
+  const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
     queryFn: async () => {
       const response = await fetch(`/api/projects/${projectId}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch project");
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to fetch project");
       }
       return response.json();
     },
     enabled: !!projectId,
   });
 
-  const { data: messages = [], isLoading: messagesLoading } = useQuery<MessageWithSender[]>({
+  const { data: messages = [], isLoading: messagesLoading, error: messagesError } = useQuery<MessageWithSender[]>({
     queryKey: [`/api/projects/${projectId}/team-messages`],
     queryFn: async () => {
       console.log(`Fetching team messages for project ${projectId}`);
       const response = await fetch(`/api/projects/${projectId}/team-messages`);
       if (!response.ok) {
-        console.error(`Failed to fetch messages: ${response.status} ${response.statusText}`);
-        throw new Error("Failed to fetch messages");
+        const errorText = await response.text();
+        console.error(`Failed to fetch messages: ${response.status} ${response.statusText}`, errorText);
+        throw new Error(errorText || "Failed to fetch messages");
       }
       const data = await response.json();
       console.log(`Fetched ${data.length} team messages:`, data);
       return data;
     },
-    enabled: !!projectId && !!project,
+    enabled: !!projectId,
     refetchInterval: 2000, // Poll every 2 seconds for new messages
   });
 
@@ -81,11 +83,11 @@ export default function TeamChat() {
       console.log(`Fetched project members:`, data);
       return data;
     },
-    enabled: !!projectId && !!project,
+    enabled: !!projectId,
   });
 
-  // Show loading state
-  if (projectLoading || messagesLoading || membersLoading) {
+  // Show loading state only for initial project load
+  if (projectLoading) {
     return (
       <div className="flex h-screen">
         <Sidebar currentPath={`/dashboard/projects/${projectId}/team-chat`} />
@@ -95,6 +97,27 @@ export default function TeamChat() {
             <div className="text-center">
               <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
               <p className="text-muted-foreground">Loading team chat...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if access denied
+  if (projectError || messagesError) {
+    const errorMessage = projectError?.message || messagesError?.message || "An error occurred";
+    return (
+      <div className="flex h-screen">
+        <Sidebar currentPath={`/dashboard/projects/${projectId}/team-chat`} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">{errorMessage}</p>
+              <Button onClick={() => setLocation(`/dashboard/projects/${projectId}`)}>
+                Back to Project
+              </Button>
             </div>
           </div>
         </div>
