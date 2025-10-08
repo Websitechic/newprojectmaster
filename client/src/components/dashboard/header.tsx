@@ -1,5 +1,5 @@
 
-import { Bell, Search, User } from "lucide-react";
+import { Bell, MessageSquare, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,12 +8,101 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/hooks/use-user";
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useEffect, useState } from "react";
+
+interface UnreadMessage {
+  type: "team_chat" | "direct_message";
+  id: number;
+  name: string;
+  unreadCount: number;
+  projectId?: number;
+  userId?: number;
+}
 
 export function Header() {
   const { user, logout } = useUser();
+  const [_, setLocation] = useLocation();
+  const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
+
+  // Fetch team chat unread counts
+  const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({
+    queryKey: ["/api/projects/unread-counts"],
+    queryFn: async () => {
+      const response = await fetch("/api/projects/unread-counts", {
+        credentials: 'include'
+      });
+      if (!response.ok) return {};
+      return await response.json();
+    },
+    enabled: !!user,
+    refetchInterval: 10000,
+  });
+
+  // Fetch direct messages unread count
+  const { data: directMessagesData } = useQuery({
+    queryKey: ["/api/direct-messages/conversations"],
+    queryFn: async () => {
+      const response = await fetch("/api/direct-messages/conversations");
+      if (!response.ok) return [];
+      return await response.json();
+    },
+    enabled: !!user,
+    refetchInterval: 10000,
+  });
+
+  // Fetch project details for team chats
+  const { data: projects = [] } = useQuery({
+    queryKey: ["/api/projects"],
+    queryFn: async () => {
+      const response = await fetch("/api/projects");
+      if (!response.ok) return [];
+      return await response.json();
+    },
+    enabled: !!user,
+  });
+
+  // Combine unread messages
+  useEffect(() => {
+    const combined: UnreadMessage[] = [];
+
+    // Add team chats with unread messages
+    Object.entries(teamChatUnreads).forEach(([projectId, count]) => {
+      if (count > 0) {
+        const project = projects.find((p: any) => p.id === parseInt(projectId));
+        if (project) {
+          combined.push({
+            type: "team_chat",
+            id: parseInt(projectId),
+            name: project.name,
+            unreadCount: count,
+            projectId: parseInt(projectId),
+          });
+        }
+      }
+    });
+
+    // Add direct messages with unread messages
+    if (directMessagesData) {
+      directMessagesData.forEach((conv: any) => {
+        if (conv.unreadCount > 0) {
+          combined.push({
+            type: "direct_message",
+            id: conv.user.id,
+            name: conv.user.name,
+            unreadCount: conv.unreadCount,
+            userId: conv.user.id,
+          });
+        }
+      });
+    }
+
+    setUnreadMessages(combined);
+  }, [teamChatUnreads, directMessagesData, projects]);
 
   const handleLogout = async () => {
     try {
@@ -25,26 +114,71 @@ export function Header() {
     }
   };
 
+  const handleMessageClick = (message: UnreadMessage) => {
+    if (message.type === "team_chat" && message.projectId) {
+      setLocation(`/dashboard/projects/${message.projectId}/team-chat`);
+    } else if (message.type === "direct_message") {
+      setLocation("/dashboard/direct-messages");
+    }
+  };
+
+  const totalUnread = unreadMessages.reduce((sum, msg) => sum + msg.unreadCount, 0);
+
   return (
     <header className="h-16 bg-white border-b border-gray-200 px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
-      {/* Left Section - Search (hidden on mobile to make room for hamburger menu) */}
+      {/* Left Section - Spacer */}
       <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
-        <div className="relative hidden sm:block">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            type="search"
-            placeholder="Search projects, tasks..."
-            className="pl-10 bg-gray-50 border-gray-200 focus:bg-white w-full"
-          />
-        </div>
       </div>
 
-      {/* Right Section - Notifications and Profile */}
+      {/* Right Section - Unread Messages, Notifications and Profile */}
       <div className="flex items-center gap-2 sm:gap-4">
-        {/* Mobile Search Icon */}
-        <Button variant="ghost" size="sm" className="sm:hidden">
-          <Search className="w-4 h-4" />
-        </Button>
+        {/* Unread Messages Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="relative">
+              <MessageSquare className="w-5 h-5" />
+              {totalUnread > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  {totalUnread > 9 ? "9+" : totalUnread}
+                </Badge>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-72">
+            <div className="px-2 py-1.5 text-sm font-semibold">
+              Unread Messages
+            </div>
+            <DropdownMenuSeparator />
+            {unreadMessages.length === 0 ? (
+              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                No unread messages
+              </div>
+            ) : (
+              unreadMessages.map((message) => (
+                <DropdownMenuItem
+                  key={`${message.type}-${message.id}`}
+                  onClick={() => handleMessageClick(message)}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-medium">{message.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {message.type === "team_chat" ? "Team Chat" : "Direct Message"}
+                      </span>
+                    </div>
+                    <Badge variant="destructive" className="ml-2">
+                      {message.unreadCount}
+                    </Badge>
+                  </div>
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Notifications */}
         <NotificationsDropdown />
