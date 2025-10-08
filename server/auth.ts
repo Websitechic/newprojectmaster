@@ -76,6 +76,7 @@ const registerSchema = z.object({
   specialization: z.string().optional(),
   productService: z.string().optional(),
   clientType: z.string().optional(),
+  projectManagerType: z.enum(["main", "supervisor"]).optional() // New field for project manager type
 });
 
 export function setupAuth(app: Express) {
@@ -236,7 +237,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password, role, name, email, breakOneTime, specialization, productService, clientType } = result.data;
+      const { username, password, role, name, email, breakOneTime, specialization, productService, clientType, projectManagerType } = result.data;
 
       // Check if user already exists
       const [existingUser] = await db
@@ -256,6 +257,11 @@ export function setupAuth(app: Express) {
         }
       }
 
+      // Validate project manager type
+      if (role === "project_manager" && (!projectManagerType || !["main", "supervisor"].includes(projectManagerType))) {
+        return res.status(400).send("Project manager type is required and must be either 'main' or 'supervisor'");
+      }
+
       // Hash the password
       const hashedPassword = await crypto.hash(password);
 
@@ -269,6 +275,7 @@ export function setupAuth(app: Express) {
         status: UserStatus.ONLINE, // Set to online since they'll be logged in
         emailVerified: false,
         onboardingStatus: "not_onboarded",
+        projectManagerType: role === "project_manager" ? projectManagerType : null,
       };
 
       // Add specialization for staff and intern users

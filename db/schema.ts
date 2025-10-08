@@ -27,6 +27,11 @@ export const UserSpecialization = {
   REPLIT_DEVELOPMENT: "replit_development",
 } as const;
 
+export const ProjectManagerType = {
+  MAIN: "main",
+  SUPERVISOR: "supervisor",
+} as const;
+
 export const WorkStatus = {
   ACTIVE: "active",
   ON_BREAK: "on_break",
@@ -55,6 +60,9 @@ export const users = pgTable("users", {
   gender: text("gender", { enum: ["male", "female"] }),
   specialization: text("specialization", { 
     enum: Object.values(UserSpecialization) as [string, ...string[]]
+  }),
+  projectManagerType: text("project_manager_type", {
+    enum: Object.values(ProjectManagerType) as [string, ...string[]]
   }),
   status: text("status", { enum: Object.values(UserStatus) as [string, ...string[]] }).default(UserStatus.OFFLINE),
   workStatus: text("work_status", { 

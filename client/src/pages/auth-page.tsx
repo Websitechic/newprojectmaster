@@ -23,6 +23,19 @@ export default function AuthPage() {
   const { loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
 
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+    role: "staff",
+    name: "",
+    email: "",
+    specialization: "",
+    gender: "",
+    productService: "",
+    clientType: "",
+    projectManagerType: "",
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -35,6 +48,16 @@ export default function AuthPage() {
           toast({
             title: "Error",
             description: "Please select a specialization",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Validate project manager type for project manager users
+        if (role === "project_manager" && !formData.projectManagerType) {
+          toast({
+            title: "Error",
+            description: "Please select a project manager type",
             variant: "destructive",
           });
           return;
@@ -65,16 +88,17 @@ export default function AuthPage() {
         }
 
         await registerMutation.mutateAsync({
-          username,
-          password,
-          name,
-          email,
-          role,
+          username: formData.username,
+          password: formData.password,
+          name: formData.name,
+          email: formData.email,
+          role: role,
           specialization: (role === "staff" || role === "intern") ? specialization : undefined,
           productService: role === "client" ? productService : undefined,
           clientType: role === "client" ? clientType : undefined,
           breakOneTime: role !== "client" ? breakOneTime : undefined,
-          breakTwoTime: undefined
+          breakTwoTime: undefined,
+          projectManagerType: role === "project_manager" ? formData.projectManagerType : undefined,
         });
       }
     } catch (error: any) {
@@ -148,8 +172,8 @@ export default function AuthPage() {
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 required
               />
             </div>
@@ -158,8 +182,8 @@ export default function AuthPage() {
               <Input
                 id="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
               />
             </div>
@@ -169,8 +193,8 @@ export default function AuthPage() {
                   <Label htmlFor="name">Full Name</Label>
                   <Input
                     id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
                 </div>
@@ -179,8 +203,8 @@ export default function AuthPage() {
                   <Input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
                   />
                 </div>
@@ -201,6 +225,26 @@ export default function AuthPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {role === "project_manager" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="projectManagerType">Project Manager Type *</Label>
+                    <Select
+                      value={formData.projectManagerType || ""}
+                      onValueChange={(value) => setFormData({ ...formData, projectManagerType: value })}
+                      required
+                    >
+                      <SelectTrigger id="projectManagerType">
+                        <SelectValue placeholder="Select project manager type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="main">Main</SelectItem>
+                        <SelectItem value="supervisor">Supervisor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {(role === "staff" || role === "intern") && (
                   <div className="space-y-2">
                     <Label htmlFor="specialization">Specialization</Label>

@@ -788,6 +788,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
             <p className="text-xs text-gray-500 capitalize truncate">
               {user?.role === 'client' ?
                 `${user?.clientType?.replace('_', ' ') || 'Client'} • ${user?.productService?.replace('_', ' ') || 'Service not specified'}` :
+                user?.role === 'project_manager' && user?.projectManagerType ?
+                `${user?.role?.replace('_', ' ')} • ${user?.projectManagerType}` :
                 user?.role?.replace('_', ' ')
               }
             </p>
