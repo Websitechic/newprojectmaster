@@ -40,13 +40,19 @@ export default function TeamChat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const projectId = parseInt(id!);
 
-  const { data: project } = useQuery<Project>({
+  const { data: project, isLoading: projectLoading } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
-    queryFn: () => fetch(`/api/projects/${projectId}`).then(res => res.json()),
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${projectId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch project");
+      }
+      return response.json();
+    },
     enabled: !!projectId,
   });
 
-  const { data: messages = [] } = useQuery<MessageWithSender[]>({
+  const { data: messages = [], isLoading: messagesLoading } = useQuery<MessageWithSender[]>({
     queryKey: [`/api/projects/${projectId}/team-messages`],
     queryFn: async () => {
       console.log(`Fetching team messages for project ${projectId}`);
@@ -59,21 +65,42 @@ export default function TeamChat() {
       console.log(`Fetched ${data.length} team messages:`, data);
       return data;
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !!project,
     refetchInterval: 2000, // Poll every 2 seconds for new messages
   });
 
-  const { data: projectMembers = [] } = useQuery({
+  const { data: projectMembers = [], isLoading: membersLoading } = useQuery({
     queryKey: [`/api/projects/${projectId}/members`],
     queryFn: async () => {
       console.log(`Fetching project members for project ${projectId}`);
       const response = await fetch(`/api/projects/${projectId}/members`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch members");
+      }
       const data = await response.json();
       console.log(`Fetched project members:`, data);
       return data;
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !!project,
   });
+
+  // Show loading state
+  if (projectLoading || messagesLoading || membersLoading) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar currentPath={`/dashboard/projects/${projectId}/team-chat`} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading team chat...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
