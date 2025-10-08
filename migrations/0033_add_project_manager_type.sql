@@ -6,5 +6,5 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
--- Add project_manager_type column to users table
-ALTER TABLE users ADD COLUMN IF NOT EXISTS project_manager_type project_manager_type;
+-- Add projectManagerType column to users table (matching the camelCase in schema)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS "projectManagerType" project_manager_type;
