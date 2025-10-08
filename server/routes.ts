@@ -373,12 +373,41 @@ export function registerRoutes(app: Express): Server {
           .where(eq(projects.clientId, user.id))
           .orderBy(desc(projects.updatedAt));
       } else if (user.role === "project_manager") {
-        // Project managers see projects they manage
-        projectsList = await db
-          .select()
-          .from(projects)
-          .where(eq(projects.managerId, user.id))
-          .orderBy(desc(projects.updatedAt));
+        if (user.projectManagerType === "supervisor") {
+          // Supervisor project managers see only DPL Outright and DPL Partnership projects
+          // They see projects they're members of (auto-added) or manage
+          const supervisorProjects = await db
+            .select({
+              project: projects,
+            })
+            .from(projects)
+            .leftJoin(projectMembers, and(
+              eq(projectMembers.projectId, projects.id),
+              eq(projectMembers.userId, user.id)
+            ))
+            .where(
+              and(
+                or(
+                  eq(projects.category, "dpl_outright"),
+                  eq(projects.category, "dpl_partnership")
+                ),
+                or(
+                  eq(projects.managerId, user.id),
+                  eq(projectMembers.userId, user.id)
+                )
+              )
+            )
+            .orderBy(desc(projects.updatedAt));
+
+          projectsList = supervisorProjects.map(sp => sp.project);
+        } else {
+          // Main project managers see projects they manage
+          projectsList = await db
+            .select()
+            .from(projects)
+            .where(eq(projects.managerId, user.id))
+            .orderBy(desc(projects.updatedAt));
+        }
       } else if (user.role === "product_owner") {
         // Product owners see all projects (read-only access)
         projectsList = await db
@@ -5897,6 +5926,30 @@ End of Report
         }));
 
         await db.insert(projectMembers).values(memberData);
+      }
+
+      // Auto-add supervisor project managers to DPL projects
+      if (category === "dpl_outright" || category === "dpl_partnership") {
+        const supervisorPMs = await db
+          .select()
+          .from(users)
+          .where(
+            and(
+              eq(users.role, "project_manager"),
+              eq(users.projectManagerType, "supervisor")
+            )
+          );
+
+        if (supervisorPMs.length > 0) {
+          const supervisorMemberData = supervisorPMs.map(supervisor => ({
+            projectId: newProject.id,
+            userId: supervisor.id,
+            invitedBy: user.id,
+            invitationStatus: "accepted" as const,
+          }));
+
+          await db.insert(projectMembers).values(supervisorMemberData);
+        }
       }
 
       res.json({ success: true, id: newProject.id, project: newProject });
