@@ -468,7 +468,7 @@ export default function Projects() {
                                 </AlertDialog>
                               </div>
                             )}
-                            {user?.role === "product_owner" && (
+                            {user?.role === "customer_support_officer" && (
                               <div className="flex gap-2">
                                 {project.category === "support_maintenance" ? (
                                   <>

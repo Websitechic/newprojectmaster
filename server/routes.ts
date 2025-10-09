@@ -536,18 +536,18 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
     const isProjectManager = user.role === "project_manager";
-    const isProductOwner = user.role === "product_owner";
+    const isCustomerSupportOfficer = user.role === "customer_support_officer";
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
     const isReplitDeveloper = user.specialization === "replit_development" || user.specialization === "Replit Development";
 
-    // Only project managers, product owners, operations managers, and Replit developers can view staff
-    if (!isProjectManager && !isProductOwner && !isOperationsManager && !isReplitDeveloper) {
+    // Only project managers, customer support officers, operations managers, and Replit developers can view staff
+    if (!isProjectManager && !isCustomerSupportOfficer && !isOperationsManager && !isReplitDeveloper) {
       return res.status(403).send("Access denied");
     }
 
     const {specialization} = req.query;
 
-    // Only apply specialization filter to staff members, not product owners
+    // Only apply specialization filter to staff members, not customer support officers
     let whereCondition;
 
     if (specialization) {
@@ -556,12 +556,12 @@ export function registerRoutes(app: Express): Server {
           eq(users.role, "staff"),
           eq(users.specialization, specialization as string)
         ),
-        eq(users.role, "product_owner")
+        eq(users.role, "customer_support_officer")
       );
     } else {
       whereCondition = or(
         eq(users.role, "staff"),
-        eq(users.role, "product_owner")
+        eq(users.role, "customer_support_officer")
       );
     }
 
@@ -570,8 +570,8 @@ export function registerRoutes(app: Express): Server {
       .from(users)
       .where(whereCondition);
 
-    const staffAndProductOwners = await query.orderBy(desc(users.lastActive));
-    res.json(staffAndProductOwners);
+    const staffAndCustomerSupportOfficers = await query.orderBy(desc(users.lastActive));
+    res.json(staffAndCustomerSupportOfficersners);
   });
 
   // Get all users (for staff queries dropdown)
@@ -3793,8 +3793,8 @@ End of Report
     try {
       let requests;
 
-      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'product_owner' || user.role === 'operations_manager' || user.role === 'team_lead' || user.specialization === 'operations_manager') {
-        // Technical support staff, project managers, product owners, operations managers, and team leads see all requests
+      if (user.specialization === 'technical_support' || user.role === 'project_manager' || user.role === 'customer_support_officer' || user.role === 'operations_manager' || user.role === 'team_lead' || user.specialization === 'operations_manager') {
+        // Technical support staff, project managers, customer support officers, operations managers, and team leads see all requests
         requests = await db
           .select({
             id: technicalSupportRequests.id,

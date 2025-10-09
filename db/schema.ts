@@ -8,13 +8,13 @@ export const UserRole = {
   PROJECT_MANAGER: "project_manager",
   STAFF: "staff",
   INTERN: "intern",
-  PRODUCT_OWNER: "product_owner",
+  CUSTOMER_SUPPORT_OFFICER: "customer_support_officer",
   OPERATIONS_MANAGER: "operations_manager",
   TEAM_LEAD: "team_lead",
 } as const;
 
 export const UserSpecialization = {
-  PRODUCT_OWNER: "product_owner",
+  CUSTOMER_SUPPORT_OFFICER: "customer_support_officer",
   PRODUCT_MANAGER: "product_manager",
   AUTOMATION: "automation",
   COPYWRITING: "copywriting",
