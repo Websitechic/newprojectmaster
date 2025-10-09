@@ -305,24 +305,6 @@ export default function TeamChat() {
     });
   };
 
-  // Show loading state only for initial project load
-  if (projectLoading) {
-    return (
-      <div className="flex h-screen">
-        <Sidebar currentPath={`/dashboard/projects/${projectId}/team-chat`} />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading team chat...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Show error if access denied
   if (projectError || messagesError) {
     const errorMessage = projectError?.message || messagesError?.message || "An error occurred";
