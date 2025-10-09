@@ -122,7 +122,7 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
     if (handleClick) {
       handleClick();
     } else {
-      window.location.href = `/dashboard/projects/${project.id}`;
+      setLocation(`/dashboard/projects/${project.id}`);
     }
   };
 
