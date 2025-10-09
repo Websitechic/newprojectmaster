@@ -5096,7 +5096,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const projectTasks = await db
@@ -5146,7 +5146,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const projectResources = await db
@@ -5415,7 +5415,7 @@ End of Report
         project.managerId === user.id ||
         project.clientId === user.id ||
         staffMembership;
-      
+
       if (!hasAccess) return res.status(403).send("Access denied");
 
       const members = await db
@@ -5477,7 +5477,7 @@ End of Report
         project.managerId === user.id ||
         project.clientId === user.id ||
         (!!membership && membership.invitationStatus === "accepted");
-      
+
       if (!hasAccess) {
         console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} team chat. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
         return res.status(403).send("Access denied - You must be a project member to access team chat");
@@ -5546,7 +5546,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const [newMessage] = await db
@@ -5570,28 +5570,50 @@ End of Report
           )
         );
 
-      // Check for @mentions in the message
-      const mentionRegex = /@(\w+)/g;
-      const mentions = content.match(mentionRegex);
+      // Check for @mentions in the message - improved regex to handle spaces
+      const mentionRegex = /@([a-zA-Z0-9_\s]+?)(?=\s|$|@)/g;
+      const mentionMatches = Array.from(content.matchAll(mentionRegex));
 
-      if (mentions) {
-        // Get mentioned users by username
-        const usernames = mentions.map(mention => mention.substring(1));
-        const mentionedUsers = await db
-          .select()
-          .from(users)
-          .where(inArray(users.username, usernames));
+      if (mentionMatches.length > 0) {
+        // Extract mentioned user names
+        const mentionedNames = mentionMatches.map(m => m[1].trim().toLowerCase());
 
-        // Send mention notifications
-        for (const mentionedUser of mentionedUsers) {
-          if (mentionedUser.id !== user.id) {
+        // Get all project members
+        const allProjectMembers = await db
+          .select({
+            userId: projectMembers.userId,
+            userName: users.name,
+          })
+          .from(projectMembers)
+          .innerJoin(users, eq(projectMembers.userId, users.id))
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          );
+
+        // Find mentioned users - exact name matching
+        const mentionedUsers = allProjectMembers.filter(member => 
+          mentionedNames.some(name => member.userName.toLowerCase() === name)
+        );
+
+        const mentionedUserIds = [...new Set(mentionedUsers.map(m => m.userId))];
+
+        // Create notifications for mentioned users
+        for (const mentionedUserId of mentionedUserIds) {
+          if (mentionedUserId === user.id) continue; // Don't notify self
+
+          try {
             await createNotification(
-              mentionedUser.id,
+              mentionedUserId,
               "mention",
-              `${user.name} mentioned you in ${project?.name || "project"}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
-              newMessage.id,
-              "message"
+              `${user.name} mentioned you in ${project.name} team chat: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
+              projectId,
+              "project"
             );
+          } catch (error) {
+            console.error(`Error creating mention notification for user ${mentionedUserId}:`, error);
           }
         }
       } else {
@@ -5738,7 +5760,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const plans = await db
@@ -5798,7 +5820,7 @@ End of Report
           .limit(1)
           .then(members => members.length > 0)
         );
-      
+
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       // Get deliverables for this plan
@@ -6574,7 +6596,7 @@ End of Report
 
       res.json(tasksList);
     } catch (error) {
-      console      .error("Error fetching tasks:", error);
+      console.error("Error fetching tasks:", error);
       res.status(500).json({ error: "Failed to fetch tasks" });
     }
   });

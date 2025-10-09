@@ -239,12 +239,13 @@ export default function TeamChat() {
     setMessage(value);
     setCursorPosition(position);
 
-    // Check for @ mentions - allow spaces in names
+    // Check for @ mentions - allow spaces and handle partial names
     const beforeCursor = value.substring(0, position);
     const mentionMatch = beforeCursor.match(/@([a-zA-Z0-9_\s]*)$/);
 
     if (mentionMatch) {
-      setMentionQuery(mentionMatch[1]);
+      const query = mentionMatch[1];
+      setMentionQuery(query);
       setShowMentionSuggestions(true);
     } else {
       setShowMentionSuggestions(false);
@@ -282,32 +283,61 @@ export default function TeamChat() {
       member.id !== user?.id;
   });
 
-  // Render message content with highlighted mentions
+  // Render message content with highlighted mentions for all users
   const renderMessageContent = (content: string) => {
     if (!content) return content;
 
-    const mentionRegex = /@([a-zA-Z0-9_\s]+)/g;
-    const parts = content.split(mentionRegex);
+    // Match @mentions with word boundaries
+    const mentionRegex = /@([a-zA-Z0-9_\s]+?)(?=\s|$|@)/g;
+    const parts: Array<{ text: string; isMention: boolean; mentionedName?: string }> = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = mentionRegex.exec(content)) !== null) {
+      // Add text before mention
+      if (match.index > lastIndex) {
+        parts.push({ text: content.substring(lastIndex, match.index), isMention: false });
+      }
+      
+      // Add mention
+      const mentionedName = match[1].trim();
+      parts.push({ text: `@${mentionedName}`, isMention: true, mentionedName });
+      
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push({ text: content.substring(lastIndex), isMention: false });
+    }
 
     return parts.map((part, index) => {
-      if (index % 2 === 1) {
-        // This is a mention
+      if (part.isMention && part.mentionedName) {
+        // Check if this is a valid team member mention
         const mentionedMember = projectMembers.find((member: any) => {
           const memberName = member?.name || member?.userName || '';
-          return memberName && memberName.toLowerCase() === part.toLowerCase();
+          return memberName && memberName.toLowerCase() === part.mentionedName!.toLowerCase();
         });
+        
+        // Highlight ALL mentions in blue for all users, with extra emphasis for self-mentions
+        const isSelfMention = mentionedMember?.id === user?.id;
+        
         if (mentionedMember) {
           return (
             <span 
               key={index} 
-              className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-1 rounded font-medium"
+              className={`${
+                isSelfMention 
+                  ? 'bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100 font-bold' 
+                  : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 font-medium'
+              } px-1 rounded`}
             >
-              @{part}
+              {part.text}
             </span>
           );
         }
       }
-      return part;
+      return <span key={index}>{part.text}</span>;
     });
   };
 
