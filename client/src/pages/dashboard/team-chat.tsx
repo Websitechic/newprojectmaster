@@ -236,9 +236,9 @@ export default function TeamChat() {
     setMessage(value);
     setCursorPosition(position);
 
-    // Check for @ mentions
+    // Check for @ mentions - allow spaces in names
     const beforeCursor = value.substring(0, position);
-    const mentionMatch = beforeCursor.match(/@([a-zA-Z0-9_]*)$/);
+    const mentionMatch = beforeCursor.match(/@([a-zA-Z0-9_\s]*)$/);
 
     if (mentionMatch) {
       setMentionQuery(mentionMatch[1]);
@@ -251,6 +251,8 @@ export default function TeamChat() {
 
   // Handle mention selection
   const selectMention = (member: any) => {
+    if (!member?.name) return;
+    
     const beforeMention = message.substring(0, cursorPosition - mentionQuery.length - 1);
     const afterCursor = message.substring(cursorPosition);
     const newMessage = `${beforeMention}@${member.name} ${afterCursor}`;
@@ -260,14 +262,13 @@ export default function TeamChat() {
     setMentionQuery("");
 
     // Focus back to input and set cursor position
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
         const newPosition = beforeMention.length + member.name.length + 2;
-        setCursorPosition(newPosition);
         inputRef.current.setSelectionRange(newPosition, newPosition);
       }
-    });
+    }, 0);
   };
 
   // Filter members for mentions
@@ -430,23 +431,27 @@ export default function TeamChat() {
               <div className="border-t p-4 relative">
                 {/* Mention Suggestions Dropdown */}
                 {showMentionSuggestions && filteredMembers.length > 0 && (
-                  <div className="absolute bottom-full left-4 right-4 mb-2 bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto z-10">
+                  <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto z-50">
                     {filteredMembers.map((member: any) => (
                       member?.name && (
                         <button
                           key={member.id || member.name}
                           type="button"
                           onClick={() => selectMention(member)}
-                          className="w-full px-3 py-2 text-left hover:bg-muted flex items-center gap-2 border-b last:border-b-0"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            selectMention(member);
+                          }}
+                          className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors"
                         >
-                          <Avatar className="h-6 w-6">
+                          <Avatar className="h-6 w-6 flex-shrink-0">
                             <AvatarFallback className="text-xs">
                               {getUserInitials(member.name)}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
-                            <div className="font-medium text-sm">{member.name}</div>
-                            <div className="text-xs text-muted-foreground">{member.role || 'Team Member'}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{member.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{member.specialization || member.role || 'Team Member'}</div>
                           </div>
                         </button>
                       )
