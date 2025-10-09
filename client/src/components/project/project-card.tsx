@@ -115,18 +115,14 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
     if ((e.target as HTMLElement).closest('button, [role="button"]')) {
       return;
     }
-    
+
     e.preventDefault();
     e.stopPropagation();
-    
-    const targetPath = user?.role === 'staff'
-      ? `/dashboard/projects/${project.id}/staff`
-      : `/dashboard/projects/${project.id}`;
-    
+
     if (handleClick) {
       handleClick();
     } else {
-      setLocation(targetPath);
+      window.location.href = `/dashboard/projects/${project.id}`;
     }
   };
 
