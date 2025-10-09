@@ -342,10 +342,7 @@ export default function Projects() {
                               key={project.id}
                               project={project}
                               handleClick={() => {
-                                const targetPath = user?.role === 'staff'
-                                  ? `/dashboard/projects/${project.id}/staff`
-                                  : `/dashboard/projects/${project.id}`;
-                                window.location.href = targetPath;
+                                window.location.href = `/dashboard/projects/${project.id}`;
                               }}
                             />
                           ))}
