@@ -62,6 +62,11 @@ export default function ProjectDetails() {
 
   const isProjectManager = user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager";
 
+  // Prevent any redirects - staff should see this page
+  React.useEffect(() => {
+    // No redirect logic - all users can access this page
+  }, [user?.role]);
+
   const { data: project, isLoading, error } = useQuery({
     queryKey: [`/api/projects/${id}`],
     queryFn: async () => {

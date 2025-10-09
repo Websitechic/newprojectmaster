@@ -128,11 +128,7 @@ function Router() {
               <StaffProjectTasks />
             </div>
           </Route>
-          <Route path="/dashboard/projects/:id/staff">
-            <div className="lg:flex min-h-screen">
-              <StaffProjectDetails />
-            </div>
-          </Route>
+          {/* Staff-specific route removed - all users now use standard project details page */}
           <Route path="/dashboard/projects/:id/resources">
             <div className="lg:flex min-h-screen">
               <ProjectResources />
