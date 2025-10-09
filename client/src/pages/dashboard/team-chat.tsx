@@ -77,13 +77,16 @@ export default function TeamChat() {
       console.log(`Fetching project members for project ${projectId}`);
       const response = await fetch(`/api/projects/${projectId}/members`);
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Failed to fetch members: ${response.status}`, errorText);
         throw new Error("Failed to fetch members");
       }
       const data = await response.json();
       console.log(`Fetched project members:`, data);
-      return data;
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!projectId,
+    retry: 1,
   });
 
   const sendMessageMutation = useMutation({
@@ -272,11 +275,12 @@ export default function TeamChat() {
   };
 
   // Filter members for mentions
-  const filteredMembers = projectMembers.filter((member: any) =>
-    member?.name && 
-    member.name.toLowerCase().includes(mentionQuery.toLowerCase()) &&
-    member.id !== user?.id
-  );
+  const filteredMembers = projectMembers.filter((member: any) => {
+    const memberName = member?.name || member?.userName || '';
+    return memberName && 
+      memberName.toLowerCase().includes(mentionQuery.toLowerCase()) &&
+      member.id !== user?.id;
+  });
 
   // Render message content with highlighted mentions
   const renderMessageContent = (content: string) => {
@@ -288,14 +292,15 @@ export default function TeamChat() {
     return parts.map((part, index) => {
       if (index % 2 === 1) {
         // This is a mention
-        const mentionedMember = projectMembers.find((member: any) => 
-          member?.name && member.name.toLowerCase() === part.toLowerCase()
-        );
+        const mentionedMember = projectMembers.find((member: any) => {
+          const memberName = member?.name || member?.userName || '';
+          return memberName && memberName.toLowerCase() === part.toLowerCase();
+        });
         if (mentionedMember) {
           return (
             <span 
               key={index} 
-              className="bg-blue-100 text-blue-800 px-1 rounded font-medium"
+              className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-1 rounded font-medium"
             >
               @{part}
             </span>
@@ -362,20 +367,20 @@ export default function TeamChat() {
                     Team Discussion
                   </h3>
                   <div className="text-sm text-muted-foreground mt-1">
-                    {projectMembers.length === 0 ? (
+                    {membersLoading ? (
                       <span>Loading team members...</span>
+                    ) : projectMembers.length === 0 ? (
+                      <span>No team members</span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         <span className="font-medium">{projectMembers.length} member{projectMembers.length !== 1 ? 's' : ''}:</span>
                         {projectMembers.slice(0, 4).map((member: any, index: number) => (
-                          member?.name && (
-                            <span key={member.id || index} className="inline-flex items-center">
-                              <span className="bg-muted px-2 py-0.5 rounded-full text-xs font-medium">
-                                {member.name}
-                              </span>
-                              {index < Math.min(projectMembers.length - 1, 3) && <span className="mx-1">•</span>}
+                          <span key={member.id || index} className="inline-flex items-center">
+                            <span className="bg-muted px-2 py-0.5 rounded-full text-xs font-medium">
+                              {member.name || member.userName || 'Unknown'}
                             </span>
-                          )
+                            {index < Math.min(projectMembers.length - 1, 3) && <span className="mx-1">•</span>}
+                          </span>
                         ))}
                         {projectMembers.length > 4 && (
                           <span className="text-xs">+{projectMembers.length - 4} more</span>
@@ -432,30 +437,32 @@ export default function TeamChat() {
                 {/* Mention Suggestions Dropdown */}
                 {showMentionSuggestions && filteredMembers.length > 0 && (
                   <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto z-50">
-                    {filteredMembers.map((member: any) => (
-                      member?.name && (
+                    {filteredMembers.map((member: any) => {
+                      const memberName = member?.name || member?.userName || 'Unknown';
+                      const memberRole = member?.specialization || member?.role || 'Team Member';
+                      return (
                         <button
-                          key={member.id || member.name}
+                          key={member.id || memberName}
                           type="button"
-                          onClick={() => selectMention(member)}
+                          onClick={() => selectMention({...member, name: memberName})}
                           onMouseDown={(e) => {
                             e.preventDefault();
-                            selectMention(member);
+                            selectMention({...member, name: memberName});
                           }}
                           className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors"
                         >
                           <Avatar className="h-6 w-6 flex-shrink-0">
                             <AvatarFallback className="text-xs">
-                              {getUserInitials(member.name)}
+                              {getUserInitials(memberName)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{member.name}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{member.specialization || member.role || 'Team Member'}</div>
+                            <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{memberName}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{memberRole}</div>
                           </div>
                         </button>
-                      )
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 
