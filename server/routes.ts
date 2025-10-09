@@ -5605,13 +5605,35 @@ End of Report
           if (mentionedUserId === user.id) continue; // Don't notify self
 
           try {
-            await createNotification(
-              mentionedUserId,
-              "team_chat_mention",
-              `${user.name} mentioned you in ${project.name} team chat`,
-              newMessage.id,
-              "team_message"
-            );
+            const [notification] = await db
+              .insert(notifications)
+              .values({
+                userId: mentionedUserId,
+                type: "team_chat_mention",
+                content: `${user.name} mentioned you in ${project.name} team chat`,
+                referenceId: newMessage.id,
+                referenceType: "team_message",
+                read: false,
+                createdAt: new Date(),
+              })
+              .returning();
+
+            // Send SSE notification if user is connected
+            if (global.sseClients && global.sseClients.has(mentionedUserId)) {
+              const userClient = global.sseClients.get(mentionedUserId);
+              if (userClient && !userClient.writableEnded) {
+                try {
+                  userClient.write(`data: ${JSON.stringify({
+                    type: 'notification',
+                    notification: notification
+                  })}\n\n`);
+                  console.log(`SSE mention notification sent to user ${mentionedUserId}`);
+                } catch (error) {
+                  console.error(`Error sending SSE notification to user ${mentionedUserId}:`, error);
+                  global.sseClients.delete(mentionedUserId);
+                }
+              }
+            }
           } catch (error) {
             console.error(`Error creating mention notification for user ${mentionedUserId}:`, error);
           }

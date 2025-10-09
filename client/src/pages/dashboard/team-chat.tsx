@@ -256,7 +256,7 @@ export default function TeamChat() {
   // Handle mention selection
   const selectMention = (member: any) => {
     if (!member?.name) return;
-    
+
     const beforeMention = message.substring(0, cursorPosition - mentionQuery.length - 1);
     const afterCursor = message.substring(cursorPosition);
     const newMessage = `${beforeMention}@${member.name} ${afterCursor}`;
@@ -298,11 +298,11 @@ export default function TeamChat() {
       if (match.index > lastIndex) {
         parts.push({ text: content.substring(lastIndex, match.index), isMention: false });
       }
-      
+
       // Add mention
       const mentionedName = match[1].trim();
       parts.push({ text: `@${mentionedName}`, isMention: true, mentionedName });
-      
+
       lastIndex = match.index + match[0].length;
     }
 
@@ -318,11 +318,11 @@ export default function TeamChat() {
           const memberName = member?.name || member?.userName || '';
           return memberName && memberName.toLowerCase() === part.mentionedName!.toLowerCase();
         });
-        
+
         if (mentionedMember) {
           // Check if this is the current user being mentioned
-          const isSelfMention = mentionedMember?.id === user?.id;
-          
+          const isSelfMention = mentionedMember.id === user?.id;
+
           // ALL mentions show in blue for ALL users
           // Self-mentions have extra emphasis (darker blue, bold)
           return (
@@ -330,8 +330,8 @@ export default function TeamChat() {
               key={index} 
               className={`${
                 isSelfMention 
-                  ? 'bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded' 
-                  : 'bg-blue-500 text-white font-medium px-1.5 py-0.5 rounded'
+                  ? 'bg-blue-700 text-white font-bold px-1.5 py-0.5 rounded mx-0.5' 
+                  : 'bg-blue-500 text-white font-medium px-1.5 py-0.5 rounded mx-0.5'
               }`}
             >
               {part.text}

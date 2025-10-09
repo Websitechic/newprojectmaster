@@ -99,29 +99,36 @@ export function Header() {
     });
 
     // Add team chat mentions from notifications
-    notifications.forEach((notif: any) => {
-      if (notif.type === "team_chat_mention" && notif.referenceType === "team_message" && !notif.read) {
-        // Find the project from the notification content
-        const project = projects.find((p: any) => 
-          notif.content.includes(p.name)
+    const mentionNotifications = notifications.filter((notif: any) => 
+      notif.type === "team_chat_mention" && 
+      notif.referenceType === "team_message" && 
+      !notif.read
+    );
+
+    mentionNotifications.forEach((notif: any) => {
+      // Find the project from the notification content
+      const project = projects.find((p: any) => 
+        notif.content.includes(p.name)
+      );
+      
+      if (project) {
+        // Check if we already have this project in combined
+        const existingIndex = combined.findIndex(msg => 
+          msg.type === "team_chat" && msg.projectId === project.id
         );
         
-        if (project) {
-          // Check if we already have this project in combined
-          const existingIndex = combined.findIndex(msg => 
-            msg.type === "team_chat" && msg.projectId === project.id
-          );
-          
-          if (existingIndex === -1) {
-            // Add new entry for mention
-            combined.push({
-              type: "team_chat",
-              id: project.id,
-              name: `${project.name} (mentioned you)`,
-              unreadCount: 1,
-              projectId: project.id,
-            });
-          }
+        if (existingIndex === -1) {
+          // Add new entry for mention
+          combined.push({
+            type: "team_chat",
+            id: project.id,
+            name: `${project.name} (mentioned)`,
+            unreadCount: 1,
+            projectId: project.id,
+          });
+        } else {
+          // Increment existing count
+          combined[existingIndex].unreadCount += 1;
         }
       }
     });
