@@ -571,7 +571,7 @@ export function registerRoutes(app: Express): Server {
       .where(whereCondition);
 
     const staffAndCustomerSupportOfficers = await query.orderBy(desc(users.lastActive));
-    res.json(staffAndCustomerSupportOfficersners);
+    res.json(staffAndCustomerSupportOfficers);
   });
 
   // Get all users (for staff queries dropdown)
