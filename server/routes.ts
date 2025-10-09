@@ -5600,32 +5600,21 @@ End of Report
 
         const mentionedUserIds = [...new Set(mentionedUsers.map(m => m.userId))];
 
-        // Create notifications for mentioned users
+        // Create notifications for mentioned users (these will show in header dropdown)
         for (const mentionedUserId of mentionedUserIds) {
           if (mentionedUserId === user.id) continue; // Don't notify self
 
           try {
             await createNotification(
               mentionedUserId,
-              "mention",
-              `${user.name} mentioned you in ${project.name} team chat: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
-              projectId,
-              "project"
+              "team_chat_mention",
+              `${user.name} mentioned you in ${project.name} team chat`,
+              newMessage.id,
+              "team_message"
             );
           } catch (error) {
             console.error(`Error creating mention notification for user ${mentionedUserId}:`, error);
           }
-        }
-      } else {
-        // Send general team message notifications to all members
-        for (const member of projectMembers) {
-          await createNotification(
-            member.userId,
-            "task_updated",
-            `New message in ${project?.name || "project"} from ${user.name}`,
-            newMessage.id,
-            "message"
-          );
         }
       }
 

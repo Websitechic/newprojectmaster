@@ -319,18 +319,20 @@ export default function TeamChat() {
           return memberName && memberName.toLowerCase() === part.mentionedName!.toLowerCase();
         });
         
-        // Highlight ALL mentions in blue for all users, with extra emphasis for self-mentions
-        const isSelfMention = mentionedMember?.id === user?.id;
-        
         if (mentionedMember) {
+          // Check if this is the current user being mentioned
+          const isSelfMention = mentionedMember?.id === user?.id;
+          
+          // ALL mentions show in blue for ALL users
+          // Self-mentions have extra emphasis (darker blue, bold)
           return (
             <span 
               key={index} 
               className={`${
                 isSelfMention 
-                  ? 'bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100 font-bold' 
-                  : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 font-medium'
-              } px-1 rounded`}
+                  ? 'bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded' 
+                  : 'bg-blue-500 text-white font-medium px-1.5 py-0.5 rounded'
+              }`}
             >
               {part.text}
             </span>
