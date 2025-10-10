@@ -404,7 +404,8 @@ export default function Dashboard() {
             <>
               {/* Manager/Admin Dashboard */}
               {(user?.role === "operations_manager" ||
-                user?.specialization === "operations_manager") && (
+                user?.specialization === "operations_manager" ||
+                user?.role === "team_lead") && (
                 <>
                   <div className="mb-6">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">Project Status</h2>
