@@ -56,11 +56,11 @@ export default function Dashboard() {
     setLocation(`/dashboard/projects/${projectId}`);
   };
 
-  const { data: projects } = useQuery<Project[]>({
+  const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
 
-  const { data: tasks } = useQuery<Task[]>({
+  const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
   });
 
@@ -935,16 +935,20 @@ export default function Dashboard() {
 
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">All Tasks</h2>
-                {tasks && tasks.length > 0 ? (
+                {tasksLoading ? (
+                  <div className="text-center text-muted-foreground mt-8">
+                    Loading tasks...
+                  </div>
+                ) : tasks && tasks.length > 0 ? (
                   <TaskList
-                    tasks={tasks || []}
+                    tasks={tasks}
                     projectId={undefined}
                     showNewTaskButton={false}
                     showProjectInfo={true}
                   />
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
-                    No tasks available.
+                    No tasks available. Tasks from all projects will appear here.
                   </div>
                 )}
               </div>

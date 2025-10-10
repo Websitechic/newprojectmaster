@@ -414,13 +414,20 @@ export function registerRoutes(app: Express): Server {
           .select()
           .from(projects)
           .orderBy(desc(projects.updatedAt));
-      } else if (user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
-        // Operations managers and team leads see all projects with full access
+      } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+        // Operations managers see all projects with full access
         projectsList = await db
           .select()
           .from(projects)
           .orderBy(desc(projects.updatedAt));
-      } else {
+      } else if (user.role === "team_lead") {
+        // Team leads see all projects with full access
+        projectsList = await db
+          .select()
+          .from(projects)
+          .orderBy(desc(projects.updatedAt));
+      }
+      else {
         // Staff see projects they're invited to and have accepted
         const memberProjects = await db
           .select({
@@ -470,7 +477,7 @@ export function registerRoutes(app: Express): Server {
           .from(projects)
           .where(eq(projects.managerId, user.id));
         userProjectIds = managerProjects.map(p => p.id);
-      } else if (user.role === "product_owner" || user.role === "operations_manager" || user.specialization === "operations_manager") {
+      } else if (user.role === "product_owner" || user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "team_lead") {
         const allProjects = await db
           .select({ id: projects.id })
           .from(projects);
@@ -5342,7 +5349,7 @@ End of Report
       console.error("Error stack:", error.stack);
       res.status(500).json({ 
         error: "Failed to add resource link", 
-        details: error.message 
+        details: error instanceof Error ? error.message : String(error)
       });
     }
   });
@@ -5504,7 +5511,7 @@ End of Report
         project.clientId === user.id ||
         staffMembership;
 
-      if (!hasAccess) return res.status(403).send("Access denied");
+      if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const members = await db
         .select({
@@ -6779,8 +6786,14 @@ End of Report
         } else {
           tasksList = [];
         }
-      } else if (user.role === "product_owner" || user.role === "operations_manager" || user.specialization === "operations_manager") {
-        // Product owners and operations managers see all tasks
+      } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+        // Operations managers and team leads see all tasks
+        tasksList = await db
+          .select()
+          .from(tasks)
+          .orderBy(desc(tasks.updatedAt));
+      } else if (user.role === "product_owner") {
+        // Product owners see all tasks
         tasksList = await db
           .select()
           .from(tasks)
