@@ -9,7 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, ArrowLeft, Users } from "lucide-react";
+import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -37,6 +43,8 @@ export default function TeamChat() {
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const projectId = parseInt(id!);
@@ -209,6 +217,81 @@ export default function TeamChat() {
 
     markMessagesAsRead().catch(console.error);
   }, [messages, user?.id, projectId]);
+
+  const handleEditMessage = async (messageId: number) => {
+    if (!editingContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Message cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/team-messages/${messageId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: editingContent.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/projects/${projectId}/team-messages`] 
+        });
+        setEditingMessageId(null);
+        setEditingContent("");
+        toast({
+          title: "Success",
+          description: "Message updated successfully",
+        });
+      } else {
+        throw new Error("Failed to edit message");
+      }
+    } catch (error) {
+      console.error("Error editing message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to edit message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: number) => {
+    if (!confirm("Are you sure you want to delete this message?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/team-messages/${messageId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/projects/${projectId}/team-messages`] 
+        });
+        toast({
+          title: "Success",
+          description: "Message deleted successfully",
+        });
+      } else {
+        throw new Error("Failed to delete message");
+      }
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete message",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -469,7 +552,7 @@ export default function TeamChat() {
                   </div>
                 ) : (
                   messages.map((msg) => (
-                    <div key={msg.id} className="flex gap-3">
+                    <div key={msg.id} className="flex gap-3 group">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">
                           {getUserInitials(msg.sender?.name || "Unknown")}
@@ -484,9 +567,76 @@ export default function TeamChat() {
                             {formatMessageTime(msg.createdAt || new Date())}
                           </span>
                         </div>
-                        <div className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap break-words">
-                          {renderMessageContent(msg.content)}
-                        </div>
+                        {editingMessageId === msg.id ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              value={editingContent}
+                              onChange={(e) => setEditingContent(e.target.value)}
+                              className="min-h-[60px] text-sm"
+                              autoFocus
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleEditMessage(msg.id)}
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingMessageId(null);
+                                  setEditingContent("");
+                                }}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <div className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap break-words">
+                              {renderMessageContent(msg.content)}
+                            </div>
+                            {msg.senderId === user?.id && (
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setEditingMessageId(msg.id);
+                                        setEditingContent(msg.content);
+                                      }}
+                                    >
+                                      <Edit2 className="h-4 w-4 mr-2" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeleteMessage(msg.id)}
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))

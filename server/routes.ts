@@ -3190,6 +3190,90 @@ End of Report
     }
   });
 
+  // Edit direct message
+  app.put("/api/direct-messages/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const messageId = parseInt(req.params.id);
+    const { content } = req.body;
+
+    try {
+      if (!content || !content.trim()) {
+        return res.status(400).json({ error: "Content is required" });
+      }
+
+      // Check if message exists and belongs to user
+      const [existingMessage] = await db
+        .select()
+        .from(directMessages)
+        .where(eq(directMessages.id, messageId))
+        .limit(1);
+
+      if (!existingMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      if (existingMessage.senderId !== user.id) {
+        return res.status(403).json({ error: "You can only edit your own messages" });
+      }
+
+      // Update the message
+      const [updatedMessage] = await db
+        .update(directMessages)
+        .set({
+          content: content.trim(),
+          updatedAt: new Date(),
+        })
+        .where(eq(directMessages.id, messageId))
+        .returning();
+
+      res.json({ success: true, message: updatedMessage });
+    } catch (error) {
+      console.error("Error editing direct message:", error);
+      res.status(500).json({ error: "Failed to edit message" });
+    }
+  });
+
+  // Delete direct message
+  app.delete("/api/direct-messages/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const messageId = parseInt(req.params.id);
+
+    try {
+      // Check if message exists and belongs to user
+      const [existingMessage] = await db
+        .select()
+        .from(directMessages)
+        .where(eq(directMessages.id, messageId))
+        .limit(1);
+
+      if (!existingMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      if (existingMessage.senderId !== user.id) {
+        return res.status(403).json({ error: "You can only delete your own messages" });
+      }
+
+      // Delete the message
+      await db
+        .delete(directMessages)
+        .where(eq(directMessages.id, messageId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting direct message:", error);
+      res.status(500).json({ error: "Failed to delete message" });
+    }
+  });
+
   // Send direct message
   app.post("/api/direct-messages", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -5651,6 +5735,100 @@ End of Report
     } catch (error) {
       console.error("Error sending team message:", error);
       res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Edit team message
+  app.put("/api/projects/:projectId/team-messages/:messageId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.projectId);
+    const messageId = parseInt(req.params.messageId);
+    const { content } = req.body;
+
+    try {
+      if (!content || !content.trim()) {
+        return res.status(400).json({ error: "Content is required" });
+      }
+
+      // Check if message exists and belongs to user
+      const [existingMessage] = await db
+        .select()
+        .from(projectMessages)
+        .where(eq(projectMessages.id, messageId))
+        .limit(1);
+
+      if (!existingMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      if (existingMessage.senderId !== user.id) {
+        return res.status(403).json({ error: "You can only edit your own messages" });
+      }
+
+      if (existingMessage.projectId !== projectId) {
+        return res.status(400).json({ error: "Message does not belong to this project" });
+      }
+
+      // Update the message
+      const [updatedMessage] = await db
+        .update(projectMessages)
+        .set({
+          content: content.trim(),
+          updatedAt: new Date(),
+        })
+        .where(eq(projectMessages.id, messageId))
+        .returning();
+
+      res.json({ success: true, message: updatedMessage });
+    } catch (error) {
+      console.error("Error editing team message:", error);
+      res.status(500).json({ error: "Failed to edit message" });
+    }
+  });
+
+  // Delete team message
+  app.delete("/api/projects/:projectId/team-messages/:messageId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.projectId);
+    const messageId = parseInt(req.params.messageId);
+
+    try {
+      // Check if message exists and belongs to user
+      const [existingMessage] = await db
+        .select()
+        .from(projectMessages)
+        .where(eq(projectMessages.id, messageId))
+        .limit(1);
+
+      if (!existingMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      if (existingMessage.senderId !== user.id) {
+        return res.status(403).json({ error: "You can only delete your own messages" });
+      }
+
+      if (existingMessage.projectId !== projectId) {
+        return res.status(400).json({ error: "Message does not belong to this project" });
+      }
+
+      // Delete the message
+      await db
+        .delete(projectMessages)
+        .where(eq(projectMessages.id, messageId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting team message:", error);
+      res.status(500).json({ error: "Failed to delete message" });
     }
   });
 

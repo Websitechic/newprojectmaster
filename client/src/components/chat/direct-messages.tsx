@@ -6,10 +6,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Users, Search } from "lucide-react";
+import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 interface User {
   id: number;
@@ -48,7 +55,10 @@ export function DirectMessages() {
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<"conversations" | "new">("conversations");
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState("");
   const { user } = useUser();
+  const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -250,6 +260,83 @@ export function DirectMessages() {
 
     window.addEventListener('websocket:direct_message', handleDirectMessage as EventListener);
 
+  const handleEditMessage = async (messageId: number) => {
+    if (!editingContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Message cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/direct-messages/${messageId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: editingContent.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === messageId 
+              ? { ...msg, content: editingContent.trim() }
+              : msg
+          )
+        );
+        setEditingMessageId(null);
+        setEditingContent("");
+        toast({
+          title: "Success",
+          description: "Message updated successfully",
+        });
+      } else {
+        throw new Error("Failed to edit message");
+      }
+    } catch (error) {
+      console.error("Error editing message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to edit message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: number) => {
+    if (!confirm("Are you sure you want to delete this message?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/direct-messages/${messageId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setMessages(prev => prev.filter(msg => msg.id !== messageId));
+        toast({
+          title: "Success",
+          description: "Message deleted successfully",
+        });
+      } else {
+        throw new Error("Failed to delete message");
+      }
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete message",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedUser) {
       console.log("Cannot send message: missing content or selected user");
@@ -353,7 +440,7 @@ export function DirectMessages() {
                 <div
                   key={message.id}
                   className={cn(
-                    "flex items-start gap-2",
+                    "flex items-start gap-2 group",
                     message.senderId === user?.id ? "flex-row-reverse" : ""
                   )}
                 >
@@ -362,41 +449,114 @@ export function DirectMessages() {
                       {message.senderName.split(' ').map(n => n[0]).join('').toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div
-                    className={cn(
-                      "rounded-lg p-3 max-w-[70%]",
-                      message.senderId === user?.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary"
-                    )}
-                  >
-                    <p className="text-sm break-words whitespace-pre-wrap">
-                      {message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
-                        if (/^https?:\/\/[^\s]+$/.test(part)) {
-                          return (
-                            <a
-                              key={index}
-                              href={part}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={cn(
-                                "underline hover:opacity-80 break-all",
-                                message.senderId === user?.id
-                                  ? "text-primary-foreground"
-                                  : "text-blue-600"
-                              )}
-                              onClick={(e) => e.stopPropagation()}
+                  <div className="flex-1 max-w-[70%]">
+                    <div
+                      className={cn(
+                        "rounded-lg p-3 relative",
+                        message.senderId === user?.id
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary"
+                      )}
+                    >
+                      {editingMessageId === message.id ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={editingContent}
+                            onChange={(e) => setEditingContent(e.target.value)}
+                            className="min-h-[60px] text-sm"
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditMessage(message.id)}
                             >
-                              {part}
-                            </a>
-                          );
-                        }
-                        return part;
-                      })}
-                    </p>
-                    <p className="text-xs opacity-70 mt-1">
-                      {new Date(message.createdAt).toLocaleTimeString()}
-                    </p>
+                              <Check className="h-4 w-4 mr-1" />
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingMessageId(null);
+                                setEditingContent("");
+                              }}
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm break-words whitespace-pre-wrap">
+                            {message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                              if (/^https?:\/\/[^\s]+$/.test(part)) {
+                                return (
+                                  <a
+                                    key={index}
+                                    href={part}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={cn(
+                                      "underline hover:opacity-80 break-all",
+                                      message.senderId === user?.id
+                                        ? "text-primary-foreground"
+                                        : "text-blue-600"
+                                    )}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {part}
+                                  </a>
+                                );
+                              }
+                              return part;
+                            })}
+                          </p>
+                          <p className="text-xs opacity-70 mt-1">
+                            {new Date(message.createdAt).toLocaleTimeString()}
+                          </p>
+                        </>
+                      )}
+                      
+                      {message.senderId === user?.id && editingMessageId !== message.id && (
+                        <div className={cn(
+                          "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity",
+                          message.senderId === user?.id ? "left-2" : "right-2"
+                        )}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingMessageId(message.id);
+                                  setEditingContent(message.content);
+                                }}
+                              >
+                                <Edit2 className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteMessage(message.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
