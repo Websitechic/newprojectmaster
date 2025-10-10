@@ -1754,7 +1754,7 @@ End of Report
         });
       }
 
-      return res.json({ task: updatedTask });
+      return res.json({ success: true, task: updatedTask });
     } catch (error) {
       console.error("Error updating task:", error);
       return res.status(500).json({ error: "Failed to update task" });
@@ -5646,7 +5646,20 @@ End of Report
         }
       }
 
-      res.json({ success: true, messageId: newMessage.id });
+      // Get the complete message with sender info to return
+      const messageWithSender = {
+        id: newMessage.id,
+        content: newMessage.content,
+        createdAt: newMessage.createdAt,
+        senderId: newMessage.senderId,
+        sender: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        },
+      };
+
+      res.json({ success: true, messageId: newMessage.id, message: messageWithSender });
     } catch (error) {
       console.error("Error sending team message:", error);
       res.status(500).json({ error: "Failed to send message" });

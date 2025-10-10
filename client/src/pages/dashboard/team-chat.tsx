@@ -100,14 +100,14 @@ export default function TeamChat() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Failed to send message: ${response.status} ${response.statusText}`, errorText);
-        throw new Error("Failed to send message");
+        throw new Error(errorText || "Failed to send message");
       }
       const result = await response.json();
       console.log("Team message sent successfully:", result);
       return result;
     },
-    onSuccess: () => {
-      console.log("Team message sent, invalidating queries");
+    onSuccess: (data) => {
+      console.log("Team message sent, invalidating queries", data);
       queryClient.invalidateQueries({ 
         queryKey: [`/api/projects/${projectId}/team-messages`] 
       });
@@ -117,7 +117,7 @@ export default function TeamChat() {
       console.error("Error sending team message:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to send message",
         variant: "destructive",
       });
     },
