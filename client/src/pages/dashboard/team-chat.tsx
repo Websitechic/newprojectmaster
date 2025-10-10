@@ -240,9 +240,14 @@ export default function TeamChat() {
       });
 
       if (response.ok) {
-        queryClient.invalidateQueries({ 
+        // Update the message in local state immediately
+        const updatedMessage = await response.json();
+        
+        // Invalidate and refetch messages
+        await queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
         });
+        
         setEditingMessageId(null);
         setEditingContent("");
         toast({
@@ -273,9 +278,11 @@ export default function TeamChat() {
       });
 
       if (response.ok) {
-        queryClient.invalidateQueries({ 
+        // Invalidate and refetch messages
+        await queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
         });
+        
         toast({
           title: "Success",
           description: "Message deleted successfully",

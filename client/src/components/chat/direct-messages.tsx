@@ -282,6 +282,9 @@ export function DirectMessages() {
       });
 
       if (response.ok) {
+        const updatedMessage = await response.json();
+        
+        // Update messages in local state
         setMessages(prev => 
           prev.map(msg => 
             msg.id === messageId 
@@ -289,6 +292,24 @@ export function DirectMessages() {
               : msg
           )
         );
+        
+        // Also update conversations to reflect the change
+        if (selectedUser) {
+          setConversations(prev =>
+            prev.map(conv =>
+              conv.user.id === selectedUser.id
+                ? {
+                    ...conv,
+                    lastMessage: {
+                      ...conv.lastMessage,
+                      content: editingContent.trim(),
+                    }
+                  }
+                : conv
+            )
+          );
+        }
+        
         setEditingMessageId(null);
         setEditingContent("");
         toast({
@@ -319,7 +340,32 @@ export function DirectMessages() {
       });
 
       if (response.ok) {
+        // Remove message from local state
         setMessages(prev => prev.filter(msg => msg.id !== messageId));
+        
+        // Update conversations to reflect the deletion
+        if (selectedUser && messages.length > 1) {
+          const remainingMessages = messages.filter(msg => msg.id !== messageId);
+          const lastMessage = remainingMessages[remainingMessages.length - 1];
+          
+          if (lastMessage) {
+            setConversations(prev =>
+              prev.map(conv =>
+                conv.user.id === selectedUser.id
+                  ? {
+                      ...conv,
+                      lastMessage: {
+                        content: lastMessage.content,
+                        createdAt: lastMessage.createdAt,
+                        senderId: lastMessage.senderId,
+                      }
+                    }
+                  : conv
+              )
+            );
+          }
+        }
+        
         toast({
           title: "Success",
           description: "Message deleted successfully",
