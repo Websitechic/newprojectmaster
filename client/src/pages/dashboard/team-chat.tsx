@@ -240,11 +240,8 @@ export default function TeamChat() {
       });
 
       if (response.ok) {
-        // Update the message in local state immediately
-        const updatedMessage = await response.json();
-        
         // Invalidate and refetch messages
-        await queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
         });
         
@@ -255,13 +252,14 @@ export default function TeamChat() {
           description: "Message updated successfully",
         });
       } else {
-        throw new Error("Failed to edit message");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to edit message");
       }
     } catch (error) {
       console.error("Error editing message:", error);
       toast({
         title: "Error",
-        description: "Failed to edit message",
+        description: error instanceof Error ? error.message : "Failed to edit message",
         variant: "destructive",
       });
     }
@@ -279,7 +277,7 @@ export default function TeamChat() {
 
       if (response.ok) {
         // Invalidate and refetch messages
-        await queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
         });
         
@@ -288,13 +286,14 @@ export default function TeamChat() {
           description: "Message deleted successfully",
         });
       } else {
-        throw new Error("Failed to delete message");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete message");
       }
     } catch (error) {
       console.error("Error deleting message:", error);
       toast({
         title: "Error",
-        description: "Failed to delete message",
+        description: error instanceof Error ? error.message : "Failed to delete message",
         variant: "destructive",
       });
     }
