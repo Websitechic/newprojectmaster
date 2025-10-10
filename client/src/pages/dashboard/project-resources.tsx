@@ -52,8 +52,9 @@ export default function ProjectResources() {
 
   const isProjectManager = user?.role === "project_manager";
   const isProductOwner = user?.role === "product_owner";
+  const isTeamLead = user?.role === "team_lead";
   const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
-  const canManageResources = isProjectManager || isProductOwner || isOperationsManager;
+  const canManageResources = isProjectManager || isProductOwner || isTeamLead || isOperationsManager;
 
   const categoryOptions = [
     { value: "onboarding", label: "Onboarding" },

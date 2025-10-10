@@ -306,7 +306,7 @@ export default function Projects() {
                     </DialogHeader>
                     <ProjectForm 
                       onSuccess={handleCreateSuccess} 
-                      restrictToSupportMaintenance={user?.role === "product_owner"}
+                      restrictToSupportMaintenance={user?.role === "product_owner" || user?.role === "customer_support_officer"}
                     />
                   </DialogContent>
                 </Dialog>

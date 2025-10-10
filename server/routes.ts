@@ -414,7 +414,7 @@ export function registerRoutes(app: Express): Server {
           .select()
           .from(projects)
           .orderBy(desc(projects.updatedAt));
-      } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+      } else if (user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
         // Operations managers and team leads see all projects with full access
         projectsList = await db
           .select()
@@ -5214,14 +5214,16 @@ End of Report
 
       // Check user access permissions
       const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+      const isTeamLead = user.role === 'team_lead';
       const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
       const isProductOwner = user.role === 'product_owner';
       const isClient = user.role === 'client' && project.clientId === user.id;
 
-      const hasAccess = isOperationsManager || isProjectManager || isProductOwner || isClient;
+      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isProductOwner || isClient;
 
       console.log("Access check:", { 
-        isOperationsManager, 
+        isOperationsManager,
+        isTeamLead,
         isProjectManager, 
         isProductOwner, 
         isClient, 
@@ -5297,11 +5299,12 @@ End of Report
 
       // Check user access permissions
       const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+      const isTeamLead = user.role === 'team_lead';
       const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
       const isProductOwner = user.role === 'product_owner';
       const isClient = user.role === 'client' && project.clientId === user.id;
 
-      const hasAccess = isOperationsManager || isProjectManager || isProductOwner || isClient;
+      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isProductOwner || isClient;
 
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied - insufficient permissions" });
@@ -5353,11 +5356,12 @@ End of Report
 
       // Check user access permissions
       const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+      const isTeamLead = user.role === 'team_lead';
       const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
       const isProductOwner = user.role === 'product_owner';
       const isClient = user.role === 'client' && project.clientId === user.id;
 
-      const hasAccess = isOperationsManager || isProjectManager || isProductOwner || isClient;
+      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isProductOwner || isClient;
 
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied - insufficient permissions" });
