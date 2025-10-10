@@ -538,10 +538,11 @@ export function registerRoutes(app: Express): Server {
     const isProjectManager = user.role === "project_manager";
     const isCustomerSupportOfficer = user.role === "customer_support_officer";
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    const isTeamLead = user.role === "team_lead";
     const isReplitDeveloper = user.specialization === "replit_development" || user.specialization === "Replit Development";
 
-    // Only project managers, customer support officers, operations managers, and Replit developers can view staff
-    if (!isProjectManager && !isCustomerSupportOfficer && !isOperationsManager && !isReplitDeveloper) {
+    // Only project managers, customer support officers, operations managers, team leads, and Replit developers can view staff
+    if (!isProjectManager && !isCustomerSupportOfficer && !isOperationsManager && !isTeamLead && !isReplitDeveloper) {
       return res.status(403).send("Access denied");
     }
 
