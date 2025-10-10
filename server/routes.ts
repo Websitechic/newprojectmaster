@@ -6786,7 +6786,7 @@ End of Report
         } else {
           tasksList = [];
         }
-      } else if (user.role === "operations_manager" || user.specialization === "operations_manager") {
+      } else if (user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "team_lead") {
         // Operations managers and team leads see all tasks
         tasksList = await db
           .select()
