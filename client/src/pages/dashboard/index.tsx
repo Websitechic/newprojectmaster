@@ -87,7 +87,8 @@ export default function Dashboard() {
           user?.clientType === "support_maintenance_client"
         ? tasks || []
         : user?.role === "operations_manager" ||
-            user?.specialization === "operations_manager"
+            user?.specialization === "operations_manager" ||
+            user?.role === "team_lead"
           ? tasks || []
           : user?.role === "project_manager"
             ? tasks || []
