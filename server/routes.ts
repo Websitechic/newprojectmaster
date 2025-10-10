@@ -3191,32 +3191,32 @@ End of Report
   });
 
   // Edit direct message
-  app.put("/api/direct-messages/:id", async (req, res) => {
+  app.put("/api/direct-messages/:messageId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
-    const messageId = parseInt(req.params.id);
+    const messageId = parseInt(req.params.messageId);
     const { content } = req.body;
 
-    try {
-      if (!content || !content.trim()) {
-        return res.status(400).json({ error: "Content is required" });
-      }
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: "Message content is required" });
+    }
 
+    try {
       // Check if message exists and belongs to user
-      const [existingMessage] = await db
+      const [message] = await db
         .select()
         .from(directMessages)
         .where(eq(directMessages.id, messageId))
         .limit(1);
 
-      if (!existingMessage) {
+      if (!message) {
         return res.status(404).json({ error: "Message not found" });
       }
 
-      if (existingMessage.senderId !== user.id) {
+      if (message.senderId !== user.id) {
         return res.status(403).json({ error: "You can only edit your own messages" });
       }
 
@@ -3238,27 +3238,27 @@ End of Report
   });
 
   // Delete direct message
-  app.delete("/api/direct-messages/:id", async (req, res) => {
+  app.delete("/api/direct-messages/:messageId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
-    const messageId = parseInt(req.params.id);
+    const messageId = parseInt(req.params.messageId);
 
     try {
       // Check if message exists and belongs to user
-      const [existingMessage] = await db
+      const [message] = await db
         .select()
         .from(directMessages)
         .where(eq(directMessages.id, messageId))
         .limit(1);
 
-      if (!existingMessage) {
+      if (!message) {
         return res.status(404).json({ error: "Message not found" });
       }
 
-      if (existingMessage.senderId !== user.id) {
+      if (message.senderId !== user.id) {
         return res.status(403).json({ error: "You can only delete your own messages" });
       }
 
@@ -5111,9 +5111,7 @@ End of Report
     try {
       // Check if project exists and user has access
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
+      if (!project) return res.status(404).json({ error: "Project not found" });
 
       const hasAccess = 
         user.role === "operations_manager" || 
@@ -5833,19 +5831,20 @@ End of Report
   });
 
   // Mark team messages as read
-  app.post("/api/projects/:id/team-messages/mark-read", async (req, res) => {
+  app.post("/api/projects/:projectId/team-messages/mark-read", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
+    const projectId = parseInt(req.params.projectId);
     const { messageIds } = req.body;
 
-    try {
-      if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
-        return res.json({ success: true }); // No messages to mark
-      }
+    if (!messageIds || !Array.isArray(messageIds)) {
+      return res.status(400).json({ error: "Invalid message IDs" });
+    }
 
+    try {
       // Insert read receipts for messages that don't already have them
       const readReceiptsData = messageIds.map(messageId => ({
         messageId: parseInt(messageId),
@@ -6196,7 +6195,7 @@ End of Report
         return res.status(400).json({ error: "Name, category, start date, and end date are required" });
       }
 
-      // Check if user has permission to update this project
+      // Check if project exists
       const [project] = await db
         .select()
         .from(projects)
@@ -6684,7 +6683,7 @@ End of Report
       const [plan] = await db
         .select()
         .from(projectPlans)
-        .where(eq(projectPlans.id, planId))
+        .where(eq(plan.id, planId))
         .limit(1);
 
       if (!plan) {
