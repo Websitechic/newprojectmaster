@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -369,7 +370,7 @@ export function DirectMessages() {
                         : "bg-secondary"
                     )}
                   >
-                    <p className="text-sm break-words">
+                    <p className="text-sm break-words whitespace-pre-wrap">
                       {message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
                         if (/^https?:\/\/[^\s]+$/.test(part)) {
                           return (
@@ -405,9 +406,9 @@ export function DirectMessages() {
         </CardContent>
 
         <CardFooter className="border-t p-4">
-          <div className="flex gap-2 w-full">
-            <Input
-              placeholder="Type a message..."
+          <div className="flex gap-2 w-full items-end">
+            <Textarea
+              placeholder="Type a message... (Shift+Enter for new line, Enter to send)"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={(e) => {
@@ -416,8 +417,9 @@ export function DirectMessages() {
                   handleSendMessage();
                 }
               }}
+              className="min-h-[60px] max-h-[200px] resize-y"
             />
-            <Button size="icon" onClick={handleSendMessage}>
+            <Button size="icon" onClick={handleSendMessage} className="mb-1">
               <Send className="h-4 w-4" />
             </Button>
           </div>

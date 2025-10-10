@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Send, ArrowLeft, Users } from "lucide-react";
@@ -483,7 +484,7 @@ export default function TeamChat() {
                             {formatMessageTime(msg.createdAt || new Date())}
                           </span>
                         </div>
-                        <div className="text-sm bg-muted/50 rounded-lg p-3">
+                        <div className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap break-words">
                           {renderMessageContent(msg.content)}
                         </div>
                       </div>
@@ -527,17 +528,21 @@ export default function TeamChat() {
                   </div>
                 )}
 
-                <form onSubmit={handleSendMessage} className="flex gap-2">
-                  <Input
-                    ref={inputRef}
+                <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
+                  <Textarea
+                    ref={inputRef as any}
                     value={message}
-                    onChange={handleInputChange}
-                    placeholder="Type your message... (use @ to mention teammates)"
-                    className="flex-1"
+                    onChange={handleInputChange as any}
+                    placeholder="Type your message... (use @ to mention teammates, Shift+Enter for new line, Enter to send)"
+                    className="flex-1 min-h-[60px] max-h-[200px] resize-y"
                     disabled={sendMessageMutation.isPending}
                     onKeyDown={(e) => {
                       if (e.key === 'Escape') {
                         setShowMentionSuggestions(false);
+                      }
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
                       }
                     }}
                   />
@@ -545,6 +550,7 @@ export default function TeamChat() {
                     type="submit" 
                     disabled={!message.trim() || sendMessageMutation.isPending}
                     size="sm"
+                    className="mb-1"
                   >
                     {sendMessageMutation.isPending ? (
                       <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
@@ -556,7 +562,7 @@ export default function TeamChat() {
 
                 {/* Typing hint */}
                 <div className="text-xs text-muted-foreground mt-2">
-                  Type @ to mention team members
+                  Type @ to mention team members • Shift+Enter for new line • Enter to send
                 </div>
               </div>
             </CardContent>
