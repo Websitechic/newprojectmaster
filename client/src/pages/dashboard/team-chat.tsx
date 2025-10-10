@@ -283,63 +283,92 @@ export default function TeamChat() {
       member.id !== user?.id;
   });
 
-  // Render message content with highlighted mentions for all users
+  // Render message content with highlighted mentions and clickable links
   const renderMessageContent = (content: string) => {
     if (!content) return content;
 
-    // Match @mentions with word boundaries
+    // Combined regex for mentions and URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
     const mentionRegex = /@([a-zA-Z0-9_\s]+?)(?=\s|$|@)/g;
-    const parts: Array<{ text: string; isMention: boolean; mentionedName?: string }> = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = mentionRegex.exec(content)) !== null) {
-      // Add text before mention
-      if (match.index > lastIndex) {
-        parts.push({ text: content.substring(lastIndex, match.index), isMention: false });
+    
+    // First, split by URLs
+    const urlParts = content.split(urlRegex);
+    
+    return urlParts.map((urlPart, urlIndex) => {
+      // Check if this part is a URL
+      if (urlRegex.test(urlPart)) {
+        return (
+          <a 
+            key={`url-${urlIndex}`}
+            href={urlPart}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-700 underline break-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {urlPart}
+          </a>
+        );
       }
 
-      // Add mention
-      const mentionedName = match[1].trim();
-      parts.push({ text: `@${mentionedName}`, isMention: true, mentionedName });
+      // Process mentions in non-URL parts
+      const parts: Array<{ text: string; isMention: boolean; mentionedName?: string }> = [];
+      let lastIndex = 0;
+      let match;
+      const mentionRegexCopy = new RegExp(mentionRegex.source, mentionRegex.flags);
 
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Add remaining text
-    if (lastIndex < content.length) {
-      parts.push({ text: content.substring(lastIndex), isMention: false });
-    }
-
-    return parts.map((part, index) => {
-      if (part.isMention && part.mentionedName) {
-        // Check if this is a valid team member mention
-        const mentionedMember = projectMembers.find((member: any) => {
-          const memberName = member?.name || member?.userName || '';
-          return memberName && memberName.toLowerCase() === part.mentionedName!.toLowerCase();
-        });
-
-        if (mentionedMember) {
-          // Check if this is the current user being mentioned
-          const isSelfMention = mentionedMember.id === user?.id;
-
-          // ALL mentions show in blue for ALL users
-          // Self-mentions have extra emphasis (darker blue, bold)
-          return (
-            <span 
-              key={index} 
-              className={`${
-                isSelfMention 
-                  ? 'bg-blue-700 text-white font-bold px-1.5 py-0.5 rounded mx-0.5' 
-                  : 'bg-blue-500 text-white font-medium px-1.5 py-0.5 rounded mx-0.5'
-              }`}
-            >
-              {part.text}
-            </span>
-          );
+      while ((match = mentionRegexCopy.exec(urlPart)) !== null) {
+        // Add text before mention
+        if (match.index > lastIndex) {
+          parts.push({ text: urlPart.substring(lastIndex, match.index), isMention: false });
         }
+
+        // Add mention
+        const mentionedName = match[1].trim();
+        parts.push({ text: `@${mentionedName}`, isMention: true, mentionedName });
+
+        lastIndex = match.index + match[0].length;
       }
-      return <span key={index}>{part.text}</span>;
+
+      // Add remaining text
+      if (lastIndex < urlPart.length) {
+        parts.push({ text: urlPart.substring(lastIndex), isMention: false });
+      }
+
+      if (parts.length === 0) {
+        return <span key={`text-${urlIndex}`}>{urlPart}</span>;
+      }
+
+      return parts.map((part, index) => {
+        if (part.isMention && part.mentionedName) {
+          // Check if this is a valid team member mention
+          const mentionedMember = projectMembers.find((member: any) => {
+            const memberName = member?.name || member?.userName || '';
+            return memberName && memberName.toLowerCase() === part.mentionedName!.toLowerCase();
+          });
+
+          if (mentionedMember) {
+            // Check if this is the current user being mentioned
+            const isSelfMention = mentionedMember.id === user?.id;
+
+            // ALL mentions show in blue for ALL users
+            // Self-mentions have extra emphasis (darker blue, bold)
+            return (
+              <span 
+                key={`mention-${urlIndex}-${index}`}
+                className={`${
+                  isSelfMention 
+                    ? 'bg-blue-700 text-white font-bold px-1.5 py-0.5 rounded mx-0.5' 
+                    : 'bg-blue-500 text-white font-medium px-1.5 py-0.5 rounded mx-0.5'
+                }`}
+              >
+                {part.text}
+              </span>
+            );
+          }
+        }
+        return <span key={`text-${urlIndex}-${index}`}>{part.text}</span>;
+      });
     });
   };
 

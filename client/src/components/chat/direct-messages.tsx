@@ -369,7 +369,30 @@ export function DirectMessages() {
                         : "bg-secondary"
                     )}
                   >
-                    <p className="text-sm">{message.content}</p>
+                    <p className="text-sm break-words">
+                      {message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                        if (/^https?:\/\/[^\s]+$/.test(part)) {
+                          return (
+                            <a
+                              key={index}
+                              href={part}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={cn(
+                                "underline hover:opacity-80 break-all",
+                                message.senderId === user?.id
+                                  ? "text-primary-foreground"
+                                  : "text-blue-600"
+                              )}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {part}
+                            </a>
+                          );
+                        }
+                        return part;
+                      })}
+                    </p>
                     <p className="text-xs opacity-70 mt-1">
                       {new Date(message.createdAt).toLocaleTimeString()}
                     </p>
