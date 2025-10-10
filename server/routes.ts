@@ -5564,18 +5564,6 @@ End of Report
         })
         .returning();
 
-      // Get all project members for notifications
-      const projectMembers = await db
-        .select({ userId: projectMembers.userId })
-        .from(projectMembers)
-        .where(
-          and(
-            eq(projectMembers.projectId, projectId),
-            eq(projectMembers.invitationStatus, "accepted"),
-            ne(projectMembers.userId, user.id) // Don't notify sender
-          )
-        );
-
       // Check for @mentions in the message - improved regex to handle spaces
       const mentionRegex = /@([a-zA-Z0-9_\s]+?)(?=\s|$|@)/g;
       const mentionMatches = Array.from(content.matchAll(mentionRegex));
@@ -5584,7 +5572,7 @@ End of Report
         // Extract mentioned user names
         const mentionedNames = mentionMatches.map(m => m[1].trim().toLowerCase());
 
-        // Get all project members
+        // Get all project members for mention matching
         const allProjectMembers = await db
           .select({
             userId: projectMembers.userId,
