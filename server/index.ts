@@ -88,16 +88,22 @@ let emailServiceInitialized = false;
     // Auto-migrate database on startup
     migrate(db, { migrationsFolder: "./migrations" })
       .then(() => {
-        console.log("Database migrations completed");
+        console.log("Database migrations completed successfully");
       })
       .catch((error) => {
         console.error("Database migration error:", error);
-        // Continue startup even if migrations fail (they might already be applied)
-        if (!error.message.includes('already exists')) {
+        // Only continue if it's a duplicate column/constraint error (already applied)
+        const isDuplicateError = error.message && (
+          error.message.includes('already exists') || 
+          error.code === '42701' || // duplicate column
+          error.code === '42P07'    // duplicate table
+        );
+        
+        if (!isDuplicateError) {
           console.error("Critical migration error, exiting...");
           process.exit(1);
         } else {
-          console.log("Migration warning ignored (columns already exist)");
+          console.log("Migration skipped - schema already up to date");
         }
       });
 
