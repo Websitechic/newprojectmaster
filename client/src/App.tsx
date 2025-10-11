@@ -255,7 +255,9 @@ function Router() {
             </div>
           </Route>
           <Route path="/dashboard/staff-queries">
-            <StaffQueries />
+            <div className="lg:flex min-h-screen">
+              <StaffQueries />
+            </div>
           </Route>
           <Route path="/dashboard/staff-complaints">
             <div className="lg:flex min-h-screen">
