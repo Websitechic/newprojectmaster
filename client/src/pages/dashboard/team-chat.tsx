@@ -26,6 +26,7 @@ interface MessageWithSender {
   content: string;
   createdAt: string;
   updatedAt?: string;
+  isEdited?: boolean;
   senderId: number;
   sender?: {
     id: number;
@@ -650,7 +651,7 @@ export default function TeamChat() {
                             <div className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap break-words">
                               {renderMessageContent(msg.content)}
                             </div>
-                            {msg.updatedAt && msg.updatedAt !== msg.createdAt && (
+                            {msg.isEdited && (
                               <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>
                             )}
                             {msg.senderId === user?.id && (

@@ -5665,13 +5665,15 @@ End of Report
         return res.status(403).json({ error: "Access denied - You must be a project member to send messages" });
       }
 
+      const now = new Date();
       const [newMessage] = await db
         .insert(projectMessages)
         .values({
           content: content.trim(),
           projectId,
           senderId: user.id,
-          createdAt: new Date(),
+          createdAt: now,
+          updatedAt: now,
           isEdited: false,
         })
         .returning();
@@ -5807,6 +5809,7 @@ End of Report
         .set({
           content: content.trim(),
           updatedAt: new Date(),
+          isEdited: true,
         })
         .where(eq(projectMessages.id, messageId))
         .returning();
