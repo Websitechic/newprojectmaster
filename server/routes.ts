@@ -5671,6 +5671,7 @@ End of Report
           content: content.trim(),
           projectId,
           senderId: user.id,
+          createdAt: new Date(),
         })
         .returning();
 
