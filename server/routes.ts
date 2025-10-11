@@ -5120,13 +5120,28 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
+      // Check if user is a member of the project (for staff and customer support)
+      const [membership] = await db
+        .select()
+        .from(projectMembers)
+        .where(
+          and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.userId, user.id)
+          )
+        )
+        .limit(1);
+
       const hasAccess = 
         user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
         user.role === "project_manager" ||
-        project.managerId === user.id;
+        project.managerId === user.id ||
+        project.clientId === user.id ||
+        !!membership;
 
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied" });

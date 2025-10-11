@@ -93,7 +93,20 @@ export default function TeamChat() {
       }
       const data = await response.json();
       console.log(`Fetched project members:`, data);
-      return Array.isArray(data) ? data : [];
+      
+      // Map the API response to include user details in a consistent format
+      const mappedData = Array.isArray(data) ? data.map((member: any) => ({
+        id: member.userId,
+        userId: member.userId,
+        name: member.userName,
+        userName: member.userName,
+        email: member.userEmail,
+        role: member.role,
+        invitationStatus: member.invitationStatus,
+      })) : [];
+      
+      console.log(`Mapped project members:`, mappedData);
+      return mappedData;
     },
     enabled: !!projectId,
     retry: 1,
