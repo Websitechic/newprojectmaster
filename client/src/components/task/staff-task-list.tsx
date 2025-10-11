@@ -297,18 +297,16 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
           className="max-w-sm"
         />
       </div>
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Assigned By</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Time Spent</TableHead>
-              <TableHead>Working Hours</TableHead>
-              <TableHead>Deadline</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="min-w-[200px]">Task Details</TableHead>
+              <TableHead className="min-w-[150px]">Assigned By</TableHead>
+              <TableHead className="min-w-[140px]">Status</TableHead>
+              <TableHead className="min-w-[120px]">Timer</TableHead>
+              <TableHead className="min-w-[100px]">Deadline</TableHead>
+              <TableHead className="text-right min-w-[180px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -318,27 +316,31 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
               return (
                 <TableRow key={task.id}>
-                  <TableCell className="font-medium">
-                    <div>
-                      <div className="text-sm text-muted-foreground font-normal">
-                        {projectMap[task.projectId] || `Project ID: ${task.projectId}`}:
+                  <TableCell className="min-w-[200px]">
+                    <div className="space-y-1">
+                      <div className="font-medium text-sm">{task.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {projectMap[task.projectId] || `Project ID: ${task.projectId}`}
                       </div>
-                      <div>{task.title}</div>
+                      <div className="text-xs text-muted-foreground line-clamp-2 max-w-[250px]">
+                        {task.description}
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">{task.description}</TableCell>
-                  <TableCell>
-                    {task.assignedBy 
-                      ? allUsers?.find(u => u.id === task.assignedBy)?.name || "Unknown"
-                      : "Not specified"}
+                  <TableCell className="min-w-[150px]">
+                    <div className="text-sm">
+                      {task.assignedBy 
+                        ? allUsers?.find(u => u.id === task.assignedBy)?.name || "Unknown"
+                        : "Not specified"}
+                    </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="min-w-[140px]">
                     <Select
                       value={task.status || 'todo'}
                       onValueChange={(status) => updateTaskStatus.mutate({ taskId: task.id, status })}
                       disabled={updateTaskStatus.isPending}
                     >
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -350,31 +352,35 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>
-                    <div className={`flex items-center gap-1 ${getTimerColor(task, currentTime)}`}>
-                      <Clock className="h-4 w-4" />
-                      <span className={timeOverLimit ? "animate-pulse" : ""}>
-                        {formatTime(currentTime)}
-                      </span>
-                      {task.isTimerRunning && (
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-1"></div>
+                  <TableCell className="min-w-[120px]">
+                    <div className="space-y-1">
+                      <div className={`flex items-center gap-1 text-sm ${getTimerColor(task, currentTime)}`}>
+                        <Clock className="h-3.5 w-3.5" />
+                        <span className={timeOverLimit ? "animate-pulse font-semibold" : ""}>
+                          {formatTime(currentTime)}
+                        </span>
+                        {task.isTimerRunning && (
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Limit: {task.workingHours ? `${task.workingHours}h` : "None"}
+                      </div>
+                      {timeOverLimit && (
+                        <div className="text-xs text-red-600 font-medium">
+                          Over limit!
+                        </div>
                       )}
                     </div>
-                    {timeOverLimit && (
-                      <div className="text-xs text-red-500 mt-1">
-                        Over limit!
-                      </div>
-                    )}
                   </TableCell>
-                  <TableCell>
-                    {task.workingHours ? `${task.workingHours}h` : "Not set"}
+                  <TableCell className="min-w-[100px]">
+                    <div className="text-sm">
+                      {task.deadline
+                        ? new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        : <span className="text-muted-foreground">None</span>}
+                    </div>
                   </TableCell>
-                  <TableCell>
-                    {task.deadline
-                      ? new Date(task.deadline).toLocaleDateString()
-                      : "No deadline"}
-                  </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right min-w-[180px]">
                     <div className="flex justify-end gap-2">
                       {task.status !== 'review' && (
                         <>
@@ -386,15 +392,16 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                               : startTimer.mutate(task.id)
                             }
                             disabled={startTimer.isPending || pauseTimer.isPending}
+                            className="h-8"
                           >
                             {task.isTimerRunning ? (
                               <>
-                                <Pause className="h-4 w-4 mr-1" />
+                                <Pause className="h-3.5 w-3.5 mr-1" />
                                 Pause
                               </>
                             ) : (
                               <>
-                                <Play className="h-4 w-4 mr-1" />
+                                <Play className="h-3.5 w-3.5 mr-1" />
                                 Start
                               </>
                             )}
@@ -404,16 +411,17 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                             size="sm"
                             onClick={() => submitTask.mutate(task.id)}
                             disabled={!task.hasBeenStarted || submitTask.isPending || task.isTimerRunning}
+                            className="h-8"
                           >
-                            <Send className="h-4 w-4 mr-1" />
+                            <Send className="h-3.5 w-3.5 mr-1" />
                             Submit
                           </Button>
                         </>
                       )}
                       {task.status === 'review' && (
-                        <span className="text-xs text-muted-foreground">
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-200">
                           Under Review
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </TableCell>
