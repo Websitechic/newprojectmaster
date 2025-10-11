@@ -364,9 +364,11 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                     </div>
                   </TableCell>
                   <TableCell className="min-w-[130px]">
-                    <div className="text-sm">
+                    <div className="text-sm leading-tight">
                       {task.assignedBy 
-                        ? allUsers?.find(u => u.id === task.assignedBy)?.name || "Unknown"
+                        ? (allUsers?.find(u => u.id === task.assignedBy)?.name || "Unknown").split(' ').map((word, idx) => (
+                            <div key={idx}>{word}</div>
+                          ))
                         : "Not specified"}
                     </div>
                   </TableCell>
@@ -376,7 +378,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       onValueChange={(status) => updateTaskStatus.mutate({ taskId: task.id, status })}
                       disabled={updateTaskStatus.isPending}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="w-full h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -400,7 +402,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Limit: {task.workingHours ? `${task.workingHours}h` : "None"}
+                        assigned: {task.workingHours ? `${task.workingHours}h` : "None"}
                       </div>
                       {timeOverLimit && (
                         <div className="text-xs text-red-600 font-medium">
