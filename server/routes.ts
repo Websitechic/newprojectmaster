@@ -2676,7 +2676,7 @@ End of Report
       const [existingComplaint] = await db
         .select()
         .from(staffComplaints)
-        .where(eq(staffComplaints.id, complaintId))
+        .where(eq(existingComplaint.id, complaintId))
         .limit(1);
 
       if (!existingComplaint) {
@@ -2691,7 +2691,7 @@ End of Report
           reviewComments: reviewComments || null,
           reviewedAt: new Date(),
         })
-        .where(eq(staffComplaints.id, complaintId))
+        .where(eq(existingComplaint.id, complaintId))
         .returning();
 
       console.log("Staff complaint updated successfully:", updatedComplaint);
@@ -3501,7 +3501,7 @@ End of Report
       const [existingReport] = await db
         .select()
         .from(issueReports)
-        .where(eq(issueReports.id, reportId))
+        .where(eq(existingReport.id, reportId))
         .limit(1);
 
       if (!existingReport) {
@@ -3518,7 +3518,7 @@ End of Report
           reviewedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(issueReports.id, reportId))
+        .where(eq(existingReport.id, reportId))
         .returning();
 
       // Create notification for the reporter
@@ -5504,7 +5504,7 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      // Check if user is a member (for staff, any invitation status is fine for viewing members)
+      // Check if user is a member of the project (for staff, any invitation status is fine for viewing members)
       const staffMembership = user.role === "staff" ? await db
         .select()
         .from(projectMembers)
@@ -5567,7 +5567,7 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      // Check if user is a member of the project (check all invitation statuses for staff)
+      // Check if user is a member of the project (for all roles including customer support)
       const [membership] = await db
         .select()
         .from(projectMembers)
@@ -5591,7 +5591,7 @@ End of Report
 
       if (!hasAccess) {
         console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} team members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
-        return res.status(403).send("Access denied - You must be a project member to view team memberst");
+        return res.status(403).send("Access denied - You must be a project member to view team membersst");
       }
 
       const messages = await db
@@ -5722,7 +5722,7 @@ End of Report
                 referenceId: newMessage.id,
                 referenceType: "team_message",
                 read: false,
-                createdAt: new Date().toISOString()
+                createdAt: new Date() // Changed from toISOString()
               })
               .returning();
 
@@ -6239,7 +6239,7 @@ End of Report
         .limit(1);
 
       if (!project) {
-        return res.status(404).json({ error: "Project not found" });
+        return res.status(404).json({ error:"Project not found" });
       }
 
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
@@ -7081,7 +7081,7 @@ End of Report
       const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
       const newTimeSpent = (task.timeSpent || 0) + sessionDuration;
 
-      // Update task with accumulated time
+      // Update task with accumulated time and pause timer
       const [updatedTask] = await db
         .update(tasks)
         .set({

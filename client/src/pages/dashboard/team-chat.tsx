@@ -409,7 +409,8 @@ export default function TeamChat() {
 
     // Combined regex for mentions and URLs
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const mentionRegex = /@([a-zA-Z0-9_\s]+?)(?=\s|$|@)/g;
+    // Updated regex to better handle multi-word names - matches until end of word boundary or special chars
+    const mentionRegex = /@([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
     
     // First, split by URLs
     const urlParts = content.split(urlRegex);
@@ -443,7 +444,7 @@ export default function TeamChat() {
           parts.push({ text: urlPart.substring(lastIndex, match.index), isMention: false });
         }
 
-        // Add mention
+        // Add mention - extract the full captured name
         const mentionedName = match[1].trim();
         parts.push({ text: `@${mentionedName}`, isMention: true, mentionedName });
 
@@ -461,11 +462,19 @@ export default function TeamChat() {
 
       return parts.map((part, index) => {
         if (part.isMention && part.mentionedName) {
-          // Check if this is a valid team member mention
-          const mentionedMember = projectMembers.find((member: any) => {
+          // Check if this is a valid team member mention - try exact match first, then partial
+          let mentionedMember = projectMembers.find((member: any) => {
             const memberName = member?.name || member?.userName || '';
             return memberName && memberName.toLowerCase() === part.mentionedName!.toLowerCase();
           });
+
+          // If no exact match, try to find a member whose name starts with the mention
+          if (!mentionedMember) {
+            mentionedMember = projectMembers.find((member: any) => {
+              const memberName = member?.name || member?.userName || '';
+              return memberName && memberName.toLowerCase().startsWith(part.mentionedName!.toLowerCase());
+            });
+          }
 
           if (mentionedMember) {
             // Check if this is the current user being mentioned
