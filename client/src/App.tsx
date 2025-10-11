@@ -135,9 +135,7 @@ function Router() {
             </div>
           </Route>
           <Route path="/dashboard/staff-report">
-            <div className="lg:flex min-h-screen">
-              <StaffReport />
-            </div>
+            <StaffReport />
           </Route>
           <Route path="/dashboard/tasks">
             <div className="lg:flex min-h-screen">
@@ -155,9 +153,7 @@ function Router() {
             </div>
           </Route>
           <Route path="/dashboard/bookings">
-            <div className="lg:flex min-h-screen">
-              <Bookings />
-            </div>
+            <Bookings />
           </Route>
           <Route path="/dashboard/productivity">
             <div className="lg:flex min-h-screen">
@@ -228,9 +224,7 @@ function Router() {
             </div>
           </Route>
           <Route path="/dashboard/client-accounts">
-            <div className="lg:flex min-h-screen">
-              <ClientAccounts />
-            </div>
+            <ClientAccounts />
           </Route>
           <Route path="/dashboard/client-sentiment">
             <div className="lg:flex min-h-screen">
