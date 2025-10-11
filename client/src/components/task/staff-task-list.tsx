@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Play, Pause, Send, Clock } from "lucide-react";
+import { Play, Pause, Send, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import type { Task, Project } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,6 +34,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const queryClient = useQueryClient();
   const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
 
   // Get all projects to display project names for each task
   const { data: projects } = useQuery<Project[]>({
@@ -301,8 +302,9 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[200px]">Task Details</TableHead>
-              <TableHead className="min-w-[150px]">Assigned By</TableHead>
+              <TableHead className="min-w-[180px]">Task & Project</TableHead>
+              <TableHead className="min-w-[250px]">Description</TableHead>
+              <TableHead className="min-w-[130px]">Assigned By</TableHead>
               <TableHead className="min-w-[140px]">Status</TableHead>
               <TableHead className="min-w-[120px]">Timer</TableHead>
               <TableHead className="min-w-[100px]">Deadline</TableHead>
@@ -314,20 +316,54 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
               const currentTime = localTimers[task.id] || task.timeSpent || 0;
               const timeOverLimit = isTimeOverLimit(task, currentTime);
 
+              const isExpanded = expandedDescriptions[task.id] || false;
+              const description = task.description || "No description";
+              const isLongDescription = description.length > 100;
+
               return (
                 <TableRow key={task.id}>
-                  <TableCell className="min-w-[200px]">
+                  <TableCell className="min-w-[180px]">
                     <div className="space-y-1">
                       <div className="font-medium text-sm">{task.title}</div>
                       <div className="text-xs text-muted-foreground">
                         {projectMap[task.projectId] || `Project ID: ${task.projectId}`}
                       </div>
-                      <div className="text-xs text-muted-foreground line-clamp-2 max-w-[250px]">
-                        {task.description}
-                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[150px]">
+                  <TableCell className="min-w-[250px]">
+                    <div className="space-y-1">
+                      <div className="text-sm text-gray-700">
+                        {isLongDescription && !isExpanded 
+                          ? `${description.substring(0, 100)}...`
+                          : description
+                        }
+                      </div>
+                      {isLongDescription && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setExpandedDescriptions(prev => ({
+                            ...prev,
+                            [task.id]: !prev[task.id]
+                          }))}
+                          className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                        >
+                          {isExpanded ? (
+                            <>
+                              <ChevronUp className="h-3 w-3 mr-1" />
+                              Show less
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-3 w-3 mr-1" />
+                              Show more
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="min-w-[130px]">
                     <div className="text-sm">
                       {task.assignedBy 
                         ? allUsers?.find(u => u.id === task.assignedBy)?.name || "Unknown"
