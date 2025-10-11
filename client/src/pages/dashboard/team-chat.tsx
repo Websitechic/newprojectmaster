@@ -357,7 +357,11 @@ export default function TeamChat() {
     const position = e.target.selectionStart || 0;
 
     setMessage(value);
-    setCursorPosition(position);
+    
+    // Update cursor position after state update
+    setTimeout(() => {
+      setCursorPosition(position);
+    }, 0);
 
     // Check for @ mentions - allow spaces and handle partial names
     const beforeCursor = value.substring(0, position);
@@ -396,15 +400,15 @@ export default function TeamChat() {
     setMessage(newMessage);
     setShowMentionSuggestions(false);
     setMentionQuery("");
-    setCursorPosition(newPosition);
 
     // Focus back to input and set cursor position
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
         inputRef.current.setSelectionRange(newPosition, newPosition);
+        setCursorPosition(newPosition);
       }
-    }, 10); // Slightly longer timeout to ensure state updates
+    }, 0);
   };
 
   // Filter members for mentions

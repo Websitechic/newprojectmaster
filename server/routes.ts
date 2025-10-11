@@ -5817,8 +5817,8 @@ End of Report
         ))
         .returning();
 
-      // Broadcast the update via WebSocket
-      broadcastToProject(projectId, 'project_message', updatedMessage);
+      // Note: Message updates are handled via query invalidation on the client
+      // No need for WebSocket broadcast here as the client will refetch
 
       res.json({ success: true, message: updatedMessage });
     } catch (error) {
