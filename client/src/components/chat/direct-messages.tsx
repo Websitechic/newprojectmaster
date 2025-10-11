@@ -560,14 +560,12 @@ export function DirectMessages() {
                               return part;
                             })}
                           </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-xs opacity-70">
-                              {new Date(message.createdAt).toLocaleTimeString()}
-                            </p>
+                          <p className="text-xs opacity-70 mt-1">
+                            {new Date(message.createdAt).toLocaleTimeString()}
                             {message.updatedAt && message.updatedAt !== message.createdAt && (
-                              <p className="text-xs opacity-60 italic">edited</p>
+                              <span className="italic ml-1">• edited</span>
                             )}
-                          </div>
+                          </p>
                         </>
                       )}
                       

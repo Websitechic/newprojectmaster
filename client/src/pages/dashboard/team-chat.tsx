@@ -523,20 +523,33 @@ export default function TeamChat() {
                     ) : projectMembers.length === 0 ? (
                       <span>No team members</span>
                     ) : (
-                      <div className="flex flex-wrap gap-1">
-                        <span className="font-medium">{projectMembers.length} member{projectMembers.length !== 1 ? 's' : ''}:</span>
-                        {projectMembers.slice(0, 4).map((member: any, index: number) => (
-                          <span key={member.id || index} className="inline-flex items-center">
-                            <span className="bg-muted px-2 py-0.5 rounded-full text-xs font-medium">
-                              {member.name || member.userName || 'Unknown'}
-                            </span>
-                            {index < Math.min(projectMembers.length - 1, 3) && <span className="mx-1">•</span>}
-                          </span>
-                        ))}
-                        {projectMembers.length > 4 && (
-                          <span className="text-xs">+{projectMembers.length - 4} more</span>
-                        )}
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="flex flex-wrap gap-1 items-center hover:bg-muted/50 p-1 rounded-md transition-colors">
+                            <span className="font-medium">{projectMembers.length} member{projectMembers.length !== 1 ? 's' : ''}</span>
+                            <span className="text-xs opacity-70">(click to view all)</span>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
+                          {projectMembers.map((member: any) => (
+                            <DropdownMenuItem key={member.id || member.userId} className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback className="text-xs">
+                                  {getUserInitials(member.name || member.userName || 'Unknown')}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm truncate">
+                                  {member.name || member.userName || 'Unknown'}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {member.specialization || member.role || 'Team Member'}
+                                </div>
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 </div>
@@ -607,10 +620,10 @@ export default function TeamChat() {
                           <div className="relative">
                             <div className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap break-words">
                               {renderMessageContent(msg.content)}
-                              {msg.updatedAt && msg.updatedAt !== msg.createdAt && (
-                                <p className="text-xs text-muted-foreground italic mt-1">edited</p>
-                              )}
                             </div>
+                            {msg.updatedAt && msg.updatedAt !== msg.createdAt && (
+                              <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>
+                            )}
                             {msg.senderId === user?.id && (
                               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <DropdownMenu>
