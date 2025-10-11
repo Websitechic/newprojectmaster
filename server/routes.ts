@@ -5811,7 +5811,10 @@ End of Report
           updatedAt: new Date(),
           isEdited: true,
         })
-        .where(eq(projectMessages.id, messageId))
+        .where(and(
+          eq(projectMessages.id, messageId),
+          eq(projectMessages.senderId, user.id)
+        ))
         .returning();
 
       // Broadcast the update via WebSocket

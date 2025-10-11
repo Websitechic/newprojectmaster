@@ -364,13 +364,24 @@ export default function TeamChat() {
     const mentionMatch = beforeCursor.match(/@([a-zA-Z0-9_\s]*)$/);
 
     if (mentionMatch) {
-      const query = mentionMatch[1];
+      const query = mentionMatch[1].trim();
       setMentionQuery(query);
       setShowMentionSuggestions(true);
     } else {
       setShowMentionSuggestions(false);
       setMentionQuery("");
     }
+  };
+
+  // Update cursor position when textarea value changes
+  const handleTextareaClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    const target = e.target as HTMLTextAreaElement;
+    setCursorPosition(target.selectionStart || 0);
+  };
+
+  const handleTextareaKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const target = e.target as HTMLTextAreaElement;
+    setCursorPosition(target.selectionStart || 0);
   };
 
   // Handle mention selection
@@ -380,19 +391,20 @@ export default function TeamChat() {
     const beforeMention = message.substring(0, cursorPosition - mentionQuery.length - 1);
     const afterCursor = message.substring(cursorPosition);
     const newMessage = `${beforeMention}@${member.name} ${afterCursor}`;
+    const newPosition = beforeMention.length + member.name.length + 2; // Position after the space
 
     setMessage(newMessage);
     setShowMentionSuggestions(false);
     setMentionQuery("");
+    setCursorPosition(newPosition);
 
     // Focus back to input and set cursor position
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
-        const newPosition = beforeMention.length + member.name.length + 2;
         inputRef.current.setSelectionRange(newPosition, newPosition);
       }
-    }, 0);
+    }, 10); // Slightly longer timeout to ensure state updates
   };
 
   // Filter members for mentions
@@ -744,6 +756,8 @@ export default function TeamChat() {
                     ref={inputRef as any}
                     value={message}
                     onChange={handleInputChange}
+                    onClick={handleTextareaClick}
+                    onKeyUp={handleTextareaKeyUp}
                     placeholder="Type your message... (use @ to mention teammates, Shift+Enter for new line, Enter to send)"
                     className="flex-1 min-h-[60px] max-h-[200px] resize-y"
                     disabled={sendMessageMutation.isPending}
