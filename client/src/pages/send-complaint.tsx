@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, MessageSquare, AlertCircle } from "lucide-react";
+import { Header } from "@/components/dashboard/header";
+import { Sidebar } from "@/components/dashboard/sidebar";
 
 const DEPARTMENTS = [
   { value: "automation", label: "Automation Team" },
@@ -24,6 +27,7 @@ const DEPARTMENTS = [
 ];
 
 export default function SendComplaint() {
+  const [location] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,7 +146,12 @@ export default function SendComplaint() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
+        <Header />
+        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
+          <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Send Your Complaint
@@ -278,6 +287,9 @@ export default function SendComplaint() {
           <ComplaintHistoryTable />
         </CardContent>
       </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

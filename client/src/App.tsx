@@ -284,12 +284,36 @@ function Router() {
               <KPIReportPage />
             </div>
           </Route>
-          <Route path="/technical-support" component={TechnicalSupport} />
-          <Route path="/technical-management" component={TechnicalManagementFixed} />
-          <Route path="/deadline-extension-requests" component={DeadlineExtensionRequests} />
-          <Route path="/send-complaint" component={SendComplaint} />
-          <Route path="/report-issues" component={ReportIssues} />
-          <Route path="/dashboard/report-management" component={ReportManagement} />
+          <Route path="/dashboard/technical-support">
+            <div className="lg:flex min-h-screen">
+              <TechnicalSupport />
+            </div>
+          </Route>
+          <Route path="/dashboard/technical-management">
+            <div className="lg:flex min-h-screen">
+              <TechnicalManagementFixed />
+            </div>
+          </Route>
+          <Route path="/dashboard/deadline-extension-requests">
+            <div className="lg:flex min-h-screen">
+              <DeadlineExtensionRequests />
+            </div>
+          </Route>
+          <Route path="/dashboard/send-complaint">
+            <div className="lg:flex min-h-screen">
+              <SendComplaint />
+            </div>
+          </Route>
+          <Route path="/dashboard/report-issues">
+            <div className="lg:flex min-h-screen">
+              <ReportIssues />
+            </div>
+          </Route>
+          <Route path="/dashboard/report-management">
+            <div className="lg:flex min-h-screen">
+              <ReportManagement />
+            </div>
+          </Route>
           <Route path="*" component={NotFound} />
         </Switch>
       </Suspense>

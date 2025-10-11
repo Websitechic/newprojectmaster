@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { Header } from "@/components/dashboard/header";
+import { Sidebar } from "@/components/dashboard/sidebar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +88,7 @@ const statusColors = {
 };
 
 export default function TechnicalSupportPage() {
+  const [location] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -240,7 +244,12 @@ export default function TechnicalSupportPage() {
   };
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
+        <Header />
+        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
+          <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Technical Support</h1>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -423,6 +432,9 @@ export default function TechnicalSupportPage() {
           ))}
         </div>
       )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

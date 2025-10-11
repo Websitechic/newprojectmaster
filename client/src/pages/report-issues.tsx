@@ -1,7 +1,10 @@
 
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { Header } from "@/components/dashboard/header";
+import { Sidebar } from "@/components/dashboard/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +30,7 @@ interface IssueReport {
 }
 
 export default function ReportIssues() {
+  const [location] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -172,7 +176,12 @@ export default function ReportIssues() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
+        <Header />
+        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
+          <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Report app issue/Error
@@ -333,6 +342,9 @@ export default function ReportIssues() {
             )}
           </CardContent>
         </Card>
+      </div>
+          </div>
+        </div>
       </div>
     </div>
   );

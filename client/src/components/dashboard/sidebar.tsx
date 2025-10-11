@@ -354,7 +354,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     {
       icon: <MessageSquareX size={20} />,
       label: "Send Your Complaint",
-      href: "/send-complaint",
+      href: "/dashboard/send-complaint",
       hasUpdate: indicators.sendComplaint,
       key: "send-complaint",
     },
@@ -693,7 +693,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       } else if (href === "/dashboard/leave-application") {
         // Mark leave applications as viewed
         await fetch("/api/leave-applications/mark-viewed", { method: "POST" });
-      } else if (href === "/send-complaint") {
+      } else if (href === "/dashboard/send-complaint") {
         // Mark complaints as viewed
         await fetch("/api/staff-complaints/mark-viewed", { method: "POST" });
       } else if (href === "/dashboard/extension-requests") {
@@ -757,9 +757,9 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
           <SidebarItem
             icon={<Bug size={20} />}
             label="Report app issue/Error"
-            href="/report-issues"
-            onClick={() => handleMenuItemClick("/report-issues")}
-            active={currentPath === "/report-issues"}
+            href="/dashboard/report-issues"
+            onClick={() => handleMenuItemClick("/dashboard/report-issues")}
+            active={currentPath === "/dashboard/report-issues"}
           />
 
           {/* Report Management - Only for operations managers and Replit Development staff */}
