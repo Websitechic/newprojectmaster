@@ -5672,6 +5672,7 @@ End of Report
           projectId,
           senderId: user.id,
           createdAt: new Date(),
+          isEdited: false,
         })
         .returning();
 
