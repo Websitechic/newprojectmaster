@@ -3230,9 +3230,9 @@ End of Report
       // Update the message
       const [updatedMessage] = await db
         .update(directMessages)
-        .set({
+        .set({ 
           content: content.trim(),
-          updatedAt: new Date(),
+          updatedAt: new Date()
         })
         .where(eq(directMessages.id, messageId))
         .returning();
@@ -4381,7 +4381,7 @@ End of Report
       const [existingRequest] = await db
         .select()
         .from(deadlineExtensionRequests)
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .limit(1);
 
       if (!existingRequest) {
@@ -4417,7 +4417,7 @@ End of Report
       const [updatedRequest] = await db
         .update(deadlineExtensionRequests)
         .set(updateData)
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .returning();
 
       // If approved, update the task
@@ -4984,7 +4984,7 @@ End of Report
       const [existingApplication] = await db
         .select()
         .from(leaveApplications)
-        .where(eq(leaveApplications.id, applicationId))
+        .where(eq(existingApplication.id, applicationId))
         .limit(1);
 
       if (!existingApplication) {
@@ -5005,7 +5005,7 @@ End of Report
           reviewedBy: user.id,
           updatedAt: new Date(),
         })
-        .where(eq(leaveApplications.id, applicationId))
+        .where(eq(existingApplication.id, applicationId))
         .returning();
 
       // Create notification for the applicant
@@ -5697,7 +5697,7 @@ End of Report
                 referenceId: newMessage.id,
                 referenceType: "team_message",
                 read: false,
-                createdAt: new Date(),
+                createdAt: new Date().toISOString()
               })
               .returning();
 
@@ -6555,7 +6555,7 @@ End of Report
 
     try {
       console.log("Updating project plan:", planId);
-      console.log("Plan data:", { name, description, startDate, endDate, deliverables: planDeliverables });
+      console.log("Plan data:", { name,description, startDate, endDate, deliverables: planDeliverables });
 
       if (!name) {
         return res.status(400).json({ error: "Plan name is required" });
@@ -6569,7 +6569,7 @@ End of Report
       const [existingPlan] = await db
         .select()
         .from(projectPlans)
-        .where(eq(projectPlans.id, planId))
+        .where(eq(existingPlan.id, planId))
         .limit(1);
 
       if (!existingPlan) {
@@ -6627,7 +6627,7 @@ End of Report
           status: status || existingPlan.status,
           updatedAt: new Date(),
         })
-        .where(eq(projectPlans.id, planId))
+        .where(eq(existingPlan.id, planId))
         .returning();
 
       // Delete existing deliverables

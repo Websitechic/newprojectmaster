@@ -509,7 +509,7 @@ export function DirectMessages() {
                           <Textarea
                             value={editingContent}
                             onChange={(e) => setEditingContent(e.target.value)}
-                            className="min-h-[60px] text-sm"
+                            className="min-h-[60px] text-sm text-black dark:text-white bg-white dark:bg-gray-800"
                             autoFocus
                           />
                           <div className="flex gap-2">
@@ -560,9 +560,14 @@ export function DirectMessages() {
                               return part;
                             })}
                           </p>
-                          <p className="text-xs opacity-70 mt-1">
-                            {new Date(message.createdAt).toLocaleTimeString()}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs opacity-70">
+                              {new Date(message.createdAt).toLocaleTimeString()}
+                            </p>
+                            {message.updatedAt && message.updatedAt !== message.createdAt && (
+                              <p className="text-xs opacity-60 italic">edited</p>
+                            )}
+                          </div>
                         </>
                       )}
                       

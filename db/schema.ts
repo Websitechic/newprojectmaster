@@ -58,19 +58,19 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull(),
   gender: text("gender", { enum: ["male", "female"] }),
-  specialization: text("specialization", { 
+  specialization: text("specialization", {
     enum: Object.values(UserSpecialization) as [string, ...string[]]
   }),
   projectManagerType: text("project_manager_type", {
     enum: Object.values(ProjectManagerType) as [string, ...string[]]
   }),
   status: text("status", { enum: Object.values(UserStatus) as [string, ...string[]] }).default(UserStatus.OFFLINE),
-  workStatus: text("work_status", { 
+  workStatus: text("work_status", {
     enum: Object.values(WorkStatus) as [string, ...string[]]
   }).default(WorkStatus.ACTIVE),
   breakStartTime: timestamp("break_start_time"),
   breakCount: integer("break_count").default(0),
-  absenceReason: text("absence_reason", { 
+  absenceReason: text("absence_reason", {
     enum: Object.values(AbsenceReason) as [string, ...string[]]
   }).default(AbsenceReason.NOT_APPLICABLE),
   absenceEndDate: timestamp("absence_end_date"),
@@ -82,8 +82,8 @@ export const users = pgTable("users", {
   verificationToken: text("verification_token"),
   resetPasswordToken: text("reset_password_token"),
   resetPasswordExpires: timestamp("reset_password_expires"),
-  onboardingStatus: text("onboarding_status", { 
-    enum: ["onboarded", "not_onboarded", "onboarding_in_progress", "onboarding_pending"] 
+  onboardingStatus: text("onboarding_status", {
+    enum: ["onboarded", "not_onboarded", "onboarding_in_progress", "onboarding_pending"]
   }).default("not_onboarded"),
   productService: text("product_service", {
     enum: ["website_development", "dpl_outright", "dpl_partnership", "direct_marketing", "support_maintenance"]
@@ -110,7 +110,7 @@ export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  type: text("type", { 
+  type: text("type", {
     enum: [
       "web_development",
       "mobile_app",
@@ -121,12 +121,12 @@ export const projects = pgTable("projects", {
       "social_media"
     ]
   }).notNull(),
-  category: text("category", { 
+  category: text("category", {
     enum: [
-      "website_development", 
-      "dpl_outright", 
-      "dpl_partnership", 
-      "direct_marketing", 
+      "website_development",
+      "dpl_outright",
+      "dpl_partnership",
+      "direct_marketing",
       "support_maintenance"
     ]
   }),
@@ -146,8 +146,8 @@ export const projectMembers = pgTable("project_members", {
   projectId: integer("project_id").references(() => projects.id),
   userId: integer("user_id").references(() => users.id),
   role: text("role", { enum: ["viewer", "member", "admin", "technical_support"] }).default("member"),
-  invitationStatus: text("invitation_status", { 
-    enum: ["pending", "accepted", "declined"] 
+  invitationStatus: text("invitation_status", {
+    enum: ["pending", "accepted", "declined"]
   }).default("pending"),
   invitedBy: integer("invited_by").references(() => users.id),
   invitedAt: timestamp("invited_at").defaultNow(),
@@ -193,33 +193,33 @@ export const performance = pgTable("performance", {
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  type: text("type", { 
+  type: text("type", {
     enum: [
-      "task_assigned", 
-      "task_updated", 
-      "task_completed", 
-      "mention", 
-      "technical_support_request", 
-      "communication_warning", 
+      "task_assigned",
+      "task_updated",
+      "task_completed",
+      "mention",
+      "technical_support_request",
+      "communication_warning",
       "communication_query_discarded",
       "break_reminder",
       "deadline_reminder",
       "project_updated",
       "memo_received"
-    ] 
+    ]
   }).notNull(),
   content: text("content").notNull(),
   referenceId: integer("reference_id"),
-  referenceType: text("reference_type", { 
+  referenceType: text("reference_type", {
     enum: [
-      "task", 
-      "project", 
-      "message", 
-      "technical_support_request", 
-      "complaint", 
+      "task",
+      "project",
+      "message",
+      "technical_support_request",
+      "complaint",
       "communication_delay",
       "memo"
-    ] 
+    ]
   }),
   read: boolean("read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -392,8 +392,8 @@ export const directMessages = pgTable("direct_messages", {
   senderId: integer("sender_id").references(() => users.id).notNull(),
   receiverId: integer("receiver_id").references(() => users.id).notNull(),
   content: text("content").notNull(),
-  read: boolean("read").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+  read: boolean("read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -402,8 +402,9 @@ export const projectMessages = pgTable("project_messages", {
   projectId: integer("project_id").references(() => projects.id).notNull(),
   senderId: integer("sender_id").references(() => users.id).notNull(),
   content: text("content").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  isEdited: boolean("is_edited").default(false), // Added to indicate if the message has been edited
 });
 
 export const directMessagesRelations = relations(directMessages, ({ one }) => ({
@@ -451,15 +452,15 @@ export const bookings = pgTable("bookings", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
-  type: text("type", { 
-    enum: ["one_on_one", "team_booking", "marketing_meeting", "general_booking"] 
+  type: text("type", {
+    enum: ["one_on_one", "team_booking", "marketing_meeting", "general_booking"]
   }).notNull(),
   scheduledBy: integer("scheduled_by").references(() => users.id).notNull(),
   participants: jsonb("participants").notNull(), // Array of user IDs
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time").notNull(),
-  status: text("status", { 
-    enum: ["scheduled", "completed", "cancelled"] 
+  status: text("status", {
+    enum: ["scheduled", "completed", "cancelled"]
   }).default("scheduled"),
   meetingLink: text("meeting_link"),
   notes: text("notes"),
@@ -539,11 +540,11 @@ export const technicalSupportRequests = pgTable("technical_support_requests", {
   taskId: integer("task_id").references(() => tasks.id),
   requesterId: integer("requester_id").references(() => users.id).notNull(),
   assignedToId: integer("assigned_to_id").references(() => users.id),
-  status: text("status", { 
-    enum: ["pending", "in_progress", "resolved", "closed"] 
+  status: text("status", {
+    enum: ["pending", "in_progress", "resolved", "closed"]
   }).default("pending"),
-  priority: text("priority", { 
-    enum: ["low", "medium", "high", "urgent"] 
+  priority: text("priority", {
+    enum: ["low", "medium", "high", "urgent"]
   }).default("medium"),
   resolution: text("resolution"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -575,8 +576,8 @@ export const deadlineExtensionRequests = pgTable("deadline_extension_requests", 
   projectManagerId: integer("project_manager_id").references(() => users.id).notNull(),
   reason: text("reason").notNull(),
   requestedDeadline: timestamp("requested_deadline"),
-  status: text("status", { 
-    enum: ["pending", "approved", "declined"] 
+  status: text("status", {
+    enum: ["pending", "approved", "declined"]
   }).default("pending"),
   decisionReason: text("decision_reason"),
   decidedBy: integer("decided_by").references(() => users.id),
@@ -673,8 +674,8 @@ export const memos = pgTable("memos", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  type: text("type", { 
-    enum: ["individual", "general", "department"] 
+  type: text("type", {
+    enum: ["individual", "general", "department"]
   }).notNull(),
   recipients: jsonb("recipients").notNull(), // Array of user IDs or department names
   sentBy: integer("sent_by").references(() => users.id).notNull(),
@@ -734,7 +735,7 @@ export const staffQueries = pgTable("staff_queries", {
   reason: text("reason", {
     enum: [
       "wrongly_using_work_app",
-      "substandard_delivery", 
+      "substandard_delivery",
       "repeatedly_missed_deadlines",
       "disrespectful_communication",
       "disregard_company_policy"
@@ -778,8 +779,8 @@ export const selectStaffQuerySchema = createSelectSchema(staffQueries);
 export const clientSentiment = pgTable("client_sentiment", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  sentiment: text("sentiment", { 
-    enum: ["satisfied", "dissatisfied", "flags"] 
+  sentiment: text("sentiment", {
+    enum: ["satisfied", "dissatisfied", "flags"]
   }).notNull(),
   reason: text("reason").notNull(),
   weekStart: text("week_start").notNull(),
@@ -851,14 +852,14 @@ export const issueReports = pgTable("issue_reports", {
   suggestions: text("suggestions"),
   reporterName: text("reporter_name").notNull(),
   reporterEmail: text("reporter_email").notNull(),
-  priority: text("priority", { 
-    enum: ["low", "medium", "high", "urgent"] 
+  priority: text("priority", {
+    enum: ["low", "medium", "high", "urgent"]
   }).default("medium"),
   category: text("category", {
     enum: ["bug", "feature_request", "improvement", "other"]
   }).default("other"),
-  status: text("status", { 
-    enum: ["pending", "reviewing", "resolved", "closed"] 
+  status: text("status", {
+    enum: ["pending", "reviewing", "resolved", "closed"]
   }).default("pending"),
   submitterId: integer("submitter_id").references(() => users.id),
   reviewedBy: integer("reviewed_by").references(() => users.id),

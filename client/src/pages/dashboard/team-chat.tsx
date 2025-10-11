@@ -578,7 +578,7 @@ export default function TeamChat() {
                             <Textarea
                               value={editingContent}
                               onChange={(e) => setEditingContent(e.target.value)}
-                              className="min-h-[60px] text-sm"
+                              className="min-h-[60px] text-sm text-black dark:text-white bg-white dark:bg-gray-800"
                               autoFocus
                             />
                             <div className="flex gap-2">
@@ -607,6 +607,9 @@ export default function TeamChat() {
                           <div className="relative">
                             <div className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap break-words">
                               {renderMessageContent(msg.content)}
+                              {msg.updatedAt && msg.updatedAt !== msg.createdAt && (
+                                <p className="text-xs text-muted-foreground italic mt-1">edited</p>
+                              )}
                             </div>
                             {msg.senderId === user?.id && (
                               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
