@@ -175,9 +175,7 @@ function Router() {
             </div>
           </Route>
           <Route path="/dashboard/technical-management">
-            <div className="lg:flex min-h-screen">
-              <TechnicalManagementFixed />
-            </div>
+            <TechnicalManagementFixed />
           </Route>
           <Route path="/dashboard/extension-requests">
             <div className="lg:flex min-h-screen">
