@@ -85,6 +85,7 @@ export function setupAuth(app: Express) {
     secret: process.env.REPL_ID || "your-secret-key",
     resave: false,
     saveUninitialized: false,
+    rolling: true, // Reset maxAge on every request
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
@@ -92,7 +93,7 @@ export function setupAuth(app: Express) {
       secure: false, // Set to false for development
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      maxAge: 60 * 60 * 1000 // 1 hour of inactivity
     }
   };
 
