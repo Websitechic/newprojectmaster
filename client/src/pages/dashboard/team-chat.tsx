@@ -119,11 +119,19 @@ export default function TeamChat() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
+        credentials: "include",
       });
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Failed to send message: ${response.status} ${response.statusText}`, errorText);
-        throw new Error(errorText || "Failed to send message");
+        let errorMessage = "Failed to send message";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          const errorText = await response.text();
+          errorMessage = errorText || errorMessage;
+        }
+        console.error(`Failed to send message: ${response.status} ${response.statusText}`, errorMessage);
+        throw new Error(errorMessage);
       }
       const result = await response.json();
       console.log("Team message sent successfully:", result);
@@ -135,12 +143,17 @@ export default function TeamChat() {
         queryKey: [`/api/projects/${projectId}/team-messages`] 
       });
       setMessage("");
+      setShowMentionSuggestions(false);
+      toast({
+        title: "Success",
+        description: "Message sent successfully",
+      });
     },
     onError: (error: Error) => {
       console.error("Error sending team message:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to send message",
+        title: "Failed to send message",
+        description: error.message || "Please check your permissions and try again",
         variant: "destructive",
       });
     },
@@ -338,7 +351,7 @@ export default function TeamChat() {
   };
 
   // Handle mention detection in input
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     const position = e.target.selectionStart || 0;
 
@@ -720,7 +733,7 @@ export default function TeamChat() {
                   <Textarea
                     ref={inputRef as any}
                     value={message}
-                    onChange={handleInputChange as any}
+                    onChange={handleInputChange}
                     placeholder="Type your message... (use @ to mention teammates, Shift+Enter for new line, Enter to send)"
                     className="flex-1 min-h-[60px] max-h-[200px] resize-y"
                     disabled={sendMessageMutation.isPending}
@@ -728,9 +741,15 @@ export default function TeamChat() {
                       if (e.key === 'Escape') {
                         setShowMentionSuggestions(false);
                       }
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (e.key === 'Enter' && !e.shiftKey && !showMentionSuggestions) {
                         e.preventDefault();
                         handleSendMessage(e);
+                      }
+                      // Navigate mention suggestions with arrow keys
+                      if (showMentionSuggestions) {
+                        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                          e.preventDefault();
+                        }
                       }
                     }}
                   />
