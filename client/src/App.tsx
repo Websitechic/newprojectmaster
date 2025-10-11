@@ -135,7 +135,7 @@ function Router() {
             </div>
           </Route>
           <Route path="/dashboard/staff-report">
-            <StaffReport />
+            <PrivateRoute component={StaffReport} />
           </Route>
           <Route path="/dashboard/tasks">
             <div className="lg:flex min-h-screen">
@@ -153,7 +153,7 @@ function Router() {
             </div>
           </Route>
           <Route path="/dashboard/bookings">
-            <Bookings />
+            <PrivateRoute component={Bookings} />
           </Route>
           <Route path="/dashboard/productivity">
             <div className="lg:flex min-h-screen">
@@ -171,7 +171,7 @@ function Router() {
             </div>
           </Route>
           <Route path="/dashboard/technical-management">
-            <TechnicalManagementFixed />
+            <PrivateRoute component={TechnicalManagementFixed} />
           </Route>
           <Route path="/dashboard/extension-requests">
             <div className="lg:flex min-h-screen">
@@ -224,7 +224,7 @@ function Router() {
             </div>
           </Route>
           <Route path="/dashboard/client-accounts">
-            <ClientAccounts />
+            <PrivateRoute component={ClientAccounts} />
           </Route>
           <Route path="/dashboard/client-sentiment">
             <div className="lg:flex min-h-screen">
@@ -247,7 +247,7 @@ function Router() {
             </div>
           </Route>
           <Route path="/dashboard/staff-queries">
-            <StaffQueries />
+            <PrivateRoute component={StaffQueries} />
           </Route>
           <Route path="/dashboard/staff-complaints">
             <div className="lg:flex min-h-screen">
