@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -11,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { FileText, Send, User, AlertTriangle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Sidebar } from "@/components/dashboard/sidebar";
+import { Header } from "@/components/dashboard/header";
 
 interface StaffQuery {
   id: number;
@@ -204,9 +207,15 @@ export default function StaffQueries() {
     );
   }
 
+  const [location] = useLocation();
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex min-h-screen w-full">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 overflow-auto p-6 space-y-6">
+          <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
             {(isOperationsManager || isProjectManager || isTeamLead) ? "Staff Queries Management" : "Staff Queries"}
@@ -471,6 +480,8 @@ export default function StaffQueries() {
             </Card>
           ))
         )}
+      </div>
+        </div>
       </div>
     </div>
   );

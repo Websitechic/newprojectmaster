@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Sidebar } from "@/components/dashboard/sidebar";
+import { Header } from "@/components/dashboard/header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Users, AlertTriangle, Plus, Edit, Trash2 } from "lucide-react";
@@ -279,9 +282,15 @@ export default function Bookings() {
     );
   }
 
+  const [location] = useLocation();
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex min-h-screen w-full">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 overflow-auto p-6 max-w-7xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Bookings Management</h1>
           <p className="text-gray-600 mt-1">Schedule and manage team meetings</p>
@@ -555,6 +564,8 @@ export default function Bookings() {
             </Card>
           ))
         )}
+        </div>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,9 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@/hooks/use-user";
+import { Sidebar } from "@/components/dashboard/sidebar";
+import { Header } from "@/components/dashboard/header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -305,9 +308,15 @@ export default function ClientAccounts() {
     );
   }
 
+  const [location] = useLocation();
+
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      {/* Header Section */}
+    <div className="flex min-h-screen w-full">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 overflow-auto space-y-6 p-4 md:p-6">
+          {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Client Accounts</h1>
@@ -637,6 +646,8 @@ export default function ClientAccounts() {
           </CardContent>
         </Card>
       )}
+        </div>
+      </div>
     </div>
   );
 }

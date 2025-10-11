@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Sidebar } from "@/components/dashboard/sidebar";
+import { Header } from "@/components/dashboard/header";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -218,9 +221,15 @@ export default function TechnicalManagementPage() {
     );
   }
 
+  const [location] = useLocation();
+
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
+    <div className="flex min-h-screen w-full">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 overflow-auto container mx-auto p-6">
+          <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Technical Management</h1>
         <p className="text-gray-600 mt-2">
           Manage and respond to technical support requests
@@ -409,6 +418,8 @@ export default function TechnicalManagementPage() {
           </Form>
         </DialogContent>
       </Dialog>
+        </div>
+      </div>
     </div>
   );
 }

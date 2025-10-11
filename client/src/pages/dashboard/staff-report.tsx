@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { Sidebar } from "@/components/dashboard/sidebar";
+import { Header } from "@/components/dashboard/header";
 import { 
   Card, 
   CardContent, 
@@ -348,9 +351,15 @@ export default function StaffReport() {
     return true;
   }) || [];
 
+  const [location] = useLocation();
+
   return (
-    <div className="p-6">
-      <div className="flex flex-col space-y-6">
+    <div className="flex min-h-screen w-full">
+      <Sidebar currentPath={location} />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 overflow-auto p-6">
+          <div className="flex flex-col space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Staff Report</h1>
@@ -802,6 +811,8 @@ export default function StaffReport() {
               )}
             </CardContent>
           </Card>
+        </div>
+          </div>
         </div>
       </div>
     </div>
