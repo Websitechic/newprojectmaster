@@ -5600,6 +5600,7 @@ End of Report
           content: projectMessages.content,
           createdAt: projectMessages.createdAt,
           updatedAt: projectMessages.updatedAt,
+          isEdited: projectMessages.isEdited,
           senderId: projectMessages.senderId,
           sender: {
             id: users.id,
