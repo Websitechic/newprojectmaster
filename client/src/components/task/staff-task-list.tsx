@@ -45,6 +45,16 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     enabled: !!user,
   });
 
+  // Get all users to display who assigned each task
+  const { data: allUsers } = useQuery<{ id: number; name: string; email: string }[]>({
+    queryKey: ["/api/users"],
+    queryFn: () => fetch("/api/users").then(res => {
+      if (!res.ok) throw new Error('Failed to fetch users');
+      return res.json();
+    }),
+    enabled: !!user,
+  });
+
   // Create a map of project IDs to project names
   const projectMap = projects?.reduce((acc, project) => {
     acc[project.id] = project.name;
@@ -293,6 +303,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
             <TableRow>
               <TableHead>Title</TableHead>
               <TableHead>Description</TableHead>
+              <TableHead>Assigned By</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Time Spent</TableHead>
               <TableHead>Working Hours</TableHead>
@@ -316,6 +327,11 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                     </div>
                   </TableCell>
                   <TableCell className="max-w-xs truncate">{task.description}</TableCell>
+                  <TableCell>
+                    {task.assignedBy 
+                      ? allUsers?.find(u => u.id === task.assignedBy)?.name || "Unknown"
+                      : "Not specified"}
+                  </TableCell>
                   <TableCell>
                     <Select
                       value={task.status || 'todo'}
