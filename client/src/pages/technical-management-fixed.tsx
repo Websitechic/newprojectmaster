@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -96,7 +96,7 @@ interface TechnicalSupportRequest {
 
 const priorityColors = {
   low: "bg-green-100 text-green-800",
-  medium: "bg-yellow-100 text-yellow-800", 
+  medium: "bg-yellow-100 text-yellow-800",
   high: "bg-orange-100 text-orange-800",
   urgent: "bg-red-100 text-red-800"
 };
@@ -230,194 +230,194 @@ export default function TechnicalManagementPage() {
         <Header />
         <div className="flex-1 overflow-auto container mx-auto p-6">
           <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Technical Management</h1>
-        <p className="text-gray-600 mt-2">
-          Manage and respond to technical support requests
-        </p>
-      </div>
+            <h1 className="text-3xl font-bold text-gray-900">Technical Management</h1>
+            <p className="text-gray-600 mt-2">
+              Manage and respond to technical support requests
+            </p>
+          </div>
 
-      {requests.length === 0 ? (
-        <div className="text-center py-12">
-          <AlertCircle className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-          <h2 className="text-xl font-semibold text-gray-600 mb-2">No Requests Found</h2>
-          <p className="text-gray-500">There are no technical support requests at the moment.</p>
-        </div>
-      ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Request</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Requester</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Task/Project</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requests.map((request) => (
-                <TableRow key={request.id} className="hover:bg-muted/50">
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(request.status)}
-                        <span className="font-medium">{request.title}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {request.description}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={statusColors[request.status]}>
-                      {request.status.replace("_", " ")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={priorityColors[request.priority]}>
-                      {request.priority}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm">{request.requester.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {request.assignedTo ? (
-                      <div className="flex items-center gap-2">
-                        <UserCheck className="h-4 w-4 text-green-500" />
-                        <span className="text-sm text-green-700">{request.assignedTo.name}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Unassigned</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {request.task ? (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-blue-500" />
-                        <div className="text-sm">
-                          <div className="text-blue-600">{request.task.title}</div>
-                          {request.project && (
-                            <div className="text-muted-foreground">{request.project.name}</div>
-                          )}
+          {requests.length === 0 ? (
+            <div className="text-center py-12">
+              <AlertCircle className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+              <h2 className="text-xl font-semibold text-gray-600 mb-2">No Requests Found</h2>
+              <p className="text-gray-500">There are no technical support requests at the moment.</p>
+            </div>
+          ) : (
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Request</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Requester</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead>Task/Project</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {requests.map((request) => (
+                    <TableRow key={request.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(request.status)}
+                            <span className="font-medium">{request.title}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {request.description}
+                          </p>
                         </div>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">No task linked</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {formatDate(request.createdAt)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      {request.assignedToId ? (
-                        <Button
-                          size="sm"
-                          disabled
-                          className="bg-gray-200 text-black cursor-not-allowed"
-                        >
-                          <UserCheck className="h-4 w-4 mr-1" />
-                          {request.assignedTo?.id === user?.id ? "Assigned to You" : "Already Assigned"}
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => assignRequestMutation.mutate(request.id)}
-                          disabled={assignRequestMutation.isPending}
-                        >
-                          <UserPlus className="h-4 w-4 mr-1" />
-                          {assignRequestMutation.isPending ? "Assigning..." : "Assign to Me"}
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleUpdateRequest(request)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Update
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusColors[request.status]}>
+                          {request.status.replace("_", " ")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={priorityColors[request.priority]}>
+                          {request.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm">{request.requester.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {request.assignedTo ? (
+                          <div className="flex items-center gap-2">
+                            <UserCheck className="h-4 w-4 text-green-500" />
+                            <span className="text-sm text-green-700">{request.assignedTo.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Unassigned</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {request.task ? (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-blue-500" />
+                            <div className="text-sm">
+                              <div className="text-blue-600">{request.task.title}</div>
+                              {request.project && (
+                                <div className="text-muted-foreground">{request.project.name}</div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">No task linked</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDate(request.createdAt)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {request.assignedToId ? (
+                            <Button
+                              size="sm"
+                              disabled
+                              className="bg-gray-200 text-black cursor-not-allowed"
+                            >
+                              <UserCheck className="h-4 w-4 mr-1" />
+                              {request.assignedTo?.id === user?.id ? "Assigned to You" : "Already Assigned"}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => assignRequestMutation.mutate(request.id)}
+                              disabled={assignRequestMutation.isPending}
+                            >
+                              <UserPlus className="h-4 w-4 mr-1" />
+                              {assignRequestMutation.isPending ? "Assigning..." : "Assign to Me"}
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUpdateRequest(request)}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Update
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
 
-      <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Request Status</DialogTitle>
-            <DialogDescription>
-              Update the status and resolution of the technical support request.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="resolved">Resolved</SelectItem>
-                        <SelectItem value="closed">Closed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="resolution"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Resolution Notes</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter resolution details..."
-                        {...field}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsUpdateDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={updateRequestMutation.isPending}>
-                  Update Request
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+          <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Update Request Status</DialogTitle>
+                <DialogDescription>
+                  Update the status and resolution of the technical support request.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="resolved">Resolved</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="resolution"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Resolution Notes</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter resolution details..."
+                            {...field}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsUpdateDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={updateRequestMutation.isPending}>
+                      Update Request
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
