@@ -34,6 +34,7 @@ interface DirectMessage {
   receiverId: number;
   read: boolean;
   createdAt: string;
+  updatedAt?: string;
   senderName: string;
 }
 
@@ -282,11 +283,12 @@ export function DirectMessages() {
       });
 
       if (response.ok) {
+        const now = new Date().toISOString();
         // Update messages in local state
         setMessages(prev => 
           prev.map(msg => 
             msg.id === messageId 
-              ? { ...msg, content: editingContent.trim() }
+              ? { ...msg, content: editingContent.trim(), updatedAt: now }
               : msg
           )
         );

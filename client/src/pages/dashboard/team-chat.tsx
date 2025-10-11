@@ -25,6 +25,7 @@ interface MessageWithSender {
   id: number;
   content: string;
   createdAt: string;
+  updatedAt?: string;
   senderId: number;
   sender?: {
     id: number;
@@ -240,6 +241,8 @@ export default function TeamChat() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        
         // Invalidate and refetch messages
         queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 

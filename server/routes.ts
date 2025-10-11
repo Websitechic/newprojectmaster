@@ -5569,13 +5569,14 @@ End of Report
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        (!!membership && membership.invitationStatus === "accepted");
+        !!membership;
 
       if (!hasAccess) {
-        console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} team chat. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
-        return res.status(403).send("Access denied - You must be a project member to access team chat");
+        console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} team members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
+        return res.status(403).send("Access denied - You must be a project member to view team memberst");
       }
 
       const messages = await db
@@ -5583,6 +5584,7 @@ End of Report
           id: projectMessages.id,
           content: projectMessages.content,
           createdAt: projectMessages.createdAt,
+          updatedAt: projectMessages.updatedAt,
           senderId: projectMessages.senderId,
           sender: {
             id: users.id,
@@ -5787,6 +5789,9 @@ End of Report
         })
         .where(eq(projectMessages.id, messageId))
         .returning();
+
+      // Broadcast the update via WebSocket
+      broadcastToProject(projectId, 'project_message', updatedMessage);
 
       res.json({ success: true, message: updatedMessage });
     } catch (error) {
