@@ -6158,7 +6158,7 @@ End of Report
 
     try {
       if (!name || !category || !startDate || !endDate) {
-        return res.status(400).json({ error: "Name, category, start date, and end date are required" });
+        return res.status(400).json({ error: "Name, category, start date, and end date arerequired" });
       }
 
       const [newProject] = await db
@@ -6859,12 +6859,12 @@ End of Report
       // Validate working hours if provided (can be decimal for hours + minutes)
       let taskWorkingHours = null;
       if (workingHours !== null && workingHours !== undefined) {
-        taskWorkingHours = parseFloat(workingHours);
-        if (isNaN(taskWorkingHours) || taskWorkingHours <= 0) {
+        const hoursValue = parseFloat(workingHours);
+        if (isNaN(hoursValue) || hoursValue <= 0) {
           return res.status(400).json({ error: "Working hours must be a positive number" });
         }
         // Round to 2 decimal places for consistency
-        taskWorkingHours = Math.round(taskWorkingHours * 100) / 100;
+        taskWorkingHours = Math.round(hoursValue * 100) / 100;
       }
 
       const [newTask] = await db
