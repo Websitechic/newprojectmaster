@@ -3596,7 +3596,7 @@ End of Report
       const [existingReport] = await db
         .select()
         .from(issueReports)
-        .where(eq(existingReport.id, reportId))
+        .where(eq(issueReports.id, reportId))
         .limit(1);
 
       if (!existingReport) {
@@ -3613,7 +3613,7 @@ End of Report
           reviewedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(existingReport.id, reportId))
+        .where(eq(issueReports.id, reportId))
         .returning();
 
       // Create notification for the reporter
