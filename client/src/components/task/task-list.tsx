@@ -447,12 +447,13 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 </TableCell>
                 <TableCell>
                   {task.workingHours ? (() => {
-                    const totalMinutes = task.workingHours * 60;
+                    // workingHours is stored as total minutes in the database
+                    const totalMinutes = task.workingHours;
                     const hours = Math.floor(totalMinutes / 60);
-                    const minutes = Math.round(totalMinutes % 60);
-                    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
-                    if (hours > 0) return `${hours}h`;
-                    if (minutes > 0) return `${minutes}m`;
+                    const minutes = totalMinutes % 60;
+                    if (hours > 0 && minutes > 0) return `${hours}hr ${minutes}mins`;
+                    if (hours > 0) return `${hours}hr`;
+                    if (minutes > 0) return `${minutes}mins`;
                     return "Not set";
                   })() : "Not set"}
                 </TableCell>

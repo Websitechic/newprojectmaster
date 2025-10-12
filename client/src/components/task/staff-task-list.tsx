@@ -333,7 +333,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                   <TableCell className="min-w-[250px]">
                     <div className="space-y-1">
                       <div className="text-sm text-gray-700">
-                        {isLongDescription && !isExpanded 
+                        {isLongDescription && !isExpanded
                           ? `${description.substring(0, 100)}...`
                           : description
                         }
@@ -365,7 +365,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                   </TableCell>
                   <TableCell className="min-w-[130px]">
                     <div className="text-sm leading-tight">
-                      {task.assignedBy 
+                      {task.assignedBy
                         ? (allUsers?.find(u => u.id === task.assignedBy)?.name || "Unknown").split(' ').map((word, idx) => (
                             <div key={idx}>{word}</div>
                           ))
@@ -401,9 +401,18 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                           <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        assigned: {task.workingHours ? `${task.workingHours}h` : "None"}
-                      </div>
+                      <TableCell>
+                        {task.workingHours ? (() => {
+                          // workingHours is stored as total minutes in the database
+                          const totalMinutes = task.workingHours;
+                          const hours = Math.floor(totalMinutes / 60);
+                          const minutes = totalMinutes % 60;
+                          if (hours > 0 && minutes > 0) return `${hours}hr ${minutes}mins`;
+                          if (hours > 0) return `${hours}hr`;
+                          if (minutes > 0) return `${minutes}mins`;
+                          return "Not set";
+                        })() : "Not set"}
+                      </TableCell>
                       {timeOverLimit && (
                         <div className="text-xs text-red-600 font-medium">
                           Over limit!
@@ -425,8 +434,8 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => task.isTimerRunning 
-                              ? pauseTimer.mutate(task.id) 
+                            onClick={() => task.isTimerRunning
+                              ? pauseTimer.mutate(task.id)
                               : startTimer.mutate(task.id)
                             }
                             disabled={startTimer.isPending || pauseTimer.isPending}
