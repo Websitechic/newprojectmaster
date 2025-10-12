@@ -1454,7 +1454,7 @@ End of Report
     }
 
     try {
-      const { department, search } = req.query;
+      const {department, search} = req.query;
 
       let whereConditions = [];
 
@@ -6066,7 +6066,7 @@ End of Report
         .where(eq(deliverables.projectPlanId, planId))
         .orderBy(asc(deliverables.order)); // Order by order field
 
-      const planWithDeliverables = {
+      const planWithDeliverables ={
         ...plan,
         deliverables: planDeliverables,
       };
