@@ -4398,25 +4398,14 @@ End of Report
       }
 
       // Update the request
-      const updateData: any = {
-        status,
-        decisionReason,
-        decidedBy: user.id,
-        decidedAt: new Date(),
-      };
-
-      if (status === "approved") {
-        if (approvedDeadline) {
-          updateData.approvedDeadline = new Date(approvedDeadline);
-        }
-        if (approvedWorkingHours) {
-          updateData.approvedWorkingHours = parseInt(approvedWorkingHours);
-        }
-      }
-
       const [updatedRequest] = await db
         .update(deadlineExtensionRequests)
-        .set(updateData)
+        .set({
+          status,
+          decisionReason,
+          decidedBy: user.id,
+          decidedAt: new Date(),
+        })
         .where(eq(existingRequest.id, requestId))
         .returning();
 
@@ -4752,6 +4741,17 @@ End of Report
     try {
       const complaintId = parseInt(req.params.id);
       const { status, reviewComments } = req.body;
+
+      // Check if complaint exists
+      const [existingComplaint] = await db
+        .select()
+        .from(complaints)
+        .where(eq(complaints.id, complaintId))
+        .limit(1);
+
+      if (!existingComplaint) {
+        return res.status(404).json({ error: "Complaint not found" });
+      }
 
       await db
         .update(complaints)
@@ -6216,7 +6216,7 @@ End of Report
       res.json({ success: true, id: newProject.id, project: newProject });
     } catch (error) {
       console.error("Error creating project:", error);
-      res.status(500).json({ error: "Failed to create project" });
+      res.    status(500).json({ error: "Failed to create project" });
     }
   });
 
@@ -6236,7 +6236,8 @@ End of Report
       }
 
       // Check if project exists
-      const [project] =        .select()
+      const [project] = await db
+        .select()
         .from(projects)
         .where(eq(projects.id, projectId))
         .limit(1);
@@ -6303,7 +6304,7 @@ End of Report
         // Combine team members with team leads
         const allMemberIds = new Set<number>();
 
-        //        // Add selected team members
+        // Add selected team members
         if (teamMembers.length > 0) {
           teamMembers.forEach(memberId => allMemberIds.add(parseInt(memberId)));
         }
