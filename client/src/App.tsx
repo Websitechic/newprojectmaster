@@ -134,9 +134,7 @@ function Router() {
               <ProjectResources />
             </div>
           </Route>
-          <Route path="/dashboard/staff-report">
-            <PrivateRoute component={StaffReport} />
-          </Route>
+          <Route path="/dashboard/staff-report" component={StaffReport} />
           <Route path="/dashboard/tasks">
             <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <Tasks />
@@ -152,9 +150,7 @@ function Router() {
               <LeaveManagement />
             </div>
           </Route>
-          <Route path="/dashboard/bookings">
-            <PrivateRoute component={Bookings} />
-          </Route>
+          <Route path="/dashboard/bookings" component={Bookings} />
           <Route path="/dashboard/productivity">
             <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <Productivity />
@@ -170,9 +166,7 @@ function Router() {
               <TechnicalSupport />
             </div>
           </Route>
-          <Route path="/dashboard/technical-management">
-            <PrivateRoute component={TechnicalManagementFixed} />
-          </Route>
+          <Route path="/dashboard/technical-management" component={TechnicalManagementFixed} />
           <Route path="/dashboard/extension-requests">
             <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ExtensionRequestsPage />
@@ -223,9 +217,7 @@ function Router() {
               <ComplaintsManagement />
             </div>
           </Route>
-          <Route path="/dashboard/client-accounts">
-            <PrivateRoute component={ClientAccounts} />
-          </Route>
+          <Route path="/dashboard/client-accounts" component={ClientAccounts} />
           <Route path="/dashboard/client-sentiment">
             <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ClientSentiment />
@@ -246,9 +238,7 @@ function Router() {
               <Notes />
             </div>
           </Route>
-          <Route path="/dashboard/staff-queries">
-            <PrivateRoute component={StaffQueries} />
-          </Route>
+          <Route path="/dashboard/staff-queries" component={StaffQueries} />
           <Route path="/dashboard/staff-complaints">
             <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <StaffComplaints />

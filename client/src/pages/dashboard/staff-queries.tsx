@@ -33,6 +33,7 @@ interface StaffQuery {
 }
 
 export default function StaffQueries() {
+  const [location] = useLocation();
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -201,13 +202,17 @@ export default function StaffQueries() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="text-center">Loading staff queries...</div>
+      <div className="flex min-h-screen w-full">
+        <Sidebar currentPath={location} />
+        <div className="flex-1 flex flex-col min-h-screen">
+          <Header />
+          <div className="flex-1 overflow-auto p-6">
+            <div className="text-center">Loading staff queries...</div>
+          </div>
+        </div>
       </div>
     );
   }
-
-  const [location] = useLocation();
 
   return (
     <div className="flex min-h-screen w-full">
