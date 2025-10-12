@@ -284,7 +284,7 @@ export default function TechnicalManagementPage() {
   const highCount = requests.filter(r => r.priority === 'high').length;
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="container mx-auto p-4 space-y-6 lg:ml-64 xl:ml-72">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
         <div>

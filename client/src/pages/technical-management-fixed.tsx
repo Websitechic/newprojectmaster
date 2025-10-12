@@ -246,7 +246,7 @@ export default function TechnicalManagementFixed() {
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72">
         <Header />
         <div className="flex-1 overflow-auto container mx-auto p-6">
           <div className="mb-6">
