@@ -180,21 +180,23 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       }
       return response.json();
     },
-    onSuccess: (data) => {
-      // Update both global and project-specific tasks
+    onSuccess: (newTask) => {
+      console.log("Task created, updating cache:", newTask);
+      
+      // Immediately update the cache with the new task
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
-        if (!oldTasks) return [data];
-        return [...oldTasks, data];
+        const updated = oldTasks ? [newTask, ...oldTasks] : [newTask];
+        console.log("Updated global tasks cache:", updated.length, "tasks");
+        return updated;
       });
 
-      queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
-        if (!oldTasks) return [data];
-        return [...oldTasks, data];
-      });
-
-      // Invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+      if (projectId) {
+        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+          const updated = oldTasks ? [newTask, ...oldTasks] : [newTask];
+          console.log("Updated project tasks cache:", updated.length, "tasks");
+          return updated;
+        });
+      }
 
       setIsDialogOpen(false);
       setFormData(defaultTask);
