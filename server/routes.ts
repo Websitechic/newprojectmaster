@@ -1804,6 +1804,24 @@ End of Report
         .where(eq(tasks.id, taskId))
         .returning();
 
+      if (!updatedTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      console.log("Task updated successfully:", updatedTask);
+
+      // If assignee changed, send notification to new assignee
+      if (assigneeId !== undefined && assigneeId !== null && assigneeId !== 'unassigned' && assigneeId !== existingTask.assigneeId) {
+        await createNotification(
+          parseInt(assigneeId),
+          "task_assigned",
+          `You have been assigned to task: "${updatedTask.title}"`,
+          updatedTask.id,
+          "task"
+        );
+        console.log(`Task assignment notification sent to user ${assigneeId}`);
+      }
+
       // Send real-time notification via WebSocket to all connected clients
       if (global.connectedClients) {
         global.connectedClients.forEach((client, clientId) => {
@@ -1826,7 +1844,7 @@ End of Report
         });
       }
 
-      return res.json({ success: true, task: updatedTask });
+      return res.json(updatedTask);
     } catch (error) {
       console.error("Error updating task:", error);
       return res.status(500).json({ error: "Failed to update task" });
@@ -6949,6 +6967,20 @@ End of Report
           progress: 0,
         })
         .returning();
+
+      console.log("Task created successfully:", newTask);
+
+      // Create notification for assignee if task is assigned
+      if (newTask.assigneeId) {
+        await createNotification(
+          newTask.assigneeId,
+          "task_assigned",
+          `You have been assigned a new task: "${newTask.title}"`,
+          newTask.id,
+          "task"
+        );
+        console.log(`Task assignment notification sent to user ${newTask.assigneeId}`);
+      }
 
       // Send real-time notification via WebSocket to all connected clients
       console.log(`Sending task creation WebSocket notification for task ${newTask.id}`);

@@ -101,9 +101,13 @@ export function NotificationsDropdown() {
             if (data.type === 'notification' && data.notification) {
               console.log('New notification received:', data.notification);
               
-              // Play sound for task assignments
-              if (data.notification.type === 'task_assignment' || data.notification.type === 'task_assigned') {
+              // Play sound for task assignments, messages, and direct messages
+              if (data.notification.type === 'task_assignment' || 
+                  data.notification.type === 'task_assigned' ||
+                  data.notification.type === 'message' ||
+                  data.notification.type === 'direct_message') {
                 playNotificationSound();
+                console.log('Notification sound played for type:', data.notification.type);
               }
               
               // Update SSE local state to prepend new notification
