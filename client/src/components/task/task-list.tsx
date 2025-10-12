@@ -28,6 +28,7 @@ interface TaskFormData {
   startDate: string;
   deadline: string;
   workingHours: string;
+  workingMinutes?: string;
 }
 
 const defaultTask: TaskFormData = {
@@ -38,6 +39,7 @@ const defaultTask: TaskFormData = {
   startDate: "",
   deadline: "",
   workingHours: "",
+  workingMinutes: "0",
 };
 
 interface TaskListProps {
@@ -128,6 +130,11 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   const handleEditClick = (task: Task) => {
     setEditTask(task);
+    // Parse total minutes into hours and minutes
+    const totalMinutes = task.workingHours ? task.workingHours * 60 : 0;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
     setFormData({
       title: task.title,
       description: task.description || "",
@@ -135,7 +142,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       assigneeId: task.assigneeId?.toString() || "",
       startDate: task.startDate ? new Date(task.startDate).toISOString().slice(0, 16) : "",
       deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : "",
-      workingHours: task.workingHours?.toString() || "",
+      workingHours: hours.toString(),
+      workingMinutes: minutes.toString(),
     });
     setIsDialogOpen(true);
   };
@@ -152,6 +160,11 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   const createTask = useMutation({
     mutationFn: async (data: TaskFormData) => {
+      // Convert hours and minutes to total hours (as decimal)
+      const hours = parseInt(data.workingHours) || 0;
+      const minutes = parseInt(data.workingMinutes || '0') || 0;
+      const totalHours = hours + (minutes / 60);
+      
       const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -162,7 +175,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
           assigneeId: data.assigneeId && data.assigneeId !== 'unassigned' ? parseInt(data.assigneeId) : null,
           startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
-          workingHours: data.workingHours ? parseInt(data.workingHours) : null,
+          workingHours: totalHours > 0 ? totalHours : null,
         }),
       });
 
@@ -208,6 +221,11 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     mutationFn: async (data: TaskFormData) => {
       if (!editTask) throw new Error("No task selected for update");
 
+      // Convert hours and minutes to total hours (as decimal)
+      const hours = parseInt(data.workingHours) || 0;
+      const minutes = parseInt(data.workingMinutes || '0') || 0;
+      const totalHours = hours + (minutes / 60);
+
       const response = await fetch(`/api/tasks/${editTask.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -217,7 +235,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
           assigneeId: data.assigneeId && data.assigneeId !== 'unassigned' ? parseInt(data.assigneeId) : null,
           startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
-          workingHours: data.workingHours ? parseInt(data.workingHours) : null,
+          workingHours: totalHours > 0 ? totalHours : null,
         }),
       });
 
@@ -428,7 +446,15 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     : "No deadline"}
                 </TableCell>
                 <TableCell>
-                  {task.workingHours ? `${task.workingHours}h` : "Not set"}
+                  {task.workingHours ? (() => {
+                    const totalMinutes = task.workingHours * 60;
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = Math.round(totalMinutes % 60);
+                    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+                    if (hours > 0) return `${hours}h`;
+                    if (minutes > 0) return `${minutes}m`;
+                    return "Not set";
+                  })() : "Not set"}
                 </TableCell>
                 <TableCell className="text-right">
                   {!isStaffView ? (
@@ -563,20 +589,39 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               </div>
             </div>
 
-            {/* Working hours - Full width but smaller */}
+            {/* Working time - Hours and Minutes */}
             <div className="space-y-2">
-              <Label htmlFor="workingHours">Number of Working Hours</Label>
-              <div className="max-w-xs">
-                <Input
-                  id="workingHours"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={formData.workingHours}
-                  onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
-                  placeholder="Enter estimated hours"
-                />
+              <Label>Working Time Allocation</Label>
+              <div className="flex gap-4 max-w-md">
+                <div className="flex-1">
+                  <Label htmlFor="workingHours" className="text-sm text-muted-foreground">Hours</Label>
+                  <Input
+                    id="workingHours"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.workingHours}
+                    onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="workingMinutes" className="text-sm text-muted-foreground">Minutes</Label>
+                  <Input
+                    id="workingMinutes"
+                    type="number"
+                    min="0"
+                    max="59"
+                    step="1"
+                    value={formData.workingMinutes || '0'}
+                    onChange={(e) => setFormData({ ...formData, workingMinutes: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Total: {formData.workingHours || '0'}h {formData.workingMinutes || '0'}m
+              </p>
             </div>
 
             {/* Submit button */}

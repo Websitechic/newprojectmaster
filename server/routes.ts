@@ -2152,7 +2152,7 @@ End of Report
     }
   });
 
-  // Check for new staff complaints (for operations managers)
+  // Check for staff complaints updates (for operations managers)
   app.get("/api/staff-complaints/has-new", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -6236,8 +6236,7 @@ End of Report
       }
 
       // Check if project exists
-      const [project] = await db
-        .select()
+      const [project] =        .select()
         .from(projects)
         .where(eq(projects.id, projectId))
         .limit(1);
@@ -6856,6 +6855,17 @@ End of Report
         return res.status(400).json({ error: "Title and project ID are required" });
       }
 
+      // Validate working hours if provided (can be decimal for hours + minutes)
+      let taskWorkingHours = null;
+      if (workingHours !== null && workingHours !== undefined) {
+        taskWorkingHours = parseFloat(workingHours);
+        if (isNaN(taskWorkingHours) || taskWorkingHours <= 0) {
+          return res.status(400).json({ error: "Working hours must be a positive number" });
+        }
+        // Round to 2 decimal places for consistency
+        taskWorkingHours = Math.round(taskWorkingHours * 100) / 100;
+      }
+
       const [newTask] = await db
         .insert(tasks)
         .values({
@@ -6868,7 +6878,7 @@ End of Report
           priority: priority || "medium",
           status: "not_started",
           progress: 0,
-          workingHours: workingHours ? parseInt(workingHours) : null,
+          workingHours: taskWorkingHours, // Use the validated taskWorkingHours
           assignedHours: assignedHours ? parseFloat(assignedHours) : null,
         })
         .returning();
