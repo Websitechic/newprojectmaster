@@ -87,12 +87,10 @@ export function useWebSocket(userId: number | undefined) {
             console.log('Task update WebSocket message received (ignored - using optimistic updates):', message.data);
             // Removed event dispatch to prevent infinite re-render loops
             // Optimistic updates in mutations handle UI updates
-            break;
           } else if (message.type === 'task_created') {
             console.log('Task created WebSocket message received (ignored - using optimistic updates):', message.data);
             // Removed event dispatch to prevent infinite re-render loops
             // Optimistic updates in mutations handle UI updates
-            break;
           } else if (message.type === 'task_updated') {
             // Trigger page refresh for task updates (alternative event name)
             window.dispatchEvent(new CustomEvent('websocket:task_update', { detail: message.data }));
@@ -100,7 +98,6 @@ export function useWebSocket(userId: number | undefined) {
             console.log('Task deleted WebSocket message received (ignored - using optimistic updates):', message.data);
             // Removed event dispatch to prevent infinite re-render loops
             // Optimistic updates in mutations handle UI updates
-            break;
           } else if (message.type === 'notification') {
             // Trigger notification updates
             window.dispatchEvent(new CustomEvent('websocket:notification', { detail: message.data }));
