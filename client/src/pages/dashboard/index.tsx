@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -36,16 +36,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Project, Task } from "@db/schema";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [location, setLocation] = useLocation();
-  const { user } = useUser();
   const { updateStatus } = useWebSocket(user?.id);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     inProgress: false,
     pending: false,
     review: false,
   });
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
 
   const handleProjectClick = (projectId: number, e?: React.MouseEvent) => {
     if (e) {
@@ -168,6 +170,36 @@ export default function Dashboard() {
       </div>
     </div>
   );
+
+  // Placeholder functions - replace with actual implementations if available
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case "todo": return "bg-gray-100 text-gray-800";
+      case "in_progress": return "bg-blue-100 text-blue-800";
+      case "review": return "bg-purple-100 text-purple-800";
+      case "completed": return "bg-green-100 text-green-800";
+      case "technical_support": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // Placeholder functions - replace with actual implementations if available
+  const getAssignedStaffName = (assigneeId: number | null | undefined) => {
+    if (!assigneeId) return "Unassigned";
+    // In a real app, you'd fetch staff names based on IDs
+    // For now, returning a placeholder
+    return `Staff ${assigneeId}`;
+  };
+
+  // Placeholder functions - replace with actual implementations if available
+  const getProjectName = (projectId: number | null | undefined) => {
+    if (!projectId) return "No Project";
+    const project = projects?.find(p => p.id === projectId);
+    return project ? project.name : "Unknown Project";
+  };
+
+  // Assuming allTasks are available from tasks or filtered staffTasks
+  const allTasks = tasks || [];
 
   return (
     <div className="flex min-h-screen w-full max-w-full overflow-hidden">
@@ -581,8 +613,8 @@ export default function Dashboard() {
                                 (task) => task.projectId === project.id
                               ) || [];
 
-                              const reasonText = projectTasks.length === 0 
-                                ? "No tasks assigned" 
+                              const reasonText = projectTasks.length === 0
+                                ? "No tasks assigned"
                                 : "No work activity for 1+ week";
 
                               return (
