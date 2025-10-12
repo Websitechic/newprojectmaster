@@ -56,7 +56,17 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<TaskFormData>(defaultTask);
 
-  const { data: staff } = useQuery<{ id: number; name: string }[]>({
+  // State for managing expanded descriptions
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
+
+  const toggleDescription = (taskId: number) => {
+    setExpandedDescriptions((prev) => ({
+      ...prev,
+      [taskId]: !prev[taskId],
+    }));
+  };
+
+  const { data: staff, isLoading: staffLoading } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/staff", projectId],
     refetchOnWindowFocus: true,
     enabled: !!user, // Only fetch if user is authenticated
@@ -307,6 +317,28 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         }
       };
 
+    const formatDescription = (description: string | null | undefined, taskId: number) => {
+        if (!description) return "No description";
+        const isExpanded = expandedDescriptions[taskId];
+        const maxLength = 50; // Define your desired max length for truncation
+
+        if (description.length <= maxLength) {
+          return description;
+        }
+
+        return (
+          <span>
+            {isExpanded ? description : description.substring(0, maxLength) + "..."}
+            <button
+              onClick={() => toggleDescription(taskId)}
+              className="ml-2 text-blue-500 hover:underline"
+            >
+              {isExpanded ? "Show less" : "Show more"}
+            </button>
+          </span>
+        );
+      };
+
   return (
     <div>
       <div className="flex justify-end mb-4">
@@ -349,7 +381,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
             {filteredTasks.map((task) => (
               <TableRow key={task.id}>
                 <TableCell className="font-medium">{task.title}</TableCell>
-                <TableCell className="max-w-xs truncate">{task.description}</TableCell>
+                <TableCell className="max-w-xs">
+                    {formatDescription(task.description, task.id)}
+                </TableCell>
                 <TableCell>
                   <Badge className={getStatusColor(task.status)}>
                     {task.status?.replace('_', ' ') || 'todo'}
