@@ -73,7 +73,7 @@ export function useWebSocket(userId: number | undefined) {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
           console.log("Received WebSocket message:", message);
-          
+
           // Handle different message types
           if (message.type === 'auth_success') {
             console.log('WebSocket authentication successful');
@@ -84,17 +84,23 @@ export function useWebSocket(userId: number | undefined) {
             // Trigger page refresh for direct messages
             window.dispatchEvent(new CustomEvent('websocket:direct_message', { detail: message.data }));
           } else if (message.type === 'task_update') {
-            // Trigger page refresh for task updates
-            window.dispatchEvent(new CustomEvent('websocket:task_update', { detail: message.data }));
+            console.log('Task update WebSocket message received (ignored - using optimistic updates):', message.data);
+            // Removed event dispatch to prevent infinite re-render loops
+            // Optimistic updates in mutations handle UI updates
+            break;
           } else if (message.type === 'task_created') {
-            // Trigger page refresh for task creation
-            window.dispatchEvent(new CustomEvent('websocket:task_created', { detail: message.data }));
+            console.log('Task created WebSocket message received (ignored - using optimistic updates):', message.data);
+            // Removed event dispatch to prevent infinite re-render loops
+            // Optimistic updates in mutations handle UI updates
+            break;
           } else if (message.type === 'task_updated') {
             // Trigger page refresh for task updates (alternative event name)
             window.dispatchEvent(new CustomEvent('websocket:task_update', { detail: message.data }));
           } else if (message.type === 'task_deleted') {
-            // Trigger page refresh for task deletion
-            window.dispatchEvent(new CustomEvent('websocket:task_deleted', { detail: message.data }));
+            console.log('Task deleted WebSocket message received (ignored - using optimistic updates):', message.data);
+            // Removed event dispatch to prevent infinite re-render loops
+            // Optimistic updates in mutations handle UI updates
+            break;
           } else if (message.type === 'notification') {
             // Trigger notification updates
             window.dispatchEvent(new CustomEvent('websocket:notification', { detail: message.data }));

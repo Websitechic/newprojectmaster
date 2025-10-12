@@ -25,15 +25,18 @@ export default function Tasks() {
   const { data: tasks, isLoading: tasksLoading, error: tasksError } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
     refetchOnWindowFocus: false,
-    staleTime: 30000, // 30 seconds
+    refetchOnMount: false,
+    refetchInterval: false,
+    staleTime: Infinity, // Never mark as stale - rely on optimistic updates
     gcTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: !!user, // Only fetch if user is authenticated
   });
 
   const { data: projects, isLoading: projectsLoading, error: projectsError } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
-    refetchOnWindowFocus: true,
-    staleTime: 0, // Always fetch fresh data
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    staleTime: 30000, // 30 seconds
     gcTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: !!user, // Only fetch if user is authenticated
   });
