@@ -28,6 +28,12 @@ export function Header() {
   const { user, logout } = useUser();
   const [_, setLocation] = useLocation();
   const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
+  const { playNotificationSound } = useNotificationSound();
+
+  // Initialize audio on mount (trigger audio context setup)
+  useEffect(() => {
+    console.log('Header mounted, audio context should initialize on user interaction');
+  }, []);
 
   // Fetch team chat unread counts
   const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({

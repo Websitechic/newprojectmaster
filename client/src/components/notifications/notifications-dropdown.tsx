@@ -99,7 +99,7 @@ export function NotificationsDropdown() {
 
             // Only process actual notification data, ignore system messages like heartbeat or connected
             if (data.type === 'notification' && data.notification) {
-              console.log('New notification received:', data.notification);
+              console.log('New notification received via SSE:', data.notification);
               
               // Play sound for task assignments, messages, and direct messages
               const notificationType = data.notification.type;
@@ -114,15 +114,17 @@ export function NotificationsDropdown() {
               ];
               
               if (soundTypes.includes(notificationType)) {
-                console.log('Playing notification sound for type:', notificationType);
-                try {
-                  playNotificationSound();
-                  console.log('Notification sound triggered successfully');
-                } catch (error) {
-                  console.error('Error triggering notification sound:', error);
-                }
+                console.log('🔔 Attempting to play notification sound for type:', notificationType);
+                // Use setTimeout to ensure sound plays after state updates
+                setTimeout(() => {
+                  try {
+                    playNotificationSound();
+                  } catch (error) {
+                    console.error('Error triggering notification sound:', error);
+                  }
+                }, 50);
               } else {
-                console.log('No sound for notification type:', notificationType);
+                console.log('No sound configured for notification type:', notificationType);
               }
               
               // Update SSE local state to prepend new notification
