@@ -147,7 +147,13 @@ export function DirectMessages() {
 
           // Play sound if message is from someone else
           if (message.senderId !== user?.id) {
-            playNotificationSound();
+            console.log('Playing sound for direct message from user:', message.senderId);
+            try {
+              playNotificationSound();
+              console.log('Direct message sound played successfully');
+            } catch (error) {
+              console.error('Error playing direct message sound:', error);
+            }
           }
 
           // If the message is from the currently selected user, add it to messages immediately

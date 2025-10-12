@@ -187,7 +187,13 @@ export default function TeamChat() {
           
           // Play sound if message is from someone else
           if (data.data.senderId !== user?.id) {
-            playNotificationSound();
+            console.log('Playing sound for team chat message from user:', data.data.senderId);
+            try {
+              playNotificationSound();
+              console.log('Team chat sound played successfully');
+            } catch (error) {
+              console.error('Error playing team chat sound:', error);
+            }
           }
           
           queryClient.invalidateQueries({ 

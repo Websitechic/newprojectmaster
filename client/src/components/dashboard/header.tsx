@@ -229,6 +229,11 @@ export function Header() {
 
         {/* Notifications */}
         <NotificationsDropdown />
+        
+        {/* Audio Context Status - Hidden but initializes on mount */}
+        <div className="hidden">
+          <audio id="notification-init" preload="auto" />
+        </div>
 
         {/* Profile Dropdown */}
         <DropdownMenu>

@@ -102,12 +102,27 @@ export function NotificationsDropdown() {
               console.log('New notification received:', data.notification);
               
               // Play sound for task assignments, messages, and direct messages
-              if (data.notification.type === 'task_assignment' || 
-                  data.notification.type === 'task_assigned' ||
-                  data.notification.type === 'message' ||
-                  data.notification.type === 'direct_message') {
-                playNotificationSound();
-                console.log('Notification sound played for type:', data.notification.type);
+              const notificationType = data.notification.type;
+              const soundTypes = [
+                'task_assignment', 
+                'task_assigned',
+                'message',
+                'direct_message',
+                'task_updated',
+                'deadline_reminder',
+                'task_overdue'
+              ];
+              
+              if (soundTypes.includes(notificationType)) {
+                console.log('Playing notification sound for type:', notificationType);
+                try {
+                  playNotificationSound();
+                  console.log('Notification sound triggered successfully');
+                } catch (error) {
+                  console.error('Error triggering notification sound:', error);
+                }
+              } else {
+                console.log('No sound for notification type:', notificationType);
               }
               
               // Update SSE local state to prepend new notification
