@@ -86,47 +86,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     return acc;
   }, {} as Record<number, string>) || {};
 
-  // Set up WebSocket real-time updates for tasks
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const handleTaskUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log("Task update received in task list, invalidating queries");
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      if (projectId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
-      }
-    };
-
-    const handleTaskCreated = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log("Task creation received in task list, invalidating queries");
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      if (projectId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
-      }
-    };
-
-    const handleTaskDeleted = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log("Task deletion received in task list, invalidating queries");
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      if (projectId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
-      }
-    };
-
-    window.addEventListener('websocket:task_update', handleTaskUpdate as EventListener);
-    window.addEventListener('websocket:task_created', handleTaskCreated as EventListener);
-    window.addEventListener('websocket:task_deleted', handleTaskDeleted as EventListener);
-
-    return () => {
-      window.removeEventListener('websocket:task_update', handleTaskUpdate as EventListener);
-      window.removeEventListener('websocket:task_created', handleTaskCreated as EventListener);
-      window.removeEventListener('websocket:task_deleted', handleTaskDeleted as EventListener);
-    };
-  }, [user?.id, queryClient, projectId]);
+  // Removed WebSocket listeners to prevent infinite re-render loop
+  // Optimistic updates in mutations handle immediate UI updates
 
   const handleEditClick = (task: Task) => {
     setEditTask(task);
@@ -281,10 +242,20 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         const errorText = await response.text();
         throw new Error(errorText || 'Failed to delete task');
       }
+      return taskId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] }); //Invalidate project tasks as well
+    onSuccess: (deletedTaskId) => {
+      // Optimistically remove the task from cache
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
+        return oldTasks ? oldTasks.filter(task => task.id !== deletedTaskId) : [];
+      });
+
+      if (projectId) {
+        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+          return oldTasks ? oldTasks.filter(task => task.id !== deletedTaskId) : [];
+        });
+      }
+
       toast({
         title: "Success",
         description: "Task deleted successfully",

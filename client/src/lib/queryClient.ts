@@ -20,7 +20,7 @@ export const queryClient = new QueryClient({
       },
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      staleTime: 30000, // 30 seconds - allows cache updates while preventing excessive refetching
       retry: false,
     },
     mutations: {
