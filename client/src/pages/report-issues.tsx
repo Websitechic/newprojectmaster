@@ -89,6 +89,15 @@ export default function ReportIssues() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to submit an issue report",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!formData.title.trim() || !formData.description.trim()) {
       toast({
         title: "Missing information",
@@ -115,6 +124,9 @@ export default function ReportIssues() {
       const response = await fetch("/api/issue-reports", {
         method: "POST",
         credentials: "include",
+        headers: {
+          'Accept': 'application/json',
+        },
         body: data,
       });
 
@@ -226,6 +238,14 @@ export default function ReportIssues() {
         <p className="text-gray-600">
           Help us improve the app by reporting bugs, requesting features, or suggesting improvements.
         </p>
+        {!user && (
+          <Alert className="mt-4" variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              You must be logged in to submit an issue report. Please log in and try again.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">
@@ -368,8 +388,8 @@ export default function ReportIssues() {
                 </div>
               </div>
 
-              <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? "Submitting..." : "Submit Issue Report"}
+              <Button type="submit" disabled={isSubmitting || !user} className="w-full">
+                {isSubmitting ? "Submitting..." : !user ? "Login Required" : "Submit Issue Report"}
               </Button>
             </form>
           </CardContent>

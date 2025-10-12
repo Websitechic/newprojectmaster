@@ -90,11 +90,13 @@ export function setupAuth(app: Express) {
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
     cookie: {
-      secure: false, // Set to false for development
+      secure: app.get("env") === "production", // Use secure cookies in production
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 60 * 60 * 1000 // 1 hour of inactivity
-    }
+      maxAge: 60 * 60 * 1000, // 1 hour of inactivity
+      path: '/'
+    },
+    name: 'connect.sid' // Explicit session cookie name
   };
 
   if (app.get("env") === "production") {

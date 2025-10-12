@@ -55,10 +55,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           credentials: "include",
           headers: {
             "Accept": "application/json",
-          }
+          },
+          cache: "no-cache"
         });
 
-        if (res.status === 401) return null;
+        if (res.status === 401) {
+          console.log("User not authenticated (401)");
+          return null;
+        }
         if (!res.ok) {
           console.error(`Failed to fetch user: ${res.status} ${res.statusText}`);
           return null;
@@ -70,14 +74,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return null;
         }
 
-        return res.json();
+        const userData = await res.json();
+        console.log("User authenticated successfully:", userData?.id);
+        return userData;
       } catch (err) {
         console.error("Error fetching user:", err);
         return null;
       }
     },
     retry: false,
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    staleTime: 10000, // Consider data fresh for 10 seconds
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchOnReconnect: true // Refetch when reconnecting
   });
 
   const loginMutation = useMutation({

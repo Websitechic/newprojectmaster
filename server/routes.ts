@@ -3494,7 +3494,12 @@ End of Report
 
   app.post("/api/issue-reports", upload.single('screenshot'), async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      console.error("Issue report submission failed - user not authenticated", {
+        hasSession: !!req.session,
+        sessionID: req.session?.id,
+        cookies: req.headers.cookie
+      });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
