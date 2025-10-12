@@ -836,7 +836,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       )}
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex h-screen w-64 xl:w-72 bg-white border-r border-gray-200 flex-col">
+      <div className="hidden lg:flex fixed left-0 top-0 h-screen w-64 xl:w-72 bg-white border-r border-gray-200 flex-col z-40">
         <SidebarContent />
       </div>
 
