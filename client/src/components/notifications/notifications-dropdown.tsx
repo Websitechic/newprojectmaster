@@ -214,9 +214,27 @@ export function NotificationsDropdown() {
           setLocation(`/dashboard/projects/${notification.referenceId}`);
         }
       } else if (notification.referenceType === "task" && notification.referenceId) {
-        // For task notifications, we need to fetch the task to get its project ID
-        // For now, navigate to tasks page - you may want to fetch task details to navigate to specific project
-        setLocation(`/dashboard/tasks`);
+        // For task notifications, fetch the task to get its project ID
+        try {
+          const response = await fetch(`/api/tasks/${notification.referenceId}`);
+          if (response.ok) {
+            const task = await response.json();
+            if (task.projectId) {
+              // Navigate to the project details page where this task was created
+              setLocation(`/dashboard/projects/${task.projectId}`);
+            } else {
+              // Fallback to tasks page if no project ID
+              setLocation(`/dashboard/tasks`);
+            }
+          } else {
+            // Fallback to tasks page if fetch fails
+            setLocation(`/dashboard/tasks`);
+          }
+        } catch (fetchError) {
+          console.error("Error fetching task details:", fetchError);
+          // Fallback to tasks page
+          setLocation(`/dashboard/tasks`);
+        }
       }
     } catch (error) {
       console.error("Error handling notification click:", error);

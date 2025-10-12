@@ -1672,6 +1672,70 @@ End of Report
     }
   });
 
+  // Get individual task details
+  app.get("/api/tasks/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const taskId = parseInt(req.params.id);
+
+    try {
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Check if user has access to this task's project
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, task.projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const hasAccess = 
+        user.role === "operations_manager" || 
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        project.managerId === user.id ||
+        project.clientId === user.id ||
+        task.assigneeId === user.id ||
+        (user.role === "staff" && await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, project.id),
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            )
+          )
+          .limit(1)
+          .then(members => members.length > 0)
+        );
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json(task);
+    } catch (error) {
+      console.error("Error fetching task:", error);
+      res.status(500).json({ error: "Failed to fetch task" });
+    }
+  });
+
   // Update task (PUT endpoint for operations managers and project managers)
   app.put("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
