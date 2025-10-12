@@ -166,8 +166,8 @@ export const tasks = pgTable("tasks", {
   progress: integer("progress").default(0),
   startDate: timestamp("start_date"),
   deadline: timestamp("deadline"),
-  workingHours: integer('working_hours'),
-  workingMinutes: integer('working_minutes'), // stored as total minutes for precision
+  workingHours: integer('working_hours').default(0),
+  workingMinutes: integer('working_minutes').default(0),
   timeSpent: integer("time_spent").default(0), // in seconds
   isTimerRunning: boolean("is_timer_running").default(false),
   timerStartTime: timestamp("timer_start_time"),
