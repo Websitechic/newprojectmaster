@@ -990,9 +990,7 @@ export default function Dashboard() {
                           <TableHead className="min-w-[100px]">Status</TableHead>
                           <TableHead className="min-w-[120px]">Assignee</TableHead>
                           <TableHead className="min-w-[150px]">Project</TableHead>
-                          <TableHead className="min-w-[100px]">Priority</TableHead>
                           <TableHead className="min-w-[100px]">Deadline</TableHead>
-                          <TableHead className="min-w-[100px]">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1061,26 +1059,11 @@ export default function Dashboard() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'}>
-                                  {task.priority || 'low'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
                                 <div className="text-sm">
                                   {task.deadline
                                     ? new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                                     : <span className="text-muted-foreground">None</span>}
                                 </div>
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setLocation(`/dashboard/projects/${task.projectId}`)}
-                                  className="h-8 px-2 text-xs"
-                                >
-                                  View
-                                </Button>
                               </TableCell>
                             </TableRow>
                           );
