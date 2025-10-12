@@ -165,9 +165,20 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
       }
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+    onSuccess: (updatedTask) => {
+      // Optimistically update the cache
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
+        if (!oldTasks) return [updatedTask];
+        return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+      });
+
+      if (projectId) {
+        queryClient.setQueryData([`/api/projects/${projectId}/tasks`], (oldTasks: Task[] | undefined) => {
+          if (!oldTasks) return [updatedTask];
+          return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+        });
+      }
+
       toast({
         title: "Task Submitted",
         description: "Task has been submitted for review",
@@ -198,9 +209,20 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
       }
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+    onSuccess: (updatedTask) => {
+      // Optimistically update the cache
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
+        if (!oldTasks) return [updatedTask];
+        return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+      });
+
+      if (projectId) {
+        queryClient.setQueryData([`/api/projects/${projectId}/tasks`], (oldTasks: Task[] | undefined) => {
+          if (!oldTasks) return [updatedTask];
+          return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+        });
+      }
+
       toast({
         title: "Status Updated",
         description: "Task status has been updated",
@@ -215,47 +237,8 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     },
   });
 
-  // Set up WebSocket real-time updates for tasks
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const handleTaskUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log("Task update received in staff task list, invalidating queries");
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      if (projectId) {
-        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
-      }
-    };
-
-    const handleTaskCreated = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log("Task creation received in staff task list, invalidating queries");
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      if (projectId) {
-        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
-      }
-    };
-
-    const handleTaskDeleted = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log("Task deletion received in staff task list, invalidating queries");
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      if (projectId) {
-        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
-      }
-    };
-
-    window.addEventListener('websocket:task_update', handleTaskUpdate as EventListener);
-    window.addEventListener('websocket:task_created', handleTaskCreated as EventListener);
-    window.addEventListener('websocket:task_deleted', handleTaskDeleted as EventListener);
-
-    return () => {
-      window.removeEventListener('websocket:task_update', handleTaskUpdate as EventListener);
-      window.removeEventListener('websocket:task_created', handleTaskCreated as EventListener);
-      window.removeEventListener('websocket:task_deleted', handleTaskDeleted as EventListener);
-    };
-  }, [user?.id, queryClient, projectId]);
+  // Removed WebSocket listeners to prevent infinite re-render loop
+  // Optimistic updates in mutations handle immediate UI updates
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
