@@ -47,6 +47,16 @@ export default function Dashboard() {
     review: false,
   });
 
+  // State for managing expanded descriptions
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
+
+  const toggleDescription = (taskId: number) => {
+    setExpandedDescriptions((prev) => ({
+      ...prev,
+      [taskId]: !prev[taskId],
+    }));
+  };
+
   const handleProjectClick = (projectId: number, e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
@@ -58,6 +68,11 @@ export default function Dashboard() {
 
   const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+  });
+
+  // Fetch staff data for assignee names
+  const { data: staff, isLoading: staffLoading } = useQuery<Array<{ id: number; name: string }>>({
+    queryKey: ["/api/staff"],
   });
 
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
