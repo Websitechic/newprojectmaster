@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Bug, Lightbulb, AlertCircle, CheckCircle, Clock, Eye } from "lucide-react";
+import { Bug, Lightbulb, AlertCircle, CheckCircle, Clock, Eye, Upload, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 interface IssueReport {
@@ -34,6 +34,7 @@ export default function ReportIssues() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [screenshot, setScreenshot] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -58,6 +59,33 @@ export default function ReportIssues() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Screenshot must be less than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload an image file only",
+          variant: "destructive",
+        });
+        return;
+      }
+      setScreenshot(file);
+    }
+  };
+
+  const removeScreenshot = () => {
+    setScreenshot(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -73,13 +101,21 @@ export default function ReportIssues() {
     setIsSubmitting(true);
 
     try {
+      const data = new FormData();
+      data.append("title", formData.title.trim());
+      data.append("description", formData.description.trim());
+      data.append("suggestions", formData.suggestions.trim());
+      data.append("priority", formData.priority);
+      data.append("category", formData.category);
+      
+      if (screenshot) {
+        data.append("screenshot", screenshot);
+      }
+
       const response = await fetch("/api/issue-reports", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         credentials: "include",
-        body: JSON.stringify(formData),
+        body: data,
       });
 
       if (response.ok) {
@@ -96,6 +132,7 @@ export default function ReportIssues() {
           priority: "medium",
           category: "other",
         });
+        setScreenshot(null);
 
         // Refresh the reports list
         window.location.reload();
@@ -283,6 +320,52 @@ export default function ReportIssues() {
                   placeholder="Any suggestions on how to fix the issue or improve the feature..."
                   className="min-h-[80px]"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="screenshot">Screenshot (Optional)</Label>
+                <div className="mt-2">
+                  {screenshot ? (
+                    <div className="flex items-center gap-4 p-4 border border-dashed rounded-lg">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{screenshot.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(screenshot.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={removeScreenshot}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center w-full">
+                      <label
+                        htmlFor="screenshot"
+                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
+                      >
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <Upload className="w-8 h-8 mb-4 text-gray-500" />
+                          <p className="mb-2 text-sm text-gray-500">
+                            <span className="font-semibold">Click to upload</span> or drag and drop
+                          </p>
+                          <p className="text-xs text-gray-500">PNG, JPG, JPEG (MAX. 5MB)</p>
+                        </div>
+                        <input
+                          id="screenshot"
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleScreenshotChange}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <Button type="submit" disabled={isSubmitting} className="w-full">

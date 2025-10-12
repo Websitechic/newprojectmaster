@@ -31,6 +31,7 @@ interface IssueReport {
   reviewedBy?: number;
   reviewedAt?: string;
   reviewComments?: string;
+  screenshotUrl?: string; // Added screenshotUrl field
   createdAt: string;
   updatedAt: string;
 }
@@ -501,9 +502,20 @@ export default function ReportManagement() {
 
                       {selectedReport.suggestions && (
                         <div>
-                          <h4 className="font-medium mb-2">Suggestions</h4>
-                          <div className="bg-blue-50 p-3 rounded-lg">
-                            <p className="whitespace-pre-wrap">{selectedReport.suggestions}</p>
+                          <Label className="font-medium">Suggestions</Label>
+                          <p className="text-sm text-gray-600 mt-1">{selectedReport.suggestions}</p>
+                        </div>
+                      )}
+
+                      {selectedReport.screenshotUrl && (
+                        <div>
+                          <Label className="font-medium">Screenshot</Label>
+                          <div className="mt-2">
+                            <img 
+                              src={selectedReport.screenshotUrl} 
+                              alt="Issue screenshot" 
+                              className="max-w-full h-auto rounded-lg border"
+                            />
                           </div>
                         </div>
                       )}

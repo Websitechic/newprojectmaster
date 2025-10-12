@@ -866,6 +866,7 @@ export const issueReports = pgTable("issue_reports", {
   reviewedBy: integer("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
   reviewComments: text("review_comments"),
+  screenshotUrl: text("screenshot_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

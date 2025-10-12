@@ -3492,7 +3492,7 @@ End of Report
     }
   });
 
-  app.post("/api/issue-reports", async (req, res) => {
+  app.post("/api/issue-reports", upload.single('screenshot'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
@@ -3506,6 +3506,11 @@ End of Report
         return res.status(400).json({ error: "Title and description are required" });
       }
 
+      let screenshotUrl = null;
+      if (req.file) {
+        screenshotUrl = `/uploads/leave-proof/${req.file.filename}`;
+      }
+
       const [newReport] = await db
         .insert(issueReports)
         .values({
@@ -3517,6 +3522,7 @@ End of Report
           priority: priority || "medium",
           category: category || "other",
           submitterId: user.id,
+          screenshotUrl,
         })
         .returning();
 
