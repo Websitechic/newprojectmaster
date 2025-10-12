@@ -265,8 +265,10 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   };
 
   const isTimeOverLimit = (task: Task, currentTime: number) => {
-    if (!task.workingHours) return false;
-    const limitInSeconds = task.workingHours * 3600;
+    if (!task.workingHours && !task.workingMinutes) return false;
+    const hours = task.workingHours || 0;
+    const minutes = task.workingMinutes || 0;
+    const limitInSeconds = (hours * 3600) + (minutes * 60);
     return currentTime >= limitInSeconds;
   };
 
@@ -402,11 +404,9 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         )}
                       </div>
                       <TableCell>
-                        {task.workingHours ? (() => {
-                          // workingHours is stored as total minutes in the database
-                          const totalMinutes = task.workingHours;
-                          const hours = Math.floor(totalMinutes / 60);
-                          const minutes = totalMinutes % 60;
+                        {task.workingHours || task.workingMinutes ? (() => {
+                          const hours = task.workingHours || 0;
+                          const minutes = task.workingMinutes || 0;
                           if (hours > 0 && minutes > 0) return `${hours}hr ${minutes}mins`;
                           if (hours > 0) return `${hours}hr`;
                           if (minutes > 0) return `${minutes}mins`;

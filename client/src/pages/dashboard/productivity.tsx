@@ -23,6 +23,7 @@ interface DailyProductivityData {
     status: string;
     isCompleted: boolean;
     workingHours?: number;
+    workingMinutes?: number;
   }[];
   weeklyBreakdown: {
     day: string;
@@ -52,60 +53,66 @@ interface ProductivityStats {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C'];
 
 // Color scheme based on task time tracking status
-const getTaskStatusColor = (task: any, workingHours?: number) => {
+const getTaskStatusColor = (task: any, workingHours?: number, workingMinutes?: number) => {
   if (!task || typeof task.timeSpent !== 'number') {
     return '#6B7280'; // Gray for invalid task data
   }
-  
-  if (!workingHours || workingHours <= 0) {
+
+  const hours = workingHours || 0;
+  const minutes = workingMinutes || 0;
+
+  if (hours === 0 && minutes === 0) {
     return '#6B7280'; // Gray for tasks without time allocation
   }
-  
-  const allocatedTimeInSeconds = workingHours * 3600;
+
+  const allocatedTimeInSeconds = (hours * 3600) + (minutes * 60);
   const timeUsedPercentage = (task.timeSpent / allocatedTimeInSeconds) * 100;
-  
+
   // Red: Poor (over 100%)
   if (timeUsedPercentage > 100) {
     return '#EF4444'; // Red
   }
-  
+
   // Yellow: Fair (80-99% of allocated time)
   if (timeUsedPercentage >= 80 && timeUsedPercentage <= 99) {
     return '#EAB308'; // Yellow
   }
-  
+
   // Green: Good - Completed within time or in progress with good time management
   if (task.isCompleted || timeUsedPercentage < 80) {
     return '#22C55E'; // Green
   }
-  
+
   return '#6B7280'; // Default gray
 };
 
-const getStatusLabel = (task: any, workingHours?: number) => {
+const getStatusLabel = (task: any, workingHours?: number, workingMinutes?: number) => {
   if (!task || typeof task.timeSpent !== 'number') {
     return 'Invalid Data';
   }
-  
-  if (!workingHours || workingHours <= 0) {
+
+  const hours = workingHours || 0;
+  const minutes = workingMinutes || 0;
+
+  if (hours === 0 && minutes === 0) {
     return 'No Time Allocation';
   }
-  
-  const allocatedTimeInSeconds = workingHours * 3600;
+
+  const allocatedTimeInSeconds = (hours * 3600) + (minutes * 60);
   const timeUsedPercentage = (task.timeSpent / allocatedTimeInSeconds) * 100;
-  
+
   if (timeUsedPercentage > 100) {
     return 'Poor';
   }
-  
+
   if (timeUsedPercentage >= 80 && timeUsedPercentage <= 99) {
     return 'Fair';
   }
-  
+
   if (task.isCompleted || timeUsedPercentage < 80) {
     return 'Good';
   }
-  
+
   return 'Unknown';
 };
 
@@ -125,7 +132,7 @@ export default function ProductivityPage() {
       }
       const data = await response.json();
       console.log("Productivity data received:", data);
-      
+
       // Validate and sanitize the data
       const sanitizedData = {
         today: {
@@ -138,7 +145,7 @@ export default function ProductivityPage() {
         yesterday: data?.yesterday || { totalTasksWorkedOn: 0, totalTasksCompleted: 0, totalTimeWorked: 0, taskBreakdown: [], weeklyBreakdown: [] },
         thisWeek: data?.thisWeek || { totalTasks: 0, completedTasks: 0, totalTime: 0 }
       };
-      
+
       return sanitizedData;
     },
     enabled: !!user,
@@ -176,20 +183,20 @@ export default function ProductivityPage() {
   const taskPieData = productivityData?.today?.taskBreakdown?.filter(task => 
     task && task.title && typeof task.timeSpent === 'number' && task.timeSpent > 0
   ).map((task, index) => {
-    // Note: You may need to add workingHours to the task data from the API
-    // For now, we'll use a placeholder or derive from existing data
-    const workingHours = (task as any).workingHours || 8; // Default to 8 hours if not provided
-    
+    const workingHours = (task as any).workingHours || 0; // Default to 0 hours if not provided
+    const workingMinutes = (task as any).workingMinutes || 0; // Default to 0 minutes if not provided
+
     return {
       name: task.title || `Task ${index + 1}`,
       value: task.timeSpent || 0,
       project: task.projectName || 'Unknown Project',
       status: task.status || 'unknown',
       isCompleted: Boolean(task.isCompleted),
-      color: getTaskStatusColor(task, workingHours),
-      statusLabel: getStatusLabel(task, workingHours),
+      color: getTaskStatusColor(task, workingHours, workingMinutes),
+      statusLabel: getStatusLabel(task, workingHours, workingMinutes),
       workingHours: workingHours,
-      timeUsedPercentage: workingHours > 0 ? Math.round((task.timeSpent / (workingHours * 3600)) * 100) : 0
+      workingMinutes: workingMinutes,
+      timeUsedPercentage: (workingHours * 3600 + workingMinutes * 60) > 0 ? Math.round((task.timeSpent / ((workingHours * 3600) + (workingMinutes * 60))) * 100) : 0
     };
   }) || [];
 
@@ -211,14 +218,26 @@ export default function ProductivityPage() {
 
   // Calculate productivity metrics for the productivity card
   const totalAssignedTime = productivityData?.today?.taskBreakdown?.reduce((total, task) => {
-    // Get working hours from task or estimate based on task status and complexity
-    const workingHours = (task as any).workingHours || 
-      (task.status === 'completed' ? Math.max(task.timeSpent / 3600, 1) : // If completed, use actual time or minimum 1 hour
-       task.timeSpent > 0 ? Math.max(task.timeSpent / 3600 * 1.25, 2) : // If in progress, estimate 25% more than current time, minimum 2 hours
-       3); // Default estimate for new tasks
-    return total + (workingHours * 3600);
+    // Get working hours and minutes from task or estimate based on task status and complexity
+    const workingHours = (task as any).workingHours || 0;
+    const workingMinutes = (task as any).workingMinutes || 0;
+
+    // If not explicitly set, estimate
+    let estimatedSeconds = 0;
+    if (workingHours === 0 && workingMinutes === 0) {
+      if (task.status === 'completed') {
+        estimatedSeconds = Math.max(task.timeSpent, 3600); // Use actual time if > 0, otherwise minimum 1 hour
+      } else if (task.timeSpent > 0) {
+        estimatedSeconds = Math.max(task.timeSpent * 1.25, 7200); // Estimate 25% more than current time, minimum 2 hours
+      } else {
+        estimatedSeconds = 10800; // Default estimate for new tasks (3 hours)
+      }
+    } else {
+      estimatedSeconds = (workingHours * 3600) + (workingMinutes * 60);
+    }
+    return total + estimatedSeconds;
   }, 0) || 0;
-  
+
   const totalActualTime = productivityData?.today?.totalTimeWorked || 0;
 
   if (isLoading) {
@@ -380,9 +399,10 @@ export default function ProductivityPage() {
                         <Tooltip 
                           formatter={(value: number, name: string, props: any) => {
                             const timeUsedPercentage = props?.payload?.timeUsedPercentage || 0;
+                            const allocatedTime = (props?.payload?.workingHours || 0) * 3600 + (props?.payload?.workingMinutes || 0) * 60;
                             return [
                               formatTime(value || 0), 
-                              `Time Spent (${timeUsedPercentage}% of allocated)`
+                              `Time Spent (${timeUsedPercentage}% of ${formatTime(allocatedTime)})`
                             ];
                           }}
                           labelFormatter={(label, payload) => {
@@ -391,7 +411,9 @@ export default function ProductivityPage() {
                               const safeLabel = label || data.name || 'Unknown Task';
                               const statusLabel = data.statusLabel || 'Unknown';
                               const workingHours = data.workingHours || 0;
-                              
+                              const workingMinutes = data.workingMinutes || 0;
+                              const allocatedTime = (workingHours * 3600) + (workingMinutes * 60);
+
                               return (
                                 <div>
                                   <div className="font-medium">{safeLabel}</div>
@@ -399,7 +421,7 @@ export default function ProductivityPage() {
                                     Status: {statusLabel}
                                   </div>
                                   <div className="text-sm text-gray-600">
-                                    Allocated: {formatTime(workingHours * 3600)}
+                                    Allocated: {formatTime(allocatedTime)}
                                   </div>
                                 </div>
                               );
@@ -418,7 +440,7 @@ export default function ProductivityPage() {
                     </div>
                   )}
                 </CardContent>
-                
+
                 {/* Color Legend */}
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                   <h4 className="text-sm font-medium text-gray-900 mb-3">Time Tracking Status Legend</h4>
@@ -486,7 +508,7 @@ export default function ProductivityPage() {
                               if (payload && payload.length > 0 && payload[0].payload) {
                                 const data = payload[0].payload;
                                 const safeLabel = label || data.day || 'Unknown Day';
-                                
+
                                 const formatTime = (isoString: string | null) => {
                                   if (!isoString) return 'N/A';
                                   try {
@@ -499,17 +521,17 @@ export default function ProductivityPage() {
                                     return 'Invalid time';
                                   }
                                 };
-                                
+
                                 const performanceStatus = data.performanceStatus || 'unknown';
                                 const hours = data.hours || 0;
                                 const totalSpanHours = data.totalSpanHours || 0;
                                 const taskCount = data.taskCount || 0;
                                 const tasks = data.tasks || [];
-                                
+
                                 return (
                                   <div className="space-y-2">
                                     <div className="font-medium">{safeLabel}</div>
-                                    
+
                                     {data.workdayStart && data.workdayEnd ? (
                                       <div className="text-sm text-gray-600">
                                         <div><strong>Started:</strong> {formatTime(data.workdayStart)}</div>
@@ -522,7 +544,7 @@ export default function ProductivityPage() {
                                         No timer activity recorded
                                       </div>
                                     )}
-                                    
+
                                     <div className="text-sm text-gray-600">
                                       <div><strong>Tasks worked on:</strong> {taskCount}</div>
                                       {tasks && tasks.length > 0 && (
@@ -539,7 +561,7 @@ export default function ProductivityPage() {
                                         </div>
                                       )}
                                     </div>
-                                    
+
                                     <div className={`text-sm font-medium px-2 py-1 rounded text-center ${
                                       performanceStatus === 'good' ? 'bg-green-100 text-green-800' :
                                       performanceStatus === 'fair' ? 'bg-yellow-100 text-yellow-800' :
@@ -574,14 +596,14 @@ export default function ProductivityPage() {
                             radius={[4, 4, 0, 0]}
                             name="Actual Work"
                           />
-                          
+
                           {/* Performance status indicators above bars */}
                           {weeklyData.map((entry, index) => {
                             if (entry && entry.hours > 0 && entry.performanceStatus) {
                               const statusText = typeof entry.performanceStatus === 'string' 
                                 ? entry.performanceStatus.toUpperCase() 
                                 : 'UNKNOWN';
-                              
+
                               return (
                                 <text
                                   key={index}
@@ -600,7 +622,7 @@ export default function ProductivityPage() {
                           })}
                         </BarChart>
                       </ResponsiveContainer>
-                      
+
                       {/* Performance Legend */}
                       <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                         <h4 className="text-sm font-medium text-gray-900 mb-3">Daily Performance Status Legend</h4>
@@ -688,14 +710,16 @@ export default function ProductivityPage() {
                                  task.status === 'completed' ? 'Completed' : task.status}
                               </Badge>
                               {(() => {
-                                const workingHours = (task as any).workingHours || 8;
-                                const timeUsedPercentage = workingHours > 0 ? (task.timeSpent / (workingHours * 3600)) * 100 : 0;
-                                const statusLabel = getStatusLabel(task, workingHours);
+                                const workingHours = (task as any).workingHours || 0;
+                                const workingMinutes = (task as any).workingMinutes || 0;
+                                const allocatedTimeInSeconds = (workingHours * 3600) + (workingMinutes * 60);
+                                const timeUsedPercentage = allocatedTimeInSeconds > 0 ? (task.timeSpent / allocatedTimeInSeconds) * 100 : 0;
+                                const statusLabel = getStatusLabel(task, workingHours, workingMinutes);
                                 const statusColor = 
                                   timeUsedPercentage > 100 ? 'bg-red-100 text-red-800' :
                                   timeUsedPercentage >= 80 ? 'bg-yellow-100 text-yellow-800' :
                                   'bg-green-100 text-green-800';
-                                
+
                                 return (
                                   <Badge variant="secondary" className={`text-xs ${statusColor}`}>
                                     {statusLabel} ({Math.round(timeUsedPercentage)}%)

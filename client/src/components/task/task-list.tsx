@@ -28,7 +28,7 @@ interface TaskFormData {
   startDate: string;
   deadline: string;
   workingHours: string;
-  workingMinutes?: string;
+  workingMinutes: string;
 }
 
 const defaultTask: TaskFormData = {
@@ -130,11 +130,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   const handleEditClick = (task: Task) => {
     setEditTask(task);
-    // Parse total minutes into hours and minutes
-    const totalMinutes = task.workingHours ? task.workingHours * 60 : 0;
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    
+
     setFormData({
       title: task.title,
       description: task.description || "",
@@ -142,8 +138,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       assigneeId: task.assigneeId?.toString() || "",
       startDate: task.startDate ? new Date(task.startDate).toISOString().slice(0, 16) : "",
       deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : "",
-      workingHours: hours.toString(),
-      workingMinutes: minutes.toString(),
+      workingHours: task.workingHours?.toString() || "",
+      workingMinutes: task.workingMinutes?.toString() || "0",
     });
     setIsDialogOpen(true);
   };
@@ -160,11 +156,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   const createTask = useMutation({
     mutationFn: async (data: TaskFormData) => {
-      // Convert hours and minutes to total hours (as decimal)
       const hours = parseInt(data.workingHours) || 0;
       const minutes = parseInt(data.workingMinutes || '0') || 0;
-      const totalHours = hours + (minutes / 60);
-      
+
       const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -175,7 +169,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
           assigneeId: data.assigneeId && data.assigneeId !== 'unassigned' ? parseInt(data.assigneeId) : null,
           startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
-          workingHours: totalHours > 0 ? totalHours : null,
+          workingHours: hours || null,
+          workingMinutes: minutes || null,
         }),
       });
 
@@ -221,10 +216,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     mutationFn: async (data: TaskFormData) => {
       if (!editTask) throw new Error("No task selected for update");
 
-      // Convert hours and minutes to total hours (as decimal)
       const hours = parseInt(data.workingHours) || 0;
       const minutes = parseInt(data.workingMinutes || '0') || 0;
-      const totalHours = hours + (minutes / 60);
 
       const response = await fetch(`/api/tasks/${editTask.id}`, {
         method: "PUT",
@@ -235,7 +228,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
           assigneeId: data.assigneeId && data.assigneeId !== 'unassigned' ? parseInt(data.assigneeId) : null,
           startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
-          workingHours: totalHours > 0 ? totalHours : null,
+          workingHours: hours || null,
+          workingMinutes: minutes || null,
         }),
       });
 
@@ -446,11 +440,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     : "No deadline"}
                 </TableCell>
                 <TableCell>
-                  {task.workingHours ? (() => {
-                    // workingHours is stored as total minutes in the database
-                    const totalMinutes = task.workingHours;
-                    const hours = Math.floor(totalMinutes / 60);
-                    const minutes = totalMinutes % 60;
+                  {task.workingHours || task.workingMinutes ? (() => {
+                    const hours = task.workingHours || 0;
+                    const minutes = task.workingMinutes || 0;
                     if (hours > 0 && minutes > 0) return `${hours}hr ${minutes}mins`;
                     if (hours > 0) return `${hours}hr`;
                     if (minutes > 0) return `${minutes}mins`;
