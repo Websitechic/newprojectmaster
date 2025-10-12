@@ -204,11 +204,20 @@ export function NotificationsDropdown() {
       await markAsRead(notification.id);
 
       // Handle navigation based on notification type and reference
-      if (notification.type === "mention" && notification.referenceType === "project" && notification.referenceId) {
-        // Navigate to team chat for the mentioned project
-        setLocation(`/dashboard/projects/${notification.referenceId}/team-chat`);
+      if (notification.referenceType === "project" && notification.referenceId) {
+        // Navigate to project details for project-related notifications
+        if (notification.type === "mention") {
+          // Navigate to team chat for mentions
+          setLocation(`/dashboard/projects/${notification.referenceId}/team-chat`);
+        } else {
+          // Navigate to project details for other project notifications
+          setLocation(`/dashboard/projects/${notification.referenceId}`);
+        }
+      } else if (notification.referenceType === "task" && notification.referenceId) {
+        // For task notifications, we need to fetch the task to get its project ID
+        // For now, navigate to tasks page - you may want to fetch task details to navigate to specific project
+        setLocation(`/dashboard/tasks`);
       }
-      // Add more navigation cases here for other notification types as needed
     } catch (error) {
       console.error("Error handling notification click:", error);
     }
