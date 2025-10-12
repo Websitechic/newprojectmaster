@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Video, Trash2, Edit, Calendar, User, Users } from "lucide-react";
+import { Video, Trash2, Edit, Calendar, User, Users, MessageSquare } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Project } from "@db/schema";
 import { VideoCall } from "@/components/video/video-call";
@@ -110,6 +110,12 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
     setShowVideoCall(true);
   };
 
+  // Navigate to team chat
+  const handleTeamChatClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLocation(`/dashboard/projects/${project.id}/team-chat`);
+  };
+
   const handleCardClick = (e: React.MouseEvent) => {
     // Prevent navigation if clicking on buttons or interactive elements
     if ((e.target as HTMLElement).closest('button, [role="button"]')) {
@@ -200,60 +206,78 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
           )}
         </div>
 
-        {/* Mobile Action Buttons */}
-        {isProjectManager && (
-          <div className="flex sm:hidden items-center justify-end gap-1 mt-3 pt-3 border-t border-gray-100">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleVideoClick}
-              className="h-8 w-8 p-0"
-            >
-              <Video className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleEditClick}
-              className="h-8 w-8 p-0"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-              <AlertDialogTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleDeleteClick}
-                  className="h-8 w-8 p-0"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the project "{project.name}" from our servers.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteProject.mutate();
-                      setIsDeleteDialogOpen(false);
-                    }}
-                    disabled={deleteProject.isPending}
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-gray-100">
+          {/* Team Chat button - visible to all users */}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleTeamChatClick}
+            className="h-8 px-2 sm:px-3 gap-1"
+            title="Team Chat"
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span className="hidden sm:inline text-xs">Team Chat</span>
+          </Button>
+          
+          {/* Project Manager only buttons */}
+          {isProjectManager && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleVideoClick}
+                className="h-8 w-8 p-0"
+                title="Video Call"
+              >
+                <Video className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleEditClick}
+                className="h-8 w-8 p-0"
+                title="Edit Project"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleDeleteClick}
+                    className="h-8 w-8 p-0"
+                    title="Delete Project"
                   >
-                    {deleteProject.isPending ? "Deleting..." : "Delete"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        )}
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the project "{project.name}" from our servers.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteProject.mutate();
+                        setIsDeleteDialogOpen(false);
+                      }}
+                      disabled={deleteProject.isPending}
+                    >
+                      {deleteProject.isPending ? "Deleting..." : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          )}
+        </div>
       </CardContent>
     </Card>
 
