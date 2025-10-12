@@ -29,6 +29,14 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -48,6 +56,7 @@ export default function Dashboard() {
     review: false,
   });
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
+  const [expandedTaskDescriptions, setExpandedTaskDescriptions] = useState<Record<number, boolean>>({});
 
   const handleProjectClick = (projectId: number, e?: React.MouseEvent) => {
     if (e) {
@@ -972,12 +981,96 @@ export default function Dashboard() {
                     Loading tasks...
                   </div>
                 ) : tasks && tasks.length > 0 ? (
-                  <TaskList
-                    tasks={tasks}
-                    projectId={undefined}
-                    showNewTaskButton={false}
-                    showProjectInfo={true}
-                  />
+                  <div className="rounded-md border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="min-w-[180px]">Title</TableHead>
+                          <TableHead className="min-w-[250px]">Description</TableHead>
+                          <TableHead className="min-w-[100px]">Status</TableHead>
+                          <TableHead className="min-w-[120px]">Assignee</TableHead>
+                          <TableHead className="min-w-[150px]">Project</TableHead>
+                          <TableHead className="min-w-[100px]">Deadline</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {tasks.map((task) => {
+                          const isExpanded = expandedTaskDescriptions[task.id] || false;
+                          const description = task.description || "No description";
+                          const isLongDescription = description.length > 100;
+                          const assigneeName = getAssignedStaffName(task.assigneeId);
+                          const projectName = getProjectName(task.projectId);
+
+                          return (
+                            <TableRow key={task.id}>
+                              <TableCell className="font-medium">{task.title}</TableCell>
+                              <TableCell className="min-w-[250px]">
+                                <div className="space-y-1">
+                                  <div className="text-sm text-gray-700">
+                                    {isLongDescription && !isExpanded 
+                                      ? `${description.substring(0, 100)}...`
+                                      : description
+                                    }
+                                  </div>
+                                  {isLongDescription && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setExpandedTaskDescriptions(prev => ({
+                                        ...prev,
+                                        [task.id]: !prev[task.id]
+                                      }))}
+                                      className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                                    >
+                                      {isExpanded ? (
+                                        <>
+                                          <ChevronUp className="h-3 w-3 mr-1" />
+                                          Show less
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ChevronDown className="h-3 w-3 mr-1" />
+                                          Show more
+                                        </>
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="min-w-[100px]">
+                                <div className="text-sm leading-tight">
+                                  {(task.status?.replace('_', ' ') || 'todo').split(' ').map((word, idx) => (
+                                    <div key={idx}>{word}</div>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell className="min-w-[120px]">
+                                <div className="text-sm leading-tight">
+                                  {assigneeName.split(' ').map((word, idx) => (
+                                    <div key={idx}>{word}</div>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell className="min-w-[150px]">
+                                <div className="text-sm leading-tight">
+                                  {projectName.split(' ').map((word, idx) => (
+                                    <div key={idx}>{word}</div>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  {task.deadline
+                                    ? new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                    : <span className="text-muted-foreground">None</span>}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
                     No tasks available. Tasks from all projects will appear here.
