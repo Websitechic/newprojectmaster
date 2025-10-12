@@ -6850,7 +6850,7 @@ End of Report
     }
 
     const user = req.user!;
-    const { title, description, projectId, assigneeId, deadline, priority, workingHours, assignedHours } = req.body;
+    const { title, description, projectId, assigneeId, deadline, priority, workingHours, workingMinutes, startDate } = req.body;
 
     try {
       if (!title || !projectId) {
