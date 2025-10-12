@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import type { Message, Project, User } from "@db/schema";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
 
 interface MessageWithSender {
   id: number;
@@ -50,6 +51,8 @@ export default function TeamChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const projectId = parseInt(id!);
+  const { playNotificationSound } = useNotificationSound();
+  const lastMessageCountRef = useRef<number>(0);
 
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
@@ -181,6 +184,12 @@ export default function TeamChat() {
         console.log("SSE message received in team chat:", data);
         if (data.type === "project_message" && data.data.projectId === projectId) {
           console.log("Team message received via SSE, invalidating queries");
+          
+          // Play sound if message is from someone else
+          if (data.data.senderId !== user?.id) {
+            playNotificationSound();
+          }
+          
           queryClient.invalidateQueries({ 
             queryKey: [`/api/projects/${projectId}/team-messages`] 
           });
@@ -199,6 +208,12 @@ export default function TeamChat() {
       const messageData = event.detail;
       if (messageData.projectId === projectId) {
         console.log("Team message received via WebSocket, invalidating queries");
+        
+        // Play sound if message is from someone else
+        if (messageData.senderId !== user?.id) {
+          playNotificationSound();
+        }
+        
         queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
         });

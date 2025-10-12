@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
 
 interface User {
   id: number;
@@ -62,6 +63,7 @@ export function DirectMessages() {
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const { playNotificationSound } = useNotificationSound();
 
   // Fetch conversations
   useEffect(() => {
@@ -142,6 +144,11 @@ export function DirectMessages() {
         if (data.type === "direct_message") {
           const message = data.data;
           console.log("Direct message received:", message);
+
+          // Play sound if message is from someone else
+          if (message.senderId !== user?.id) {
+            playNotificationSound();
+          }
 
           // If the message is from the currently selected user, add it to messages immediately
           if (selectedUser && message.senderId === selectedUser.id) {

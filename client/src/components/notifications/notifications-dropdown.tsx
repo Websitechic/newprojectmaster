@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { formatDistanceToNow, format, isValid, parseISO } from "date-fns";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
 
 interface Notification {
   id: number;
@@ -31,6 +32,7 @@ export function NotificationsDropdown() {
   const [isConnecting, setIsConnecting] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { playNotificationSound } = useNotificationSound();
 
   // Local state to manage notifications, for SSE updates before query refetch
   const [sseNotifications, setSseNotifications] = useState<Notification[]>([]);
@@ -98,6 +100,12 @@ export function NotificationsDropdown() {
             // Only process actual notification data, ignore system messages like heartbeat or connected
             if (data.type === 'notification' && data.notification) {
               console.log('New notification received:', data.notification);
+              
+              // Play sound for task assignments
+              if (data.notification.type === 'task_assignment' || data.notification.type === 'task_assigned') {
+                playNotificationSound();
+              }
+              
               // Update SSE local state to prepend new notification
               setSseNotifications(prev => [data.notification, ...prev]);
               // Update query cache with the new notification
