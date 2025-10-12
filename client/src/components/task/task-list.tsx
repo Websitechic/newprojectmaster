@@ -386,15 +386,27 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 </TableCell>
                 <TableCell>
                   <Badge className={getStatusColor(task.status)}>
-                    {task.status?.replace('_', ' ') || 'todo'}
+                    <div className="text-center leading-tight">
+                      {(task.status?.replace('_', ' ') || 'todo').split(' ').map((word, idx) => (
+                        <div key={idx}>{word}</div>
+                      ))}
+                    </div>
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {staff?.find((s) => s.id === task.assigneeId)?.name || "Unassigned"}
+                  <div className="text-sm leading-tight">
+                    {(staff?.find((s) => s.id === task.assigneeId)?.name || "Unassigned").split(' ').map((word, idx) => (
+                      <div key={idx}>{word}</div>
+                    ))}
+                  </div>
                 </TableCell>
                 {showProjectInfo && (
                   <TableCell>
-                    {projectMap[task.projectId] || `Project ID: ${task.projectId}`}
+                    <div className="text-sm leading-tight">
+                      {(projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
+                        <div key={idx}>{word}</div>
+                      ))}
+                    </div>
                   </TableCell>
                 )}
                 {showProjectInfo && (
