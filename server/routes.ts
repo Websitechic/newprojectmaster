@@ -6863,8 +6863,8 @@ End of Report
         if (isNaN(hoursValue) || hoursValue <= 0) {
           return res.status(400).json({ error: "Working hours must be a positive number" });
         }
-        // Round to 2 decimal places for consistency
-        taskWorkingHours = Math.round(hoursValue * 100) / 100;
+        // Convert decimal hours to minutes and store as integer
+        taskWorkingHours = Math.round(hoursValue * 60);
       }
 
       const [newTask] = await db
