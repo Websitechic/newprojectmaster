@@ -67,6 +67,13 @@ export default function Dashboard() {
     setLocation(`/dashboard/projects/${projectId}`);
   };
 
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
@@ -990,7 +997,11 @@ export default function Dashboard() {
                           <TableHead className="min-w-[100px]">Status</TableHead>
                           <TableHead className="min-w-[120px]">Assignee</TableHead>
                           <TableHead className="min-w-[150px]">Project</TableHead>
+                          <TableHead className="min-w-[120px]">Time Spent</TableHead>
+                          <TableHead className="min-w-[100px]">Start Date</TableHead>
                           <TableHead className="min-w-[100px]">Deadline</TableHead>
+                          <TableHead className="min-w-[120px]">Working Hours</TableHead>
+                          <TableHead className="min-w-[100px]">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1058,12 +1069,40 @@ export default function Dashboard() {
                                   ))}
                                 </div>
                               </TableCell>
+                              <TableCell className="min-w-[120px]">
+                                <div className="flex items-center gap-1 text-gray-600">
+                                  <Clock className="h-4 w-4" />
+                                  <span>{formatTime(task.timeSpent || 0)}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  {task.startDate
+                                    ? new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                    : <span className="text-muted-foreground">Not set</span>}
+                                </div>
+                              </TableCell>
                               <TableCell>
                                 <div className="text-sm">
                                   {task.deadline
                                     ? new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                                     : <span className="text-muted-foreground">None</span>}
                                 </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  {task.workingHours ? `${task.workingHours}h` : <span className="text-muted-foreground">Not set</span>}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setLocation(`/dashboard/projects/${task.projectId}`)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  View
+                                </Button>
                               </TableCell>
                             </TableRow>
                           );
