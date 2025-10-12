@@ -94,43 +94,43 @@ function Router() {
             {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
           </Route>
           <Route path="/dashboard">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               {user?.role === "client" ? <ClientDashboard /> : <Dashboard />}
             </div>
           </Route>
           <Route path="/dashboard/projects">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <Projects />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ProjectDetails />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/tasks">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ProjectTasks />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/team-chat">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <TeamChat />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/client-chat">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ClientChat />
             </div>
           </Route>
           <Route path="/dashboard/projects/:id/staff-tasks">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <StaffProjectTasks />
             </div>
           </Route>
           {/* Staff-specific route removed - all users now use standard project details page */}
           <Route path="/dashboard/projects/:id/resources">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ProjectResources />
             </div>
           </Route>
@@ -138,17 +138,17 @@ function Router() {
             <PrivateRoute component={StaffReport} />
           </Route>
           <Route path="/dashboard/tasks">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <Tasks />
             </div>
           </Route>
           <Route path="/dashboard/leave-application">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <LeaveApplication />
             </div>
           </Route>
           <Route path="/dashboard/leave-management">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <LeaveManagement />
             </div>
           </Route>
@@ -156,17 +156,17 @@ function Router() {
             <PrivateRoute component={Bookings} />
           </Route>
           <Route path="/dashboard/productivity">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <Productivity />
             </div>
           </Route>
           <Route path="/dashboard/direct-messages">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <DirectMessages />
             </div>
           </Route>
           <Route path="/dashboard/technical-support">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <TechnicalSupport />
             </div>
           </Route>
@@ -174,52 +174,52 @@ function Router() {
             <PrivateRoute component={TechnicalManagementFixed} />
           </Route>
           <Route path="/dashboard/extension-requests">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ExtensionRequestsPage />
             </div>
           </Route>
           <Route path="/dashboard/deadline-extension-requests">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <DeadlineExtensionRequests />
             </div>
           </Route>
           <Route path="/dashboard/client-management">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ClientManagement />
             </div>
           </Route>
           <Route path="/dashboard/guide-videos">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <GuideVideos />
             </div>
           </Route>
           <Route path="/dashboard/register-dissatisfaction">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <RegisterDissatisfaction />
             </div>
           </Route>
           <Route path="/dashboard/support-policy">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <SupportPolicy />
             </div>
           </Route>
           <Route path="/dashboard/emergency-support">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <EmergencySupport />
             </div>
           </Route>
           <Route path="/dashboard/reach-us">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ReachUsPage />
             </div>
           </Route>
           <Route path="/dashboard/rate-us">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <RateUs />
             </div>
           </Route>
           <Route path="/dashboard/complaints-management">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ComplaintsManagement />
             </div>
           </Route>
@@ -227,22 +227,22 @@ function Router() {
             <PrivateRoute component={ClientAccounts} />
           </Route>
           <Route path="/dashboard/client-sentiment">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ClientSentiment />
             </div>
           </Route>
           <Route path="/dashboard/client-sentiment-tracker">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ClientSentimentTracker />
             </div>
           </Route>
           <Route path="/dashboard/memos">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <Memos />
             </div>
           </Route>
           <Route path="/dashboard/notes">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <Notes />
             </div>
           </Route>
@@ -250,57 +250,57 @@ function Router() {
             <PrivateRoute component={StaffQueries} />
           </Route>
           <Route path="/dashboard/staff-complaints">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <StaffComplaints />
             </div>
           </Route>
           <Route path="/dashboard/client-complaints">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ComplaintsManagement />
             </div>
           </Route>
           <Route path="/dashboard/sop">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <SOPPage />
             </div>
           </Route>
           <Route path="/dashboard/communication-tracker">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <CommunicationTrackerPage />
             </div>
           </Route>
           <Route path="/dashboard/kpi-report">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <KPIReportPage />
             </div>
           </Route>
           <Route path="/dashboard/technical-support">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <TechnicalSupport />
             </div>
           </Route>
           <Route path="/dashboard/technical-management">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <TechnicalManagementFixed />
             </div>
           </Route>
           <Route path="/dashboard/deadline-extension-requests">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <DeadlineExtensionRequests />
             </div>
           </Route>
           <Route path="/dashboard/send-complaint">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <SendComplaint />
             </div>
           </Route>
           <Route path="/dashboard/report-issues">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ReportIssues />
             </div>
           </Route>
           <Route path="/dashboard/report-management">
-            <div className="lg:flex min-h-screen">
+            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
               <ReportManagement />
             </div>
           </Route>

@@ -97,19 +97,6 @@
     @apply flex-1 overflow-auto p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-none;
   }
 
-  /* Add padding for fixed sidebar on desktop */
-  @media (min-width: 1024px) {
-    body:has(.dashboard-layout) {
-      padding-left: 16rem; /* 64 * 0.25rem = 16rem for w-64 */
-    }
-  }
-
-  @media (min-width: 1280px) {
-    body:has(.dashboard-layout) {
-      padding-left: 18rem; /* 72 * 0.25rem = 18rem for w-72 */
-    }
-  }
-
   .dashboard-header {
     @apply sticky top-0 z-30 bg-white border-b border-gray-200 p-3 sm:p-4;
   }
