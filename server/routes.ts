@@ -1682,7 +1682,7 @@ End of Report
     const taskId = parseInt(req.params.id);
 
     try {
-      const { title, description, status, assigneeId, startDate, deadline, workingHours } = req.body;
+      const { title, description, status, assigneeId, startDate, deadline, workingHours, workingMinutes } = req.body;
 
       // Check if task exists
       const [existingTask] = await db
@@ -1724,6 +1724,7 @@ End of Report
       if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
       if (deadline !== undefined) updateData.deadline = deadline ? new Date(deadline) : null;
       if (workingHours !== undefined) updateData.workingHours = workingHours ? parseInt(workingHours) : null;
+      if (workingMinutes !== undefined) updateData.workingMinutes = workingMinutes ? parseInt(workingMinutes) : null;
 
       // Only project managers and operations managers can reassign tasks
       if (assigneeId !== undefined && (isOperationsManager || isProjectManager)) {
@@ -6216,7 +6217,7 @@ End of Report
       res.json({ success: true, id: newProject.id, project: newProject });
     } catch (error) {
       console.error("Error creating project:", error);
-      res.    status(500).json({ error: "Failed to create project" });
+      res.status(500).json({ error: "Failed to create project" });
     }
   });
 
@@ -6870,9 +6871,9 @@ End of Report
       const [newTask] = await db
         .insert(tasks)
         .values({
+          projectId,
           title,
           description: description || "",
-          projectId: parseInt(projectId),
           assigneeId: assigneeId ? parseInt(assigneeId) : null,
           assignedBy: user.id,
           deadline: deadline ? new Date(deadline) : null,
