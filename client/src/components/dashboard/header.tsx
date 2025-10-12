@@ -14,6 +14,7 @@ import { NotificationsDropdown } from "@/components/notifications/notifications-
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
 
 interface UnreadMessage {
   type: "team_chat" | "direct_message";
