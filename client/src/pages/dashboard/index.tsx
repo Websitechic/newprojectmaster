@@ -596,8 +596,8 @@ export default function Dashboard() {
                                 (task) => task.projectId === project.id
                               ) || [];
 
-                              const reasonText = projectTasks.length === 0 
-                                ? "No tasks assigned" 
+                              const reasonText = projectTasks.length === 0
+                                ? "No tasks assigned"
                                 : "No work activity for 1+ week";
 
                               return (
