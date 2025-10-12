@@ -6883,8 +6883,6 @@ End of Report
           priority: priority || "medium",
           status: "not_started",
           progress: 0,
-          workingHours: taskWorkingHours, // Use the validated taskWorkingHours
-          assignedHours: assignedHours ? parseFloat(assignedHours) : null,
         })
         .returning();
 
