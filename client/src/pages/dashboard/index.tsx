@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -29,14 +29,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -44,19 +36,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Project, Task } from "@db/schema";
-import { useAuth } from "@/hooks/use-auth";
 
 export default function Dashboard() {
-  const { user } = useAuth();
   const [location, setLocation] = useLocation();
+  const { user } = useUser();
   const { updateStatus } = useWebSocket(user?.id);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     inProgress: false,
     pending: false,
     review: false,
   });
-  const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
-  const [expandedTaskDescriptions, setExpandedTaskDescriptions] = useState<Record<number, boolean>>({});
 
   const handleProjectClick = (projectId: number, e?: React.MouseEvent) => {
     if (e) {
@@ -65,13 +54,6 @@ export default function Dashboard() {
     }
     console.log("Navigating to project:", projectId);
     setLocation(`/dashboard/projects/${projectId}`);
-  };
-
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
@@ -186,36 +168,6 @@ export default function Dashboard() {
       </div>
     </div>
   );
-
-  // Placeholder functions - replace with actual implementations if available
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case "todo": return "bg-gray-100 text-gray-800";
-      case "in_progress": return "bg-blue-100 text-blue-800";
-      case "review": return "bg-purple-100 text-purple-800";
-      case "completed": return "bg-green-100 text-green-800";
-      case "technical_support": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  // Placeholder functions - replace with actual implementations if available
-  const getAssignedStaffName = (assigneeId: number | null | undefined) => {
-    if (!assigneeId) return "Unassigned";
-    // In a real app, you'd fetch staff names based on IDs
-    // For now, returning a placeholder
-    return `Staff ${assigneeId}`;
-  };
-
-  // Placeholder functions - replace with actual implementations if available
-  const getProjectName = (projectId: number | null | undefined) => {
-    if (!projectId) return "No Project";
-    const project = projects?.find(p => p.id === projectId);
-    return project ? project.name : "Unknown Project";
-  };
-
-  // Assuming allTasks are available from tasks or filtered staffTasks
-  const allTasks = tasks || [];
 
   return (
     <div className="flex min-h-screen w-full max-w-full overflow-hidden">
@@ -629,8 +581,8 @@ export default function Dashboard() {
                                 (task) => task.projectId === project.id
                               ) || [];
 
-                              const reasonText = projectTasks.length === 0
-                                ? "No tasks assigned"
+                              const reasonText = projectTasks.length === 0 
+                                ? "No tasks assigned" 
                                 : "No work activity for 1+ week";
 
                               return (
@@ -988,128 +940,12 @@ export default function Dashboard() {
                     Loading tasks...
                   </div>
                 ) : tasks && tasks.length > 0 ? (
-                  <div className="rounded-md border overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="min-w-[180px]">Title</TableHead>
-                          <TableHead className="min-w-[250px]">Description</TableHead>
-                          <TableHead className="min-w-[100px]">Status</TableHead>
-                          <TableHead className="min-w-[120px]">Assignee</TableHead>
-                          <TableHead className="min-w-[150px]">Project</TableHead>
-                          <TableHead className="min-w-[120px]">Time Spent</TableHead>
-                          <TableHead className="min-w-[100px]">Start Date</TableHead>
-                          <TableHead className="min-w-[100px]">Deadline</TableHead>
-                          <TableHead className="min-w-[120px]">Working Hours</TableHead>
-                          <TableHead className="min-w-[100px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {tasks.map((task) => {
-                          const isExpanded = expandedTaskDescriptions[task.id] || false;
-                          const description = task.description || "No description";
-                          const isLongDescription = description.length > 100;
-                          const assigneeName = getAssignedStaffName(task.assigneeId);
-                          const projectName = getProjectName(task.projectId);
-
-                          return (
-                            <TableRow key={task.id}>
-                              <TableCell className="font-medium">{task.title}</TableCell>
-                              <TableCell className="min-w-[250px]">
-                                <div className="space-y-1">
-                                  <div className="text-sm text-gray-700">
-                                    {isLongDescription && !isExpanded 
-                                      ? `${description.substring(0, 100)}...`
-                                      : description
-                                    }
-                                  </div>
-                                  {isLongDescription && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setExpandedTaskDescriptions(prev => ({
-                                        ...prev,
-                                        [task.id]: !prev[task.id]
-                                      }))}
-                                      className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
-                                    >
-                                      {isExpanded ? (
-                                        <>
-                                          <ChevronUp className="h-3 w-3 mr-1" />
-                                          Show less
-                                        </>
-                                      ) : (
-                                        <>
-                                          <ChevronDown className="h-3 w-3 mr-1" />
-                                          Show more
-                                        </>
-                                      )}
-                                    </Button>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="min-w-[100px]">
-                                <div className="text-sm leading-tight">
-                                  {(task.status?.replace('_', ' ') || 'todo').split(' ').map((word, idx) => (
-                                    <div key={idx}>{word}</div>
-                                  ))}
-                                </div>
-                              </TableCell>
-                              <TableCell className="min-w-[120px]">
-                                <div className="text-sm leading-tight">
-                                  {assigneeName.split(' ').map((word, idx) => (
-                                    <div key={idx}>{word}</div>
-                                  ))}
-                                </div>
-                              </TableCell>
-                              <TableCell className="min-w-[150px]">
-                                <div className="text-sm leading-tight">
-                                  {projectName.split(' ').map((word, idx) => (
-                                    <div key={idx}>{word}</div>
-                                  ))}
-                                </div>
-                              </TableCell>
-                              <TableCell className="min-w-[120px]">
-                                <div className="flex items-center gap-1 text-gray-600">
-                                  <Clock className="h-4 w-4" />
-                                  <span>{formatTime(task.timeSpent || 0)}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  {task.startDate
-                                    ? new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                                    : <span className="text-muted-foreground">Not set</span>}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  {task.deadline
-                                    ? new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                                    : <span className="text-muted-foreground">None</span>}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  {task.workingHours ? `${task.workingHours}h` : <span className="text-muted-foreground">Not set</span>}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setLocation(`/dashboard/projects/${task.projectId}`)}
-                                  className="h-8 px-2 text-xs"
-                                >
-                                  View
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <TaskList
+                    tasks={tasks}
+                    projectId={undefined}
+                    showNewTaskButton={false}
+                    showProjectInfo={true}
+                  />
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
                     No tasks available. Tasks from all projects will appear here.
