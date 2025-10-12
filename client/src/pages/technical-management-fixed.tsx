@@ -108,12 +108,29 @@ const statusColors = {
   closed: "bg-slate-100 text-slate-800"
 };
 
-export default function TechnicalManagementPage() {
+export default function TechnicalManagementFixed() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [location] = useLocation();
   const [selectedRequest, setSelectedRequest] = useState<TechnicalSupportRequest | null>(null);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  // Filters and search
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Check if user is project manager (read-only mode)
+  const isProjectManager = user?.role === "project_manager";
+  const isTechnicalSupport = user?.specialization === "technical_support";
+  const isProductOwner = user?.role === "product_owner";
+  const isTeamLead = user?.role === "team_lead";
+  const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
 
   const { data: requests = [], isLoading } = useQuery<TechnicalSupportRequest[]>({
     queryKey: ["/api/technical-support/requests"],
@@ -221,7 +238,10 @@ export default function TechnicalManagementPage() {
     );
   }
 
-  const [location] = useLocation();
+  const pendingCount = requests.filter(r => r.status === 'pending' || !r.assignedToId).length;
+  const myRequestsCount = requests.filter(r => r.assignedToId === user?.id).length;
+  const urgentCount = requests.filter(r => r.priority === 'urgent').length;
+  const highCount = requests.filter(r => r.priority === 'high').length;
 
   return (
     <div className="flex min-h-screen w-full">

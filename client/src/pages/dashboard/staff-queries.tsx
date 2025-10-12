@@ -33,10 +33,10 @@ interface StaffQuery {
 }
 
 export default function StaffQueries() {
-  const [location] = useLocation();
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [location] = useLocation();
   const [showForm, setShowForm] = useState(false);
 
   // Fetch all users for staff selection

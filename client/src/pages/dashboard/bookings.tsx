@@ -274,6 +274,8 @@ export default function Bookings() {
     return new Date(startTime) > new Date();
   };
 
+  const [location] = useLocation();
+
   if (bookingsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -281,8 +283,6 @@ export default function Bookings() {
       </div>
     );
   }
-
-  const [location] = useLocation();
 
   return (
     <div className="flex min-h-screen w-full">

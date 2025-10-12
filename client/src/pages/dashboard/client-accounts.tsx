@@ -290,6 +290,8 @@ export default function ClientAccounts() {
     );
   }
 
+  const [location] = useLocation();
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
@@ -307,8 +309,6 @@ export default function ClientAccounts() {
       </div>
     );
   }
-
-  const [location] = useLocation();
 
   return (
     <div className="flex min-h-screen w-full">
