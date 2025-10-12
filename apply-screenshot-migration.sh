@@ -1,4 +1,14 @@
 
+#!/bin/bash
+
+# Get database connection string from environment
+if [ -z "$DATABASE_URL" ]; then
+    echo "Error: DATABASE_URL environment variable is not set"
+    exit 1
+fi
+
+# Apply the migration SQL directly
+psql "$DATABASE_URL" << 'EOF'
 -- Fix missing screenshot_url column in issue_reports table
 DO $$ 
 BEGIN
@@ -24,3 +34,12 @@ BEGIN
         RAISE NOTICE 'issue_reports table does not exist';
     END IF;
 END $$;
+
+-- Verify the column was added
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'issue_reports' 
+AND column_name = 'screenshot_url';
+EOF
+
+echo "Migration applied successfully!"
