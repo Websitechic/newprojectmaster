@@ -3469,6 +3469,7 @@ End of Report
             reviewedBy: issueReports.reviewedBy,
             reviewedAt: issueReports.reviewedAt,
             reviewComments: issueReports.reviewComments,
+            screenshotUrl: issueReports.screenshotUrl,
             createdAt: issueReports.createdAt,
             updatedAt: issueReports.updatedAt,
             submitterName: users.name,
