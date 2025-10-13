@@ -6,11 +6,14 @@ export function useNotificationSound() {
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const lastPlayTimeRef = useRef<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
-  const MIN_PLAY_INTERVAL = 1000; // Minimum 1 second between sounds
+  const initializationAttemptedRef = useRef(false);
+  const MIN_PLAY_INTERVAL = 500; // Minimum 500ms between sounds
 
   // Initialize audio context
   const initAudioContext = useCallback(() => {
-    if (audioContextRef.current) return;
+    if (audioContextRef.current || initializationAttemptedRef.current) return;
+
+    initializationAttemptedRef.current = true;
 
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -44,6 +47,7 @@ export function useNotificationSound() {
       console.log('✓ Audio context initialized successfully');
     } catch (error) {
       console.error('Error initializing audio context:', error);
+      initializationAttemptedRef.current = false;
     }
   }, []);
 
@@ -51,24 +55,30 @@ export function useNotificationSound() {
   useEffect(() => {
     const handleUserInteraction = () => {
       if (!audioContextRef.current) {
-        console.log('User interaction detected, initializing audio silently...');
+        console.log('User interaction detected, initializing audio...');
         initAudioContext();
-        // Don't play sound during initialization
       }
     };
 
-    // Listen for various user interactions
+    // Listen for various user interactions - only once per event type
     const events = ['click', 'keydown', 'touchstart', 'mousedown'];
+    const handlers: (() => void)[] = [];
+    
     events.forEach(event => {
-      document.addEventListener(event, handleUserInteraction, { once: true, capture: true });
+      const handler = () => {
+        handleUserInteraction();
+        // Remove all handlers after first successful interaction
+        handlers.forEach((h, i) => {
+          document.removeEventListener(events[i], h);
+        });
+      };
+      handlers.push(handler);
+      document.addEventListener(event, handler, { capture: true });
     });
 
-    // Try to initialize early (will fail on some browsers until user interaction)
-    initAudioContext();
-
     return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, handleUserInteraction);
+      handlers.forEach((handler, i) => {
+        document.removeEventListener(events[i], handler);
       });
       
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
@@ -91,8 +101,8 @@ export function useNotificationSound() {
       console.log('🎵 Audio context not initialized, attempting to initialize...');
       initAudioContext();
       
-      // Wait a bit for initialization
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for initialization
+      await new Promise(resolve => setTimeout(resolve, 150));
     }
     
     if (!audioContextRef.current || !audioBufferRef.current) {
@@ -110,13 +120,13 @@ export function useNotificationSound() {
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBufferRef.current;
       const gainNode = audioContextRef.current.createGain();
-      gainNode.gain.value = 0.7; // Volume at 70%
+      gainNode.gain.value = 0.8; // Volume at 80%
       source.connect(gainNode);
       gainNode.connect(audioContextRef.current.destination);
       source.start(0);
       
       lastPlayTimeRef.current = now;
-      console.log('✅ Notification sound played successfully');
+      console.log('✅ Notification sound played successfully at', new Date().toLocaleTimeString());
     } catch (error) {
       console.error('❌ Error playing notification sound:', error);
     }

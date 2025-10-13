@@ -99,29 +99,20 @@ export function NotificationsDropdown() {
 
             // Only process actual notification data, ignore system messages like heartbeat or connected
             if (data.type === 'notification' && data.notification) {
-              console.log('New notification received via SSE:', data.notification);
+              console.log('🔔 New notification received via SSE:', data.notification);
               
               // Play sound for task assignments, messages, and direct messages
               const notificationType = data.notification.type;
-              const soundTypes = [
-                'task_assignment', 
-                'task_assigned',
-                'message',
-                'direct_message',
-                'task_updated',
-                'deadline_reminder',
-                'task_overdue'
-              ];
               
               // Play sound for all notifications except system messages
               if (notificationType && notificationType !== 'system') {
-                console.log('🔔 Playing notification sound for type:', notificationType);
-                // Use a small delay to ensure sound plays after state update
-                setTimeout(() => {
-                  playNotificationSound();
-                }, 100);
+                console.log('🔊 Playing notification sound for type:', notificationType);
+                // Play sound immediately
+                playNotificationSound().catch(err => {
+                  console.error('Error playing notification sound:', err);
+                });
               } else {
-                console.log('ℹ️ No sound for notification type:', notificationType);
+                console.log('ℹ️ Skipping sound for notification type:', notificationType);
               }
               
               // Update SSE local state to prepend new notification
