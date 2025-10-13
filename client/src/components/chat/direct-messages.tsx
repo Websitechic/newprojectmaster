@@ -429,8 +429,39 @@ export function DirectMessages() {
         // Clear the input immediately
         setNewMessage("");
 
-        // Don't add the message to local state here - let SSE handle it to avoid duplicates
-        // The message will be added via the SSE event listener
+        // Update conversations list immediately
+        setConversations(prev => {
+          const updated = [...prev];
+          const existingIndex = updated.findIndex(conv => conv.user.id === selectedUser.id);
+
+          if (existingIndex >= 0) {
+            // Move conversation to top and update last message
+            const conversation = updated[existingIndex];
+            updated.splice(existingIndex, 1);
+            updated.unshift({
+              ...conversation,
+              lastMessage: {
+                content: sentMessage.content,
+                createdAt: sentMessage.createdAt,
+                senderId: sentMessage.senderId,
+              },
+              unreadCount: 0, // We sent it, so it's not unread for us
+            });
+          } else {
+            // Add new conversation at the top
+            updated.unshift({
+              user: selectedUser,
+              lastMessage: {
+                content: sentMessage.content,
+                createdAt: sentMessage.createdAt,
+                senderId: sentMessage.senderId,
+              },
+              unreadCount: 0,
+            });
+          }
+
+          return updated;
+        });
 
       } else {
         const errorText = await response.text();
