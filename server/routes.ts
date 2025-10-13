@@ -555,7 +555,7 @@ export function registerRoutes(app: Express): Server {
 
     const {specialization} = req.query;
 
-    // Only apply specialization filter to staff members, not customer support officers
+    // Only apply specialization filter to staff members, not customer support officers or team leads
     let whereCondition;
 
     if (specialization) {
@@ -564,12 +564,14 @@ export function registerRoutes(app: Express): Server {
           eq(users.role, "staff"),
           eq(users.specialization, specialization as string)
         ),
-        eq(users.role, "customer_support_officer")
+        eq(users.role, "customer_support_officer"),
+        eq(users.role, "team_lead")
       );
     } else {
       whereCondition = or(
         eq(users.role, "staff"),
-        eq(users.role, "customer_support_officer")
+        eq(users.role, "customer_support_officer"),
+        eq(users.role, "team_lead")
       );
     }
 

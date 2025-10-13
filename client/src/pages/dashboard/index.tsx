@@ -416,12 +416,38 @@ export default function Dashboard() {
                 )}
               </div>
             </>
+          ) : user?.role === "team_lead" ? (
+            <>
+              {/* Team Lead Dashboard */}
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">My Tasks</h2>
+                <p className="text-sm text-gray-600">Tasks assigned to you as Team Lead</p>
+              </div>
+
+              {/* Team Lead Tasks */}
+              <div className="space-y-6">
+                {tasks && tasks.filter(task => task.assigneeId === user.id).length > 0 ? (
+                  <StaffTaskList 
+                    tasks={tasks.filter(task => task.assigneeId === user.id)} 
+                    projectId={undefined} 
+                  />
+                ) : (
+                  <div className="text-center text-muted-foreground mt-8">
+                    No tasks assigned to you yet.
+                  </div>
+                )}
+              </div>
+
+              {/* Team Lead Project Status Overview */}
+              <div className="mt-8">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Project Status Overview</h2>
+              </div>
+            </>
           ) : (
             <>
               {/* Manager/Admin Dashboard */}
               {(user?.role === "operations_manager" ||
-                user?.specialization === "operations_manager" ||
-                user?.role === "team_lead") && (
+                user?.specialization === "operations_manager") && (
                 <>
                   <div className="mb-6">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">Project Status</h2>
