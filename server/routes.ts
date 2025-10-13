@@ -617,11 +617,12 @@ export function registerRoutes(app: Express): Server {
     const user = req.user!;
     const isProjectManager = user.role === "project_manager";
     const isProductOwner = user.role === "product_owner";
+    const isCustomerSupportOfficer = user.role === "customer_support_officer";
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
     const isTeamLead = user.role === "team_lead";
 
-    if (!isProjectManager && !isProductOwner && !isOperationsManager && !isTeamLead) {
-      return res.status(403).json({ error: "Only project managers, product owners, operations managers, and team leads can access clients" });
+    if (!isProjectManager && !isProductOwner && !isCustomerSupportOfficer && !isOperationsManager && !isTeamLead) {
+      return res.status(403).json({ error: "Only project managers, product owners, customer support officers, operations managers, and team leads can access clients" });
     }
 
     try {
