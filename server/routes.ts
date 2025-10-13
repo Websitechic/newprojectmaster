@@ -5725,6 +5725,7 @@ End of Report
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
         user.role === "customer_support_officer" ||
+        user.role === "project_manager" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
         !!membership;

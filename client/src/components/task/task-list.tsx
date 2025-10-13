@@ -143,7 +143,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     },
     onSuccess: (newTask) => {
       console.log("Task created, updating cache:", newTask);
-      
+
       // Immediately update the cache with the new task
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
         const updated = oldTasks ? [newTask, ...oldTasks] : [newTask];
@@ -327,7 +327,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   return (
     <div>
       <div className="flex justify-end mb-4">
-        { !isStaffView && showNewTaskButton && (user?.role === "project_manager" || user?.role === "customer_support_officer" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager" || (user?.role === "staff" && user?.specialization === "technical_support")) && (
+        { !isStaffView && showNewTaskButton && (user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "customer_support_officer" || user?.role === "team_lead" || (user?.role === "staff" && user?.specialization === "technical_support")) && (
           <Button onClick={handleNewTask}>
             <Plus className="h-4 w-4 mr-2" />
             New Task

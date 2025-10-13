@@ -397,7 +397,7 @@ export default function Projects() {
                                 </span>
                               </div>
                             </div>
-                            {/* Check if user can edit projects (project managers, product owners, customer support officers, and operations managers) */}
+                            {/* Check if user can edit projects (project managers, product owners, customer support officers, operations managers, and team leads) */}
                             {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "customer_support_officer" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager") && (
                               <div className="flex space-x-2">
                                 <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
@@ -470,7 +470,7 @@ export default function Projects() {
                                 </AlertDialog>
                               </div>
                             )}
-                            
+
                           </div>
                         ))}
                         </div>
