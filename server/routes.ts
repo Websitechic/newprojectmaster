@@ -1809,8 +1809,9 @@ End of Report
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isTaskAssignee = existingTask.assigneeId === user.id;
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
+      const isTeamLead = user.role === "team_lead";
 
-      if (!isOperationsManager && !isProjectManager && !isTaskAssignee && !isCustomerSupportOfficer) {
+      if (!isOperationsManager && !isProjectManager && !isTaskAssignee && !isCustomerSupportOfficer && !isTeamLead) {
         return res.status(403).json({ error: "Access denied - insufficient permissions to update this task" });
       }
 
@@ -1825,8 +1826,8 @@ End of Report
       if (workingHours !== undefined) updateData.workingHours = workingHours ? parseInt(workingHours) : null;
       if (workingMinutes !== undefined) updateData.workingMinutes = workingMinutes ? parseInt(workingMinutes) : null;
 
-      // Only project managers, operations managers, and customer support officers can reassign tasks
-      if (assigneeId !== undefined && (isOperationsManager || isProjectManager || isCustomerSupportOfficer)) {
+      // Only project managers, operations managers, customer support officers, and team leads can reassign tasks
+      if (assigneeId !== undefined && (isOperationsManager || isProjectManager || isCustomerSupportOfficer || isTeamLead)) {
         updateData.assigneeId = assigneeId && assigneeId !== 'unassigned' ? parseInt(assigneeId) : null;
       }
 
@@ -1924,8 +1925,9 @@ End of Report
       const isProductOwner = user.role === "product_owner";
       const isTechnicalSupport = user.role === "staff" && user.specialization === "technical_support";
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
+      const isTeamLead = user.role === "team_lead";
 
-      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isTechnicalSupport && !isCustomerSupportOfficer) {
+      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isTechnicalSupport && !isCustomerSupportOfficer && !isTeamLead) {
         return res.status(403).json({ error: "Access denied - insufficient permissions to delete this task" });
       }
 
@@ -6414,8 +6416,9 @@ End of Report
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isProductOwner = user.role === "product_owner";
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
+      const isTeamLead = user.role === "team_lead";
 
-      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isCustomerSupportOfficer) {
+      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isCustomerSupportOfficer && !isTeamLead) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -6529,8 +6532,9 @@ End of Report
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isProductOwner = user.role === "product_owner";
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
+      const isTeamLead = user.role === "team_lead";
 
-      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isCustomerSupportOfficer) {
+      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isCustomerSupportOfficer && !isTeamLead) {
         return res.status(403).json({ error: "Access denied - insufficient permissions to delete this project" });
       }
 
