@@ -48,7 +48,7 @@ export default function ClientAccounts() {
   const [location] = useLocation();
 
   // Check permissions FIRST before any other hooks
-  const hasPermission = user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager";
+  const hasPermission = user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.role === "customer_support_officer" || user?.specialization === "operations_manager";
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -278,7 +278,7 @@ export default function ClientAccounts() {
             <div className="text-center">
               <h3 className="text-lg font-semibold">Access Restricted</h3>
               <p className="text-sm text-gray-600">
-                Only Project Managers, Product Owners, Operations Managers, and Team Leads can access client account management.
+                Only Project Managers, Product Owners, Operations Managers, Team Leads, and Customer Support Officers can access client account management.
               </p>
             </div>
           </CardContent>

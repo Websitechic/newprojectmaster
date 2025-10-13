@@ -167,10 +167,11 @@ export default function DeadlineExtensionRequestsPage() {
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const processedRequests = requests.filter(r => r.status !== 'pending');
 
-  // Check if user has proper access (project managers, operations managers, team leads, and replit developers)
+  // Check if user has proper access (project managers, operations managers, team leads, customer support officers, and replit developers)
   const hasAccess = user?.role === "project_manager" || 
                    user?.role === "operations_manager" || 
                    user?.role === "team_lead" ||
+                   user?.role === "customer_support_officer" ||
                    user?.specialization === "operations_manager" ||
                    user?.specialization === "replit_development" ||
                    user?.specialization === "Replit Development";
@@ -184,7 +185,7 @@ export default function DeadlineExtensionRequestsPage() {
           <div className="flex-1 overflow-auto p-6">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-              <p className="text-gray-600 mt-2">This page is only available to project managers, operations managers, team leads, and Replit developers.</p>
+              <p className="text-gray-600 mt-2">This page is only available to project managers, operations managers, team leads, customer support officers, and Replit developers.</p>
               <p className="text-sm text-gray-500 mt-1">Your role: {user?.role}, Specialization: {user?.specialization}</p>
             </div>
           </div>

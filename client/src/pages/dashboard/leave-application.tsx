@@ -116,8 +116,8 @@ export default function LeaveApplication() {
     },
   });
 
-  // Check if user is staff or product owner
-  if (!user || (user.role !== "staff" && user.role !== "product_owner")) {
+  // Check if user is staff, product owner, or customer support officer
+  if (!user || (user.role !== "staff" && user.role !== "product_owner" && user.role !== "customer_support_officer")) {
     return (
       <div className="flex h-screen">
         <Sidebar currentPath="/dashboard/leave-application" />
@@ -125,7 +125,7 @@ export default function LeaveApplication() {
           <Header />
           <div className="flex flex-col items-center justify-center min-h-[400px]">
             <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-            <p className="text-sm text-destructive">Only staff members and product owners can access leave applications</p>
+            <p className="text-sm text-destructive">Only staff members, product owners, and customer support officers can access leave applications</p>
           </div>
         </div>
       </div>

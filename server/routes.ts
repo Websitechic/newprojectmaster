@@ -646,9 +646,9 @@ export function registerRoutes(app: Express): Server {
 
     const user = req.user!;
 
-    // Only product owners can access client management
-    if (user.role !== "product_owner") {
-      return res.status(403).json({ error: "Only product owners can access client management" });
+    // Only product owners and customer support officers can access client management
+    if (user.role !== "product_owner" && user.role !== "customer_support_officer") {
+      return res.status(403).json({ error: "Only product owners and customer support officers can access client management" });
     }
 
     try {
@@ -1346,14 +1346,14 @@ End of Report
     }
   });
 
-  // Client Accounts API Routes (Project Managers, Product Owners, Operations Managers, and Team Leads only)
+  // Client Accounts API Routes (Project Managers, Product Owners, Operations Managers, Team Leads, and Customer Support Officers only)
   app.get("/api/client-accounts", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
+    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.role !== "team_lead" && user.role !== "customer_support_officer" && user.specialization !== "operations_manager") {
       return res.status(403).json({ error: "Access denied" });
     }
 
@@ -1378,7 +1378,7 @@ End of Report
     }
 
     const user = req.user!;
-    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
+    if (user.role !== "project_manager" && user.role !== "product_owner" && user.role !== "operations_manager" && user.role !== "customer_support_officer" && user.specialization !== "operations_manager") {
       return res.status(403).json({ error: "Access denied" });
     }
 
@@ -4449,7 +4449,7 @@ End of Report
     }
   });
 
-  // Update deadline extension request (Project Managers and Operations Managers only)
+  // Update deadline extension request (Project Managers, Operations Managers, and Customer Support Officers only)
   app.put("/api/deadline-extension-requests/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -4460,8 +4460,8 @@ End of Report
     const { status, decisionReason, approvedDeadline, approvedWorkingHours } = req.body;
 
     try {
-      if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager") {
-        return res.status(403).json({ error: "Only project managers and operations managers can update extension requests" });
+      if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "customer_support_officer" && user.specialization !== "operations_manager") {
+        return res.status(403).json({ error: "Only project managers, operations managers, and customer support officers can update extension requests" });
       }
 
       if (!status || !["approved", "declined"].includes(status)) {
@@ -4874,9 +4874,9 @@ End of Report
 
     const user = req.user!;
 
-    // Check if user is staff or product owner
-    if (user.role !== "staff" && user.role !== "product_owner") {
-      return res.status(403).json({ error: "Only staff members and product owners can submit leave applications" });
+    // Check if user is staff, product owner, or customer support officer
+    if (user.role !== "staff" && user.role !== "product_owner" && user.role !== "customer_support_officer") {
+      return res.status(403).json({ error: "Only staff members, product owners, and customer support officers can submit leave applications" });
     }
 
     try {
@@ -4992,9 +4992,9 @@ End of Report
 
     const user = req.user!;
 
-    // Check if user is staff or product owner
-    if (user.role !== "staff" && user.role !== "product_owner") {
-      return res.status(403).json({ error: "Only staff members and product owners can access leave applications" });
+    // Check if user is staff, product owner, or customer support officer
+    if (user.role !== "staff" && user.role !== "product_owner" && user.role !== "customer_support_officer") {
+      return res.status(403).json({ error: "Only staff members, product owners, and customer support officers can access leave applications" });
     }
 
     try {
