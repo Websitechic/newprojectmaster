@@ -6295,11 +6295,24 @@ End of Report
         })
         .returning();
 
-      // Add team members if provided
+      // Collect all team member IDs to add
+      const allTeamMemberIds = new Set<number>();
+
+      // Add selected team members
       if (teamMembers && teamMembers.length > 0) {
-        const memberData = teamMembers.map((memberId: string) => ({
+        teamMembers.forEach((memberId: string) => allTeamMemberIds.add(parseInt(memberId)));
+      }
+
+      // Auto-add customer support officer to their own projects
+      if (user.role === "customer_support_officer") {
+        allTeamMemberIds.add(user.id);
+      }
+
+      // Add team members to project
+      if (allTeamMemberIds.size > 0) {
+        const memberData = Array.from(allTeamMemberIds).map((memberId) => ({
           projectId: newProject.id,
-          userId: parseInt(memberId),
+          userId: memberId,
           invitedBy: user.id,
           invitationStatus: "accepted" as const,
         }));
@@ -6327,7 +6340,7 @@ End of Report
             invitationStatus: "accepted" as const,
           }));
 
-          await db.insert(projectMembers).values(supervisorMemberData);
+          await db.insert(projectMembers).values(supervisorMemberData).onConflictDoNothing();
         }
       }
 
@@ -6371,6 +6384,11 @@ End of Report
 
       if (!isOperationsManager && !isProjectManager && !isProductOwner && !isCustomerSupportOfficer) {
         return res.status(403).json({ error: "Access denied" });
+      }
+
+      // For customer support officers, ensure they can only edit support_maintenance projects
+      if (isCustomerSupportOfficer && category !== "support_maintenance") {
+        return res.status(403).json({ error: "Customer support officers can only edit Support & Maintenance projects" });
       }
 
       // Update project
