@@ -101,20 +101,6 @@ export function NotificationsDropdown() {
             if (data.type === 'notification' && data.notification) {
               console.log('🔔 New notification received via SSE:', data.notification);
               
-              // Play sound for task assignments, messages, and direct messages
-              const notificationType = data.notification.type;
-              
-              // Play sound for all notifications except system messages
-              if (notificationType && notificationType !== 'system') {
-                console.log('🔊 Playing notification sound for type:', notificationType);
-                // Play sound immediately
-                playNotificationSound().catch(err => {
-                  console.error('Error playing notification sound:', err);
-                });
-              } else {
-                console.log('ℹ️ Skipping sound for notification type:', notificationType);
-              }
-              
               // Update SSE local state to prepend new notification
               setSseNotifications(prev => [data.notification, ...prev]);
               // Update query cache with the new notification
@@ -125,6 +111,18 @@ export function NotificationsDropdown() {
                 }
                 return oldData;
               });
+              
+              // Play sound for task assignments, messages, and direct messages
+              const notificationType = data.notification.type;
+              
+              // Play sound for all notifications except system messages
+              if (notificationType && notificationType !== 'system') {
+                console.log('🔊 Playing notification sound for type:', notificationType);
+                // Play sound with a slight delay to ensure DOM updates
+                setTimeout(() => {
+                  playNotificationSound();
+                }, 100);
+              }
             }
           } catch (error) {
             console.error("Error parsing SSE message:", error);

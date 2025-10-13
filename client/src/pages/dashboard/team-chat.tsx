@@ -239,22 +239,21 @@ export default function TeamChat() {
         const data = JSON.parse(event.data);
         console.log("SSE message received in team chat:", data);
         if (data.type === "project_message" && data.data.projectId === projectId) {
-          console.log("🔔 Team message received via SSE, invalidating queries");
+          console.log("🔔 Team message received via SSE");
           
-          // Play sound if message is from someone else
-          if (data.data.senderId !== user?.id) {
-            console.log('🔊 Team message from another user, playing sound. Sender:', data.data.senderId);
-            // Play sound immediately
-            playNotificationSound().then(() => {
-              console.log('✅ Team chat notification sound played successfully');
-            }).catch(error => {
-              console.error('❌ Error playing team chat sound:', error);
-            });
-          }
-          
+          // Invalidate queries first
           queryClient.invalidateQueries({ 
             queryKey: [`/api/projects/${projectId}/team-messages`] 
           });
+          
+          // Play sound if message is from someone else
+          if (data.data.senderId !== user?.id) {
+            console.log('🔊 Team message from another user, playing sound');
+            // Play sound with slight delay
+            setTimeout(() => {
+              playNotificationSound();
+            }, 100);
+          }
         }
       } catch (error) {
         console.error("Error parsing SSE message in team chat:", error);
