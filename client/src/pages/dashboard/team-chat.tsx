@@ -100,19 +100,46 @@ export default function TeamChat() {
       
       // Map the API response to include user details in a consistent format
       const mappedData = Array.isArray(data) ? data.map((member: any) => ({
-        id: member.userId,
-        userId: member.userId,
-        name: member.userName,
-        userName: member.userName,
-        email: member.userEmail,
+        id: member.id || member.userId,
+        userId: member.id || member.userId,
+        name: member.name || member.userName,
+        userName: member.name || member.userName,
+        email: member.email || member.userEmail,
         role: member.role,
-        invitationStatus: member.invitationStatus,
+        specialization: member.specialization,
+        invitationStatus: member.invitationStatus || 'accepted',
       })) : [];
       
-      console.log(`Mapped project members:`, mappedData);
+      // Add project manager if not already in the list and if project data is available
+      if (project?.managerId) {
+        const managerExists = mappedData.some((m: any) => m.id === project.managerId);
+        if (!managerExists) {
+          // Fetch project manager details
+          try {
+            const managerResponse = await fetch(`/api/users/${project.managerId}`);
+            if (managerResponse.ok) {
+              const managerData = await managerResponse.json();
+              mappedData.push({
+                id: managerData.id,
+                userId: managerData.id,
+                name: managerData.name,
+                userName: managerData.name,
+                email: managerData.email,
+                role: managerData.role,
+                specialization: managerData.specialization,
+                invitationStatus: 'accepted',
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching project manager:', error);
+          }
+        }
+      }
+      
+      console.log(`Mapped project members with manager:`, mappedData);
       return mappedData;
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !!project,
     retry: 1,
   });
 
