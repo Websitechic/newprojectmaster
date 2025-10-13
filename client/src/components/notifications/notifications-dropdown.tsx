@@ -115,8 +115,10 @@ export function NotificationsDropdown() {
               
               if (soundTypes.includes(notificationType)) {
                 console.log('🔔 Playing notification sound for type:', notificationType);
-                // Play sound immediately
-                playNotificationSound();
+                // Use a small delay to ensure sound plays after state update
+                setTimeout(() => {
+                  playNotificationSound();
+                }, 100);
               } else {
                 console.log('ℹ️ No sound configured for notification type:', notificationType);
               }

@@ -51,8 +51,9 @@ export function useNotificationSound() {
   useEffect(() => {
     const handleUserInteraction = () => {
       if (!audioContextRef.current) {
-        console.log('User interaction detected, initializing audio...');
+        console.log('User interaction detected, initializing audio silently...');
         initAudioContext();
+        // Don't play sound during initialization
       }
     };
 
@@ -61,6 +62,9 @@ export function useNotificationSound() {
     events.forEach(event => {
       document.addEventListener(event, handleUserInteraction, { once: true, capture: true });
     });
+
+    // Try to initialize early (will fail on some browsers until user interaction)
+    initAudioContext();
 
     return () => {
       events.forEach(event => {
