@@ -357,13 +357,13 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         : "Not specified"}
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[110px] max-w-[110px]">
+                  <TableCell className="min-w-[130px] max-w-[130px]">
                     <Select
                       value={task.status || 'todo'}
                       onValueChange={(status) => updateTaskStatus.mutate({ taskId: task.id, status })}
                       disabled={updateTaskStatus.isPending}
                     >
-                      <SelectTrigger className="w-full h-7 text-[11px] px-2">
+                      <SelectTrigger className="w-full h-8 text-xs px-2 whitespace-nowrap overflow-hidden text-ellipsis">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
