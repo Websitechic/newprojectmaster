@@ -86,7 +86,7 @@ export default function TeamChat() {
   });
 
   const { data: projectMembers = [], isLoading: membersLoading } = useQuery({
-    queryKey: [`/api/projects/${projectId}/members`],
+    queryKey: [`/api/projects/${projectId}/members`, project?.managerId],
     queryFn: async () => {
       console.log(`Fetching project members for project ${projectId}`);
       const response = await fetch(`/api/projects/${projectId}/members`);
@@ -109,6 +109,35 @@ export default function TeamChat() {
         specialization: member.specialization,
         invitationStatus: member.invitationStatus || 'accepted',
       })) : [];
+      
+      // Fetch all team leads and operations managers (they're automatically on all projects)
+      try {
+        const allUsersResponse = await fetch('/api/users');
+        if (allUsersResponse.ok) {
+          const allUsers = await allUsersResponse.json();
+          
+          // Add team leads and operations managers
+          allUsers.forEach((u: any) => {
+            const isTeamLead = u.role === 'team_lead';
+            const isOperationsManager = u.role === 'operations_manager' || u.specialization === 'operations_manager';
+            
+            if ((isTeamLead || isOperationsManager) && !mappedData.some((m: any) => m.id === u.id)) {
+              mappedData.push({
+                id: u.id,
+                userId: u.id,
+                name: u.name,
+                userName: u.name,
+                email: u.email,
+                role: u.role,
+                specialization: u.specialization,
+                invitationStatus: 'accepted',
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching team leads and operations managers:', error);
+      }
       
       // Add project manager if not already in the list and if project data is available
       if (project?.managerId) {
@@ -136,7 +165,7 @@ export default function TeamChat() {
         }
       }
       
-      console.log(`Mapped project members with manager:`, mappedData);
+      console.log(`Mapped project members with manager, team leads, and operations managers:`, mappedData);
       return mappedData;
     },
     enabled: !!projectId && !!project,
