@@ -149,13 +149,7 @@ export function DirectMessages() {
           if (message.senderId !== user?.id) {
             console.log('🔔 Direct message from another user, playing sound. Sender:', message.senderId);
             // Use setTimeout to ensure sound plays reliably
-            setTimeout(() => {
-              try {
-                playNotificationSound();
-              } catch (error) {
-                console.error('Error playing direct message sound:', error);
-              }
-            }, 100);
+            playNotificationSound();
           }
 
           // If the message is from the currently selected user, add it to messages immediately
@@ -237,7 +231,7 @@ export function DirectMessages() {
       console.log("Closing SSE connection for direct messages");
       eventSource.close();
     };
-  }, [selectedUser, user?.id]);
+  }, [selectedUser, user?.id, playNotificationSound]);
 
   // WebSocket event listeners for direct messages
     const handleDirectMessage = (event: CustomEvent) => {
@@ -307,7 +301,7 @@ export function DirectMessages() {
               : msg
           )
         );
-        
+
         // Also update conversations to reflect the change
         if (selectedUser) {
           setConversations(prev =>
@@ -324,7 +318,7 @@ export function DirectMessages() {
             )
           );
         }
-        
+
         setEditingMessageId(null);
         setEditingContent("");
         toast({
@@ -358,12 +352,12 @@ export function DirectMessages() {
       if (response.ok) {
         // Remove message from local state
         setMessages(prev => prev.filter(msg => msg.id !== messageId));
-        
+
         // Update conversations to reflect the deletion
         if (selectedUser && messages.length > 1) {
           const remainingMessages = messages.filter(msg => msg.id !== messageId);
           const lastMessage = remainingMessages[remainingMessages.length - 1];
-          
+
           if (lastMessage) {
             setConversations(prev =>
               prev.map(conv =>
@@ -380,8 +374,17 @@ export function DirectMessages() {
               )
             );
           }
+        } else if (selectedUser && messages.length === 1) {
+          // If it was the last message, clear the lastMessage in the conversation
+          setConversations(prev =>
+            prev.map(conv =>
+              conv.user.id === selectedUser.id
+                ? { ...conv, lastMessage: undefined, unreadCount: 0 }
+                : conv
+            )
+          );
         }
-        
+
         toast({
           title: "Success",
           description: "Message deleted successfully",
@@ -429,6 +432,9 @@ export function DirectMessages() {
         // Clear the input immediately
         setNewMessage("");
 
+        // Update messages state to include the sent message
+        setMessages(prev => [...prev, sentMessage]);
+
         // Update conversations list immediately
         setConversations(prev => {
           const updated = [...prev];
@@ -470,7 +476,11 @@ export function DirectMessages() {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      // You could add a toast notification here to inform the user
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -616,7 +626,7 @@ export function DirectMessages() {
                           </p>
                         </>
                       )}
-                      
+
                       {message.senderId === user?.id && editingMessageId !== message.id && (
                         <div className={cn(
                           "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity",

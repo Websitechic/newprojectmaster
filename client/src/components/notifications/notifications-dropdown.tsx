@@ -114,17 +114,11 @@ export function NotificationsDropdown() {
               ];
               
               if (soundTypes.includes(notificationType)) {
-                console.log('🔔 Attempting to play notification sound for type:', notificationType);
-                // Use setTimeout to ensure sound plays after state updates
-                setTimeout(() => {
-                  try {
-                    playNotificationSound();
-                  } catch (error) {
-                    console.error('Error triggering notification sound:', error);
-                  }
-                }, 50);
+                console.log('🔔 Playing notification sound for type:', notificationType);
+                // Play sound immediately
+                playNotificationSound();
               } else {
-                console.log('No sound configured for notification type:', notificationType);
+                console.log('ℹ️ No sound configured for notification type:', notificationType);
               }
               
               // Update SSE local state to prepend new notification

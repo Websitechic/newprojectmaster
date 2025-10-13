@@ -6,14 +6,11 @@ export function useNotificationSound() {
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const lastPlayTimeRef = useRef<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
-  const initializationAttemptedRef = useRef(false);
   const MIN_PLAY_INTERVAL = 1000; // Minimum 1 second between sounds
 
   // Initialize audio context
   const initAudioContext = useCallback(() => {
-    if (audioContextRef.current || initializationAttemptedRef.current) return;
-    
-    initializationAttemptedRef.current = true;
+    if (audioContextRef.current) return;
 
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -44,23 +41,19 @@ export function useNotificationSound() {
       audioContextRef.current = audioContext;
       audioBufferRef.current = buffer;
       setIsInitialized(true);
-      console.log('Audio context initialized successfully');
+      console.log('✓ Audio context initialized successfully');
     } catch (error) {
       console.error('Error initializing audio context:', error);
-      initializationAttemptedRef.current = false; // Allow retry
     }
   }, []);
 
   // Initialize audio context on mount and user interaction
   useEffect(() => {
-    // Try to initialize immediately
-    const initTimer = setTimeout(() => {
-      initAudioContext();
-    }, 100);
-
     const handleUserInteraction = () => {
-      console.log('User interaction detected, initializing audio...');
-      initAudioContext();
+      if (!audioContextRef.current) {
+        console.log('User interaction detected, initializing audio...');
+        initAudioContext();
+      }
     };
 
     // Listen for various user interactions
@@ -70,7 +63,6 @@ export function useNotificationSound() {
     });
 
     return () => {
-      clearTimeout(initTimer);
       events.forEach(event => {
         document.removeEventListener(event, handleUserInteraction);
       });
@@ -84,22 +76,23 @@ export function useNotificationSound() {
   const playNotificationSound = useCallback(async () => {
     const now = Date.now();
     
-    console.log('playNotificationSound called', {
+    console.log('🔊 playNotificationSound called', {
       hasContext: !!audioContextRef.current,
       hasBuffer: !!audioBufferRef.current,
       isInitialized,
+      contextState: audioContextRef.current?.state,
       timeSinceLastPlay: now - lastPlayTimeRef.current
     });
     
     // Prevent playing sound too frequently
     if (now - lastPlayTimeRef.current < MIN_PLAY_INTERVAL) {
-      console.log('Notification sound throttled');
+      console.log('⏭️ Notification sound throttled');
       return;
     }
 
     // Try to initialize if not done
     if (!audioContextRef.current) {
-      console.log('Audio context not initialized, attempting to initialize...');
+      console.log('🎵 Audio context not initialized, attempting to initialize...');
       initAudioContext();
       
       // Wait a bit for initialization
@@ -107,33 +100,30 @@ export function useNotificationSound() {
     }
     
     if (!audioContextRef.current || !audioBufferRef.current) {
-      console.error('Audio context or buffer still not available after initialization attempt');
+      console.error('❌ Audio context or buffer still not available after initialization attempt');
       return;
     }
 
     try {
       // Resume audio context if suspended
       if (audioContextRef.current.state === 'suspended') {
-        console.log('Resuming suspended audio context...');
+        console.log('▶️ Resuming suspended audio context...');
         await audioContextRef.current.resume();
-        console.log('Audio context resumed');
+        console.log('✓ Audio context resumed, state:', audioContextRef.current.state);
       }
 
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBufferRef.current;
       const gainNode = audioContextRef.current.createGain();
-      gainNode.gain.value = 0.5; // Increased volume to 50%
+      gainNode.gain.value = 0.6; // Volume at 60%
       source.connect(gainNode);
       gainNode.connect(audioContextRef.current.destination);
       source.start(0);
       
       lastPlayTimeRef.current = now;
-      console.log('✓ Notification sound played successfully at', new Date().toISOString());
+      console.log('✅ Notification sound played successfully at', new Date().toISOString());
     } catch (error) {
-      console.error('Error playing notification sound:', error);
-      // Reset initialization flag to allow retry
-      initializationAttemptedRef.current = false;
-      audioContextRef.current = null;
+      console.error('❌ Error playing notification sound:', error);
     }
   }, [initAudioContext, isInitialized]);
 

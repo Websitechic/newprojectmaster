@@ -34,7 +34,23 @@ export function Header() {
   // Initialize audio on mount (trigger audio context setup)
   useEffect(() => {
     console.log('Header mounted, audio context should initialize on user interaction');
-  }, []);
+    // Trigger a silent audio context initialization on any user interaction
+    const initAudio = () => {
+      console.log('🎵 Initializing audio context from header');
+      playNotificationSound(); // This will initialize the context even if throttled
+    };
+    
+    const events = ['click', 'keydown', 'touchstart'];
+    events.forEach(event => {
+      document.addEventListener(event, initAudio, { once: true });
+    });
+    
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, initAudio);
+      });
+    };
+  }, [playNotificationSound]);
 
   // Fetch team chat unread counts
   const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({
