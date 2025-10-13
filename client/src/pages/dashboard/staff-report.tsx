@@ -154,6 +154,11 @@ const workStatusColors: Record<string, string> = {
 export default function StaffReport() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [location] = useLocation();
+  
+  // Check authentication and authorization FIRST
+  const hasAccess = user?.role === "project_manager" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager" || user?.specialization === "replit_development" || user?.specialization === "Replit Development";
+
   const [filterSpecialization, setFilterSpecialization] = useState<string | null>(null);
   const [taskView, setTaskView] = useState<'active' | 'all'>('active');
 
@@ -181,7 +186,7 @@ export default function StaffReport() {
 
       return response.json();
     },
-    enabled: user?.role === "project_manager" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager" || user?.specialization === "replit_development" || user?.specialization === "Replit Development",
+    enabled: hasAccess && !!user,
     retry: (failureCount, error) => {
       // Don't retry on 401/403 errors (authentication/authorization)
       if (error?.message?.includes('Authentication') || error?.message?.includes('Access denied')) {
@@ -201,7 +206,7 @@ export default function StaffReport() {
     },
   });
 
-  // Check if user is authenticated and has proper role
+  // Early returns for auth checks
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
@@ -211,7 +216,7 @@ export default function StaffReport() {
     );
   }
 
-  if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager" && user.specialization !== "replit_development" && user.specialization !== "Replit Development") {
+  if (!hasAccess) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <AlertCircle className="h-8 w-8 text-destructive mb-2" />
@@ -351,8 +356,6 @@ export default function StaffReport() {
 
     return true;
   }) || [];
-
-  const [location] = useLocation();
 
   return (
     <div className="flex min-h-screen w-full">

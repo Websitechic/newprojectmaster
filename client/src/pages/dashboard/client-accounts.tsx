@@ -45,6 +45,11 @@ export default function ClientAccounts() {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [location] = useLocation();
+
+  // Check permissions FIRST before any other hooks
+  const hasPermission = user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager";
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [productServiceFilter, setProductServiceFilter] = useState<string>("all");
@@ -60,7 +65,7 @@ export default function ClientAccounts() {
     gender: "",
   });
 
-  // Fetch client accounts - must be called before any conditional returns
+  // Fetch client accounts - now with enabled condition
   const { data: clients = [], isLoading, error } = useQuery<ClientAccount[]>({
     queryKey: ["/api/client-accounts"],
     queryFn: async () => {
@@ -70,6 +75,7 @@ export default function ClientAccounts() {
       }
       return response.json();
     },
+    enabled: hasPermission,
   });
 
   // Create client mutation
@@ -263,11 +269,6 @@ export default function ClientAccounts() {
     });
   };
 
-  const [location] = useLocation();
-
-  // Check permissions after all hooks
-  const hasPermission = user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager";
-
   if (!hasPermission) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
@@ -347,7 +348,7 @@ export default function ClientAccounts() {
                 <span className="sm:hidden">Create Client</span>
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-md mx-4">
+            <DialogContent className="max-w-md mx-4">
             <DialogHeader>
               <DialogTitle>Create New Client Account</DialogTitle>
             </DialogHeader>
@@ -444,7 +445,7 @@ export default function ClientAccounts() {
                 {createClientMutation.isPending ? "Creating..." : "Create Client Account"}
               </Button>
             </div>
-          </DialogContent>
+            </DialogContent>
           </Dialog>
         </div>
       </div>
