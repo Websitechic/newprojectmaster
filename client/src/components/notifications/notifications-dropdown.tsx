@@ -113,14 +113,15 @@ export function NotificationsDropdown() {
                 'task_overdue'
               ];
               
-              if (soundTypes.includes(notificationType)) {
+              // Play sound for all notifications except system messages
+              if (notificationType && notificationType !== 'system') {
                 console.log('🔔 Playing notification sound for type:', notificationType);
                 // Use a small delay to ensure sound plays after state update
                 setTimeout(() => {
                   playNotificationSound();
                 }, 100);
               } else {
-                console.log('ℹ️ No sound configured for notification type:', notificationType);
+                console.log('ℹ️ No sound for notification type:', notificationType);
               }
               
               // Update SSE local state to prepend new notification

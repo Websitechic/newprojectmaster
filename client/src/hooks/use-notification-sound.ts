@@ -80,17 +80,9 @@ export function useNotificationSound() {
   const playNotificationSound = useCallback(async () => {
     const now = Date.now();
     
-    console.log('🔊 playNotificationSound called', {
-      hasContext: !!audioContextRef.current,
-      hasBuffer: !!audioBufferRef.current,
-      isInitialized,
-      contextState: audioContextRef.current?.state,
-      timeSinceLastPlay: now - lastPlayTimeRef.current
-    });
-    
     // Prevent playing sound too frequently
     if (now - lastPlayTimeRef.current < MIN_PLAY_INTERVAL) {
-      console.log('⏭️ Notification sound throttled');
+      console.log('⏭️ Notification sound throttled (played', now - lastPlayTimeRef.current, 'ms ago)');
       return;
     }
 
@@ -104,7 +96,7 @@ export function useNotificationSound() {
     }
     
     if (!audioContextRef.current || !audioBufferRef.current) {
-      console.error('❌ Audio context or buffer still not available after initialization attempt');
+      console.error('❌ Audio context or buffer not available. User interaction may be required.');
       return;
     }
 
@@ -113,23 +105,22 @@ export function useNotificationSound() {
       if (audioContextRef.current.state === 'suspended') {
         console.log('▶️ Resuming suspended audio context...');
         await audioContextRef.current.resume();
-        console.log('✓ Audio context resumed, state:', audioContextRef.current.state);
       }
 
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBufferRef.current;
       const gainNode = audioContextRef.current.createGain();
-      gainNode.gain.value = 0.6; // Volume at 60%
+      gainNode.gain.value = 0.7; // Volume at 70%
       source.connect(gainNode);
       gainNode.connect(audioContextRef.current.destination);
       source.start(0);
       
       lastPlayTimeRef.current = now;
-      console.log('✅ Notification sound played successfully at', new Date().toISOString());
+      console.log('✅ Notification sound played successfully');
     } catch (error) {
       console.error('❌ Error playing notification sound:', error);
     }
-  }, [initAudioContext, isInitialized]);
+  }, [initAudioContext]);
 
   return { playNotificationSound, isInitialized };
 }

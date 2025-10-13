@@ -147,16 +147,14 @@ export function DirectMessages() {
 
           // Play sound if message is from someone else
           if (message.senderId !== user?.id) {
-            console.log('🔔 Direct message from another user, attempting to play sound. Sender:', message.senderId);
-            // Use setTimeout to ensure sound plays reliably
-            setTimeout(() => {
-              try {
-                playNotificationSound();
-                console.log('Direct message notification sound triggered');
-              } catch (error) {
-                console.error('Error playing direct message sound:', error);
-              }
-            }, 150);
+            console.log('🔔 Direct message from another user, playing sound. Sender:', message.senderId);
+            // Play sound immediately without delay
+            try {
+              playNotificationSound();
+              console.log('✅ Direct message notification sound played');
+            } catch (error) {
+              console.error('❌ Error playing direct message sound:', error);
+            }
           }
 
           // If the message is from the currently selected user, add it to messages immediately
