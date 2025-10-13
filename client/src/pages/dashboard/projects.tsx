@@ -292,7 +292,7 @@ export default function Projects() {
             )}
 
             <div className="flex justify-between items-center">
-              {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager") && (
+              {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "customer_support_officer" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager") && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-4 py-2 font-medium">
@@ -306,7 +306,7 @@ export default function Projects() {
                     </DialogHeader>
                     <ProjectForm 
                       onSuccess={handleCreateSuccess} 
-                      restrictToSupportMaintenance={user?.role === "product_owner" || user?.role === "customer_support_officer"}
+                      restrictToSupportMaintenance={false}
                     />
                   </DialogContent>
                 </Dialog>
@@ -396,8 +396,8 @@ export default function Projects() {
                                 </span>
                               </div>
                             </div>
-                            {/* Check if user can edit projects (project managers, product owners, and operations managers) */}
-                            {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager") && (
+                            {/* Check if user can edit projects (project managers, product owners, customer support officers, and operations managers) */}
+                            {(user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "customer_support_officer" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager") && (
                               <div className="flex space-x-2">
                                 <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
                                   setIsEditDialogOpen(open);
@@ -468,85 +468,7 @@ export default function Projects() {
                                 </AlertDialog>
                               </div>
                             )}
-                            {user?.role === "customer_support_officer" && (
-                              <div className="flex gap-2">
-                                {project.category === "support_maintenance" ? (
-                                  <>
-                                    <Dialog open={isEditDialogOpen && editingProject?.id === project.id} onOpenChange={(open) => {
-                                      setIsEditDialogOpen(open);
-                                      if (!open) {
-                                        setEditingProject(null);
-                                      }
-                                    }}>
-                                      <DialogTrigger asChild>
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingProject(project);
-                                            setIsEditDialogOpen(true);
-                                          }}
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
-                                        <DialogHeader>
-                                          <DialogTitle>Edit Project</DialogTitle>
-                                        </DialogHeader>
-                                        {editingProject && editingProject.id === project.id && (
-                                          <ProjectForm 
-                                            project={editingProject} 
-                                            onSuccess={() => {
-                                              setIsEditDialogOpen(false);
-                                              setEditingProject(null);
-                                              queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-                                              toast({
-                                                title: "Success",
-                                                description: "Project updated successfully.",
-                                              });
-                                            }}
-                                            restrictToSupportMaintenance={user?.role === "product_owner"}
-                                          />
-                                        )}
-                                      </DialogContent>
-                                    </Dialog>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button size="icon" variant="ghost">
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            This action cannot be undone. This will permanently delete the project from our servers.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              deleteProjectMutation.mutate(project.id.toString());
-                                            }}
-                                            disabled={deleteProjectMutation.isPending}
-                                          >
-                                            {deleteProjectMutation.isPending ? "Deleting..." : "Delete"}
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </>
-                                ) : (
-                                  <div className="text-xs text-muted-foreground px-2 py-1 bg-blue-50 rounded border border-blue-200">
-                                    Read Only
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                            
                           </div>
                         ))}
                         </div>

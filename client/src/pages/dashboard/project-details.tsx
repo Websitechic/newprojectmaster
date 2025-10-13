@@ -315,7 +315,7 @@ export default function ProjectDetails() {
                   {project.category?.replace(/_/g, ' ')} • {project.type}
                 </p>
               </div>
-              {isProjectManager && (
+              {(isProjectManager || user?.role === "customer_support_officer") && (
                 <div className="flex gap-2">
                   <Dialog>
                     <DialogTrigger asChild>

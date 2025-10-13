@@ -755,8 +755,8 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Staff ID, start date, and end date are required" });
       }
 
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
+      const start = new Date(startDate);
+      const end = new Date(endDate);
 
       // Get all tasks for the staff member within the date range
       const staffTasks = await db
@@ -5599,8 +5599,8 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      // Check if user is a member of the project (for staff, any invitation status is fine for viewing members)
-      const staffMembership = user.role === "staff" ? await db
+      // Check if user is a member of the project (for all roles including customer support)
+      const [membership] = await db
         .select()
         .from(projectMembers)
         .where(
@@ -5609,19 +5609,23 @@ End of Report
             eq(projectMembers.userId, user.id)
           )
         )
-        .limit(1)
-        .then(members => members.length > 0) : false;
+        .limit(1);
 
       const hasAccess = 
         user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
+        user.role === "project_manager" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        staffMembership;
+        !!membership;
 
-      if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+      if (!hasAccess) {
+        console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
+        return res.status(403).send("Access denied - You must be a project member to view membersst");
+      }
 
       const members = await db
         .select({
@@ -6088,7 +6092,7 @@ End of Report
             )
           )
           .limit(1)
-          .then(members => members.length > 0)
+          .then.then(members => members.length > 0)
         );
 
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
