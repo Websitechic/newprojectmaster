@@ -2692,8 +2692,6 @@ End of Report
         })
         .returning();
 
-      console.log("Staff complaint created:", newComplaint.id);
-
       // Create notifications for operations managers
       try {
         const operationsManagers = await db
@@ -5193,7 +5191,7 @@ End of Report
             )
           )
           .limit(1);
-        
+
         hasAccess = membership.length > 0;
       }
 
@@ -5424,16 +5422,16 @@ End of Report
       const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
       const isTeamLead = user.role === 'team_lead';
       const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
-      const isProductOwner = user.role === 'product_owner';
+      const isCustomerSupportOfficer = user.role === 'customer_support_officer';
       const isClient = user.role === 'client' && project.clientId === user.id;
 
-      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isProductOwner || isClient;
+      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isCustomerSupportOfficer || isClient;
 
       console.log("Access check:", { 
         isOperationsManager,
         isTeamLead,
         isProjectManager, 
-        isProductOwner, 
+        isCustomerSupportOfficer, 
         isClient, 
         hasAccess,
         userRole: user.role,
@@ -5509,10 +5507,10 @@ End of Report
       const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
       const isTeamLead = user.role === 'team_lead';
       const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
-      const isProductOwner = user.role === 'product_owner';
+      const isCustomerSupportOfficer = user.role === 'customer_support_officer';
       const isClient = user.role === 'client' && project.clientId === user.id;
 
-      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isProductOwner || isClient;
+      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isCustomerSupportOfficer || isClient;
 
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied - insufficient permissions" });
@@ -6260,7 +6258,7 @@ End of Report
     }
 
     const user = req.user!;
-    
+
     // Check if user has permission to create projects
     const canCreateProjects = 
       user.role === "project_manager" || 
@@ -6268,7 +6266,7 @@ End of Report
       user.role === "operations_manager" || 
       user.role === "team_lead" ||
       user.specialization === "operations_manager";
-    
+
     if (!canCreateProjects) {
       return res.status(403).json({ error: "You don't have permission to create projects" });
     }
