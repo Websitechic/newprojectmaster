@@ -557,48 +557,48 @@ export default function ClientAccounts() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[1200px]">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left p-4 font-medium">Name</th>
-                  <th className="text-left p-4 font-medium">Email</th>
-                  <th className="text-left p-4 font-medium">Username</th>
-                  <th className="text-left p-4 font-medium">Product/Service</th>
-                  <th className="text-left p-4 font-medium">Client Type</th>
-                  <th className="text-left p-4 font-medium">Status</th>
-                  <th className="text-left p-4 font-medium">Email Verified</th>
-                  <th className="text-left p-4 font-medium">Gender</th>
-                  <th className="text-left p-4 font-medium">Created</th>
-                  <th className="text-left p-4 font-medium">Last Active</th>
+                  <th className="text-left p-4 font-medium w-[150px]">Name</th>
+                  <th className="text-left p-4 font-medium w-[200px]">Email</th>
+                  <th className="text-left p-4 font-medium w-[120px]">Username</th>
+                  <th className="text-left p-4 font-medium w-[160px]">Product/Service</th>
+                  <th className="text-left p-4 font-medium w-[150px]">Client Type</th>
+                  <th className="text-left p-4 font-medium w-[140px]">Status</th>
+                  <th className="text-left p-4 font-medium w-[120px]">Email Verified</th>
+                  <th className="text-left p-4 font-medium w-[100px]">Gender</th>
+                  <th className="text-left p-4 font-medium w-[120px]">Created</th>
+                  <th className="text-left p-4 font-medium w-[120px]">Last Active</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredClients.map((client, index) => (
                   <tr key={client.id} className={`border-b hover:bg-gray-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-muted/20"}`}>
-                    <td className="p-4 font-medium">{client.name}</td>
-                    <td className="p-4 text-gray-600">{client.email}</td>
+                    <td className="p-4 font-medium break-words">{client.name}</td>
+                    <td className="p-4 text-gray-600 break-words text-sm">{client.email}</td>
                     <td className="p-4 text-gray-600">{client.username}</td>
-                    <td className="p-4 text-gray-600">{getProductServiceLabel(client.productService)}</td>
-                    <td className="p-4 text-gray-600">{getClientTypeLabel(client.clientType)}</td>
+                    <td className="p-4 text-gray-600 break-words text-sm">{getProductServiceLabel(client.productService)}</td>
+                    <td className="p-4 text-gray-600 break-words text-sm">{getClientTypeLabel(client.clientType)}</td>
                     <td className="p-4">
                       <Badge 
                         variant={getStatusBadgeVariant(client.onboardingStatus)}
-                        className="text-xs"
+                        className="text-xs whitespace-normal break-words max-w-[130px]"
                       >
                         {client.onboardingStatus.replace(/_/g, " ")}
                       </Badge>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${client.emailVerified ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                        <span className="text-xs text-gray-600">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${client.emailVerified ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                        <span className="text-xs text-gray-600 whitespace-nowrap">
                           {client.emailVerified ? 'Verified' : 'Pending'}
                         </span>
                       </div>
                     </td>
-                    <td className="p-4 text-gray-600">{client.gender || 'Not specified'}</td>
-                    <td className="p-4 text-gray-600">{format(new Date(client.createdAt), "MMM dd, yyyy")}</td>
-                    <td className="p-4 text-gray-600">
+                    <td className="p-4 text-gray-600 text-sm">{client.gender || 'Not specified'}</td>
+                    <td className="p-4 text-gray-600 text-sm whitespace-nowrap">{format(new Date(client.createdAt), "MMM dd, yyyy")}</td>
+                    <td className="p-4 text-gray-600 text-sm whitespace-nowrap">
                       {client.lastActive ? format(new Date(client.lastActive), "MMM dd, yyyy") : "Never"}
                     </td>
                   </tr>
