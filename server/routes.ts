@@ -5169,14 +5169,18 @@ End of Report
       }
 
       // Check if user has access to this project
-      const hasAccess = 
+      let hasAccess = 
         user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
         project.managerId === user.id ||
-        project.clientId === user.id ||
-        (user.role === "staff" && await db
+        project.clientId === user.id;
+
+      // If not already granted access, check project membership
+      if (!hasAccess) {
+        const membership = await db
           .select()
           .from(projectMembers)
           .where(
@@ -5186,9 +5190,10 @@ End of Report
               eq(projectMembers.invitationStatus, "accepted")
             )
           )
-          .limit(1)
-          .then(members => members.length > 0)
-        );
+          .limit(1);
+        
+        hasAccess = membership.length > 0;
+      }
 
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied" });
