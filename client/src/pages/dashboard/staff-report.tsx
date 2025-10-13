@@ -157,26 +157,6 @@ export default function StaffReport() {
   const [filterSpecialization, setFilterSpecialization] = useState<string | null>(null);
   const [taskView, setTaskView] = useState<'active' | 'all'>('active');
 
-  // Check if user is authenticated and has proper role
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-        <p className="text-sm text-destructive">You must be logged in to view this page</p>
-      </div>
-    );
-  }
-
-  if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager" && user.specialization !== "replit_development" && user.specialization !== "Replit Development") {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-        <p className="text-sm text-destructive">Only project managers, operations managers, team leads, and Replit developers can access the staff report</p>
-        <p className="text-xs text-muted-foreground mt-1">Your role: {user?.role}, Specialization: {user?.specialization}</p>
-      </div>
-    );
-  }
-
   const { data: staffReport, isLoading, error } = useQuery<StaffMember[], Error>({
     queryKey: ["/api/staff-report"],
     queryFn: async () => {
@@ -220,6 +200,26 @@ export default function StaffReport() {
       });
     },
   });
+
+  // Check if user is authenticated and has proper role
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm text-destructive">You must be logged in to view this page</p>
+      </div>
+    );
+  }
+
+  if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager" && user.specialization !== "replit_development" && user.specialization !== "Replit Development") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm text-destructive">Only project managers, operations managers, team leads, and Replit developers can access the staff report</p>
+        <p className="text-xs text-muted-foreground mt-1">Your role: {user?.role}, Specialization: {user?.specialization}</p>
+      </div>
+    );
+  }
 
   const filteredStaff = filterSpecialization
     ? staffReport?.filter(member => member.specialization === filterSpecialization)

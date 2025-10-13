@@ -60,26 +60,7 @@ export default function ClientAccounts() {
     gender: "",
   });
 
-  // Check if user has permission to access this page
-  if (user?.role !== "project_manager" && user?.role !== "product_owner" && user?.role !== "operations_manager" && user?.role !== "team_lead" && user?.specialization !== "operations_manager") {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center space-y-4 p-6">
-            <Building2 className="h-12 w-12 text-gray-400" />
-            <div className="text-center">
-              <h3 className="text-lg font-semibold">Access Restricted</h3>
-              <p className="text-sm text-gray-600">
-                Only Project Managers, Product Owners, Operations Managers, and Team Leads can access client account management.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Fetch client accounts
+  // Fetch client accounts - must be called before any conditional returns
   const { data: clients = [], isLoading, error } = useQuery<ClientAccount[]>({
     queryKey: ["/api/client-accounts"],
     queryFn: async () => {
@@ -282,6 +263,29 @@ export default function ClientAccounts() {
     });
   };
 
+  const [location] = useLocation();
+
+  // Check permissions after all hooks
+  const hasPermission = user?.role === "project_manager" || user?.role === "product_owner" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager";
+
+  if (!hasPermission) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center space-y-4 p-6">
+            <Building2 className="h-12 w-12 text-gray-400" />
+            <div className="text-center">
+              <h3 className="text-lg font-semibold">Access Restricted</h3>
+              <p className="text-sm text-gray-600">
+                Only Project Managers, Product Owners, Operations Managers, and Team Leads can access client account management.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -289,8 +293,6 @@ export default function ClientAccounts() {
       </div>
     );
   }
-
-  const [location] = useLocation();
 
   if (error) {
     return (
