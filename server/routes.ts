@@ -1774,8 +1774,9 @@ End of Report
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isTaskAssignee = existingTask.assigneeId === user.id;
+      const isCustomerSupportOfficer = user.role === "customer_support_officer";
 
-      if (!isOperationsManager && !isProjectManager && !isTaskAssignee) {
+      if (!isOperationsManager && !isProjectManager && !isTaskAssignee && !isCustomerSupportOfficer) {
         return res.status(403).json({ error: "Access denied - insufficient permissions to update this task" });
       }
 
@@ -1790,8 +1791,8 @@ End of Report
       if (workingHours !== undefined) updateData.workingHours = workingHours ? parseInt(workingHours) : null;
       if (workingMinutes !== undefined) updateData.workingMinutes = workingMinutes ? parseInt(workingMinutes) : null;
 
-      // Only project managers and operations managers can reassign tasks
-      if (assigneeId !== undefined && (isOperationsManager || isProjectManager)) {
+      // Only project managers, operations managers, and customer support officers can reassign tasks
+      if (assigneeId !== undefined && (isOperationsManager || isProjectManager || isCustomerSupportOfficer)) {
         updateData.assigneeId = assigneeId && assigneeId !== 'unassigned' ? parseInt(assigneeId) : null;
       }
 
@@ -1888,8 +1889,9 @@ End of Report
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isProductOwner = user.role === "product_owner";
       const isTechnicalSupport = user.role === "staff" && user.specialization === "technical_support";
+      const isCustomerSupportOfficer = user.role === "customer_support_officer";
 
-      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isTechnicalSupport) {
+      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isTechnicalSupport && !isCustomerSupportOfficer) {
         return res.status(403).json({ error: "Access denied - insufficient permissions to delete this task" });
       }
 
@@ -6258,11 +6260,24 @@ End of Report
     }
 
     const user = req.user!;
+    
+    // Check if user has permission to create projects
+    const canCreateProjects = 
+      user.role === "project_manager" || 
+      user.role === "customer_support_officer" ||
+      user.role === "operations_manager" || 
+      user.role === "team_lead" ||
+      user.specialization === "operations_manager";
+    
+    if (!canCreateProjects) {
+      return res.status(403).json({ error: "You don't have permission to create projects" });
+    }
+
     const { name, description, type, category, startDate, endDate, clientId, teamMembers } = req.body;
 
     try {
       if (!name || !category || !startDate || !endDate) {
-        return res.status(400).json({ error: "Name, category, start date, and end date arerequired" });
+        return res.status(400).json({ error: "Name, category, start date, and end date are required" });
       }
 
       const [newProject] = await db
@@ -6353,8 +6368,9 @@ End of Report
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isProductOwner = user.role === "product_owner";
+      const isCustomerSupportOfficer = user.role === "customer_support_officer";
 
-      if (!isOperationsManager && !isProjectManager && !isProductOwner) {
+      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isCustomerSupportOfficer) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -6462,8 +6478,9 @@ End of Report
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isProductOwner = user.role === "product_owner";
+      const isCustomerSupportOfficer = user.role === "customer_support_officer";
 
-      if (!isOperationsManager && !isProjectManager && !isProductOwner) {
+      if (!isOperationsManager && !isProjectManager && !isProductOwner && !isCustomerSupportOfficer) {
         return res.status(403).json({ error: "Access denied - insufficient permissions to delete this project" });
       }
 

@@ -134,7 +134,14 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
   // Fetch clients for dropdown
   const { data: clients } = useQuery({
     queryKey: ["/api/clients"],
-    queryFn: () => fetch("/api/clients").then(res => res.json()),
+    queryFn: async () => {
+      const res = await fetch("/api/clients");
+      if (!res.ok) {
+        console.error("Failed to fetch clients:", res.status);
+        return [];
+      }
+      return res.json();
+    },
   });
 
   // Fetch staff for team members
@@ -143,7 +150,8 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
     queryFn: async () => {
       const response = await fetch("/api/staff");
       if (!response.ok) {
-        throw new Error("Failed to fetch staff");
+        console.error("Failed to fetch staff:", response.status);
+        return [];
       }
       return response.json();
     },
