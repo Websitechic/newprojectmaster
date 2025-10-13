@@ -145,7 +145,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
     },
   });
 
-  // Fetch staff for team members
+  // Fetch staff and project managers for team members
   const { data: staff = [] } = useQuery({
     queryKey: ["/api/staff"],
     queryFn: async () => {
@@ -154,7 +154,17 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
         console.error("Failed to fetch staff:", response.status);
         return [];
       }
-      return response.json();
+      const staffMembers = await response.json();
+      
+      // Also fetch project managers
+      const pmResponse = await fetch("/api/users");
+      if (pmResponse.ok) {
+        const allUsers = await pmResponse.json();
+        const projectManagers = allUsers.filter((u: any) => u.role === 'project_manager');
+        return [...staffMembers, ...projectManagers];
+      }
+      
+      return staffMembers;
     },
   });
 
@@ -434,7 +444,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
                               }}
                             />
                             <label htmlFor={`member-${member.id}`} className="text-sm cursor-pointer">
-                              {member.name} ({member.role === 'product_owner' ? 'Product Owner' : (member.specialization || member.role)})
+                              {member.name} ({member.role === 'product_owner' ? 'Product Owner' : member.role === 'project_manager' ? 'Project Manager' : (member.specialization || member.role)})
                             </label>
                           </div>
                         ))
