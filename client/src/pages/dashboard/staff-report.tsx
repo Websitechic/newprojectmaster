@@ -368,7 +368,7 @@ export default function StaffReport() {
               Real-time monitoring of staff activity and task status
             </p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-3">
             <Select
               value={filterSpecialization || "all"}
               onValueChange={(value) => setFilterSpecialization(value === "all" ? null : value)}
@@ -385,17 +385,22 @@ export default function StaffReport() {
                 ))}
               </SelectContent>
             </Select>
-            {/* Export Buttons */}
-            <div className="flex items-center space-x-2">
-              <Button onClick={() => handleExport('csv')} className="flex items-center">
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Export CSV
-              </Button>
-              <Button onClick={() => handleExport('json')} className="flex items-center">
-                <FileText className="mr-2 h-4 w-4" />
-                Export JSON
-              </Button>
-            </div>
+            <Button 
+              onClick={() => handleExport('csv')} 
+              variant="outline"
+              className="flex items-center"
+            >
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </Button>
+            <Button 
+              onClick={() => handleExport('json')} 
+              variant="outline"
+              className="flex items-center"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Export JSON</span>
+            </Button>
           </div>
         </div>
 

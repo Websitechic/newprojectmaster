@@ -336,16 +336,15 @@ export default function ClientAccounts() {
             <span className="hidden sm:inline">Export to Excel</span>
             <span className="sm:hidden">Export</span>
           </Button>
-        </div>
 
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Create Client Account</span>
-              <span className="sm:hidden">Create Client</span>
-            </Button>
-          </DialogTrigger>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full sm:w-auto">
+                <Plus className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Create Client Account</span>
+                <span className="sm:hidden">Create Client</span>
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-md mx-4">
             <DialogHeader>
               <DialogTitle>Create New Client Account</DialogTitle>
@@ -444,7 +443,8 @@ export default function ClientAccounts() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Search and Filter Section */}
