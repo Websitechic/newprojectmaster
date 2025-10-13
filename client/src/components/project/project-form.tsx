@@ -74,9 +74,10 @@ interface ProjectFormProps {
   project?: Project | null;
   onSuccess: () => void;
   restrictToSupportMaintenance?: boolean;
+  isCustomerSupportOfficer?: boolean;
 }
 
-export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance = false }: ProjectFormProps) {
+export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance = false, isCustomerSupportOfficer = false }: ProjectFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -99,7 +100,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
     defaultValues: {
       name: project?.name || "",
       description: project?.description || "",
-      category: project?.category || (restrictToSupportMaintenance ? "support_maintenance" : ""),
+      category: project?.category || (restrictToSupportMaintenance || isCustomerSupportOfficer ? "support_maintenance" : ""),
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
       clientId: project?.clientId?.toString() || "",
@@ -317,8 +318,8 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
                     <FormLabel>Category</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
-                      value={field.value || (restrictToSupportMaintenance ? "support_maintenance" : "")}
-                      disabled={restrictToSupportMaintenance}
+                      value={field.value || (restrictToSupportMaintenance || isCustomerSupportOfficer ? "support_maintenance" : "")}
+                      disabled={restrictToSupportMaintenance || isCustomerSupportOfficer}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -326,7 +327,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {!restrictToSupportMaintenance && (
+                        {!restrictToSupportMaintenance && !isCustomerSupportOfficer && (
                           <>
                             <SelectItem value="website_development">Website Development</SelectItem>
                             <SelectItem value="dpl_outright">DPL Outright</SelectItem>
@@ -340,6 +341,11 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
                     {restrictToSupportMaintenance && (
                       <p className="text-sm text-muted-foreground">
                         Product owners can only create Support & Maintenance projects
+                      </p>
+                    )}
+                    {isCustomerSupportOfficer && (
+                      <p className="text-sm text-muted-foreground">
+                        Customer support officers can only create Support & Maintenance projects
                       </p>
                     )}
                     <FormMessage />

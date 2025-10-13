@@ -307,6 +307,7 @@ export default function Projects() {
                     <ProjectForm 
                       onSuccess={handleCreateSuccess} 
                       restrictToSupportMaintenance={false}
+                      isCustomerSupportOfficer={user?.role === "customer_support_officer"}
                     />
                   </DialogContent>
                 </Dialog>
@@ -435,6 +436,7 @@ export default function Projects() {
                                           });
                                         }}
                                         restrictToSupportMaintenance={user?.role === "product_owner"}
+                                        isCustomerSupportOfficer={user?.role === "customer_support_officer"}
                                       />
                                     )}
                                   </DialogContent>
