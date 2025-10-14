@@ -113,20 +113,39 @@ export function NotificationsDropdown() {
               });
               
               // Play sound only for unread messages and task assignments
+              console.log('📋 Notification details:', {
+                type: data.notification.type,
+                referenceType: data.notification.referenceType,
+                content: data.notification.content
+              });
+              
               const shouldPlaySound = 
                 data.notification.type === 'message' || 
-                data.notification.type === 'task_assigned';
+                data.notification.type === 'task_assigned' ||
+                data.notification.referenceType === 'direct_message' ||
+                data.notification.referenceType === 'task';
               
               if (shouldPlaySound) {
-                console.log('🔊 Playing notification sound for:', data.notification.type);
+                console.log('🔊 PLAYING notification sound for type:', data.notification.type, 'reference:', data.notification.referenceType);
                 
-                // Use requestAnimationFrame to ensure sound plays after render
-                requestAnimationFrame(() => {
+                // Play immediately and also with requestAnimationFrame as backup
+                try {
                   playNotificationSound();
-                  console.log('✅ Notification sound played for', data.notification.type);
+                  console.log('✅ Immediate sound play attempted');
+                } catch (err) {
+                  console.error('❌ Immediate sound play failed:', err);
+                }
+                
+                requestAnimationFrame(() => {
+                  try {
+                    playNotificationSound();
+                    console.log('✅ RAF sound play attempted');
+                  } catch (err) {
+                    console.error('❌ RAF sound play failed:', err);
+                  }
                 });
               } else {
-                console.log('ℹ️ Skipping sound for notification type:', data.notification.type);
+                console.log('ℹ️ Skipping sound for notification type:', data.notification.type, 'reference:', data.notification.referenceType);
               }
             }
           } catch (error) {

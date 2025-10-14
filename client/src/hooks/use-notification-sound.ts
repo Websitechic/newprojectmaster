@@ -76,21 +76,29 @@ export function useNotificationSound() {
   }, [initAudioContext]);
 
   const playNotificationSound = useCallback(async () => {
+    console.log('🔊 playNotificationSound called, context exists:', !!audioContextRef.current);
+    
     try {
       // Initialize if needed
       if (!audioContextRef.current) {
-        console.log('Audio context not initialized, initializing now...');
+        console.log('⚠️ Audio context not initialized, initializing now...');
         initAudioContext();
         // Give a moment for initialization
         await new Promise(resolve => setTimeout(resolve, 100));
       }
       
       if (!audioContextRef.current || !audioBufferRef.current) {
-        console.warn('Audio not ready - will try fallback beep');
+        console.warn('⚠️ Audio not ready - using fallback beep');
         // Fallback: try to play a simple beep using Web Audio API
         try {
           const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
           const ctx = new AudioContext();
+          
+          // Resume if needed
+          if (ctx.state === 'suspended') {
+            await ctx.resume();
+          }
+          
           const oscillator = ctx.createOscillator();
           const gainNode = ctx.createGain();
           
@@ -99,24 +107,28 @@ export function useNotificationSound() {
           
           oscillator.frequency.value = 800;
           oscillator.type = 'sine';
-          gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+          gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
           gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
           
           oscillator.start(ctx.currentTime);
           oscillator.stop(ctx.currentTime + 0.3);
           
-          console.log('🔔 Fallback beep played');
+          console.log('🔔 Fallback beep played successfully');
+          
+          // Clean up
+          setTimeout(() => ctx.close(), 500);
           return;
         } catch (fallbackError) {
-          console.error('Fallback beep failed:', fallbackError);
+          console.error('❌ Fallback beep failed:', fallbackError);
           return;
         }
       }
 
       // Resume audio context if suspended
       if (audioContextRef.current.state === 'suspended') {
-        console.log('Resuming suspended audio context...');
+        console.log('🔄 Resuming suspended audio context...');
         await audioContextRef.current.resume();
+        console.log('✅ Audio context resumed, state:', audioContextRef.current.state);
       }
 
       const source = audioContextRef.current.createBufferSource();
@@ -127,13 +139,32 @@ export function useNotificationSound() {
       gainNode.connect(audioContextRef.current.destination);
       source.start(0);
       
-      console.log('🔔 Notification sound played successfully');
+      console.log('🔔 Notification sound played successfully via main context');
     } catch (error) {
-      console.error('Error playing notification sound:', error);
+      console.error('❌ Error playing notification sound:', error);
       // Try to reinitialize on error
       audioContextRef.current = null;
       audioBufferRef.current = null;
       setIsInitialized(false);
+      
+      // Try one more fallback
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        const ctx = new AudioContext();
+        if (ctx.state === 'suspended') await ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 800;
+        gain.gain.value = 0.5;
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+        console.log('🔔 Emergency fallback beep played');
+        setTimeout(() => ctx.close(), 500);
+      } catch (emergencyError) {
+        console.error('❌ Emergency fallback also failed:', emergencyError);
+      }
     }
   }, [initAudioContext]);
 

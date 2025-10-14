@@ -3431,6 +3431,16 @@ End of Report
         senderName: user.name,
       };
 
+      // Create notification for receiver - use 'message' type to trigger sound
+      await createNotification(
+        parseInt(receiverId),
+        "message",
+        `New message from ${sender.name}`,
+        newMessage.id,
+        "direct_message"
+      );
+    
+
       // Send SSE notification to the receiver
       if (global.sseClients && global.sseClients.has(parseInt(receiverId))) {
         const receiverClient = global.sseClients.get(parseInt(receiverId));
@@ -5850,7 +5860,7 @@ End of Report
 
         const mentionedUserIds = [...new Set(mentionedUsers.map(m => m.userId))];
 
-        // Create notifications for mentioned users (these will show in header dropdown)
+        // Create notifications for mentioned users
         for (const mentionedUserId of mentionedUserIds) {
           if (mentionedUserId === user.id) continue; // Don't notify self
 
@@ -6413,7 +6423,7 @@ End of Report
         return res.status(404).json({ error:"Project not found" });
       }
 
-      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isOperationsManager =user.role === "operations_manager" || user.specialization === "operations_manager";
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isProductOwner = user.role === "product_owner";
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
