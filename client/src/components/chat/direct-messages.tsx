@@ -804,6 +804,16 @@ export function DirectMessages() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                navigator.clipboard.writeText(message.content);
+                                toast({
+                                  title: "Copied",
+                                  description: "Message copied to clipboard",
+                                });
+                              }}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copy
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => {
                                   setEditingMessageId(message.id);
