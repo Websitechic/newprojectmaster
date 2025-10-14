@@ -412,8 +412,10 @@ export default function Projects() {
                                       variant="ghost"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setEditingProject(project);
-                                        setIsEditDialogOpen(true);
+                                        if (project && project.id) {
+                                          setEditingProject(project);
+                                          setIsEditDialogOpen(true);
+                                        }
                                       }}
                                     >
                                       <Edit className="h-4 w-4" />
@@ -459,7 +461,9 @@ export default function Projects() {
                                       <AlertDialogAction
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          deleteProjectMutation.mutate(project.id.toString());
+                                          if (project && project.id) {
+                                            deleteProjectMutation.mutate(project.id.toString());
+                                          }
                                         }}
                                         disabled={deleteProjectMutation.isPending}
                                       >

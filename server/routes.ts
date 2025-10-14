@@ -5864,7 +5864,7 @@ End of Report
                 referenceId: newMessage.id,
                 referenceType: "team_message",
                 read: false,
-                createdAt: new Date() // Changed from toISOString()
+                createdAt: new Date().toISOString()
               })
               .returning();
 
@@ -6507,14 +6507,19 @@ End of Report
     }
   });
 
-  // Delete project
+// Delete project
   app.delete("/api/projects/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
+      return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
     const projectId = parseInt(req.params.id);
+
+    // Validate project ID
+    if (isNaN(projectId) || projectId <= 0) {
+      return res.status(400).json({ error: "Invalid project ID" });
+    }
 
     try {
       // Check if project exists
@@ -6528,6 +6533,11 @@ End of Report
         return res.status(404).json({ error: "Project not found" });
       }
 
+      // Ensure all required fields exist
+      if (!project.id || project.managerId === undefined) {
+        return res.status(500).json({ error: "Project data is incomplete" });
+      }
+
       // Check permissions
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
@@ -6536,7 +6546,7 @@ End of Report
       const isTeamLead = user.role === "team_lead";
 
       if (!isOperationsManager && !isProjectManager && !isProductOwner && !isCustomerSupportOfficer && !isTeamLead) {
-        return res.status(403).json({ error: "Access denied - insufficient permissions to delete this project" });
+        return res.status(403).json({ error: "Access denied" });
       }
 
       // For product owners, check if the project is Support & Maintenance category

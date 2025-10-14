@@ -370,7 +370,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 <TableCell>
                   <div className="text-sm leading-tight">
                     {(() => {
-                      const assignee = staff?.find((s) => s.id === task.assigneeId);
+                      if (!task || !task.assigneeId) return "Unassigned";
+                      const assignee = staff?.find((s) => s && s.id === task.assigneeId);
                       const name = assignee?.name || "Unassigned";
                       const role = assignee?.role === 'team_lead' ? ' (Team Lead)' : '';
                       return (name + role).split(' ').map((word, idx) => (
@@ -382,9 +383,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 {showProjectInfo && (
                   <TableCell>
                     <div className="text-sm leading-tight">
-                      {(projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
+                      {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
                         <div key={idx}>{word}</div>
-                      ))}
+                      )) : "No Project"}
                     </div>
                   </TableCell>
                 )}
@@ -422,14 +423,22 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleEditClick(task)}
+                        onClick={() => {
+                          if (task && task.id) {
+                            handleEditClick(task);
+                          }
+                        }}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => deleteTask.mutate(task.id)}
+                        onClick={() => {
+                          if (task && task.id) {
+                            deleteTask.mutate(task.id);
+                          }
+                        }}
                       >
                         <Trash className="h-4 w-4" />
                       </Button>
