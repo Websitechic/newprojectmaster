@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check } from "lucide-react";
+import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +48,7 @@ export default function TeamChat() {
   const [cursorPosition, setCursorPosition] = useState(0);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  const [replyingTo, setReplyingTo] = useState<MessageWithSender | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const projectId = parseInt(id!);
@@ -405,10 +406,30 @@ export default function TeamChat() {
     }
   };
 
+  const handleCopyMessage = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast({
+      title: "Copied",
+      description: "Message copied to clipboard",
+    });
+  };
+
+  const handleReplyToMessage = (msg: MessageWithSender) => {
+    setReplyingTo(msg);
+    inputRef.current?.focus();
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
-    sendMessageMutation.mutate(message.trim());
+    
+    let messageToSend = message.trim();
+    if (replyingTo) {
+      messageToSend = `@${replyingTo.sender?.name || "Unknown"} ${messageToSend}`;
+      setReplyingTo(null);
+    }
+    
+    sendMessageMutation.mutate(messageToSend);
   };
 
   const formatMessageTime = (timestamp: string | Date) => {
@@ -755,39 +776,53 @@ export default function TeamChat() {
                             {msg.isEdited && (
                               <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>
                             )}
-                            {msg.senderId === user?.id && (
-                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 w-6 p-0"
-                                    >
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        setEditingMessageId(msg.id);
-                                        setEditingContent(msg.content);
-                                      }}
-                                    >
-                                      <Edit2 className="h-4 w-4 mr-2" />
-                                      Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => handleDeleteMessage(msg.id)}
-                                      className="text-destructive"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            )}
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => handleCopyMessage(msg.content)}
+                                  >
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Copy
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleReplyToMessage(msg)}
+                                  >
+                                    <Reply className="h-4 w-4 mr-2" />
+                                    Reply
+                                  </DropdownMenuItem>
+                                  {msg.senderId === user?.id && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setEditingMessageId(msg.id);
+                                          setEditingContent(msg.content);
+                                        }}
+                                      >
+                                        <Edit2 className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleDeleteMessage(msg.id)}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -799,6 +834,28 @@ export default function TeamChat() {
 
               {/* Message Input */}
               <div className="border-t p-4 relative">
+                {/* Reply Preview */}
+                {replyingTo && (
+                  <div className="mb-2 p-2 bg-muted rounded-md flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Reply className="h-4 w-4 text-muted-foreground" />
+                      <div className="text-sm">
+                        <span className="font-medium">Replying to {replyingTo.sender?.name || "Unknown"}</span>
+                        <p className="text-muted-foreground truncate max-w-md">{replyingTo.content}</p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setReplyingTo(null)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                
                 {/* Mention Suggestions Dropdown */}
                 {showMentionSuggestions && filteredMembers.length > 0 && (
                   <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto z-50">

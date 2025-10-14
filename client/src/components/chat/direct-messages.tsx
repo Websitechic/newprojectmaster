@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check } from "lucide-react";
+import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,6 +37,8 @@ interface DirectMessage {
   createdAt: string;
   updatedAt?: string;
   senderName: string;
+  replyToMessageId?: number | null;
+  replyToSenderName?: string | null;
 }
 
 interface Conversation {
@@ -59,9 +61,9 @@ export function DirectMessages() {
   const [view, setView] = useState<"conversations" | "new">("conversations");
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState("");
-  const { user } = useUser();
-  const { toast } = useToast();
+  const [replyingTo, setReplyingTo] = useState<DirectMessage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { playNotificationSound } = useNotificationSound();
 
@@ -422,6 +424,8 @@ export function DirectMessages() {
         body: JSON.stringify({
           receiverId: selectedUser.id,
           content: newMessage.trim(),
+          replyToMessageId: replyingTo?.id,
+          replyToSenderName: replyingTo?.senderName,
         }),
       });
 
@@ -431,8 +435,9 @@ export function DirectMessages() {
         const sentMessage = await response.json();
         console.log("Message sent successfully:", sentMessage);
 
-        // Clear the input immediately
+        // Clear the input and reply state immediately
         setNewMessage("");
+        setReplyingTo(null);
 
         // Update messages state to include the sent message
         setMessages(prev => [...prev, sentMessage]);
@@ -484,6 +489,16 @@ export function DirectMessages() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleReplyToMessage = (message: DirectMessage) => {
+    setReplyingTo(message);
+    // Optionally focus the input field
+    inputRef.current?.focus();
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
   };
 
   const handleUserSelect = (selectedUser: User) => {
@@ -564,6 +579,21 @@ export function DirectMessages() {
                           : "bg-secondary"
                       )}
                     >
+                      {message.replyToMessageId && (
+                        <div className={cn(
+                          "mb-2 p-2 rounded-md text-sm break-words whitespace-pre-wrap",
+                          message.senderId === user?.id
+                            ? "bg-primary/20"
+                            : "bg-secondary/50"
+                        )}>
+                          <p className="font-semibold text-xs">
+                            Replying to {message.replyToSenderName}
+                          </p>
+                          <p className="text-xs truncate">
+                            {message.content}
+                          </p>
+                        </div>
+                      )}
                       {editingMessageId === message.id ? (
                         <div className="space-y-2">
                           <Textarea
@@ -661,6 +691,34 @@ export function DirectMessages() {
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
+                                <CornerUpLeft className="h-4 w-4 mr-2" />
+                                Reply
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+                       {message.senderId !== user?.id && (
+                        <div className={cn(
+                          "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity",
+                          message.senderId === user?.id ? "left-2" : "right-2"
+                        )}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
+                                <CornerUpLeft className="h-4 w-4 mr-2" />
+                                Reply
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -675,8 +733,18 @@ export function DirectMessages() {
         </CardContent>
 
         <CardFooter className="border-t p-4">
+          {replyingTo && (
+            <div className="flex items-center gap-2 mb-2 p-2 bg-secondary rounded-md text-sm">
+              <p className="font-semibold">Replying to {replyingTo.senderName}</p>
+              <p className="truncate flex-1">{replyingTo.content}</p>
+              <Button variant="ghost" size="sm" onClick={handleCancelReply} className="p-1 h-6 w-6">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
           <div className="flex gap-2 w-full items-end">
             <Textarea
+              ref={inputRef}
               placeholder="Type a message... (Shift+Enter for new line, Enter to send)"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
