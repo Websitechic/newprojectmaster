@@ -62,7 +62,12 @@ async function createNotification(userId: number, type: string, content: string,
       })
       .returning();
 
-    console.log(`Notification created for user ${userId}: ${content}`);
+    console.log(`✅ Notification created for user ${userId}:`, {
+      id: newNotification.id,
+      type: newNotification.type,
+      referenceType: newNotification.referenceType,
+      content: newNotification.content
+    });
 
     // Send SSE notification if user is connected
     if (global.sseClients && global.sseClients.has(userId)) {
@@ -73,9 +78,9 @@ async function createNotification(userId: number, type: string, content: string,
             type: 'notification',
             notification: newNotification
           })}\n\n`);
-          console.log(`SSE notification sent to user ${userId}`);
+          console.log(`📨 SSE notification sent to user ${userId}`);
         } catch (error) {
-          console.error(`Error sending SSE notification to user ${userId}:`, error);
+          console.error(`❌ Error sending SSE notification to user ${userId}:`, error);
           global.sseClients.delete(userId);
         }
       }
@@ -83,7 +88,7 @@ async function createNotification(userId: number, type: string, content: string,
 
     return newNotification;
   } catch (error) {
-    console.error("Error creating notification:", error);
+    console.error("❌ Error creating notification:", error);
     throw error;
   }
 }
@@ -3290,13 +3295,14 @@ End of Report
 
     try {
       const user = req.user!;
-      const userId = user.id;
-
-      // Validate user ID exists and is valid
-      if (!userId || typeof userId !== 'number' || userId <= 0) {
-        console.error("Invalid user ID for unread count:", userId, typeof userId);
-        return res.status(400).json({ error: "Invalid user session" });
+      
+      // Ensure user object has an ID
+      if (!user || !user.id) {
+        console.error("❌ No user ID in session for unread count");
+        return res.status(401).json({ error: "Invalid session" });
       }
+
+      const userId = user.id;
 
       const unreadCount = await db
         .select({ count: sql<number>`count(*)` })
@@ -3311,7 +3317,7 @@ End of Report
       const count = unreadCount[0]?.count || 0;
       res.json({ count });
     } catch (error) {
-      console.error("Error fetching unread count:", error);
+      console.error("❌ Error fetching unread count:", error);
       res.status(500).json({ error: "Failed to fetch unread count" });
     }
   });

@@ -76,7 +76,7 @@ export function useNotificationSound() {
   }, [initAudioContext]);
 
   const playNotificationSound = useCallback(async () => {
-    console.log('🔊 playNotificationSound called, context exists:', !!audioContextRef.current);
+    console.log('🔊 playNotificationSound called, initialized:', isInitialized, 'context:', !!audioContextRef.current);
     
     try {
       // Initialize if needed
@@ -94,9 +94,12 @@ export function useNotificationSound() {
           const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
           const ctx = new AudioContext();
           
+          console.log('🔧 Fallback context state:', ctx.state);
+          
           // Resume if needed
           if (ctx.state === 'suspended') {
             await ctx.resume();
+            console.log('🔧 Fallback context resumed, new state:', ctx.state);
           }
           
           const oscillator = ctx.createOscillator();
@@ -113,7 +116,7 @@ export function useNotificationSound() {
           oscillator.start(ctx.currentTime);
           oscillator.stop(ctx.currentTime + 0.3);
           
-          console.log('🔔 Fallback beep played successfully');
+          console.log('✅ Fallback beep played successfully');
           
           // Clean up
           setTimeout(() => ctx.close(), 500);
@@ -139,7 +142,7 @@ export function useNotificationSound() {
       gainNode.connect(audioContextRef.current.destination);
       source.start(0);
       
-      console.log('🔔 Notification sound played successfully via main context');
+      console.log('✅ Notification sound played successfully via main context');
     } catch (error) {
       console.error('❌ Error playing notification sound:', error);
       // Try to reinitialize on error
@@ -151,7 +154,9 @@ export function useNotificationSound() {
       try {
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
         const ctx = new AudioContext();
-        if (ctx.state === 'suspended') await ctx.resume();
+        if (ctx.state === 'suspended') {
+          await ctx.resume();
+        }
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -160,13 +165,13 @@ export function useNotificationSound() {
         gain.gain.value = 0.5;
         osc.start();
         osc.stop(ctx.currentTime + 0.2);
-        console.log('🔔 Emergency fallback beep played');
+        console.log('✅ Emergency fallback beep played');
         setTimeout(() => ctx.close(), 500);
       } catch (emergencyError) {
         console.error('❌ Emergency fallback also failed:', emergencyError);
       }
     }
-  }, [initAudioContext]);
+  }, [initAudioContext, isInitialized]);
 
   return { playNotificationSound, isInitialized };
 }

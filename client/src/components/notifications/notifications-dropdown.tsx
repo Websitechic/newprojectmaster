@@ -113,10 +113,11 @@ export function NotificationsDropdown() {
               });
               
               // Play sound only for unread messages and task assignments
-              console.log('📋 Notification details:', {
+              console.log('📋 Notification received:', {
+                id: data.notification.id,
                 type: data.notification.type,
                 referenceType: data.notification.referenceType,
-                content: data.notification.content
+                content: data.notification.content?.substring(0, 50)
               });
               
               const shouldPlaySound = 
@@ -126,26 +127,32 @@ export function NotificationsDropdown() {
                 data.notification.referenceType === 'task';
               
               if (shouldPlaySound) {
-                console.log('🔊 PLAYING notification sound for type:', data.notification.type, 'reference:', data.notification.referenceType);
+                console.log('🔊 TRIGGERING notification sound:', {
+                  type: data.notification.type,
+                  referenceType: data.notification.referenceType,
+                  notificationId: data.notification.id
+                });
                 
-                // Play immediately and also with requestAnimationFrame as backup
-                try {
-                  playNotificationSound();
-                  console.log('✅ Immediate sound play attempted');
-                } catch (err) {
-                  console.error('❌ Immediate sound play failed:', err);
-                }
-                
-                requestAnimationFrame(() => {
+                // Play with multiple attempts for reliability
+                setTimeout(() => {
                   try {
                     playNotificationSound();
-                    console.log('✅ RAF sound play attempted');
+                    console.log('✅ Sound played (immediate)');
                   } catch (err) {
-                    console.error('❌ RAF sound play failed:', err);
+                    console.error('❌ Immediate sound failed:', err);
                   }
-                });
+                }, 50);
+                
+                setTimeout(() => {
+                  try {
+                    playNotificationSound();
+                    console.log('✅ Sound played (delayed)');
+                  } catch (err) {
+                    console.error('❌ Delayed sound failed:', err);
+                  }
+                }, 150);
               } else {
-                console.log('ℹ️ Skipping sound for notification type:', data.notification.type, 'reference:', data.notification.referenceType);
+                console.log('⏭️ Skipping sound - notification type:', data.notification.type, 'reference:', data.notification.referenceType);
               }
             }
           } catch (error) {
