@@ -85,7 +85,7 @@ async function createNotification(userId: number, type: string, content: string,
               referenceId: newNotification.referenceId,
               referenceType: newNotification.referenceType,
               read: newNotification.read,
-              createdAt: newNotification.createdAt
+              createdAt: newNotification.createdAt?.toISOString() || new Date().toISOString()
             }
           };
           

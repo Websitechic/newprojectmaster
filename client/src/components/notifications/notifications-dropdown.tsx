@@ -118,11 +118,12 @@ export function NotificationsDropdown() {
               });
               
               // Play sound only for unread messages and task assignments
-              console.log('📋 Notification received:', {
+              console.log('📋 Notification received via SSE:', {
                 id: data.notification.id,
                 type: data.notification.type,
                 referenceType: data.notification.referenceType,
-                content: data.notification.content?.substring(0, 50)
+                content: data.notification.content?.substring(0, 50),
+                read: data.notification.read
               });
               
               // Check for message-related notifications by type OR referenceType
@@ -139,23 +140,34 @@ export function NotificationsDropdown() {
               const shouldPlaySound = isMessageNotification || isTaskNotification;
               
               if (shouldPlaySound) {
-                console.log('🔊 TRIGGERING notification sound:', {
+                console.log('🔊 SOUND TRIGGER ACTIVATED:', {
                   type: data.notification.type,
                   referenceType: data.notification.referenceType,
                   notificationId: data.notification.id,
                   isMessage: isMessageNotification,
-                  isTask: isTaskNotification
+                  isTask: isTaskNotification,
+                  timestamp: new Date().toISOString()
                 });
                 
-                // Play immediately and with retry
-                playNotificationSound();
-                
-                setTimeout(() => {
+                // Play sound immediately
+                try {
                   playNotificationSound();
-                  console.log('✅ Sound retry played');
-                }, 100);
+                  console.log('✅ First sound play attempt completed');
+                } catch (soundError) {
+                  console.error('❌ Sound play error:', soundError);
+                }
+                
+                // Retry after a short delay to ensure it plays
+                setTimeout(() => {
+                  try {
+                    playNotificationSound();
+                    console.log('✅ Retry sound play attempt completed');
+                  } catch (retryError) {
+                    console.error('❌ Retry sound error:', retryError);
+                  }
+                }, 150);
               } else {
-                console.log('⏭️ Skipping sound - notification type:', data.notification.type, 'reference:', data.notification.referenceType);
+                console.log('⏭️ Sound skipped - notification type:', data.notification.type, 'reference:', data.notification.referenceType);
               }
             }
           } catch (error) {
