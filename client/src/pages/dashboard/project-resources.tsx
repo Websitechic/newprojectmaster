@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import { Upload, FileText, Download, Search, Link, ExternalLink, Edit2, Trash2, MoreVertical, ChevronDown, ChevronRight } from "lucide-react";
+import { Upload, FileText, Download, Search, Link, ExternalLink, Edit2, Trash2, MoreVertical, ChevronDown, ChevronRight, ArrowLeft } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -444,6 +444,15 @@ export default function ProjectResources() {
         <Header />
         <div className="flex-1 overflow-auto p-6">
           <div className="mb-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.location.href = `/dashboard/projects/${id}`}
+              className="flex items-center gap-2 mb-4"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Project
+            </Button>
             <h1 className="text-2xl font-bold">Project Resources</h1>
             <p className="text-muted-foreground">
               {canManageResources ? "Manage" : "Access"} project documents, files, and links
