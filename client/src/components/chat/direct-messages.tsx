@@ -285,13 +285,23 @@ export function DirectMessages() {
     }
 
     try {
+      // Find the original message to check if it has a reply context
+      const originalMsg = messages.find(m => m.id === messageId);
+      let finalContent = editingContent.trim();
+      
+      // If the original message was a reply, preserve the quoted part
+      if (originalMsg && originalMsg.content.startsWith('> Replying to')) {
+        const quotedPart = originalMsg.content.split('\n\n')[0];
+        finalContent = `${quotedPart}\n\n${editingContent.trim()}`;
+      }
+
       const response = await fetch(`/api/direct-messages/${messageId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          content: editingContent.trim(),
+          content: finalContent,
         }),
       });
 
@@ -501,6 +511,23 @@ export function DirectMessages() {
     inputRef.current?.focus();
   };
 
+  const handleClickRepliedMessage = (originalMessageId: number) => {
+    // Find the original message element
+    const messageElement = document.getElementById(`dm-message-${originalMessageId}`);
+    if (messageElement) {
+      // Scroll to the message
+      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Add highlight effect
+      messageElement.classList.add('highlight-flash');
+      
+      // Remove highlight after animation
+      setTimeout(() => {
+        messageElement.classList.remove('highlight-flash');
+      }, 2000);
+    }
+  };
+
   const handleCancelReply = () => {
     setReplyingTo(null);
   };
@@ -564,8 +591,9 @@ export function DirectMessages() {
               {messages.map((message) => (
                 <div
                   key={message.id}
+                  id={`dm-message-${message.id}`}
                   className={cn(
-                    "flex items-start gap-2 group",
+                    "flex items-start gap-2 group transition-all duration-300",
                     message.senderId === user?.id ? "flex-row-reverse" : ""
                   )}
                 >
@@ -635,17 +663,33 @@ export function DirectMessages() {
                               <div>
                                 {message.content.split('\n\n').map((part, idx) => {
                                   if (idx === 0) {
-                                    // This is the quoted part
+                                    // This is the quoted part - extract original message info
+                                    const replyLines = part.split('\n');
+                                    const replyToLine = replyLines[0]; // "> Replying to Name:"
+                                    const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
+                                    
+                                    // Try to find the original message by matching content
+                                    const originalMsg = messages.find(m => 
+                                      m.content === quotedContent || m.content.includes(quotedContent)
+                                    );
+                                    
                                     return (
-                                      <div key={idx} className={cn(
-                                        "border-l-4 pl-3 mb-2 italic text-xs",
-                                        message.senderId === user?.id
-                                          ? "border-primary-foreground/30 opacity-80"
-                                          : "border-primary/50 text-muted-foreground"
-                                      )}>
-                                        {part.split('\n').map((line, lineIdx) => (
-                                          <div key={lineIdx}>{line.replace(/^> /, '')}</div>
-                                        ))}
+                                      <div 
+                                        key={idx} 
+                                        className={cn(
+                                          "border-l-4 pl-3 mb-2 italic text-xs cursor-pointer hover:opacity-70 transition-opacity rounded",
+                                          message.senderId === user?.id
+                                            ? "border-primary-foreground/30 opacity-80"
+                                            : "border-primary/50 text-muted-foreground"
+                                        )}
+                                        onClick={() => originalMsg && handleClickRepliedMessage(originalMsg.id)}
+                                      >
+                                        <div className="font-semibold mb-1">
+                                          {replyToLine.replace(/^> /, '')}
+                                        </div>
+                                        <div>
+                                          {quotedContent}
+                                        </div>
                                       </div>
                                     );
                                   }
@@ -731,7 +775,13 @@ export function DirectMessages() {
                               <DropdownMenuItem
                                 onClick={() => {
                                   setEditingMessageId(message.id);
-                                  setEditingContent(message.content);
+                                  // Extract only the actual message content, not the quoted part
+                                  if (message.content.startsWith('> Replying to')) {
+                                    const parts = message.content.split('\n\n');
+                                    setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : message.content);
+                                  } else {
+                                    setEditingContent(message.content);
+                                  }
                                 }}
                               >
                                 <Edit2 className="h-4 w-4 mr-2" />

@@ -88,7 +88,7 @@ async function createNotification(userId: number, type: string, content: string,
               createdAt: newNotification.createdAt?.toISOString() || new Date().toISOString()
             }
           };
-          
+
           userClient.write(`data: ${JSON.stringify(notificationPayload)}\n\n`);
           console.log(`📨 SSE notification sent to user ${userId}:`, notificationPayload);
         } catch (error) {
@@ -138,9 +138,9 @@ const upload = multer({
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'text/plain'
     ];
-    
+
     const isAllowed = allowedMimeTypes.some(type => file.mimetype.startsWith(type) || file.mimetype === type);
-    
+
     if (isAllowed) {
       cb(null, true);
     } else {
@@ -3323,7 +3323,7 @@ End of Report
 
     try {
       const user = req.user!;
-      
+
       // Ensure user object has an ID
       if (!user || !user.id) {
         console.error("❌ No user ID in session for unread count");
@@ -3449,12 +3449,14 @@ End of Report
         return res.status(400).json({ error: "Receiver ID and content are required" });
       }
 
+      const messageContent = content.trim(); // Trim content once
+
       const [newMessage] = await db
         .insert(directMessages)
         .values({
           senderId: senderId,
           receiverId: parseInt(receiverId),
-          content: content.trim(),
+          content: messageContent,
           read: false,
         })
         .returning();
@@ -3465,6 +3467,32 @@ End of Report
         senderName: user.name,
       };
 
+      // Check if this is a reply and send notification to the original message sender
+      if (messageContent.startsWith('> Replying to')) {
+        const replyLines = messageContent.split('\n');
+        const replyToLine = replyLines[0]; // "> Replying to Name:"
+        const replyToName = replyToLine.replace('> Replying to ', '').replace(':', '').trim();
+
+        // Find the user being replied to
+        const repliedToUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.name, replyToName))
+          .limit(1);
+
+        if (repliedToUser.length > 0 && repliedToUser[0].id !== user.id) {
+          // Create notification for the replied user
+          await db.insert(notifications).values({
+            userId: repliedToUser[0].id,
+            type: 'mention',
+            content: `${user.name} replied to your message`,
+            referenceId: newMessage.id,
+            referenceType: 'message',
+            read: false,
+          });
+        }
+      }
+
       // Create notification for receiver - use 'message' type to trigger sound
       const notification = await createNotification(
         parseInt(receiverId),
@@ -3473,9 +3501,9 @@ End of Report
         newMessage.id,
         "direct_message"
       );
-      
+
       console.log('📧 Direct message notification created:', notification);
-    
+
 
       // Send SSE notification to the receiver
       if (global.sseClients && global.sseClients.has(parseInt(receiverId))) {
@@ -5302,7 +5330,7 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      // Check if user is a member of the project (for staff and customer support)
+      // Check if user is a member of the project (for all roles including customer support)
       const [membership] = await db
         .select()
         .from(projectMembers)
@@ -5326,7 +5354,8 @@ End of Report
         !!membership;
 
       if (!hasAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
+        return res.status(403).send("Access denied - You must be a project member to view membersst");
       }
 
       const members = await db
@@ -5507,12 +5536,12 @@ End of Report
 
       // Store file information
       const filePath = `/uploads/leave-proof/${req.file.filename}`;
-      
+
       // Use custom file name if provided, otherwise use original file name
       const displayName = customFileName && customFileName.trim() 
         ? customFileName.trim() 
         : req.file.originalname;
-      
+
       // Insert the new resource
       const [newResource] = await db
         .insert(resources)
@@ -6242,6 +6271,7 @@ End of Report
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
         (user.role === "staff" && await db

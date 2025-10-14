@@ -98,7 +98,7 @@ export default function TeamChat() {
       }
       const data = await response.json();
       console.log(`Fetched project members:`, data);
-      
+
       // Map the API response to include user details in a consistent format
       const mappedData = Array.isArray(data) ? data.map((member: any) => ({
         id: member.id || member.userId,
@@ -110,18 +110,18 @@ export default function TeamChat() {
         specialization: member.specialization,
         invitationStatus: member.invitationStatus || 'accepted',
       })) : [];
-      
+
       // Fetch all team leads and operations managers (they're automatically on all projects)
       try {
         const allUsersResponse = await fetch('/api/users');
         if (allUsersResponse.ok) {
           const allUsers = await allUsersResponse.json();
-          
+
           // Add team leads and operations managers
           allUsers.forEach((u: any) => {
             const isTeamLead = u.role === 'team_lead';
             const isOperationsManager = u.role === 'operations_manager' || u.specialization === 'operations_manager';
-            
+
             if ((isTeamLead || isOperationsManager) && !mappedData.some((m: any) => m.id === u.id)) {
               mappedData.push({
                 id: u.id,
@@ -139,7 +139,7 @@ export default function TeamChat() {
       } catch (error) {
         console.error('Error fetching team leads and operations managers:', error);
       }
-      
+
       // Add project manager if not already in the list and if project data is available
       if (project?.managerId) {
         const managerExists = mappedData.some((m: any) => m.id === project.managerId);
@@ -165,7 +165,7 @@ export default function TeamChat() {
           }
         }
       }
-      
+
       console.log(`Mapped project members with manager, team leads, and operations managers:`, mappedData);
       return mappedData;
     },
@@ -241,12 +241,12 @@ export default function TeamChat() {
         console.log("SSE message received in team chat:", data);
         if (data.type === "project_message" && data.data.projectId === projectId) {
           console.log("🔔 Team message received via SSE");
-          
+
           // Invalidate queries first
           queryClient.invalidateQueries({ 
             queryKey: [`/api/projects/${projectId}/team-messages`] 
           });
-          
+
           // Play sound if message is from someone else
           if (data.data.senderId !== user?.id) {
             console.log('🔊 Team message from another user, playing sound');
@@ -270,12 +270,12 @@ export default function TeamChat() {
       const messageData = event.detail;
       if (messageData.projectId === projectId) {
         console.log("Team message received via WebSocket, invalidating queries");
-        
+
         // Play sound if message is from someone else
         if (messageData.senderId !== user?.id) {
           playNotificationSound();
         }
-        
+
         queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
         });
@@ -346,12 +346,12 @@ export default function TeamChat() {
 
       if (response.ok) {
         const result = await response.json();
-        
+
         // Invalidate and refetch messages
         queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
         });
-        
+
         setEditingMessageId(null);
         setEditingContent("");
         toast({
@@ -387,7 +387,7 @@ export default function TeamChat() {
         queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
         });
-        
+
         toast({
           title: "Success",
           description: "Message deleted successfully",
@@ -422,7 +422,7 @@ export default function TeamChat() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
-    
+
     let messageToSend = message.trim();
     if (replyingTo) {
       // Include the original message as a quote
@@ -430,7 +430,7 @@ export default function TeamChat() {
       messageToSend = quotedMessage;
       setReplyingTo(null);
     }
-    
+
     sendMessageMutation.mutate(messageToSend);
   };
 
@@ -456,7 +456,7 @@ export default function TeamChat() {
     const position = e.target.selectionStart || 0;
 
     setMessage(value);
-    
+
     // Update cursor position after state update
     setTimeout(() => {
       setCursorPosition(position);
@@ -526,10 +526,10 @@ export default function TeamChat() {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     // Updated regex to better handle multi-word names - matches until end of word boundary or special chars
     const mentionRegex = /@([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
-    
+
     // First, split by URLs
     const urlParts = content.split(urlRegex);
-    
+
     return urlParts.map((urlPart, urlIndex) => {
       // Check if this part is a URL
       if (urlRegex.test(urlPart)) {
@@ -713,7 +713,7 @@ export default function TeamChat() {
               </div>
             </CardHeader>
 
-            <CardContent className="flex-1 flex flex-col p-0">
+            <CardContent className="flex-1 flex flex-col">
               {/* Messages Container */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[60vh]">
                 {messages.length === 0 ? (
@@ -725,7 +725,7 @@ export default function TeamChat() {
                   </div>
                 ) : (
                   messages.map((msg) => (
-                    <div key={msg.id} className="flex gap-3 group">
+                    <div key={msg.id} id={`message-${msg.id}`} className="flex gap-3 group transition-all duration-300">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">
                           {getUserInitials(msg.sender?.name || "Unknown")}
@@ -779,7 +779,24 @@ export default function TeamChat() {
                                     if (idx === 0) {
                                       // This is the quoted part
                                       return (
-                                        <div key={idx} className="border-l-4 border-primary pl-3 mb-2 text-muted-foreground italic">
+                                        <div key={idx} className="border-l-4 border-primary pl-3 mb-2 text-muted-foreground italic cursor-pointer"
+                                          onClick={() => {
+                                            // Find the message ID from the quoted content (this is a simplified approach)
+                                            // A more robust solution would involve parsing the original message ID from the quote itself
+                                            const replyMatch = part.match(/message-(\d+)/);
+                                            if (replyMatch && replyMatch[1]) {
+                                              const originalMessageId = parseInt(replyMatch[1]);
+                                              const originalMessageElement = document.getElementById(`message-${originalMessageId}`);
+                                              if (originalMessageElement) {
+                                                originalMessageElement.classList.add('bg-yellow-200', 'animate-pulse');
+                                                setTimeout(() => {
+                                                  originalMessageElement.classList.remove('bg-yellow-200', 'animate-pulse');
+                                                }, 2000); // Flash for 2 seconds
+                                                originalMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                              }
+                                            }
+                                          }}
+                                        >
                                           {part.split('\n').map((line, lineIdx) => (
                                             <div key={lineIdx}>{line.replace(/^> /, '')}</div>
                                           ))}
@@ -876,7 +893,7 @@ export default function TeamChat() {
                     </Button>
                   </div>
                 )}
-                
+
                 {/* Mention Suggestions Dropdown */}
                 {showMentionSuggestions && filteredMembers.length > 0 && (
                   <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto z-50">
