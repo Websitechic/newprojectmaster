@@ -425,7 +425,9 @@ export default function TeamChat() {
     
     let messageToSend = message.trim();
     if (replyingTo) {
-      messageToSend = `@${replyingTo.sender?.name || "Unknown"} ${messageToSend}`;
+      // Include the original message as a quote
+      const quotedMessage = `> Replying to ${replyingTo.sender?.name || "Unknown"}:\n> ${replyingTo.content}\n\n${messageToSend}`;
+      messageToSend = quotedMessage;
       setReplyingTo(null);
     }
     
@@ -771,7 +773,26 @@ export default function TeamChat() {
                         ) : (
                           <div className="relative">
                             <div className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap break-words">
-                              {renderMessageContent(msg.content)}
+                              {msg.content.startsWith('> Replying to') ? (
+                                <div>
+                                  {msg.content.split('\n\n').map((part, idx) => {
+                                    if (idx === 0) {
+                                      // This is the quoted part
+                                      return (
+                                        <div key={idx} className="border-l-4 border-primary pl-3 mb-2 text-muted-foreground italic">
+                                          {part.split('\n').map((line, lineIdx) => (
+                                            <div key={lineIdx}>{line.replace(/^> /, '')}</div>
+                                          ))}
+                                        </div>
+                                      );
+                                    }
+                                    // This is the actual reply content
+                                    return <div key={idx}>{renderMessageContent(part)}</div>;
+                                  })}
+                                </div>
+                              ) : (
+                                renderMessageContent(msg.content)
+                              )}
                             </div>
                             {msg.isEdited && (
                               <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>

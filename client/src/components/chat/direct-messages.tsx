@@ -416,6 +416,12 @@ export function DirectMessages() {
     try {
       console.log("Sending message to user:", selectedUser.id, "Content:", newMessage);
 
+      let messageContent = newMessage.trim();
+      if (replyingTo) {
+        // Include the original message as a quote
+        messageContent = `> Replying to ${replyingTo.senderName}:\n> ${replyingTo.content}\n\n${messageContent}`;
+      }
+
       const response = await fetch("/api/direct-messages", {
         method: "POST",
         headers: {
@@ -423,9 +429,7 @@ export function DirectMessages() {
         },
         body: JSON.stringify({
           receiverId: selectedUser.id,
-          content: newMessage.trim(),
-          replyToMessageId: replyingTo?.id,
-          replyToSenderName: replyingTo?.senderName,
+          content: messageContent,
         }),
       });
 
@@ -626,30 +630,79 @@ export function DirectMessages() {
                         </div>
                       ) : (
                         <>
-                          <p className="text-sm break-words whitespace-pre-wrap">
-                            {message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
-                              if (/^https?:\/\/[^\s]+$/.test(part)) {
-                                return (
-                                  <a
-                                    key={index}
-                                    href={part}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={cn(
-                                      "underline hover:opacity-80 break-all",
-                                      message.senderId === user?.id
-                                        ? "text-primary-foreground"
-                                        : "text-blue-600"
-                                    )}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {part}
-                                  </a>
-                                );
-                              }
-                              return part;
-                            })}
-                          </p>
+                          <div className="text-sm break-words whitespace-pre-wrap">
+                            {message.content.startsWith('> Replying to') ? (
+                              <div>
+                                {message.content.split('\n\n').map((part, idx) => {
+                                  if (idx === 0) {
+                                    // This is the quoted part
+                                    return (
+                                      <div key={idx} className={cn(
+                                        "border-l-4 pl-3 mb-2 italic text-xs",
+                                        message.senderId === user?.id
+                                          ? "border-primary-foreground/30 opacity-80"
+                                          : "border-primary/50 text-muted-foreground"
+                                      )}>
+                                        {part.split('\n').map((line, lineIdx) => (
+                                          <div key={lineIdx}>{line.replace(/^> /, '')}</div>
+                                        ))}
+                                      </div>
+                                    );
+                                  }
+                                  // This is the actual reply content
+                                  return (
+                                    <div key={idx}>
+                                      {part.split(/(https?:\/\/[^\s]+)/g).map((urlPart, urlIdx) => {
+                                        if (/^https?:\/\/[^\s]+$/.test(urlPart)) {
+                                          return (
+                                            <a
+                                              key={urlIdx}
+                                              href={urlPart}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className={cn(
+                                                "underline hover:opacity-80 break-all",
+                                                message.senderId === user?.id
+                                                  ? "text-primary-foreground"
+                                                  : "text-blue-600"
+                                              )}
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              {urlPart}
+                                            </a>
+                                          );
+                                        }
+                                        return urlPart;
+                                      })}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                                if (/^https?:\/\/[^\s]+$/.test(part)) {
+                                  return (
+                                    <a
+                                      key={index}
+                                      href={part}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={cn(
+                                        "underline hover:opacity-80 break-all",
+                                        message.senderId === user?.id
+                                          ? "text-primary-foreground"
+                                          : "text-blue-600"
+                                      )}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {part}
+                                    </a>
+                                  );
+                                }
+                                return part;
+                              })
+                            )}
+                          </div>
                           <p className="text-xs opacity-70 mt-1">
                             {new Date(message.createdAt).toLocaleTimeString()}
                             {message.updatedAt && message.updatedAt !== message.createdAt && (
