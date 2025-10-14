@@ -737,40 +737,49 @@ export default function ProjectResources() {
                                         <ExternalLink className="h-4 w-4" />
                                       </Button>
                                     ) : resource.path ? (
-                                      <Dialog>
-                                        <DialogTrigger asChild>
-                                          <Button variant="ghost" size="sm">
-                                            <Download className="h-4 w-4" />
-                                          </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                          <DialogHeader>
-                                            <DialogTitle>File Options</DialogTitle>
-                                          </DialogHeader>
-                                          <div className="space-y-3">
-                                            <p className="text-sm text-muted-foreground">
-                                              What would you like to do with "{resource.name}"?
-                                            </p>
-                                            <div className="flex gap-2">
-                                              {canPreviewFile(resource) && (
+                                      canPreviewFile(resource) ? (
+                                        <Dialog>
+                                          <DialogTrigger asChild>
+                                            <Button variant="ghost" size="sm">
+                                              <Download className="h-4 w-4" />
+                                            </Button>
+                                          </DialogTrigger>
+                                          <DialogContent>
+                                            <DialogHeader>
+                                              <DialogTitle>File Options</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="space-y-3">
+                                              <p className="text-sm text-muted-foreground">
+                                                What would you like to do with "{resource.name}"?
+                                              </p>
+                                              <div className="flex gap-2">
                                                 <Button 
                                                   onClick={() => handleFileAction(resource, 'preview')}
                                                   className="flex-1"
                                                 >
                                                   Preview
                                                 </Button>
-                                              )}
-                                              <Button 
-                                                onClick={() => handleFileAction(resource, 'download')}
-                                                variant="outline"
-                                                className="flex-1"
-                                              >
-                                                Download
-                                              </Button>
+                                                <Button 
+                                                  onClick={() => handleFileAction(resource, 'download')}
+                                                  variant="outline"
+                                                  className="flex-1"
+                                                >
+                                                  Download
+                                                </Button>
+                                              </div>
                                             </div>
-                                          </div>
-                                        </DialogContent>
-                                      </Dialog>
+                                          </DialogContent>
+                                        </Dialog>
+                                      ) : (
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={() => handleFileAction(resource, 'download')}
+                                          title="Download file"
+                                        >
+                                          <Download className="h-4 w-4" />
+                                        </Button>
+                                      )
                                     ) : null}
                                     
                                     {canManageResources && (
