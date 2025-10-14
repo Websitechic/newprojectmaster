@@ -64,44 +64,12 @@ export function useNotificationSound() {
     }
   }, []);
 
-  // Initialize on mount and MULTIPLE user interaction events
+  // Initialize on mount only - no user interaction detection
   useEffect(() => {
     // Try to initialize immediately
     initAudioContext();
-    
-    const handleInteraction = async () => {
-      console.log('🎯 User interaction detected, initializing audio');
-      await initAudioContext();
-      
-      // Also try to resume if suspended
-      if (audioContextRef.current?.state === 'suspended') {
-        try {
-          await audioContextRef.current.resume();
-          console.log('▶️ Audio context resumed after interaction');
-        } catch (e) {
-          console.error('Failed to resume audio context:', e);
-        }
-      }
-    };
-
-    // Listen to MANY interaction events to ensure initialization
-    const events = ['click', 'keydown', 'touchstart', 'mousedown', 'touchend', 'pointerdown'];
-    const listeners: Array<() => void> = [];
-    
-    events.forEach(event => {
-      const listener = () => handleInteraction();
-      document.addEventListener(event, listener, { capture: true, passive: true });
-      listeners.push(() => document.removeEventListener(event, listener, { capture: true }));
-    });
-
-    // Custom event for manual initialization
-    const customListener = () => handleInteraction();
-    window.addEventListener('init-audio', customListener);
 
     return () => {
-      listeners.forEach(cleanup => cleanup());
-      window.removeEventListener('init-audio', customListener);
-      
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
