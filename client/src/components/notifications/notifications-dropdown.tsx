@@ -113,9 +113,13 @@ export function NotificationsDropdown() {
               });
               
               // Play sound for all new notifications
-              console.log('🔊 Playing notification sound for:', data.notification.type || 'notification');
-              // Play sound immediately - audio context should be ready from user interaction
-              playNotificationSound();
+              console.log('🔊 Attempting to play notification sound for:', data.notification.type || 'notification');
+              
+              // Use requestAnimationFrame to ensure sound plays after render
+              requestAnimationFrame(() => {
+                playNotificationSound();
+                console.log('✅ Notification sound played');
+              });
             }
           } catch (error) {
             console.error("Error parsing SSE message:", error);

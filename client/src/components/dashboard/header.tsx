@@ -31,8 +31,23 @@ export function Header() {
   const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
   const { playNotificationSound } = useNotificationSound();
 
-  // Audio context is initialized in the hook automatically
-  // No need to trigger it here
+  // Initialize audio context on first user interaction
+  useEffect(() => {
+    const initAudio = () => {
+      const event = new CustomEvent('init-audio');
+      window.dispatchEvent(event);
+      console.log('Audio initialization triggered from header');
+    };
+
+    // Trigger on any user interaction
+    window.addEventListener('click', initAudio, { once: true });
+    window.addEventListener('keydown', initAudio, { once: true });
+
+    return () => {
+      window.removeEventListener('click', initAudio);
+      window.removeEventListener('keydown', initAudio);
+    };
+  }, []);
 
   // Fetch team chat unread counts
   const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({

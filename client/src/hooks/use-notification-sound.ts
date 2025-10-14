@@ -79,14 +79,38 @@ export function useNotificationSound() {
     try {
       // Initialize if needed
       if (!audioContextRef.current) {
+        console.log('Audio context not initialized, initializing now...');
         initAudioContext();
         // Give a moment for initialization
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
       if (!audioContextRef.current || !audioBufferRef.current) {
-        console.warn('Audio not ready - initializing on next interaction');
-        return;
+        console.warn('Audio not ready - will try fallback beep');
+        // Fallback: try to play a simple beep using Web Audio API
+        try {
+          const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+          const ctx = new AudioContext();
+          const oscillator = ctx.createOscillator();
+          const gainNode = ctx.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          
+          oscillator.frequency.value = 800;
+          oscillator.type = 'sine';
+          gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+          
+          oscillator.start(ctx.currentTime);
+          oscillator.stop(ctx.currentTime + 0.3);
+          
+          console.log('🔔 Fallback beep played');
+          return;
+        } catch (fallbackError) {
+          console.error('Fallback beep failed:', fallbackError);
+          return;
+        }
       }
 
       // Resume audio context if suspended
