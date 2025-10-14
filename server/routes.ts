@@ -3432,13 +3432,15 @@ End of Report
       };
 
       // Create notification for receiver - use 'message' type to trigger sound
-      await createNotification(
+      const notification = await createNotification(
         parseInt(receiverId),
         "message",
-        `New message from ${sender.name}`,
+        `New message from ${user.name}`,
         newMessage.id,
         "direct_message"
       );
+      
+      console.log('📧 Direct message notification created:', notification);
     
 
       // Send SSE notification to the receiver
