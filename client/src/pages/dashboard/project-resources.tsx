@@ -350,13 +350,81 @@ export default function ProjectResources() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getFileIcon = (type: string) => {
-    if (type === 'link') return '🔗';
-    if (type.includes('image')) return '🖼️';
-    if (type.includes('pdf')) return '📄';
-    if (type.includes('video')) return '🎥';
-    if (type.includes('audio')) return '🎵';
+  const getFileIcon = (resource: Resource) => {
+    // For links, return link icon
+    if (resource.type === 'link' || resource.link) return '🔗';
+    
+    // For uploaded files, determine icon from file extension or MIME type
+    let fileName = resource.name || '';
+    let fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
+    
+    // Image files
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(fileExtension)) {
+      return '🖼️';
+    }
+    
+    // PDF files
+    if (fileExtension === 'pdf') {
+      return '📄';
+    }
+    
+    // Document files
+    if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(fileExtension)) {
+      return '📝';
+    }
+    
+    // Spreadsheet files
+    if (['xls', 'xlsx', 'csv', 'ods'].includes(fileExtension)) {
+      return '📊';
+    }
+    
+    // Video files
+    if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(fileExtension)) {
+      return '🎥';
+    }
+    
+    // Audio files
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(fileExtension)) {
+      return '🎵';
+    }
+    
+    // Archive files
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExtension)) {
+      return '📦';
+    }
+    
     return '📁';
+  };
+
+  const canPreviewFile = (resource: Resource) => {
+    if (!resource.path) return false;
+    
+    let fileName = resource.name || '';
+    let fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
+    
+    // Preview images and PDFs
+    return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'pdf'].includes(fileExtension);
+  };
+
+  const handleFileAction = (resource: Resource, action: 'preview' | 'download') => {
+    if (!resource.path) {
+      if (resource.link) {
+        window.open(resource.link, '_blank');
+      }
+      return;
+    }
+
+    if (action === 'preview') {
+      window.open(resource.path, '_blank');
+    } else {
+      // Download
+      const link = document.createElement('a');
+      link.href = resource.path;
+      link.download = resource.name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   if (isLoading) {
@@ -630,7 +698,7 @@ export default function ProjectResources() {
                               <CardHeader className="pb-3">
                                 <div className="flex items-start justify-between">
                                   <div className="flex items-center gap-3">
-                                    <span className="text-2xl">{getFileIcon(resource.type)}</span>
+                                    <span className="text-2xl">{getFileIcon(resource)}</span>
                                     <div className="min-w-0 flex-1">
                                       <CardTitle className="text-sm font-medium truncate" title={resource.name}>
                                         {resource.name}
@@ -650,13 +718,40 @@ export default function ProjectResources() {
                                         <ExternalLink className="h-4 w-4" />
                                       </Button>
                                     ) : resource.path ? (
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm"
-                                        onClick={() => window.open(resource.path, '_blank')}
-                                      >
-                                        <Download className="h-4 w-4" />
-                                      </Button>
+                                      <Dialog>
+                                        <DialogTrigger asChild>
+                                          <Button variant="ghost" size="sm">
+                                            <Download className="h-4 w-4" />
+                                          </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                          <DialogHeader>
+                                            <DialogTitle>File Options</DialogTitle>
+                                          </DialogHeader>
+                                          <div className="space-y-3">
+                                            <p className="text-sm text-muted-foreground">
+                                              What would you like to do with "{resource.name}"?
+                                            </p>
+                                            <div className="flex gap-2">
+                                              {canPreviewFile(resource) && (
+                                                <Button 
+                                                  onClick={() => handleFileAction(resource, 'preview')}
+                                                  className="flex-1"
+                                                >
+                                                  Preview
+                                                </Button>
+                                              )}
+                                              <Button 
+                                                onClick={() => handleFileAction(resource, 'download')}
+                                                variant="outline"
+                                                className="flex-1"
+                                              >
+                                                Download
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        </DialogContent>
+                                      </Dialog>
                                     ) : null}
                                     
                                     {canManageResources && (
