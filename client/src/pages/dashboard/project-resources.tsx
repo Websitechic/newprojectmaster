@@ -87,6 +87,7 @@ export default function ProjectResources() {
   // State for file upload dialog
   const [showFileDialog, setShowFileDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState("");
   const [fileCategory, setFileCategory] = useState("");
   const [isUploadingFile, setIsUploadingFile] = useState(false);
 
@@ -114,6 +115,10 @@ export default function ProjectResources() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('category', fileCategory.trim());
+      // Add custom file name if provided
+      if (fileName.trim()) {
+        formData.append('customFileName', fileName.trim());
+      }
 
       const response = await fetch(`/api/projects/${projectId}/resources/upload`, {
         method: "POST",
@@ -135,6 +140,7 @@ export default function ProjectResources() {
 
       // Reset form and close dialog
       setSelectedFile(null);
+      setFileName("");
       setFileCategory("");
       setShowFileDialog(false);
       
@@ -482,6 +488,19 @@ export default function ProjectResources() {
                             Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
                           </p>
                         )}
+                      </div>
+                      <div>
+                        <Label htmlFor="fileName">File Name (Optional)</Label>
+                        <Input
+                          id="fileName"
+                          type="text"
+                          placeholder="Enter custom file name or leave blank to use original"
+                          value={fileName}
+                          onChange={(e) => setFileName(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          If left blank, the original file name will be used
+                        </p>
                       </div>
                       <div>
                         <Label htmlFor="fileCategory">Category</Label>

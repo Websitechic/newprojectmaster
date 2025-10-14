@@ -5475,7 +5475,7 @@ End of Report
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      const { category } = req.body;
+      const { category, customFileName } = req.body;
 
       if (!category) {
         return res.status(400).json({ error: "Category is required" });
@@ -5508,11 +5508,16 @@ End of Report
       // Store file information
       const filePath = `/uploads/leave-proof/${req.file.filename}`;
       
+      // Use custom file name if provided, otherwise use original file name
+      const displayName = customFileName && customFileName.trim() 
+        ? customFileName.trim() 
+        : req.file.originalname;
+      
       // Insert the new resource
       const [newResource] = await db
         .insert(resources)
         .values({
-          name: req.file.originalname,
+          name: displayName,
           type: category,
           path: filePath,
           size: req.file.size,
