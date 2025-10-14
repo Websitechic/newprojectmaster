@@ -1797,14 +1797,14 @@ End of Report
         return res.status(404).json({ error: "Task not found" });
       }
 
-      if (!taskWithProject.project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
       const existingTask = taskWithProject.task;
       const project = taskWithProject.project;
 
-      // Check permissions
+      if (!project) {
+        return res.status(404).json({ error: "Project not found for this task" });
+      }
+
+      // Check permissions - ensure project.id exists
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isTaskAssignee = existingTask.assigneeId === user.id;
@@ -1912,14 +1912,14 @@ End of Report
         return res.status(404).json({ error: "Task not found" });
       }
 
-      if (!taskWithProject.project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
       const existingTask = taskWithProject.task;
       const project = taskWithProject.project;
 
-      // Check permissions
+      if (!project) {
+        return res.status(404).json({ error: "Project not found for this task" });
+      }
+
+      // Check permissions - ensure project.id exists
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isProductOwner = user.role === "product_owner";

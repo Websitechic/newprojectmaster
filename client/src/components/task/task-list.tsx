@@ -203,17 +203,25 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
       return response.json();
     },
-    onSuccess: (response) => {
-      // Update the cache immediately
+    onSuccess: (updatedTask) => {
+      // Update the cache immediately with the updated task
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
-        if (!oldTasks) return [response.task];
-        return oldTasks.map(task => task.id === response.task.id ? response.task : task);
+        if (!oldTasks) return [updatedTask];
+        return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
       });
 
-      queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
-        if (!oldTasks) return [response.task];
-        return oldTasks.map(task => task.id === response.task.id ? response.task : task);
-      });
+      if (projectId) {
+        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+          if (!oldTasks) return [updatedTask];
+          return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+        });
+      }
+
+      // Invalidate queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+      }
 
       setIsDialogOpen(false);
       setEditTask(null);
