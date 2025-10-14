@@ -473,8 +473,14 @@ export function DirectMessages() {
         setNewMessage("");
         setReplyingTo(null);
 
-        // Update messages state to include the sent message
-        setMessages(prev => [...prev, sentMessage]);
+        // Update messages state to include the sent message only if it doesn't exist
+        setMessages(prev => {
+          const exists = prev.some(m => m.id === sentMessage.id);
+          if (!exists) {
+            return [...prev, sentMessage];
+          }
+          return prev;
+        });
 
         // Update conversations list immediately
         setConversations(prev => {
