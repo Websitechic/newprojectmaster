@@ -117,7 +117,7 @@ export function NotificationsDropdown() {
                 return oldData;
               });
               
-              // Play sound for unread messages and task assignments
+              // Play sound ONLY for incoming direct messages and task assignments
               console.log('📋 Notification received via SSE:', {
                 id: data.notification.id,
                 type: data.notification.type,
@@ -126,27 +126,26 @@ export function NotificationsDropdown() {
                 read: data.notification.read
               });
               
-              // Check for message-related notifications
-              const isMessageNotification = 
-                data.notification.type === 'message' || 
-                data.notification.referenceType === 'direct_message' ||
-                (data.notification.content && data.notification.content.toLowerCase().includes('message'));
+              // STRICT check: Only direct messages with type 'message'
+              const isDirectMessage = 
+                data.notification.type === 'message' && 
+                data.notification.referenceType === 'direct_message';
               
-              // Check for task-related notifications
-              const isTaskNotification = 
+              // STRICT check: Only task assignments
+              const isTaskAssignment = 
                 data.notification.type === 'task_assigned' ||
-                data.notification.type === 'task_assignment' ||
-                data.notification.referenceType === 'task';
+                data.notification.type === 'task_assignment';
               
-              const shouldPlaySound = isMessageNotification || isTaskNotification;
+              // Sound should ONLY play for these two specific cases
+              const shouldPlaySound = isDirectMessage || isTaskAssignment;
               
               if (shouldPlaySound) {
                 console.log('🔊 SOUND TRIGGER ACTIVATED:', {
                   type: data.notification.type,
                   referenceType: data.notification.referenceType,
                   notificationId: data.notification.id,
-                  isMessage: isMessageNotification,
-                  isTask: isTaskNotification,
+                  isDirectMessage,
+                  isTaskAssignment,
                   timestamp: new Date().toISOString()
                 });
                 
