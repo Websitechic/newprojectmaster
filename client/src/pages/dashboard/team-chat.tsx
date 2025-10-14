@@ -251,10 +251,21 @@ export default function TeamChat() {
           // Play sound if message is from someone else
           if (data.data.senderId !== user?.id) {
             console.log('🔊 Team message from another user, playing sound');
-            // Play sound with slight delay
-            setTimeout(() => {
-              playNotificationSound();
-            }, 100);
+            
+            // Play sound with multiple retry attempts
+            const attemptSound = async (attemptNumber: number) => {
+              try {
+                console.log(`🔊 Team chat sound attempt ${attemptNumber}`);
+                await playNotificationSound();
+                console.log(`✅ Team chat sound attempt ${attemptNumber} completed`);
+              } catch (error) {
+                console.error(`❌ Team chat sound attempt ${attemptNumber} failed:`, error);
+              }
+            };
+            
+            // Multiple attempts with delays
+            setTimeout(() => attemptSound(1), 50);
+            setTimeout(() => attemptSound(2), 200);
           }
         }
       } catch (error) {

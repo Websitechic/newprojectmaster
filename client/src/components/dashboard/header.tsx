@@ -30,22 +30,37 @@ export function Header() {
   const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
   const { playNotificationSound } = useNotificationSound();
 
-  // Initialize audio on mount with user interaction listener
+  // Initialize audio IMMEDIATELY on mount with multiple interaction listeners
   useEffect(() => {
-    // Dispatch custom event to initialize audio
+    // Try to initialize immediately
+    console.log('🎵 Header mounted, initializing audio...');
     window.dispatchEvent(new Event('init-audio'));
-
-    // Also try to initialize on any user interaction within the header
-    const handleInteraction = () => {
+    
+    // Try to play a silent sound to unlock audio (common mobile browser trick)
+    const unlockAudio = () => {
+      console.log('🔓 Attempting to unlock audio on user interaction');
       window.dispatchEvent(new Event('init-audio'));
+      
+      // Try playing the notification sound to fully unlock
+      try {
+        playNotificationSound();
+      } catch (e) {
+        console.log('Initial sound play failed (expected):', e);
+      }
     };
 
-    document.addEventListener('click', handleInteraction, { once: true, capture: true });
+    // Listen to multiple events
+    const events = ['click', 'touchstart', 'keydown'];
+    events.forEach(event => {
+      document.addEventListener(event, unlockAudio, { once: true, capture: true, passive: true });
+    });
 
     return () => {
-      document.removeEventListener('click', handleInteraction, { capture: true });
+      events.forEach(event => {
+        document.removeEventListener(event, unlockAudio, { capture: true });
+      });
     };
-  }, []);
+  }, [playNotificationSound]);
 
   // Fetch team chat unread counts
   const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({

@@ -153,10 +153,21 @@ export function DirectMessages() {
           // Play sound if message is from someone else
           if (message.senderId !== user?.id) {
             console.log('🔊 Direct message from another user, playing sound');
-            // Play sound with slight delay
-            setTimeout(() => {
-              playNotificationSound();
-            }, 100);
+            
+            // Play sound with multiple retry attempts
+            const attemptSound = async (attemptNumber: number) => {
+              try {
+                console.log(`🔊 Direct message sound attempt ${attemptNumber}`);
+                await playNotificationSound();
+                console.log(`✅ Direct message sound attempt ${attemptNumber} completed`);
+              } catch (error) {
+                console.error(`❌ Direct message sound attempt ${attemptNumber} failed:`, error);
+              }
+            };
+            
+            // Multiple attempts with delays
+            setTimeout(() => attemptSound(1), 50);
+            setTimeout(() => attemptSound(2), 200);
           }
 
           // If the message is from the currently selected user, add it to messages immediately
