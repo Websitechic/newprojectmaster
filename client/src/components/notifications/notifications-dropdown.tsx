@@ -149,23 +149,10 @@ export function NotificationsDropdown() {
                   timestamp: new Date().toISOString()
                 });
                 
-                // Play sound with multiple retry attempts
-                const attemptSound = async (attemptNumber: number) => {
-                  try {
-                    console.log(`🔊 Sound attempt ${attemptNumber}`);
-                    await playNotificationSound();
-                    console.log(`✅ Sound attempt ${attemptNumber} completed`);
-                  } catch (soundError) {
-                    console.error(`❌ Sound attempt ${attemptNumber} error:`, soundError);
-                  }
-                };
-                
-                // Immediate attempt
-                attemptSound(1);
-                
-                // Retry attempts with increasing delays
-                setTimeout(() => attemptSound(2), 100);
-                setTimeout(() => attemptSound(3), 300);
+                // Play sound immediately without async wrapper to avoid timing issues
+                playNotificationSound().catch(err => {
+                  console.error('Sound playback error:', err);
+                });
               } else {
                 console.log('⏭️ Sound skipped - notification type:', data.notification.type, 'reference:', data.notification.referenceType);
               }
