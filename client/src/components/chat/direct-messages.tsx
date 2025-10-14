@@ -670,19 +670,25 @@ export function DirectMessages() {
                                     
                                     // Try to find the original message by matching content
                                     const originalMsg = messages.find(m => 
-                                      m.content === quotedContent || m.content.includes(quotedContent)
+                                      m.content === quotedContent || 
+                                      m.content.includes(quotedContent) ||
+                                      (m.content.startsWith('> Replying to') && m.content.split('\n\n').slice(1).join('\n\n') === quotedContent)
                                     );
                                     
                                     return (
                                       <div 
                                         key={idx} 
                                         className={cn(
-                                          "border-l-4 pl-3 mb-2 italic text-xs cursor-pointer hover:opacity-70 transition-opacity rounded",
+                                          "border-l-4 pl-3 mb-2 italic text-xs cursor-pointer hover:bg-muted/30 transition-all rounded p-2",
                                           message.senderId === user?.id
                                             ? "border-primary-foreground/30 opacity-80"
                                             : "border-primary/50 text-muted-foreground"
                                         )}
-                                        onClick={() => originalMsg && handleClickRepliedMessage(originalMsg.id)}
+                                        onClick={() => {
+                                          if (originalMsg) {
+                                            handleClickRepliedMessage(originalMsg.id);
+                                          }
+                                        }}
                                       >
                                         <div className="font-semibold mb-1">
                                           {replyToLine.replace(/^> /, '')}

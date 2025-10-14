@@ -334,13 +334,23 @@ export default function TeamChat() {
     }
 
     try {
+      // Find the original message to check if it has a reply context
+      const originalMsg = messages.find(m => m.id === messageId);
+      let finalContent = editingContent.trim();
+      
+      // If the original message was a reply, preserve the quoted part
+      if (originalMsg && originalMsg.content.startsWith('> Replying to')) {
+        const quotedPart = originalMsg.content.split('\n\n')[0];
+        finalContent = `${quotedPart}\n\n${editingContent.trim()}`;
+      }
+
       const response = await fetch(`/api/projects/${projectId}/team-messages/${messageId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          content: editingContent.trim(),
+          content: finalContent,
         }),
       });
 
@@ -777,22 +787,36 @@ export default function TeamChat() {
                                 <div>
                                   {msg.content.split('\n\n').map((part, idx) => {
                                     if (idx === 0) {
-                                      // This is the quoted part
+                                      // This is the quoted part - extract the quoted content and find original message
+                                      const replyLines = part.split('\n');
+                                      const replyToLine = replyLines[0]; // "> Replying to Name:"
+                                      const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
+                                      
+                                      // Find the original message by matching content
+                                      const originalMsg = messages.find(m => 
+                                        m.content === quotedContent || 
+                                        m.content.includes(quotedContent) ||
+                                        (m.content.startsWith('> Replying to') && m.content.split('\n\n').slice(1).join('\n\n') === quotedContent)
+                                      );
+                                      
                                       return (
-                                        <div key={idx} className="border-l-4 border-primary pl-3 mb-2 text-muted-foreground italic cursor-pointer"
+                                        <div 
+                                          key={idx} 
+                                          className="border-l-4 border-primary pl-3 mb-2 text-muted-foreground italic cursor-pointer hover:bg-muted/50 transition-colors rounded"
                                           onClick={() => {
-                                            // Find the message ID from the quoted content (this is a simplified approach)
-                                            // A more robust solution would involve parsing the original message ID from the quote itself
-                                            const replyMatch = part.match(/message-(\d+)/);
-                                            if (replyMatch && replyMatch[1]) {
-                                              const originalMessageId = parseInt(replyMatch[1]);
-                                              const originalMessageElement = document.getElementById(`message-${originalMessageId}`);
+                                            if (originalMsg) {
+                                              const originalMessageElement = document.getElementById(`message-${originalMsg.id}`);
                                               if (originalMessageElement) {
-                                                originalMessageElement.classList.add('bg-yellow-200', 'animate-pulse');
-                                                setTimeout(() => {
-                                                  originalMessageElement.classList.remove('bg-yellow-200', 'animate-pulse');
-                                                }, 2000); // Flash for 2 seconds
+                                                // Add highlight effect
+                                                originalMessageElement.classList.add('highlight-flash');
+                                                
+                                                // Scroll to message
                                                 originalMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                
+                                                // Remove highlight after animation
+                                                setTimeout(() => {
+                                                  originalMessageElement.classList.remove('highlight-flash');
+                                                }, 2000);
                                               }
                                             }
                                           }}
@@ -843,7 +867,13 @@ export default function TeamChat() {
                                       <DropdownMenuItem
                                         onClick={() => {
                                           setEditingMessageId(msg.id);
-                                          setEditingContent(msg.content);
+                                          // Extract only the actual message content, not the quoted part
+                                          if (msg.content.startsWith('> Replying to')) {
+                                            const parts = msg.content.split('\n\n');
+                                            setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : '');
+                                          } else {
+                                            setEditingContent(msg.content);
+                                          }
                                         }}
                                       >
                                         <Edit2 className="h-4 w-4 mr-2" />

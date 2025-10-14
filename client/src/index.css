@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,6 +13,32 @@
 
 .highlight-flash {
   animation: highlight-flash 1s ease-in-out 2;
+}
+
+/* Custom utility classes */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Highlight flash animation for replied messages */
+@keyframes highlight-flash {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgb(250 204 21 / 0.3); /* yellow-400 with opacity */
+  }
+}
+
+.highlight-flash {
+  animation: highlight-flash 1s ease-in-out 2;
+  border-radius: 0.5rem;
+  padding: 0.25rem;
 }
 
 /* Custom responsive utilities */
@@ -353,7 +378,7 @@
     max-width: 28rem !important;
     min-width: 320px !important;
   }
-  
+
   /* Override any global width constraints for auth forms */
   .auth-form-container.max-w-md,
   .auth-form-container.w-full {
@@ -472,11 +497,11 @@
   .container-responsive {
     @apply w-full max-w-none px-4;
   }
-  
+
   .dashboard-main {
     @apply p-4 max-w-none;
   }
-  
+
   .grid-cols-4 {
     grid-template-columns: repeat(3, 1fr) !important;
   }
@@ -514,7 +539,7 @@
   .container-responsive {
     @apply w-full max-w-none px-4;
   }
-  
+
   .dashboard-main {
     @apply p-6 max-w-none;
   }

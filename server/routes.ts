@@ -3481,15 +3481,14 @@ End of Report
           .limit(1);
 
         if (repliedToUser.length > 0 && repliedToUser[0].id !== user.id) {
-          // Create notification for the replied user
-          await db.insert(notifications).values({
-            userId: repliedToUser[0].id,
-            type: 'mention',
-            content: `${user.name} replied to your message`,
-            referenceId: newMessage.id,
-            referenceType: 'message',
-            read: false,
-          });
+          // Create notification for the replied user - use 'reply' type for reply notifications
+          await createNotification(
+            repliedToUser[0].id,
+            "reply",
+            `${user.name} replied to your message`,
+            newMessage.id,
+            "direct_message"
+          );
         }
       }
 
