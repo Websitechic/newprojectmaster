@@ -235,10 +235,15 @@ export function Header() {
         {/* Notifications */}
         <NotificationsDropdown />
         
-        {/* Audio Context Status - Hidden but initializes on mount */}
-        <div className="hidden">
-          <audio id="notification-init" preload="auto" />
-        </div>
+        {/* Audio Context Initializer - triggers on any click */}
+        <div 
+          className="hidden" 
+          onClick={() => {
+            // This ensures audio context is initialized on user interaction
+            const event = new CustomEvent('init-audio');
+            window.dispatchEvent(event);
+          }}
+        />
 
         {/* Profile Dropdown */}
         <DropdownMenu>

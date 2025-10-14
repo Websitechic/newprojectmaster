@@ -112,17 +112,10 @@ export function NotificationsDropdown() {
                 return oldData;
               });
               
-              // Play sound for task assignments, messages, and direct messages
-              const notificationType = data.notification.type;
-              
-              // Play sound for all notifications except system messages
-              if (notificationType && notificationType !== 'system') {
-                console.log('🔊 Playing notification sound for type:', notificationType);
-                // Play sound with a slight delay to ensure DOM updates
-                setTimeout(() => {
-                  playNotificationSound();
-                }, 100);
-              }
+              // Play sound for all new notifications
+              console.log('🔊 Playing notification sound for:', data.notification.type || 'notification');
+              // Play sound immediately - audio context should be ready from user interaction
+              playNotificationSound();
             }
           } catch (error) {
             console.error("Error parsing SSE message:", error);
