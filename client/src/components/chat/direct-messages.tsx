@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { useAuth } from "@/hooks/use-auth";
 
 interface User {
   id: number;
@@ -66,6 +67,8 @@ export function DirectMessages() {
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { playNotificationSound } = useNotificationSound();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   // Fetch conversations
   useEffect(() => {
@@ -238,6 +241,7 @@ export function DirectMessages() {
   }, [selectedUser, user?.id, playNotificationSound]);
 
   // WebSocket event listeners for direct messages
+  useEffect(() => {
     const handleDirectMessage = (event: CustomEvent) => {
       const messageData = event.detail;
       console.log("Direct message received via WebSocket:", messageData);
@@ -273,6 +277,11 @@ export function DirectMessages() {
     };
 
     window.addEventListener('websocket:direct_message', handleDirectMessage as EventListener);
+
+    return () => {
+      window.removeEventListener('websocket:direct_message', handleDirectMessage as EventListener);
+    };
+  }, [selectedUser, user?.id, queryClient]);
 
   const handleEditMessage = async (messageId: number) => {
     if (!editingContent.trim()) {

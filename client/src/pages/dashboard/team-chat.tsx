@@ -782,7 +782,12 @@ export default function TeamChat() {
                           </div>
                         ) : (
                           <div className="relative">
-                            <div className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap break-words">
+                            <div className={cn(
+                              "text-sm rounded-lg p-3 whitespace-pre-wrap break-words",
+                              msg.senderId === user?.id 
+                                ? "bg-primary/20 dark:bg-primary/30" 
+                                : "bg-muted/50"
+                            )}>
                               {msg.content.startsWith('> Replying to') ? (
                                 <div>
                                   {msg.content.split('\n\n').map((part, idx) => {
