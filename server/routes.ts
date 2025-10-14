@@ -127,12 +127,24 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: {fileSize: 5 * 1024 * 1024}, // 5MB limit
+  limits: {fileSize: 10 * 1024 * 1024}, // 10MB limit
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    const allowedMimeTypes = [
+      'image/',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain'
+    ];
+    
+    const isAllowed = allowedMimeTypes.some(type => file.mimetype.startsWith(type) || file.mimetype === type);
+    
+    if (isAllowed) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error('Only images and documents (PDF, Word, Excel, TXT) are allowed'));
     }
   }
 });
@@ -5446,6 +5458,76 @@ End of Report
     } catch (error) {
       console.error("Error fetching project resources:", error);
       res.status(500).json({ error: "Failed to fetch project resources" });
+    }
+  });
+
+  // Upload file resource to project
+  app.post("/api/projects/:id/resources/upload", upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { category } = req.body;
+
+      if (!category) {
+        return res.status(400).json({ error: "Category is required" });
+      }
+
+      // Check if project exists
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check user access permissions
+      const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+      const isTeamLead = user.role === 'team_lead';
+      const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
+      const isCustomerSupportOfficer = user.role === 'customer_support_officer';
+      const isClient = user.role === 'client' && project.clientId === user.id;
+
+      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isCustomerSupportOfficer || isClient;
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied - insufficient permissions" });
+      }
+
+      // Store file information
+      const filePath = `/uploads/leave-proof/${req.file.filename}`;
+      
+      // Insert the new resource
+      const [newResource] = await db
+        .insert(resources)
+        .values({
+          name: req.file.originalname,
+          type: category,
+          path: filePath,
+          size: req.file.size,
+          projectId,
+          uploadedBy: user.id,
+        })
+        .returning();
+
+      res.json({ success: true, resourceId: newResource.id });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ 
+        error: "Failed to upload file", 
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 

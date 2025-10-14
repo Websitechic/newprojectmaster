@@ -84,6 +84,12 @@ export default function ProjectResources() {
   const [linkCategory, setLinkCategory] = useState("");
   const [isSubmittingLink, setIsSubmittingLink] = useState(false);
 
+  // State for file upload dialog
+  const [showFileDialog, setShowFileDialog] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileCategory, setFileCategory] = useState("");
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+
   // State for edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
@@ -96,6 +102,53 @@ export default function ProjectResources() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleFileUpload = async () => {
+    if (!selectedFile || !fileCategory.trim()) {
+      alert("Please select a file and choose a category");
+      return;
+    }
+
+    setIsUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('category', fileCategory.trim());
+
+      const response = await fetch(`/api/projects/${projectId}/resources/upload`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = "Failed to upload file";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Reset form and close dialog
+      setSelectedFile(null);
+      setFileCategory("");
+      setShowFileDialog(false);
+      
+      // Refresh resources list
+      await refetch();
+      alert("File uploaded successfully!");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload file";
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setIsUploadingFile(false);
+    }
+  };
 
   const handleAddLink = async () => {
     if (!linkName.trim() || !linkUrl.trim() || !linkCategory.trim()) {
@@ -336,6 +389,66 @@ export default function ProjectResources() {
             
             {canManageResources && (
               <div className="flex gap-2">
+                <Dialog open={showFileDialog} onOpenChange={setShowFileDialog}>
+                  <DialogTrigger asChild>
+                    <Button className="flex items-center gap-2" variant="outline">
+                      <Upload className="h-4 w-4" />
+                      Upload File
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Upload File</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="file">Select File</Label>
+                        <Input
+                          id="file"
+                          type="file"
+                          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                        />
+                        {selectedFile && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="fileCategory">Category</Label>
+                        <Select value={fileCategory} onValueChange={setFileCategory}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categoryOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowFileDialog(false)}
+                          disabled={isUploadingFile}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleFileUpload}
+                          disabled={!selectedFile || !fileCategory.trim() || isUploadingFile}
+                        >
+                          {isUploadingFile ? "Uploading..." : "Upload"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
                 <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
                   <DialogTrigger asChild>
                     <Button className="flex items-center gap-2">
@@ -536,11 +649,15 @@ export default function ProjectResources() {
                                       >
                                         <ExternalLink className="h-4 w-4" />
                                       </Button>
-                                    ) : (
-                                      <Button variant="ghost" size="sm">
+                                    ) : resource.path ? (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => window.open(resource.path, '_blank')}
+                                      >
                                         <Download className="h-4 w-4" />
                                       </Button>
-                                    )}
+                                    ) : null}
                                     
                                     {canManageResources && (
                                       <DropdownMenu>
