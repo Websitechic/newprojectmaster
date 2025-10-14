@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft } from "lucide-react";
+import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -850,6 +850,16 @@ export function DirectMessages() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                navigator.clipboard.writeText(message.content);
+                                toast({
+                                  title: "Copied",
+                                  description: "Message copied to clipboard",
+                                });
+                              }}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copy
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
                                 <CornerUpLeft className="h-4 w-4 mr-2" />
                                 Reply
