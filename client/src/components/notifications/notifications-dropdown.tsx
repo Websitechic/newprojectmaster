@@ -112,14 +112,22 @@ export function NotificationsDropdown() {
                 return oldData;
               });
               
-              // Play sound for all new notifications
-              console.log('🔊 Attempting to play notification sound for:', data.notification.type || 'notification');
+              // Play sound only for unread messages and task assignments
+              const shouldPlaySound = 
+                data.notification.type === 'message' || 
+                data.notification.type === 'task_assigned';
               
-              // Use requestAnimationFrame to ensure sound plays after render
-              requestAnimationFrame(() => {
-                playNotificationSound();
-                console.log('✅ Notification sound played');
-              });
+              if (shouldPlaySound) {
+                console.log('🔊 Playing notification sound for:', data.notification.type);
+                
+                // Use requestAnimationFrame to ensure sound plays after render
+                requestAnimationFrame(() => {
+                  playNotificationSound();
+                  console.log('✅ Notification sound played for', data.notification.type);
+                });
+              } else {
+                console.log('ℹ️ Skipping sound for notification type:', data.notification.type);
+              }
             }
           } catch (error) {
             console.error("Error parsing SSE message:", error);
