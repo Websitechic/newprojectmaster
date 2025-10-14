@@ -1782,27 +1782,27 @@ End of Report
     try {
       const { title, description, status, assigneeId, startDate, deadline, workingHours, workingMinutes } = req.body;
 
-      // Check if task exists
-      const [existingTask] = await db
-        .select()
+      // Check if task exists and get project information in one query
+      const [taskWithProject] = await db
+        .select({
+          task: tasks,
+          project: projects,
+        })
         .from(tasks)
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
         .where(eq(tasks.id, taskId))
         .limit(1);
 
-      if (!existingTask) {
+      if (!taskWithProject || !taskWithProject.task) {
         return res.status(404).json({ error: "Task not found" });
       }
 
-      // Get project information to check permissions
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, existingTask.projectId))
-        .limit(1);
-
-      if (!project) {
+      if (!taskWithProject.project) {
         return res.status(404).json({ error: "Project not found" });
       }
+
+      const existingTask = taskWithProject.task;
+      const project = taskWithProject.project;
 
       // Check permissions
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
@@ -1897,27 +1897,27 @@ End of Report
     const taskId = parseInt(req.params.id);
 
     try {
-      // Check if task exists
-      const [existingTask] = await db
-        .select()
+      // Check if task exists and get project information in one query
+      const [taskWithProject] = await db
+        .select({
+          task: tasks,
+          project: projects,
+        })
         .from(tasks)
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
         .where(eq(tasks.id, taskId))
         .limit(1);
 
-      if (!existingTask) {
+      if (!taskWithProject || !taskWithProject.task) {
         return res.status(404).json({ error: "Task not found" });
       }
 
-      // Get project information to check permissions
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, existingTask.projectId))
-        .limit(1);
-
-      if (!project) {
+      if (!taskWithProject.project) {
         return res.status(404).json({ error: "Project not found" });
       }
+
+      const existingTask = taskWithProject.task;
+      const project = taskWithProject.project;
 
       // Check permissions
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
