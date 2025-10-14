@@ -32,7 +32,12 @@ export function NotificationsDropdown() {
   const [isConnecting, setIsConnecting] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { playNotificationSound } = useNotificationSound();
+  const { playNotificationSound, isInitialized } = useNotificationSound();
+  
+  // Log audio initialization status
+  useEffect(() => {
+    console.log('🔊 Audio initialized:', isInitialized);
+  }, [isInitialized]);
 
   // Local state to manage notifications, for SSE updates before query refetch
   const [sseNotifications, setSseNotifications] = useState<Notification[]>([]);
@@ -120,37 +125,35 @@ export function NotificationsDropdown() {
                 content: data.notification.content?.substring(0, 50)
               });
               
-              const shouldPlaySound = 
+              // Check for message-related notifications by type OR referenceType
+              const isMessageNotification = 
                 data.notification.type === 'message' || 
-                data.notification.type === 'task_assigned' ||
                 data.notification.referenceType === 'direct_message' ||
+                (data.notification.content && data.notification.content.toLowerCase().includes('message'));
+              
+              const isTaskNotification = 
+                data.notification.type === 'task_assigned' ||
+                data.notification.type === 'task_assignment' ||
                 data.notification.referenceType === 'task';
+              
+              const shouldPlaySound = isMessageNotification || isTaskNotification;
               
               if (shouldPlaySound) {
                 console.log('🔊 TRIGGERING notification sound:', {
                   type: data.notification.type,
                   referenceType: data.notification.referenceType,
-                  notificationId: data.notification.id
+                  notificationId: data.notification.id,
+                  isMessage: isMessageNotification,
+                  isTask: isTaskNotification
                 });
                 
-                // Play with multiple attempts for reliability
-                setTimeout(() => {
-                  try {
-                    playNotificationSound();
-                    console.log('✅ Sound played (immediate)');
-                  } catch (err) {
-                    console.error('❌ Immediate sound failed:', err);
-                  }
-                }, 50);
+                // Play immediately and with retry
+                playNotificationSound();
                 
                 setTimeout(() => {
-                  try {
-                    playNotificationSound();
-                    console.log('✅ Sound played (delayed)');
-                  } catch (err) {
-                    console.error('❌ Delayed sound failed:', err);
-                  }
-                }, 150);
+                  playNotificationSound();
+                  console.log('✅ Sound retry played');
+                }, 100);
               } else {
                 console.log('⏭️ Skipping sound - notification type:', data.notification.type, 'reference:', data.notification.referenceType);
               }

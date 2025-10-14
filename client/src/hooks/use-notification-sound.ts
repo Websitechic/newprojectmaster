@@ -45,12 +45,22 @@ export function useNotificationSound() {
     }
   }, []);
 
-  // Initialize on first user interaction
+  // Initialize immediately on mount and on first user interaction
   useEffect(() => {
+    // Try to initialize immediately (may be suspended until user interaction)
+    initAudioContext();
+    
     const handleUserInteraction = () => {
-      if (!audioContextRef.current) {
-        console.log('Initializing audio context on user interaction...');
+      if (!audioContextRef.current || audioContextRef.current.state === 'suspended') {
+        console.log('Initializing/resuming audio context on user interaction...');
         initAudioContext();
+        
+        // Resume if suspended
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume().then(() => {
+            console.log('✓ Audio context resumed on interaction');
+          });
+        }
       }
     };
 

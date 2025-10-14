@@ -74,16 +74,32 @@ async function createNotification(userId: number, type: string, content: string,
       const userClient = global.sseClients.get(userId);
       if (userClient && !userClient.writableEnded) {
         try {
-          userClient.write(`data: ${JSON.stringify({
+          // Ensure all required fields are present for sound triggering
+          const notificationPayload = {
             type: 'notification',
-            notification: newNotification
-          })}\n\n`);
-          console.log(`📨 SSE notification sent to user ${userId}`);
+            notification: {
+              id: newNotification.id,
+              userId: newNotification.userId,
+              type: newNotification.type,
+              content: newNotification.content,
+              referenceId: newNotification.referenceId,
+              referenceType: newNotification.referenceType,
+              read: newNotification.read,
+              createdAt: newNotification.createdAt
+            }
+          };
+          
+          userClient.write(`data: ${JSON.stringify(notificationPayload)}\n\n`);
+          console.log(`📨 SSE notification sent to user ${userId}:`, notificationPayload);
         } catch (error) {
           console.error(`❌ Error sending SSE notification to user ${userId}:`, error);
           global.sseClients.delete(userId);
         }
+      } else {
+        console.log(`⚠️ No active SSE client for user ${userId}`);
       }
+    } else {
+      console.log(`⚠️ User ${userId} not in SSE clients map`);
     }
 
     return newNotification;

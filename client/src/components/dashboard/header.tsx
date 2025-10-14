@@ -1,4 +1,3 @@
-
 import { Bell, MessageSquare, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,21 +30,20 @@ export function Header() {
   const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
   const { playNotificationSound } = useNotificationSound();
 
-  // Initialize audio context on first user interaction
+  // Initialize audio on mount with user interaction listener
   useEffect(() => {
-    const initAudio = () => {
-      const event = new CustomEvent('init-audio');
-      window.dispatchEvent(event);
-      console.log('Audio initialization triggered from header');
+    // Dispatch custom event to initialize audio
+    window.dispatchEvent(new Event('init-audio'));
+
+    // Also try to initialize on any user interaction within the header
+    const handleInteraction = () => {
+      window.dispatchEvent(new Event('init-audio'));
     };
 
-    // Trigger on any user interaction
-    window.addEventListener('click', initAudio, { once: true });
-    window.addEventListener('keydown', initAudio, { once: true });
+    document.addEventListener('click', handleInteraction, { once: true, capture: true });
 
     return () => {
-      window.removeEventListener('click', initAudio);
-      window.removeEventListener('keydown', initAudio);
+      document.removeEventListener('click', handleInteraction, { capture: true });
     };
   }, []);
 
@@ -130,13 +128,13 @@ export function Header() {
       const project = projects.find((p: any) => 
         notif.content.includes(p.name)
       );
-      
+
       if (project) {
         // Check if we already have this project in combined
         const existingIndex = combined.findIndex(msg => 
           msg.type === "team_chat" && msg.projectId === project.id
         );
-        
+
         if (existingIndex === -1) {
           // Add new entry for mention
           combined.push({
@@ -249,7 +247,7 @@ export function Header() {
 
         {/* Notifications */}
         <NotificationsDropdown />
-        
+
         {/* Audio Context Initializer - triggers on any click */}
         <div 
           className="hidden" 
