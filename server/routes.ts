@@ -1438,6 +1438,47 @@ End of Report
     }
   });
 
+  // Update client onboarding status
+  app.put("/api/clients/:id/onboarding-status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "product_owner" && user.role !== "customer_support_officer") {
+      return res.status(403).json({ error: "Only product owners and customer support officers can update onboarding status" });
+    }
+
+    try {
+      const clientId = parseInt(req.params.id);
+      const { onboardingStatus } = req.body;
+
+      if (!onboardingStatus) {
+        return res.status(400).json({ error: "Onboarding status is required" });
+      }
+
+      const validStatuses = ["onboarded", "not_onboarded", "onboarding_in_progress", "onboarding_pending"];
+      if (!validStatuses.includes(onboardingStatus)) {
+        return res.status(400).json({ error: "Invalid onboarding status" });
+      }
+
+      const [updatedClient] = await db
+        .update(users)
+        .set({ onboardingStatus: onboardingStatus as any })
+        .where(eq(users.id, clientId))
+        .returning();
+
+      if (!updatedClient) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      res.json({ success: true, client: updatedClient });
+    } catch (error) {
+      console.error("Error updating client onboarding status:", error);
+      res.status(500).json({ error: "Failed to update onboarding status" });
+    }
+  });
+
   // Create Client Account API Route
   app.post("/api/client-accounts", async (req, res) => {
     if (!req.isAuthenticated()) {
