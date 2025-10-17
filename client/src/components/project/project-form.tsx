@@ -183,9 +183,8 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
       let savedProject;
 
-      if (project && project.id) {
-        // Update existing project - ensure we have a valid project ID
-        console.log("Updating existing project with ID:", project.id);
+      if (project) {
+        // Update existing project
         const response = await fetch(`/api/projects/${project.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -194,15 +193,12 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
         if (!response.ok) {
           const errorData = await response.text();
-          console.error("Failed to update project:", errorData);
           throw new Error(errorData || "Failed to update project");
         }
 
         savedProject = await response.json();
-        console.log("Project updated successfully:", savedProject);
       } else {
         // Create new project
-        console.log("Creating new project");
         const response = await fetch("/api/projects", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -211,12 +207,10 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
         if (!response.ok) {
           const errorData = await response.text();
-          console.error("Failed to create project:", errorData);
           throw new Error(errorData || "Failed to create project");
         }
 
         savedProject = await response.json();
-        console.log("Project created successfully:", savedProject);
 
         // Create project plan for new projects only if user chose to create one
         if (data.createPlan && data.planName && data.planName.trim()) {
