@@ -6620,9 +6620,9 @@ End of Report
         if (project.category !== "support_maintenance") {
           return res.status(403).json({ error: "Customer support officers can only edit Support & Maintenance projects" });
         }
-        // Check if they're trying to change the category
-        if (category && category !== "support_maintenance") {
-          return res.status(403).json({ error: "Customer support officers cannot change the project category" });
+        // Ensure they cannot change the category
+        if (category !== "support_maintenance") {
+          return res.status(403).json({ error: "Customer support officers must keep the project category as Support & Maintenance" });
         }
       }
 

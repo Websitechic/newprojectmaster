@@ -213,7 +213,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
         savedProject = await response.json();
         console.log("Project created successfully:", savedProject);
 
-        // Create project plan for new projects only if user chose to create one
+        // Create project plan ONLY for new projects if user chose to create one
         if (data.createPlan && data.planName && data.planName.trim()) {
           const planData = {
             name: data.planName,
