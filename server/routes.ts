@@ -6604,7 +6604,7 @@ End of Report
         return res.status(404).json({ error:"Project not found" });
       }
 
-      const isOperationsManager =user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isProductOwner = user.role === "product_owner";
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
@@ -6614,9 +6614,16 @@ End of Report
         return res.status(403).json({ error: "Access denied" });
       }
 
-      // For customer support officers, ensure they can only edit support_maintenance projects
-      if (isCustomerSupportOfficer && category !== "support_maintenance") {
-        return res.status(403).json({ error: "Customer support officers can only edit Support & Maintenance projects" });
+      // For customer support officers, validate they can only work with support_maintenance projects
+      if (isCustomerSupportOfficer) {
+        // Check if the existing project is support_maintenance
+        if (project.category !== "support_maintenance") {
+          return res.status(403).json({ error: "Customer support officers can only edit Support & Maintenance projects" });
+        }
+        // Check if they're trying to change the category
+        if (category && category !== "support_maintenance") {
+          return res.status(403).json({ error: "Customer support officers cannot change the project category" });
+        }
       }
 
       // Update project

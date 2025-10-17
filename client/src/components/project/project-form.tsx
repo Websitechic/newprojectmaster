@@ -126,7 +126,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
       const memberIds = existingMembers
         .filter((member: any) => member.invitationStatus === 'accepted')
         .map((member: any) => member.userId.toString());
-      
+
       console.log('Setting team members:', memberIds);
       form.setValue('teamMembers', memberIds, { shouldValidate: false });
     }
@@ -155,7 +155,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
         return [];
       }
       const staffMembers = await response.json();
-      
+
       // Also fetch project managers
       const pmResponse = await fetch("/api/users");
       if (pmResponse.ok) {
@@ -163,7 +163,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
         const projectManagers = allUsers.filter((u: any) => u.role === 'project_manager');
         return [...staffMembers, ...projectManagers];
       }
-      
+
       return staffMembers;
     },
   });
@@ -211,6 +211,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
         }
 
         savedProject = await response.json();
+        console.log("Project created successfully:", savedProject);
 
         // Create project plan for new projects only if user chose to create one
         if (data.createPlan && data.planName && data.planName.trim()) {
