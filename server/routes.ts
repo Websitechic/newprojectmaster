@@ -6620,13 +6620,16 @@ End of Report
         if (project.category !== "support_maintenance") {
           return res.status(403).json({ error: "Customer support officers can only edit Support & Maintenance projects" });
         }
-        // Ensure they cannot change the category
-        if (category !== "support_maintenance") {
-          return res.status(403).json({ error: "Customer support officers must keep the project category as Support & Maintenance" });
-        }
+        // Force category to remain support_maintenance - don't allow changes
+        category = "support_maintenance";
       }
 
-      // Update project
+      // Ensure projectId is valid before updating
+      if (!projectId || isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID for update" });
+      }
+
+      // Update project - use explicit where clause to prevent accidental creation
       const [updatedProject] = await db
         .update(projects)
         .set({
@@ -6641,6 +6644,11 @@ End of Report
         })
         .where(eq(projects.id, projectId))
         .returning();
+
+      // Verify the update actually happened
+      if (!updatedProject) {
+        return res.status(500).json({ error: "Failed to update project - no project returned" });
+      }
 
       // Notify client about project updates
       if (updatedProject.clientId && updatedProject.clientId !== user.id) {

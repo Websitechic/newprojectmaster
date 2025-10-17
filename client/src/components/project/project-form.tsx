@@ -183,8 +183,12 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
       let savedProject;
 
-      if (project) {
-        // Update existing project
+      // Critical check: If we have a project object with an ID, this is ALWAYS an update
+      const isUpdate = project && project.id && typeof project.id === 'number';
+
+      if (isUpdate) {
+        // Update existing project - ensure we have a valid project ID
+        console.log("UPDATING existing project with ID:", project.id, "Project object:", project);
         const response = await fetch(`/api/projects/${project.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -193,12 +197,20 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
         if (!response.ok) {
           const errorData = await response.text();
+          console.error("Failed to update project:", errorData);
           throw new Error(errorData || "Failed to update project");
         }
 
         savedProject = await response.json();
+        console.log("Project updated successfully:", savedProject);
+
+        // Ensure we got back a project with the same ID (not a new one)
+        if (savedProject.id !== project.id) {
+          console.error("WARNING: Updated project has different ID!", { expected: project.id, got: savedProject.id });
+        }
       } else {
         // Create new project
+        console.log("CREATING new project (no project ID found)");
         const response = await fetch("/api/projects", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -207,6 +219,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
         if (!response.ok) {
           const errorData = await response.text();
+          console.error("Failed to create project:", errorData);
           throw new Error(errorData || "Failed to create project");
         }
 
