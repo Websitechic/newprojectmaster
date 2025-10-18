@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, Pin, Search } from "lucide-react";
+import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, Pin, Search, FileText } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -848,9 +848,20 @@ export default function TeamChat() {
                     )}
                   </div>
                 </div>
-                <Badge variant="outline" className="text-xs">
-                  {messages.length} message{messages.length !== 1 ? 's' : ''}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocation(`/dashboard/projects/${projectId}/resources`)}
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Resources
+                  </Button>
+                  <Badge variant="outline" className="text-xs">
+                    {messages.length} message{messages.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
 
@@ -858,7 +869,24 @@ export default function TeamChat() {
               {/* Pinned Message */}
               {pinnedMessage && (
                 <div className="bg-muted/50 border-b p-3 flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                  <div 
+                    className="flex items-start gap-2 flex-1 min-w-0 cursor-pointer hover:bg-muted/70 transition-colors rounded p-2 -m-2"
+                    onClick={() => {
+                      const pinnedMessageElement = document.getElementById(`message-${pinnedMessage.id}`);
+                      if (pinnedMessageElement) {
+                        // Add highlight effect
+                        pinnedMessageElement.classList.add('highlight-flash');
+                        
+                        // Scroll to message
+                        pinnedMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        // Remove highlight after animation
+                        setTimeout(() => {
+                          pinnedMessageElement.classList.remove('highlight-flash');
+                        }, 2000);
+                      }
+                    }}
+                  >
                     <Pin className="h-4 w-4 text-primary flex-shrink-0 mt-1" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-primary mb-1">Pinned Message</p>
@@ -1043,21 +1071,23 @@ export default function TeamChat() {
                                   </DropdownMenuItem>
                                   {msg.senderId === user?.id && (
                                     <>
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          setEditingMessageId(msg.id);
-                                          // Extract only the actual message content, not the quoted part
-                                          if (msg.content.startsWith('> Replying to')) {
-                                            const parts = msg.content.split('\n\n');
-                                            setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : '');
-                                          } else {
-                                            setEditingContent(msg.content);
-                                          }
-                                        }}
-                                      >
-                                        <Edit2 className="h-4 w-4 mr-2" />
-                                        Edit
-                                      </DropdownMenuItem>
+                                      {!msg.content.startsWith('🔄 Forwarded:\n') && (
+                                        <DropdownMenuItem
+                                          onClick={() => {
+                                            setEditingMessageId(msg.id);
+                                            // Extract only the actual message content, not the quoted part
+                                            if (msg.content.startsWith('> Replying to')) {
+                                              const parts = msg.content.split('\n\n');
+                                              setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : '');
+                                            } else {
+                                              setEditingContent(msg.content);
+                                            }
+                                          }}
+                                        >
+                                          <Edit2 className="h-4 w-4 mr-2" />
+                                          Edit
+                                        </DropdownMenuItem>
+                                      )}
                                       <DropdownMenuItem
                                         onClick={() => handleDeleteMessage(msg.id)}
                                         className="text-destructive"

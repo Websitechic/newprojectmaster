@@ -985,21 +985,23 @@ export function DirectMessages() {
                                   <Copy className="h-4 w-4 mr-2" />
                                   Copy
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setEditingMessageId(message.id);
-                                    // Extract only the actual message content, not the quoted part
-                                    if (message.content.startsWith('> Replying to')) {
-                                      const parts = message.content.split('\n\n');
-                                      setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : '');
-                                    } else {
-                                      setEditingContent(message.content);
-                                    }
-                                  }}
-                                >
-                                  <Edit2 className="h-4 w-4 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
+                                {!message.content.startsWith('🔄 Forwarded:\n') && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setEditingMessageId(message.id);
+                                      // Extract only the actual message content, not the quoted part
+                                      if (message.content.startsWith('> Replying to')) {
+                                        const parts = message.content.split('\n\n');
+                                        setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : '');
+                                      } else {
+                                        setEditingContent(message.content);
+                                      }
+                                    }}
+                                  >
+                                    <Edit2 className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteMessage(message.id)}
                                   className="text-destructive"
