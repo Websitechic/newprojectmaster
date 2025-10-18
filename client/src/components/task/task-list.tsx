@@ -61,12 +61,102 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   // State for managing expanded descriptions
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
 
+  // State for real-time timer tracking
+  const [liveTimers, setLiveTimers] = useState<Record<number, number>>({});
+
   const toggleDescription = (taskId: number) => {
     setExpandedDescriptions((prev) => ({
       ...prev,
       [taskId]: !prev[taskId],
     }));
   };
+
+  // Update live timers every second for running tasks
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveTimers(prev => {
+        const newTimers = { ...prev };
+        tasks.forEach(task => {
+          if (task.isTimerRunning && task.timerStartTime) {
+            const elapsedSinceStart = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
+            newTimers[task.id] = (task.timeSpent || 0) + elapsedSinceStart;
+          } else {
+            newTimers[task.id] = task.timeSpent || 0;
+          }
+        });
+        return newTimers;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [tasks]);
+
+  // Listen for WebSocket timer events
+  useEffect(() => {
+    const handleTimerStarted = (event: CustomEvent) => {
+      const { taskId, isTimerRunning, timerStartTime, timeSpent } = event.detail;
+      
+      // Update the task in the cache
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
+        if (!oldTasks) return oldTasks;
+        return oldTasks.map(task => 
+          task.id === taskId 
+            ? { ...task, isTimerRunning, timerStartTime, timeSpent }
+            : task
+        );
+      });
+
+      if (projectId) {
+        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+          if (!oldTasks) return oldTasks;
+          return oldTasks.map(task => 
+            task.id === taskId 
+              ? { ...task, isTimerRunning, timerStartTime, timeSpent }
+              : task
+          );
+        });
+      }
+    };
+
+    const handleTimerPaused = (event: CustomEvent) => {
+      const { taskId, isTimerRunning, timeSpent, timerStartTime } = event.detail;
+      
+      // Update the task in the cache
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
+        if (!oldTasks) return oldTasks;
+        return oldTasks.map(task => 
+          task.id === taskId 
+            ? { ...task, isTimerRunning, timeSpent, timerStartTime }
+            : task
+        );
+      });
+
+      if (projectId) {
+        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+          if (!oldTasks) return oldTasks;
+          return oldTasks.map(task => 
+            task.id === taskId 
+              ? { ...task, isTimerRunning, timeSpent, timerStartTime }
+              : task
+          );
+        });
+      }
+
+      // Update live timer state
+      setLiveTimers(prev => ({
+        ...prev,
+        [taskId]: timeSpent
+      }));
+    };
+
+    window.addEventListener('websocket:task_timer_started', handleTimerStarted as EventListener);
+    window.addEventListener('websocket:task_timer_paused', handleTimerPaused as EventListener);
+
+    return () => {
+      window.removeEventListener('websocket:task_timer_started', handleTimerStarted as EventListener);
+      window.removeEventListener('websocket:task_timer_paused', handleTimerPaused as EventListener);
+    };
+  }, [queryClient, projectId]);
 
   const { data: staff, isLoading: staffLoading } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/staff", projectId],
@@ -399,9 +489,12 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 )}
                 {showProjectInfo && (
                   <TableCell>
-                    <div className="flex items-center gap-1 text-gray-600">
+                    <div className={`flex items-center gap-1 ${task.isTimerRunning ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
                       <Clock className="h-4 w-4" />
-                      <span>{formatTime(task.timeSpent || 0)}</span>
+                      <span>{formatTime(liveTimers[task.id] || task.timeSpent || 0)}</span>
+                      {task.isTimerRunning && (
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
+                      )}
                     </div>
                   </TableCell>
                 )}

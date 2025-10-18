@@ -98,6 +98,12 @@ export function useWebSocket(userId: number | undefined) {
             console.log('Task deleted WebSocket message received (ignored - using optimistic updates):', message.data);
             // Removed event dispatch to prevent infinite re-render loops
             // Optimistic updates in mutations handle UI updates
+          } else if (message.type === 'task_timer_started') {
+            // Trigger timer start event
+            window.dispatchEvent(new CustomEvent('websocket:task_timer_started', { detail: message.data }));
+          } else if (message.type === 'task_timer_paused') {
+            // Trigger timer pause event
+            window.dispatchEvent(new CustomEvent('websocket:task_timer_paused', { detail: message.data }));
           } else if (message.type === 'notification') {
             // Trigger notification updates
             window.dispatchEvent(new CustomEvent('websocket:notification', { detail: message.data }));

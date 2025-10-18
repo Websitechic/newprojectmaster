@@ -6139,8 +6139,7 @@ End of Report
       const [updatedMessage] = await db
         .update(projectMessages)
         .set({
-          content: content.trim(),
-          updatedAt: new Date(),
+          content: content.trim(),          updatedAt: new Date(),
           isEdited: true,
         })
         .where(and(
@@ -6372,6 +6371,7 @@ End of Report
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
         (user.role === "staff" && await db
@@ -7328,16 +7328,11 @@ End of Report
   });
 
   // Task timer management endpoints
-  app.post("/api/tasks/:id/start-timer", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    const user = req.user!;
-    const taskId = parseInt(req.params.id);
-
+  app.post("/api/tasks/:id/start-timer", requireAuth, async (req, res) => {
     try {
-      // Check if task exists and user is assigned to it
+      const taskId = parseInt(req.params.id);
+      const userId = req.user!.id;
+
       const [task] = await db
         .select()
         .from(tasks)
@@ -7348,30 +7343,34 @@ End of Report
         return res.status(404).json({ error: "Task not found" });
       }
 
-      if (task.assigneeId !== user.id) {
-        return res.status(403).json({ error: "You can only start timer for tasks assigned to you" });
+      // Verify user is assigned to this task
+      if (task.assigneeId !== userId) {
+        return res.status(403).json({ error: "You are not assigned to this task" });
       }
 
-      if (task.isTimerRunning) {
-        return res.status(400).json({ error: "Timer is already running for this task" });
+      // Check if user already has a running timer on another task
+      const runningTasks = await db
+        .select()
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.assigneeId, userId),
+            eq(tasks.isTimerRunning, true)
+          )
+        );
+
+      if (runningTasks.length > 0 && !runningTasks.some(t => t.id === taskId)) {
+        return res.status(400).json({ 
+          error: "You already have a timer running on another task. Please pause it first." 
+        });
       }
 
-      // Stop any other running timers for this user
-      await db
-        .update(tasks)
-        .set({
-          isTimerRunning: false,
-          timerStartTime: null,
-        })
-        .where(and(eq(tasks.assigneeId, user.id), eq(tasks.isTimerRunning, true)));
-
-      // Start timer for this task and update status to in_progress
       const now = new Date();
       const [updatedTask] =await db
         .update(tasks)
         .set({
           isTimerRunning: true,
-          timerStartTime: now,
+          timerStartTime: now.toISOString(),
           hasBeenStarted: true,
           status: task.status === 'todo' ? 'in_progress' : task.status,
         })
@@ -7404,24 +7403,36 @@ End of Report
           "task"
         );
       }
+      
+      // Broadcast timer start to all connected clients
+      if (global.connectedClients) {
+        global.connectedClients.forEach((client) => {
+          if (client.readyState === 1) { // WebSocket.OPEN
+            client.send(JSON.stringify({
+              type: 'task_timer_started',
+              data: {
+                taskId: updatedTask.id,
+                isTimerRunning: updatedTask.isTimerRunning,
+                timerStartTime: updatedTask.timerStartTime,
+                timeSpent: updatedTask.timeSpent,
+              }
+            }));
+          }
+        });
+      }
 
       res.json({ success: true, task: updatedTask });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error starting task timer:", error);
       res.status(500).json({ error: "Failed to start timer" });
 }
   });
 
-  app.post("/api/tasks/:id/pause-timer", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    const user = req.user!;
-    const taskId = parseInt(req.params.id);
-
+  app.post("/api/tasks/:id/pause-timer", requireAuth, async (req, res) => {
     try {
-      // Get task with current timer info
+      const taskId = parseInt(req.params.id);
+      const userId = req.user!.id;
+
       const [task] = await db
         .select()
         .from(tasks)
@@ -7432,8 +7443,9 @@ End of Report
         return res.status(404).json({ error: "Task not found" });
       }
 
-      if (task.assigneeId !== user.id) {
-        return res.status(403).json({ error: "You can only pause timer for tasks assigned to you" });
+      // Verify user is assigned to this task
+      if (task.assigneeId !== userId) {
+        return res.status(403).json({ error: "You are not assigned to this task" });
       }
 
       if (!task.isTimerRunning || !task.timerStartTime) {
@@ -7449,8 +7461,8 @@ End of Report
         .update(tasks)
         .set({
           isTimerRunning: false,
-          timerStartTime: null,
           timeSpent: newTimeSpent,
+          timerStartTime: null,
         })
         .where(eq(tasks.id, taskId))
         .returning();
@@ -7463,6 +7475,23 @@ End of Report
           taskStartTime: null,
         })
         .where(eq(users.id, user.id));
+
+      // Broadcast timer pause to all connected clients
+      if (global.connectedClients) {
+        global.connectedClients.forEach((client) => {
+          if (client.readyState === 1) { // WebSocket.OPEN
+            client.send(JSON.stringify({
+              type: 'task_timer_paused',
+              data: {
+                taskId: updatedTask.id,
+                isTimerRunning: updatedTask.isTimerRunning,
+                timeSpent: updatedTask.timeSpent,
+                timerStartTime: null,
+              }
+            }));
+          }
+        });
+      }
 
       res.json({ success: true, timeSpent: newTimeSpent, task: updatedTask });
     } catch (error) {
@@ -7542,6 +7571,23 @@ End of Report
           taskId,
           "task"
         );
+      }
+      
+      // Broadcast timer stop to all connected clients
+      if (global.connectedClients) {
+        global.connectedClients.forEach((client) => {
+          if (client.readyState === 1) { // WebSocket.OPEN
+            client.send(JSON.stringify({
+              type: 'task_timer_stopped',
+              data: {
+                taskId: updatedTask.id,
+                isTimerRunning: updatedTask.isTimerRunning,
+                timeSpent: updatedTask.timeSpent,
+                timerStartTime: null,
+              }
+            }));
+          }
+        });
       }
 
       res.json({ success: true, timeSpent: newTimeSpent, task: updatedTask });
@@ -7623,6 +7669,33 @@ End of Report
           taskId,
           "task"
         );
+      }
+      
+      // Broadcast timer stop and task completion to all connected clients
+      if (global.connectedClients) {
+        global.connectedClients.forEach((client) => {
+          if (client.readyState === 1) { // WebSocket.OPEN
+            client.send(JSON.stringify({
+              type: 'task_timer_stopped',
+              data: {
+                taskId: updatedTask.id,
+                isTimerRunning: updatedTask.isTimerRunning,
+                timeSpent: updatedTask.timeSpent,
+                timerStartTime: null,
+              }
+            }));
+            client.send(JSON.stringify({
+              type: 'task_completed',
+              data: {
+                taskId: updatedTask.id,
+                projectId: updatedTask.projectId,
+                status: updatedTask.status,
+                completedBy: user.id,
+                completedAt: new Date().toISOString()
+              }
+            }));
+          }
+        });
       }
 
       res.json({ success: true, task: updatedTask });
