@@ -403,10 +403,16 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[100px]">
+                  <TableCell className="min-w-[140px]">
                     <div className="text-sm">
                       {task.deadline
-                        ? new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        ? new Date(task.deadline).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
                         : <span className="text-muted-foreground">None</span>}
                     </div>
                   </TableCell>

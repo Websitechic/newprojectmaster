@@ -407,12 +407,24 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 )}
                 <TableCell>
                   {task.startDate
-                    ? new Date(task.startDate).toLocaleDateString()
+                    ? new Date(task.startDate).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
                     : "Not set"}
                 </TableCell>
                 <TableCell>
                   {task.deadline
-                    ? new Date(task.deadline).toLocaleDateString()
+                    ? new Date(task.deadline).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
                     : "No deadline"}
                 </TableCell>
                 <TableCell>
