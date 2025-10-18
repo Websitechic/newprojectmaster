@@ -74,7 +74,7 @@ export function DirectMessages() {
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const { playNotificationSound } = useNotificationSound();
   const { user } = useAuth();

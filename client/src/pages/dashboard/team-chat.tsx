@@ -61,9 +61,13 @@ export default function TeamChat() {
   const [forwardingMessage, setForwardingMessage] = useState<MessageWithSender | null>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
-  const [pinnedMessage, setPinnedMessage] = useState<MessageWithSender | null>(null);
+  const [pinnedMessage, setPinnedMessage] = useState<MessageWithSender | null>(() => {
+    // Load pinned message from localStorage on mount
+    const stored = localStorage.getItem(`pinned-message-${projectId}`);
+    return stored ? JSON.parse(stored) : null;
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const projectId = parseInt(id!);
   const { playNotificationSound } = useNotificationSound();
   const lastMessageCountRef = useRef<number>(0);
@@ -549,11 +553,13 @@ export default function TeamChat() {
   const handlePinMessage = (msg: MessageWithSender) => {
     if (pinnedMessage?.id === msg.id) {
       setPinnedMessage(null);
+      localStorage.removeItem(`pinned-message-${projectId}`);
       toast({
         title: "Message unpinned",
       });
     } else {
       setPinnedMessage(msg);
+      localStorage.setItem(`pinned-message-${projectId}`, JSON.stringify(msg));
       toast({
         title: "Message pinned",
       });
@@ -1242,7 +1248,7 @@ export default function TeamChat() {
 
                 <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
                   <Textarea
-                    ref={inputRef as any}
+                    ref={inputRef}
                     value={message}
                     onChange={handleInputChange}
                     onClick={handleTextareaClick}

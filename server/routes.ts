@@ -3088,7 +3088,7 @@ End of Report
       const [existingComplaint] = await db
         .select()
         .from(staffComplaints)
-        .where(eq(existingComplaint.id, complaintId))
+        .where(eq(staffComplaints.id, complaintId))
         .limit(1);
 
       if (!existingComplaint) {
@@ -3103,7 +3103,7 @@ End of Report
           reviewComments: reviewComments || null,
           reviewedAt: new Date(),
         })
-        .where(eq(existingComplaint.id, complaintId))
+        .where(eq(staffComplaints.id, complaintId))
         .returning();
 
       console.log("Staff complaint updated successfully:", updatedComplaint);
@@ -3111,15 +3111,13 @@ End of Report
       // Create notification for the staff member who submitted the complaint
       if (existingComplaint.submitterId) {
         try {
-          await db
-            .insert(notifications)
-            .values({
-              userId: existingComplaint.submitterId,
-              type: "task_updated", // Using existing type
-              content: `Your staff complaint has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
-              referenceId: complaintId,
-              referenceType: "project", // Using existing type
-            });
+          await createNotification(
+            existingComplaint.submitterId,
+            "task_updated",
+            `Your staff complaint has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
+            complaintId,
+            "project"
+          );
         } catch (notificationError) {
           console.error("Error creating notification for staff complaint update:", notificationError);
           // Continue execution even if notification fails

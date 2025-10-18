@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
@@ -143,7 +142,7 @@ export default function ProjectResources() {
       setFileName("");
       setFileCategory("");
       setShowFileDialog(false);
-      
+
       // Refresh resources list
       await refetch();
       alert("File uploaded successfully!");
@@ -196,7 +195,7 @@ export default function ProjectResources() {
       if (!response.ok) {
         const errorText = await response.text();
         console.log("Error response text:", errorText);
-        
+
         let errorMessage = "Failed to add link";
         try {
           const errorData = JSON.parse(errorText);
@@ -205,7 +204,7 @@ export default function ProjectResources() {
           console.log("Could not parse error as JSON");
           errorMessage = errorText || errorMessage;
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -217,7 +216,7 @@ export default function ProjectResources() {
       setLinkUrl("");
       setLinkCategory("");
       setShowLinkDialog(false);
-      
+
       // Refresh resources list
       await refetch();
       alert("Link added successfully!");
@@ -278,7 +277,7 @@ export default function ProjectResources() {
       setEditCategory("");
       setEditingResource(null);
       setShowEditDialog(false);
-      
+
       // Refresh resources list
       await refetch();
       alert("Resource updated successfully!");
@@ -321,7 +320,7 @@ export default function ProjectResources() {
       // Close dialog and reset state
       setDeletingResource(null);
       setShowDeleteDialog(false);
-      
+
       // Refresh resources list
       await refetch();
       alert("Resource deleted successfully!");
@@ -359,55 +358,55 @@ export default function ProjectResources() {
   const getFileIcon = (resource: Resource) => {
     // For links, return link icon
     if (resource.type === 'link' || resource.link) return '🔗';
-    
+
     // For uploaded files, determine icon from file extension or MIME type
     let fileName = resource.name || '';
     let fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
-    
+
     // Image files
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(fileExtension)) {
       return '🖼️';
     }
-    
+
     // PDF files
     if (fileExtension === 'pdf') {
       return '📄';
     }
-    
+
     // Document files
     if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(fileExtension)) {
       return '📝';
     }
-    
+
     // Spreadsheet files
     if (['xls', 'xlsx', 'csv', 'ods'].includes(fileExtension)) {
       return '📊';
     }
-    
+
     // Video files
     if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(fileExtension)) {
       return '🎥';
     }
-    
+
     // Audio files
     if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(fileExtension)) {
       return '🎵';
     }
-    
+
     // Archive files
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExtension)) {
       return '📦';
     }
-    
+
     return '📁';
   };
 
   const canPreviewFile = (resource: Resource) => {
     if (!resource.path) return false;
-    
+
     let fileName = resource.name || '';
     let fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
-    
+
     // Preview images and PDFs
     return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'pdf'].includes(fileExtension);
   };
@@ -443,20 +442,33 @@ export default function ProjectResources() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <div className="flex-1 overflow-auto p-6">
-          <div className="mb-6">
+          {/* Header */}
+          <div className="flex items-center justify-between gap-4 mb-4 flex-shrink-0">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.location.href = `/dashboard/projects/${id}`}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Project
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">Project Resources</h1>
+                <p className="text-muted-foreground">
+                  {canManageResources ? "Manage" : "Access"} project documents, files, and links
+                </p>
+              </div>
+            </div>
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.location.href = `/dashboard/projects/${id}`}
-              className="flex items-center gap-2 mb-4"
+              variant="outline"
+              onClick={() => window.location.href = `/dashboard/projects/${id}/team-chat`}
+              className="flex items-center gap-2"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Project
+              <FileText className="h-4 w-4" />
+              Team Chat
             </Button>
-            <h1 className="text-2xl font-bold">Project Resources</h1>
-            <p className="text-muted-foreground">
-              {canManageResources ? "Manage" : "Access"} project documents, files, and links
-            </p>
           </div>
 
           <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -469,7 +481,7 @@ export default function ProjectResources() {
                 className="pl-10"
               />
             </div>
-            
+
             {canManageResources && (
               <div className="flex gap-2">
                 <Dialog open={showFileDialog} onOpenChange={setShowFileDialog}>
@@ -790,7 +802,7 @@ export default function ProjectResources() {
                                         </Button>
                                       )
                                     ) : null}
-                                    
+
                                     {canManageResources && (
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
