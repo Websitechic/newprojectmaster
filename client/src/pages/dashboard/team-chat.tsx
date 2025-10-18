@@ -251,7 +251,7 @@ export default function TeamChat() {
           // Play sound if message is from someone else
           if (data.data.senderId !== user?.id) {
             console.log('🔊 Team message from another user, playing sound');
-            
+
             // Play sound with multiple retry attempts
             const attemptSound = async (attemptNumber: number) => {
               try {
@@ -262,7 +262,7 @@ export default function TeamChat() {
                 console.error(`❌ Team chat sound attempt ${attemptNumber} failed:`, error);
               }
             };
-            
+
             // Multiple attempts with delays
             setTimeout(() => attemptSound(1), 50);
             setTimeout(() => attemptSound(2), 200);
@@ -349,7 +349,7 @@ export default function TeamChat() {
       // Find the original message to check if it has a reply context
       const originalMsg = messages.find(m => m.id === messageId);
       let finalContent = editingContent.trim();
-      
+
       // If the original message was a reply, preserve the quoted part
       if (originalMsg && originalMsg.content.startsWith('> Replying to')) {
         const quotedPart = originalMsg.content.split('\n\n')[0];
@@ -808,14 +808,14 @@ export default function TeamChat() {
                                       const replyLines = part.split('\n');
                                       const replyToLine = replyLines[0]; // "> Replying to Name:"
                                       const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
-                                      
+
                                       // Find the original message by matching content
                                       const originalMsg = messages.find(m => 
                                         m.content === quotedContent || 
                                         m.content.includes(quotedContent) ||
                                         (m.content.startsWith('> Replying to') && m.content.split('\n\n').slice(1).join('\n\n') === quotedContent)
                                       );
-                                      
+
                                       return (
                                         <div 
                                           key={idx} 
@@ -826,10 +826,10 @@ export default function TeamChat() {
                                               if (originalMessageElement) {
                                                 // Add highlight effect
                                                 originalMessageElement.classList.add('highlight-flash');
-                                                
+
                                                 // Scroll to message
                                                 originalMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                
+
                                                 // Remove highlight after animation
                                                 setTimeout(() => {
                                                   originalMessageElement.classList.remove('highlight-flash');
@@ -919,28 +919,6 @@ export default function TeamChat() {
 
               {/* Message Input */}
               <div className="border-t p-4 relative">
-                {/* Reply Preview */}
-                {replyingTo && (
-                  <div className="mb-2 p-2 bg-muted rounded-md flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Reply className="h-4 w-4 text-muted-foreground" />
-                      <div className="text-sm">
-                        <span className="font-medium">Replying to {replyingTo.sender?.name || "Unknown"}</span>
-                        <p className="text-muted-foreground truncate max-w-md">{replyingTo.content}</p>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setReplyingTo(null)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-
                 {/* Mention Suggestions Dropdown */}
                 {showMentionSuggestions && filteredMembers.length > 0 && (
                   <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto z-50">
@@ -1012,6 +990,32 @@ export default function TeamChat() {
                     )}
                   </Button>
                 </form>
+
+                {/* Reply Preview - Moved above input */}
+                {replyingTo && (
+                  <div className="mt-2 p-2 bg-muted rounded-md flex items-center justify-between">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Reply className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="text-sm flex-1 min-w-0">
+                        <span className="font-medium">Replying to {replyingTo.sender?.name || "Unknown"}</span>
+                        <p className="text-muted-foreground truncate">
+                          {replyingTo.content.length > 100 
+                            ? `${replyingTo.content.substring(0, 100)}...` 
+                            : replyingTo.content}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setReplyingTo(null)}
+                      className="h-6 w-6 p-0 flex-shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
 
                 {/* Typing hint */}
                 <div className="text-xs text-muted-foreground mt-2">
