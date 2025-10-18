@@ -728,28 +728,108 @@ export function DirectMessages() {
                         ) : (
                           <>
                             <div className="text-sm break-words whitespace-pre-wrap">
-                              {actualMessageContent.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
-                                if (/^https?:\/\/[^\s]+$/.test(part)) {
-                                  return (
-                                    <a
-                                      key={index}
-                                      href={part}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className={cn(
-                                        "underline hover:opacity-80 break-all",
-                                        message.senderId === user?.id
-                                          ? "text-primary-foreground"
-                                          : "text-blue-600"
-                                      )}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {part}
-                                    </a>
-                                  );
-                                }
-                                return part;
-                              })}
+                              {message.content.startsWith('> Replying to') ? (
+                                <div>
+                                  {message.content.split('\n\n').map((part, idx) => {
+                                    if (idx === 0) {
+                                      // This is the quoted part
+                                      const replyLines = part.split('\n');
+                                      const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
+                                      
+                                      // Find the original message by matching content
+                                      const originalMsg = messages.find(m => 
+                                        m.content === quotedContent || 
+                                        m.content.includes(quotedContent) ||
+                                        (m.content.startsWith('> Replying to') && m.content.split('\n\n').slice(1).join('\n\n') === quotedContent)
+                                      );
+                                      
+                                      return (
+                                        <div 
+                                          key={idx} 
+                                          className={cn(
+                                            "border-l-4 pl-3 mb-2 italic cursor-pointer hover:bg-muted/50 transition-colors rounded",
+                                            message.senderId === user?.id 
+                                              ? "border-primary-foreground/50 text-primary-foreground/80" 
+                                              : "border-primary text-muted-foreground"
+                                          )}
+                                          onClick={() => {
+                                            if (originalMsg) {
+                                              const originalMessageElement = document.getElementById(`dm-message-${originalMsg.id}`);
+                                              if (originalMessageElement) {
+                                                // Add highlight effect
+                                                originalMessageElement.classList.add('highlight-flash');
+                                                
+                                                // Scroll to message
+                                                originalMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                
+                                                // Remove highlight after animation
+                                                setTimeout(() => {
+                                                  originalMessageElement.classList.remove('highlight-flash');
+                                                }, 2000);
+                                              }
+                                            }
+                                          }}
+                                        >
+                                          {part.split('\n').map((line, lineIdx) => (
+                                            <div key={lineIdx}>{line.replace(/^> /, '')}</div>
+                                          ))}
+                                        </div>
+                                      );
+                                    }
+                                    // This is the actual reply content - render with URL handling
+                                    return (
+                                      <div key={idx}>
+                                        {part.split(/(https?:\/\/[^\s]+)/g).map((urlPart, urlIdx) => {
+                                          if (/^https?:\/\/[^\s]+$/.test(urlPart)) {
+                                            return (
+                                              <a
+                                                key={urlIdx}
+                                                href={urlPart}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={cn(
+                                                  "underline hover:opacity-80 break-all",
+                                                  message.senderId === user?.id
+                                                    ? "text-primary-foreground"
+                                                    : "text-blue-600"
+                                                )}
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                {urlPart}
+                                              </a>
+                                            );
+                                          }
+                                          return urlPart;
+                                        })}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                // Regular message without reply - just handle URLs
+                                message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                                  if (/^https?:\/\/[^\s]+$/.test(part)) {
+                                    return (
+                                      <a
+                                        key={index}
+                                        href={part}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={cn(
+                                          "underline hover:opacity-80 break-all",
+                                          message.senderId === user?.id
+                                            ? "text-primary-foreground"
+                                            : "text-blue-600"
+                                        )}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {part}
+                                      </a>
+                                    );
+                                  }
+                                  return part;
+                                })
+                              )}
                             </div>
                             <p className="text-xs opacity-70 mt-1">
                               {new Date(message.createdAt).toLocaleTimeString()}
