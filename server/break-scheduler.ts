@@ -35,12 +35,6 @@ class BreakScheduler {
       const now = new Date();
       const currentTime = now.toTimeString().slice(0, 5); // HH:mm format
 
-      // Check if it's a business day and within business hours
-      if (!this.isBusinessTime(now)) {
-        console.log('Outside business hours or weekend - skipping break checks');
-        return;
-      }
-
       // Get all staff members
       const allStaff = await db
         .select()
@@ -51,15 +45,20 @@ class BreakScheduler {
         // First check if user should return from leave
         await this.checkLeaveStatus(user);
 
-        // Only check breaks for users not on leave
-        if (user.workStatus !== WorkStatus.ABSENT && user.breakOneTime) {
-          // Check if user is already on break
+        // ALWAYS check if users are on break and end if exceeded 60 minutes
+        // This must happen regardless of business hours to prevent indefinite breaks
+        if (user.workStatus === WorkStatus.ON_BREAK) {
           if (this.activeBreaks.has(user.id)) {
             await this.checkBreakEnd(user);
-          } else if (user.workStatus === WorkStatus.ON_BREAK) {
-            // Handle users who are on break but not in activeBreaks (e.g., after server restart)
-            await this.handleOrphanedBreak(user);
           } else {
+            // Handle orphaned breaks (e.g., after server restart or outside business hours)
+            await this.handleOrphanedBreak(user);
+          }
+        }
+
+        // Only start NEW breaks during business hours
+        if (this.isBusinessTime(now) && user.workStatus !== WorkStatus.ABSENT && user.breakOneTime) {
+          if (!this.activeBreaks.has(user.id) && user.workStatus !== WorkStatus.ON_BREAK) {
             // Check if it's time for the daily break
             await this.checkBreakStart(user, currentTime);
           }
@@ -92,7 +91,7 @@ class BreakScheduler {
 
     // Break ends automatically after 60 minutes (1 hour)
     if (breakDuration >= 60) {
-      console.log(`Auto-ending break for user ${user.id} after ${breakDuration} minutes`);
+      console.log(`⏰ Auto-ending break for user ${user.name || user.id} - Duration: ${breakDuration} minutes`);
       await this.endBreak(user.id);
       
       // Send notification based on duration
@@ -307,6 +306,7 @@ class BreakScheduler {
     try {
       if (!user.breakStartTime) {
         // If no break start time, reset to active
+        console.log(`Resetting break status for user ${user.name} - no break start time found`);
         await db
           .update(users)
           .set({
@@ -322,21 +322,39 @@ class BreakScheduler {
       const now = new Date();
       const breakDuration = Math.floor((now.getTime() - breakStartTime.getTime()) / 60000); // minutes
 
-      // Always end breaks that have exceeded 60 minutes, regardless of business hours
+      // CRITICAL: Always end breaks that have exceeded 60 minutes
+      // This ensures breaks never run indefinitely, regardless of when they were started
       if (breakDuration >= 60) {
-        console.log(`Auto-ending orphaned break for user ${user.name} (${breakDuration} minutes - exceeds 60 min limit)`);
+        console.log(`⚠️ Auto-ending orphaned break for user ${user.name} - Duration: ${breakDuration} minutes (exceeds 60 min limit)`);
         await this.endBreakDirectly(user.id);
+        
+        // Send notification about the extended break
+        try {
+          const { createNotification } = await import('./routes');
+          if (breakDuration >= 90) {
+            await createNotification(
+              user.id,
+              "break_overtime",
+              `🔴 Your break was automatically ended after ${breakDuration} minutes. Please contact your supervisor.`,
+              null,
+              "break"
+            );
+          } else {
+            await createNotification(
+              user.id,
+              "break_ended",
+              `⚠️ Your break was automatically ended after ${breakDuration} minutes.`,
+              null,
+              "break"
+            );
+          }
+        } catch (notificationError) {
+          console.error("Error sending orphaned break notification:", notificationError);
+        }
         return;
       }
 
-      // If it's outside business hours or weekend, end the break immediately
-      if (!this.isBusinessTime(now)) {
-        console.log(`Ending orphaned break for user ${user.name} - outside business hours`);
-        await this.endBreakDirectly(user.id);
-        return;
-      }
-
-      // Recreate the break session only if still within 60 minutes
+      // Recreate the break session if still within 60 minutes
       const endTime = new Date(breakStartTime.getTime() + 60 * 60 * 1000); // 1 hour from start
       this.activeBreaks.set(user.id, {
         userId: user.id,
@@ -344,7 +362,7 @@ class BreakScheduler {
         startTime: breakStartTime,
         endTime: endTime
       });
-      console.log(`Recreated break session for user ${user.name}, will end at ${endTime.toTimeString()}`);
+      console.log(`✓ Recreated break session for user ${user.name} - ${breakDuration} mins elapsed, will end at ${endTime.toLocaleTimeString()}`);
     } catch (error) {
       console.error(`Error handling orphaned break for user ${user.id}:`, error);
     }

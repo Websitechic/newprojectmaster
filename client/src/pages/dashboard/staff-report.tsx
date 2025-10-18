@@ -344,15 +344,18 @@ export default function StaffReport() {
   // Group staff by engagement status
   const engagedStaff = filteredStaff?.filter(staff => staff.isCurrentlyEngaged) || [];
 
-  // Staff on break - server auto-ends breaks over 60 minutes
+  // Show all staff currently on break - server ensures breaks are ended after 60 minutes
   const onBreakStaff = filteredStaff?.filter(staff => staff.workStatus === 'on_break') || [];
 
   const absentStaff = filteredStaff?.filter(staff => staff.workStatus === 'absent') || [];
 
   // Available staff: those not absent, not on break, and not currently engaged with running timers
   const availableStaff = filteredStaff?.filter(staff => {
-    // Exclude absent and on break staff
-    if (staff.workStatus === 'absent' || staff.workStatus === 'on_break') return false;
+    // Exclude absent staff
+    if (staff.workStatus === 'absent') return false;
+
+    // Exclude staff on break
+    if (staff.workStatus === 'on_break') return false;
 
     // Exclude currently engaged staff (those with running timers)
     if (staff.isCurrentlyEngaged) return false;
