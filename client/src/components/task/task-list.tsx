@@ -68,8 +68,21 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     }));
   };
 
-  // Listen for WebSocket timer events and refetch tasks
+  // State to track real-time timer updates
+  const [timerUpdates, setTimerUpdates] = useState<Record<number, number>>({});
+
+  // Listen for WebSocket timer events and update local state
   useEffect(() => {
+    const handleTimerUpdate = (event: any) => {
+      const data = event.detail;
+      if (data && data.taskId && data.timeSpent !== undefined) {
+        setTimerUpdates(prev => ({
+          ...prev,
+          [data.taskId]: data.timeSpent
+        }));
+      }
+    };
+
     const handleTimerEvent = () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       if (projectId) {
@@ -79,12 +92,12 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
     window.addEventListener('websocket:task_timer_started', handleTimerEvent);
     window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
-    window.addEventListener('websocket:task_timer_update', handleTimerEvent);
+    window.addEventListener('websocket:task_timer_update', handleTimerUpdate);
 
     return () => {
       window.removeEventListener('websocket:task_timer_started', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_paused', handleTimerEvent);
-      window.removeEventListener('websocket:task_timer_update', handleTimerEvent);
+      window.removeEventListener('websocket:task_timer_update', handleTimerUpdate);
     };
   }, [queryClient, projectId]);
 
@@ -421,7 +434,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <TableCell>
                     <div className={`flex items-center gap-1 ${task.isTimerRunning ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
                       <Clock className="h-4 w-4" />
-                      <span>{formatTime(task.timeSpent || 0)}</span>
+                      <span>{formatTime(timerUpdates[task.id] !== undefined ? timerUpdates[task.id] : (task.timeSpent || 0))}</span>
                       {task.isTimerRunning && (
                         <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
                       )}

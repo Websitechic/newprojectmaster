@@ -83,19 +83,18 @@ export default function Dashboard() {
   // Listen for real-time updates via WebSocket
   useEffect(() => {
     const handleTaskUpdate = () => {
+      console.log('Task update event received, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
     };
 
     const handleProjectMessage = () => {
+      console.log('Project message event received, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
     };
 
-    const handleTimerStarted = () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-    };
-
-    const handleTimerPaused = () => {
+    const handleTimerEvent = () => {
+      console.log('Timer event received, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
     };
 
@@ -104,8 +103,9 @@ export default function Dashboard() {
     window.addEventListener('websocket:task_deleted', handleTaskUpdate);
     window.addEventListener('websocket:task_updated', handleTaskUpdate);
     window.addEventListener('websocket:project_message', handleProjectMessage);
-    window.addEventListener('websocket:task_timer_started', handleTimerStarted);
-    window.addEventListener('websocket:task_timer_paused', handleTimerPaused);
+    window.addEventListener('websocket:task_timer_started', handleTimerEvent);
+    window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
+    window.addEventListener('websocket:task_timer_update', handleTimerEvent);
 
     return () => {
       window.removeEventListener('websocket:task_update', handleTaskUpdate);
@@ -113,8 +113,9 @@ export default function Dashboard() {
       window.removeEventListener('websocket:task_deleted', handleTaskUpdate);
       window.removeEventListener('websocket:task_updated', handleTaskUpdate);
       window.removeEventListener('websocket:project_message', handleProjectMessage);
-      window.removeEventListener('websocket:task_timer_started', handleTimerStarted);
-      window.removeEventListener('websocket:task_timer_paused', handleTimerPaused);
+      window.removeEventListener('websocket:task_timer_started', handleTimerEvent);
+      window.removeEventListener('websocket:task_timer_paused', handleTimerEvent);
+      window.removeEventListener('websocket:task_timer_update', handleTimerEvent);
     };
   }, [queryClient]);
 

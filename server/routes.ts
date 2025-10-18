@@ -1918,6 +1918,16 @@ End of Report
         });
       }
       
+      // Store interval ID globally to clear it when timer is paused
+      if (!global.timerIntervals) {
+        global.timerIntervals = new Map();
+      }
+
+      // Clear any existing interval for this task
+      if (global.timerIntervals.has(taskId)) {
+        clearInterval(global.timerIntervals.get(taskId));
+      }
+
       // Set up interval to broadcast time updates every second while timer is running
       const timerInterval = setInterval(async () => {
         try {
@@ -1929,6 +1939,9 @@ End of Report
             
           if (!currentTask || !currentTask.isTimerRunning) {
             clearInterval(timerInterval);
+            if (global.timerIntervals) {
+              global.timerIntervals.delete(taskId);
+            }
             return;
           }
           
@@ -1944,7 +1957,8 @@ End of Report
                     data: {
                       taskId: currentTask.id,
                       timeSpent: currentTimeSpent,
-                      isTimerRunning: true
+                      isTimerRunning: true,
+                      projectId: currentTask.projectId
                     }
                   }));
                 } catch (error) {
@@ -1956,8 +1970,14 @@ End of Report
         } catch (error) {
           console.error('Error in timer update interval:', error);
           clearInterval(timerInterval);
+          if (global.timerIntervals) {
+            global.timerIntervals.delete(taskId);
+          }
         }
       }, 1000);
+
+      // Store the interval ID
+      global.timerIntervals.set(taskId, timerInterval);
 
       res.json(updatedTask);
     } catch (error) {
@@ -1995,6 +2015,12 @@ End of Report
       const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime!).getTime()) / 1000);
       const newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
 
+      // Clear the timer interval
+      if (global.timerIntervals && global.timerIntervals.has(taskId)) {
+        clearInterval(global.timerIntervals.get(taskId));
+        global.timerIntervals.delete(taskId);
+      }
+
       // Pause the timer
       const now = new Date();
       const [updatedTask] = await db
@@ -2019,7 +2045,8 @@ End of Report
                   taskId: updatedTask.id,
                   isTimerRunning: updatedTask.isTimerRunning,
                   timeSpent: updatedTask.timeSpent,
-                  timerStartTime: updatedTask.timerStartTime
+                  timerStartTime: updatedTask.timerStartTime,
+                  projectId: updatedTask.projectId
                 }
               }));
             } catch (error) {
