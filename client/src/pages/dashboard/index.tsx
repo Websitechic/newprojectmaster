@@ -14,6 +14,7 @@ import { useUser } from "@/hooks/use-user";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { queryClient } from "@/lib/queryClient";
 import {
   ChevronDown,
   ChevronUp,
