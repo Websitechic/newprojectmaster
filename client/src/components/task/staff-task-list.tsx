@@ -404,17 +404,12 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                     </div>
                   </TableCell>
                   <TableCell className="min-w-[140px]">
-                    <div className="text-sm">
-                      {task.deadline
-                        ? new Date(task.deadline).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })
-                        : <span className="text-muted-foreground">None</span>}
-                    </div>
+                    {task.deadline ? (
+                      <div className="text-sm">
+                        <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        <div className="text-muted-foreground">{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                      </div>
+                    ) : <span className="text-muted-foreground">None</span>}
                   </TableCell>
                   <TableCell className="text-right min-w-[180px]">
                     <div className="flex justify-end gap-2">

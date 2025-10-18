@@ -406,26 +406,20 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   </TableCell>
                 )}
                 <TableCell>
-                  {task.startDate
-                    ? new Date(task.startDate).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                    : "Not set"}
+                  {task.startDate ? (
+                    <div className="text-sm">
+                      <div>{new Date(task.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                      <div className="text-muted-foreground">{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
+                  ) : "Not set"}
                 </TableCell>
                 <TableCell>
-                  {task.deadline
-                    ? new Date(task.deadline).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                    : "No deadline"}
+                  {task.deadline ? (
+                    <div className="text-sm">
+                      <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                      <div className="text-muted-foreground">{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
+                  ) : "No deadline"}
                 </TableCell>
                 <TableCell>
                   {task.workingHours || task.workingMinutes ? (() => {
