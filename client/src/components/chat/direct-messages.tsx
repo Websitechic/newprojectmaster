@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, CornerUpLeft, Reply } from "lucide-react";
+import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, CornerUpLeft, Reply, MessageCircle, Search } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
