@@ -327,16 +327,16 @@ export function DirectMessages() {
 
       if (response.ok) {
         const now = new Date().toISOString();
-        // Update messages in local state
+        // Update messages in local state with the full content (including quoted part)
         setMessages(prev => 
           prev.map(msg => 
             msg.id === messageId 
-              ? { ...msg, content: editingContent.trim(), updatedAt: now }
+              ? { ...msg, content: finalContent, updatedAt: now }
               : msg
           )
         );
 
-        // Also update conversations to reflect the change
+        // Also update conversations to reflect the change (show only the actual message, not the quote)
         if (selectedUser) {
           setConversations(prev =>
             prev.map(conv =>
