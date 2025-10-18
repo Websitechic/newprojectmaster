@@ -9,13 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply } from "lucide-react";
+import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, Pin, Search } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -50,6 +58,10 @@ export default function TeamChat() {
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [replyingTo, setReplyingTo] = useState<MessageWithSender | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<MessageWithSender | null>(null);
+  const [forwardSearchQuery, setForwardSearchQuery] = useState("");
+  const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
+  const [pinnedMessage, setPinnedMessage] = useState<MessageWithSender | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const projectId = parseInt(id!);
@@ -85,6 +97,15 @@ export default function TeamChat() {
     },
     enabled: !!projectId,
     refetchInterval: 2000, // Poll every 2 seconds for new messages
+  });
+
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      const response = await fetch("/api/users");
+      if (!response.ok) throw new Error("Failed to fetch users");
+      return response.json();
+    },
   });
 
   const { data: projectMembers = [], isLoading: membersLoading } = useQuery({
@@ -455,6 +476,90 @@ export default function TeamChat() {
     }, 100);
   };
 
+  const handleForwardToDM = async () => {
+    if (!forwardingMessage || selectedForwardUsers.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one recipient",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Extract clean content
+      let cleanContent = forwardingMessage.content;
+      if (cleanContent.startsWith('> Replying to')) {
+        const parts = cleanContent.split('\n\n');
+        cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : cleanContent;
+      }
+      if (cleanContent.startsWith('🔄 Forwarded:\n')) {
+        cleanContent = cleanContent.replace('🔄 Forwarded:\n', '');
+      }
+
+      const forwardContent = `🔄 Forwarded:\n${cleanContent}`;
+
+      // Send to each selected user
+      const promises = selectedForwardUsers.map(async (receiverId) => {
+        const response = await fetch("/api/direct-messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            receiverId,
+            content: forwardContent,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to forward message to user ${receiverId}`);
+        }
+        return response.json();
+      });
+
+      await Promise.all(promises);
+
+      toast({
+        title: "Success",
+        description: `Message forwarded to ${selectedForwardUsers.length} user(s)`,
+      });
+
+      setForwardingMessage(null);
+      setSelectedForwardUsers([]);
+      setForwardSearchQuery("");
+    } catch (error) {
+      console.error("Error forwarding message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to forward message. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleUserSelection = (userId: number) => {
+    setSelectedForwardUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handlePinMessage = (msg: MessageWithSender) => {
+    if (pinnedMessage?.id === msg.id) {
+      setPinnedMessage(null);
+      toast({
+        title: "Message unpinned",
+      });
+    } else {
+      setPinnedMessage(msg);
+      toast({
+        title: "Message pinned",
+      });
+    }
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
@@ -750,6 +855,32 @@ export default function TeamChat() {
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              {/* Pinned Message */}
+              {pinnedMessage && (
+                <div className="bg-muted/50 border-b p-3 flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    <Pin className="h-4 w-4 text-primary flex-shrink-0 mt-1" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-primary mb-1">Pinned Message</p>
+                      <p className="text-sm font-medium">{pinnedMessage.sender?.name || "Unknown"}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2 break-words">
+                        {pinnedMessage.content.length > 100 
+                          ? `${pinnedMessage.content.substring(0, 100)}...` 
+                          : pinnedMessage.content}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPinnedMessage(null)}
+                    className="h-6 w-6 p-0 flex-shrink-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
               {/* Messages Container */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.length === 0 ? (
@@ -814,7 +945,12 @@ export default function TeamChat() {
                                 ? "bg-primary/20 dark:bg-primary/30" 
                                 : "bg-muted/50"
                             )}>
-                              {msg.content.startsWith('> Replying to') ? (
+                              {msg.content.startsWith('🔄 Forwarded:\n') ? (
+                                <div>
+                                  <p className="text-xs italic text-muted-foreground mb-1">Forwarded</p>
+                                  {renderMessageContent(msg.content.replace('🔄 Forwarded:\n', ''))}
+                                </div>
+                              ) : msg.content.startsWith('> Replying to') ? (
                                 <div>
                                   {msg.content.split('\n\n').map((part, idx) => {
                                     if (idx === 0) {
@@ -893,6 +1029,18 @@ export default function TeamChat() {
                                     <Reply className="h-4 w-4 mr-2" />
                                     Reply
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => setForwardingMessage(msg)}
+                                  >
+                                    <Forward className="h-4 w-4 mr-2" />
+                                    Forward to DM
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handlePinMessage(msg)}
+                                  >
+                                    <Pin className="h-4 w-4 mr-2" />
+                                    {pinnedMessage?.id === msg.id ? "Unpin" : "Pin"}
+                                  </DropdownMenuItem>
                                   {msg.senderId === user?.id && (
                                     <>
                                       <DropdownMenuItem
@@ -930,6 +1078,75 @@ export default function TeamChat() {
                 )}
                 <div ref={messagesEndRef} />
               </div>
+
+              {/* Forward Message Dialog */}
+              <Dialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Forward to Direct Message</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search users..."
+                        className="pl-8"
+                        value={forwardSearchQuery}
+                        onChange={(e) => setForwardSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <ScrollArea className="h-[300px] border rounded-md p-2">
+                      <div className="space-y-1">
+                        {allUsers
+                          .filter((u: any) => 
+                            u.id !== user?.id &&
+                            (u.name.toLowerCase().includes(forwardSearchQuery.toLowerCase()) ||
+                             u.email.toLowerCase().includes(forwardSearchQuery.toLowerCase()))
+                          )
+                          .map((u: any) => (
+                            <div
+                              key={u.id}
+                              onClick={() => toggleUserSelection(u.id)}
+                              className={cn(
+                                "flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted",
+                                selectedForwardUsers.includes(u.id) && "bg-primary/10"
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedForwardUsers.includes(u.id)}
+                                onChange={() => toggleUserSelection(u.id)}
+                                className="h-4 w-4"
+                              />
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback>
+                                  {getUserInitials(u.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <p className="font-medium text-sm">{u.name}</p>
+                                <p className="text-xs text-muted-foreground">{u.role}</p>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </ScrollArea>
+                    {selectedForwardUsers.length > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        {selectedForwardUsers.length} user(s) selected
+                      </p>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setForwardingMessage(null)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleForwardToDM} disabled={selectedForwardUsers.length === 0}>
+                      Forward
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {/* Message Input */}
               <div className="border-t p-4 relative">
