@@ -28,10 +28,10 @@
 /* Highlight flash animation for replied messages */
 @keyframes highlight-flash {
   0% {
-    background-color: rgba(249, 115, 22, 0.3);
+    background-color: rgba(249, 115, 22, 0.5);
   }
   50% {
-    background-color: rgba(249, 115, 22, 0.5);
+    background-color: rgba(249, 115, 22, 0.8);
   }
   100% {
     background-color: transparent;
@@ -42,6 +42,7 @@
   animation: highlight-flash 2s ease-in-out;
   border-radius: 0.5rem;
   padding: 0.25rem;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3);
 }
 
 /* Custom responsive utilities */
