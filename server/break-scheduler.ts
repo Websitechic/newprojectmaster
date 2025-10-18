@@ -7,8 +7,6 @@ interface BreakSession {
   breakType: 'daily';
   startTime: Date;
   endTime: Date;
-  pausedTaskId?: number;
-  wasTimerRunning?: boolean;
 }
 
 class BreakScheduler {
@@ -186,7 +184,7 @@ class BreakScheduler {
         await createNotification(
           user.id,
           "break_reminder",
-          "☕ Break time! Your scheduled break has started. Take 1 hour to rest and recharge.",
+          "☕ Break time! Your scheduled break has started. You can continue working or take a 1-hour break.",
           null,
           "break"
         );
@@ -194,39 +192,7 @@ class BreakScheduler {
         console.error("Error sending break reminder notification:", notificationError);
       }
 
-      // Check if user has a running task timer
-      const [runningTask] = await db
-        .select()
-        .from(tasks)
-        .where(and(
-          eq(tasks.assigneeId, user.id),
-          eq(tasks.isTimerRunning, true)
-        ))
-        .limit(1);
-
-      let pausedTaskId;
-      let wasTimerRunning = false;
-
-      if (runningTask) {
-        // Pause the timer and save elapsed time
-        const elapsedSeconds = Math.floor((now.getTime() - new Date(runningTask.timerStartTime!).getTime()) / 1000);
-        const newTimeSpent = (runningTask.timeSpent || 0) + elapsedSeconds;
-
-        await db
-          .update(tasks)
-          .set({
-            isTimerRunning: false,
-            timerStartTime: null,
-            timeSpent: newTimeSpent,
-            updatedAt: now
-          })
-          .where(eq(tasks.id, runningTask.id));
-
-        pausedTaskId = runningTask.id;
-        wasTimerRunning = true;
-        console.log(`Paused timer for task ${runningTask.id} during break`);
-      }
-
+      // DO NOT pause running timers - staff control their own timers
       const endTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
 
       // Update user status to on break
@@ -245,9 +211,7 @@ class BreakScheduler {
         userId: user.id,
         breakType,
         startTime: now,
-        endTime,
-        pausedTaskId,
-        wasTimerRunning
+        endTime
       });
 
       console.log(`User ${user.name} is now on ${breakType} break until ${endTime.toTimeString()}`);
@@ -277,19 +241,7 @@ class BreakScheduler {
         })
         .where(eq(users.id, userId));
 
-      // Resume timer if there was one running
-      if (breakSession.pausedTaskId && breakSession.wasTimerRunning) {
-        await db
-          .update(tasks)
-          .set({
-            isTimerRunning: true,
-            timerStartTime: resumeTime,
-            updatedAt: resumeTime
-          })
-          .where(eq(tasks.id, breakSession.pausedTaskId));
-
-        console.log(`Resumed timer for task ${breakSession.pausedTaskId} after break`);
-      }
+      // DO NOT resume timers - staff control their own timers
 
       // Send break end notification
       try {
@@ -370,6 +322,13 @@ class BreakScheduler {
       const now = new Date();
       const breakDuration = Math.floor((now.getTime() - breakStartTime.getTime()) / 60000); // minutes
 
+      // Always end breaks that have exceeded 60 minutes, regardless of business hours
+      if (breakDuration >= 60) {
+        console.log(`Auto-ending orphaned break for user ${user.name} (${breakDuration} minutes - exceeds 60 min limit)`);
+        await this.endBreakDirectly(user.id);
+        return;
+      }
+
       // If it's outside business hours or weekend, end the break immediately
       if (!this.isBusinessTime(now)) {
         console.log(`Ending orphaned break for user ${user.name} - outside business hours`);
@@ -377,21 +336,15 @@ class BreakScheduler {
         return;
       }
 
-      // If break has exceeded 1 hour, end it
-      if (breakDuration >= 60) {
-        console.log(`Ending orphaned break for user ${user.name} (${breakDuration} minutes)`);
-        await this.endBreakDirectly(user.id);
-      } else {
-        // Recreate the break session
-        const endTime = new Date(breakStartTime.getTime() + 60 * 60 * 1000); // 1 hour from start
-        this.activeBreaks.set(user.id, {
-          userId: user.id,
-          breakType: 'daily',
-          startTime: breakStartTime,
-          endTime: endTime
-        });
-        console.log(`Recreated break session for user ${user.name}`);
-      }
+      // Recreate the break session only if still within 60 minutes
+      const endTime = new Date(breakStartTime.getTime() + 60 * 60 * 1000); // 1 hour from start
+      this.activeBreaks.set(user.id, {
+        userId: user.id,
+        breakType: 'daily',
+        startTime: breakStartTime,
+        endTime: endTime
+      });
+      console.log(`Recreated break session for user ${user.name}, will end at ${endTime.toTimeString()}`);
     } catch (error) {
       console.error(`Error handling orphaned break for user ${user.id}:`, error);
     }
