@@ -1897,7 +1897,7 @@ End of Report
         .where(eq(tasks.id, taskId))
         .returning();
 
-      // Broadcast timer started event via WebSocket
+      // Broadcast timer started event via WebSocket with current timeSpent
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
           if (client.readyState === 1) {
@@ -1908,7 +1908,7 @@ End of Report
                   taskId: updatedTask.id,
                   isTimerRunning: updatedTask.isTimerRunning,
                   timerStartTime: updatedTask.timerStartTime,
-                  timeSpent: updatedTask.timeSpent
+                  timeSpent: updatedTask.timeSpent || 0
                 }
               }));
             } catch (error) {
@@ -1917,6 +1917,47 @@ End of Report
           }
         });
       }
+      
+      // Set up interval to broadcast time updates every second while timer is running
+      const timerInterval = setInterval(async () => {
+        try {
+          const [currentTask] = await db
+            .select()
+            .from(tasks)
+            .where(eq(tasks.id, taskId))
+            .limit(1);
+            
+          if (!currentTask || !currentTask.isTimerRunning) {
+            clearInterval(timerInterval);
+            return;
+          }
+          
+          const elapsedSeconds = Math.floor((new Date().getTime() - new Date(currentTask.timerStartTime!).getTime()) / 1000);
+          const currentTimeSpent = (currentTask.timeSpent || 0) + elapsedSeconds;
+          
+          if (global.connectedClients) {
+            global.connectedClients.forEach((client) => {
+              if (client.readyState === 1) {
+                try {
+                  client.send(JSON.stringify({
+                    type: 'task_timer_update',
+                    data: {
+                      taskId: currentTask.id,
+                      timeSpent: currentTimeSpent,
+                      isTimerRunning: true
+                    }
+                  }));
+                } catch (error) {
+                  console.error('Error broadcasting timer update:', error);
+                }
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error in timer update interval:', error);
+          clearInterval(timerInterval);
+        }
+      }, 1000);
 
       res.json(updatedTask);
     } catch (error) {

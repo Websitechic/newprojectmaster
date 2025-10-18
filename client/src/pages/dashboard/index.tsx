@@ -79,6 +79,44 @@ export default function Dashboard() {
     queryKey: ["/api/tasks"],
   });
 
+  // Listen for real-time updates via WebSocket
+  useEffect(() => {
+    const handleTaskUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    };
+
+    const handleProjectMessage = () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    };
+
+    const handleTimerStarted = () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    };
+
+    const handleTimerPaused = () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    };
+
+    window.addEventListener('websocket:task_update', handleTaskUpdate);
+    window.addEventListener('websocket:task_created', handleTaskUpdate);
+    window.addEventListener('websocket:task_deleted', handleTaskUpdate);
+    window.addEventListener('websocket:task_updated', handleTaskUpdate);
+    window.addEventListener('websocket:project_message', handleProjectMessage);
+    window.addEventListener('websocket:task_timer_started', handleTimerStarted);
+    window.addEventListener('websocket:task_timer_paused', handleTimerPaused);
+
+    return () => {
+      window.removeEventListener('websocket:task_update', handleTaskUpdate);
+      window.removeEventListener('websocket:task_created', handleTaskUpdate);
+      window.removeEventListener('websocket:task_deleted', handleTaskUpdate);
+      window.removeEventListener('websocket:task_updated', handleTaskUpdate);
+      window.removeEventListener('websocket:project_message', handleProjectMessage);
+      window.removeEventListener('websocket:task_timer_started', handleTimerStarted);
+      window.removeEventListener('websocket:task_timer_paused', handleTimerPaused);
+    };
+  }, [queryClient]);
+
   useEffect(() => {
     // Update user status when dashboard mounts
     updateStatus("online");

@@ -104,6 +104,9 @@ export function useWebSocket(userId: number | undefined) {
           } else if (message.type === 'task_timer_paused') {
             // Trigger timer pause event
             window.dispatchEvent(new CustomEvent('websocket:task_timer_paused', { detail: message.data }));
+          } else if (message.type === 'task_timer_update') {
+            // Trigger timer update event
+            window.dispatchEvent(new CustomEvent('websocket:task_timer_update', { detail: message.data }));
           } else if (message.type === 'notification') {
             // Trigger notification updates
             window.dispatchEvent(new CustomEvent('websocket:notification', { detail: message.data }));
