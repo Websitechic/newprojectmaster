@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, CornerUpLeft, Reply, MessageCircle, Search } from "lucide-react";
+import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -153,7 +153,7 @@ export function DirectMessages() {
           // Play sound if message is from someone else
           if (message.senderId !== user?.id) {
             console.log('🔊 Direct message from another user, playing sound');
-
+            
             // Play sound with multiple retry attempts
             const attemptSound = async (attemptNumber: number) => {
               try {
@@ -164,7 +164,7 @@ export function DirectMessages() {
                 console.error(`❌ Direct message sound attempt ${attemptNumber} failed:`, error);
               }
             };
-
+            
             // Multiple attempts with delays
             setTimeout(() => attemptSound(1), 50);
             setTimeout(() => attemptSound(2), 200);
@@ -308,7 +308,7 @@ export function DirectMessages() {
       // Find the original message to check if it has a reply context
       const originalMsg = messages.find(m => m.id === messageId);
       let finalContent = editingContent.trim();
-
+      
       // If the original message was a reply, preserve the quoted part
       if (originalMsg && originalMsg.content.startsWith('> Replying to')) {
         const quotedPart = originalMsg.content.split('\n\n')[0];
@@ -543,10 +543,10 @@ export function DirectMessages() {
     if (messageElement) {
       // Scroll to the message
       messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
+      
       // Add highlight effect
       messageElement.classList.add('highlight-flash');
-
+      
       // Remove highlight after animation
       setTimeout(() => {
         messageElement.classList.remove('highlight-flash');
@@ -693,14 +693,14 @@ export function DirectMessages() {
                                     const replyLines = part.split('\n');
                                     const replyToLine = replyLines[0]; // "> Replying to Name:"
                                     const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
-
+                                    
                                     // Try to find the original message by matching content
                                     const originalMsg = messages.find(m => 
                                       m.content === quotedContent || 
                                       m.content.includes(quotedContent) ||
                                       (m.content.startsWith('> Replying to') && m.content.split('\n\n').slice(1).join('\n\n') === quotedContent)
                                     );
-
+                                    
                                     return (
                                       <div 
                                         key={idx} 
@@ -889,14 +889,10 @@ export function DirectMessages() {
 
         <CardFooter className="border-t p-4">
           {replyingTo && (
-            <div className="flex items-center gap-2 mb-2 p-2 bg-secondary rounded-md text-sm max-w-full">
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <p className="font-semibold">Replying to {replyingTo.senderName}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {replyingTo.content}
-                </p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={handleCancelReply} className="p-1 h-6 w-6 shrink-0">
+            <div className="flex items-center gap-2 mb-2 p-2 bg-secondary rounded-md text-sm">
+              <p className="font-semibold">Replying to {replyingTo.senderName}</p>
+              <p className="truncate flex-1">{replyingTo.content}</p>
+              <Button variant="ghost" size="sm" onClick={handleCancelReply} className="p-1 h-6 w-6">
                 <X className="h-4 w-4" />
               </Button>
             </div>
