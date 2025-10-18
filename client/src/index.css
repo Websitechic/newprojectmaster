@@ -27,16 +27,19 @@
 
 /* Highlight flash animation for replied messages */
 @keyframes highlight-flash {
-  0%, 100% {
-    background-color: transparent;
+  0% {
+    background-color: rgba(249, 115, 22, 0.3);
   }
   50% {
-    background-color: rgb(250 204 21 / 0.3); /* yellow-400 with opacity */
+    background-color: rgba(249, 115, 22, 0.5);
+  }
+  100% {
+    background-color: transparent;
   }
 }
 
 .highlight-flash {
-  animation: highlight-flash 1s ease-in-out 2;
+  animation: highlight-flash 2s ease-in-out;
   border-radius: 0.5rem;
   padding: 0.25rem;
 }

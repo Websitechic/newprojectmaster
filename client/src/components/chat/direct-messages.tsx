@@ -451,6 +451,7 @@ export function DirectMessages() {
       let quotedPreviewSenderName = "";
 
       if (replyingTo) {
+        // Use the clean content (without nested quotes) for the new reply
         const maxLength = 100; // Max length for quoted preview
         let contentToQuote = replyingTo.content;
         if (contentToQuote.length > maxLength) {
@@ -459,6 +460,7 @@ export function DirectMessages() {
         quotedPreviewContent = contentToQuote;
         quotedPreviewSenderName = replyingTo.senderName;
 
+        // Only include the clean content in the reply, not nested quotes
         messageContent = `> Replying to ${replyingTo.senderName}:\n> ${replyingTo.content}\n\n${messageContent}`;
       }
 
@@ -544,9 +546,22 @@ export function DirectMessages() {
   };
 
   const handleReplyToMessage = (message: DirectMessage) => {
-    setReplyingTo(message);
-    // Optionally focus the input field
-    inputRef.current?.focus();
+    // Extract only the actual message content, not any nested quotes
+    let cleanContent = message.content;
+    if (message.content.startsWith('> Replying to')) {
+      const parts = message.content.split('\n\n');
+      cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : message.content;
+    }
+    
+    setReplyingTo({
+      ...message,
+      content: cleanContent
+    });
+    
+    // Auto-focus the input field
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   };
 
   const handleClickRepliedMessage = (originalMessageId: number) => {

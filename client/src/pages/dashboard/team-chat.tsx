@@ -437,8 +437,22 @@ export default function TeamChat() {
   };
 
   const handleReplyToMessage = (msg: MessageWithSender) => {
-    setReplyingTo(msg);
-    inputRef.current?.focus();
+    // Extract only the actual message content, not any nested quotes
+    let cleanContent = msg.content;
+    if (msg.content.startsWith('> Replying to')) {
+      const parts = msg.content.split('\n\n');
+      cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : msg.content;
+    }
+    
+    setReplyingTo({
+      ...msg,
+      content: cleanContent
+    });
+    
+    // Auto-focus the input field
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -447,7 +461,7 @@ export default function TeamChat() {
 
     let messageToSend = message.trim();
     if (replyingTo) {
-      // Include the original message as a quote
+      // Use the clean content (without nested quotes) for the new reply
       const quotedMessage = `> Replying to ${replyingTo.sender?.name || "Unknown"}:\n> ${replyingTo.content}\n\n${messageToSend}`;
       messageToSend = quotedMessage;
       setReplyingTo(null);
