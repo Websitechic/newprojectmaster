@@ -92,60 +92,41 @@ class BreakScheduler {
     const now = new Date();
     const breakDuration = Math.floor((now.getTime() - breakSession.startTime.getTime()) / 60000); // minutes
 
-    // Send multiple overtime notifications
-    try {
-      const { createNotification } = await import('./routes');
-      
-      // First warning at 60 minutes
-      if (breakDuration === 60) {
-        await createNotification(
-          user.id,
-          "break_overtime",
-          "⏰ Your 1-hour break is complete. Please return to work.",
-          null,
-          "break"
-        );
-      }
-      // Second warning at 75 minutes
-      else if (breakDuration === 75) {
-        await createNotification(
-          user.id,
-          "break_overtime",
-          "⚠️ Your break has exceeded the limit by 15 minutes. Please return to work immediately.",
-          null,
-          "break"
-        );
-      }
-      // Final warning at 90 minutes
-      else if (breakDuration === 90) {
-        await createNotification(
-          user.id,
-          "break_overtime",
-          "🔴 URGENT: Your break has exceeded 1.5 hours. Return to work now to avoid disciplinary action.",
-          null,
-          "break"
-        );
-      }
-    } catch (notificationError) {
-      console.error("Error sending break overtime notification:", notificationError);
-    }
-
-    // Break ends automatically after 2 hours (120 minutes)
-    if (breakDuration >= 120) {
+    // Break ends automatically after 60 minutes (1 hour)
+    if (breakDuration >= 60) {
+      console.log(`Auto-ending break for user ${user.id} after ${breakDuration} minutes`);
       await this.endBreak(user.id);
       
-      // Send forced end notification
+      // Send notification based on duration
       try {
         const { createNotification } = await import('./routes');
-        await createNotification(
-          user.id,
-          "break_overtime",
-          "🔴 Your break has been automatically ended after 2 hours. Please contact your supervisor.",
-          null,
-          "break"
-        );
+        if (breakDuration >= 90) {
+          await createNotification(
+            user.id,
+            "break_overtime",
+            `🔴 Your break has been automatically ended after ${breakDuration} minutes. Please contact your supervisor.`,
+            null,
+            "break"
+          );
+        } else if (breakDuration >= 75) {
+          await createNotification(
+            user.id,
+            "break_overtime",
+            "⚠️ Your break has been automatically ended after exceeding the limit. Please return to work.",
+            null,
+            "break"
+          );
+        } else {
+          await createNotification(
+            user.id,
+            "break_ended",
+            "✅ Break ended. Welcome back to work!",
+            null,
+            "break"
+          );
+        }
       } catch (notificationError) {
-        console.error("Error sending break forced end notification:", notificationError);
+        console.error("Error sending break end notification:", notificationError);
       }
     }
   }

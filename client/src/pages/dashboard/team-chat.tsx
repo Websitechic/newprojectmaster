@@ -61,14 +61,14 @@ export default function TeamChat() {
   const [forwardingMessage, setForwardingMessage] = useState<MessageWithSender | null>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const projectId = parseInt(id!);
   const [pinnedMessage, setPinnedMessage] = useState<MessageWithSender | null>(() => {
     // Load pinned message from localStorage on mount
     const stored = localStorage.getItem(`pinned-message-${projectId}`);
     return stored ? JSON.parse(stored) : null;
   });
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const projectId = parseInt(id!);
   const { playNotificationSound } = useNotificationSound();
   const lastMessageCountRef = useRef<number>(0);
 
@@ -474,10 +474,16 @@ export default function TeamChat() {
       content: cleanContent
     });
     
-    // Auto-focus the input field
-    setTimeout(() => {
+    // Auto-focus the input field with longer delay and multiple attempts
+    requestAnimationFrame(() => {
       inputRef.current?.focus();
-    }, 100);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 200);
+    });
   };
 
   const handleForwardToDM = async () => {

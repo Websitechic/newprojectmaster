@@ -568,10 +568,16 @@ export function DirectMessages() {
       content: cleanContent
     });
     
-    // Auto-focus the input field
-    setTimeout(() => {
+    // Auto-focus the input field with longer delay and multiple attempts
+    requestAnimationFrame(() => {
       inputRef.current?.focus();
-    }, 100);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 200);
+    });
   };
 
   const handleClickRepliedMessage = (originalMessageId: number) => {
