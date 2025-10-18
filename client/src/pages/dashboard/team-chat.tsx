@@ -919,25 +919,31 @@ export default function TeamChat() {
 
               {/* Message Input */}
               <div className="border-t p-4 relative">
-                {/* Reply Preview */}
+                {/* Reply Preview - Above Input */}
                 {replyingTo && (
-                  <div className="mb-2 p-2 bg-muted rounded-md flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Reply className="h-4 w-4 text-muted-foreground" />
-                      <div className="text-sm">
-                        <span className="font-medium">Replying to {replyingTo.sender?.name || "Unknown"}</span>
-                        <p className="text-muted-foreground truncate max-w-md">{replyingTo.content}</p>
+                  <div className="mb-3 p-3 bg-muted/50 border-l-4 border-primary rounded-md">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Reply className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="font-medium text-sm">Replying to {replyingTo.sender?.name || "Unknown"}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2 break-words">
+                          {replyingTo.content.length > 100 
+                            ? `${replyingTo.content.substring(0, 100)}...` 
+                            : replyingTo.content}
+                        </p>
                       </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setReplyingTo(null)}
+                        className="h-6 w-6 p-0 flex-shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setReplyingTo(null)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
                   </div>
                 )}
 

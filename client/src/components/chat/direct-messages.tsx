@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy } from "lucide-react";
+import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy, Reply } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -153,7 +153,7 @@ export function DirectMessages() {
           // Play sound if message is from someone else
           if (message.senderId !== user?.id) {
             console.log('🔊 Direct message from another user, playing sound');
-            
+
             // Play sound with multiple retry attempts
             const attemptSound = async (attemptNumber: number) => {
               try {
@@ -164,7 +164,7 @@ export function DirectMessages() {
                 console.error(`❌ Direct message sound attempt ${attemptNumber} failed:`, error);
               }
             };
-            
+
             // Multiple attempts with delays
             setTimeout(() => attemptSound(1), 50);
             setTimeout(() => attemptSound(2), 200);
@@ -308,7 +308,7 @@ export function DirectMessages() {
       // Find the original message to check if it has a reply context
       const originalMsg = messages.find(m => m.id === messageId);
       let finalContent = editingContent.trim();
-      
+
       // If the original message was a reply, preserve the quoted part
       if (originalMsg && originalMsg.content.startsWith('> Replying to')) {
         const quotedPart = originalMsg.content.split('\n\n')[0];
@@ -447,8 +447,18 @@ export function DirectMessages() {
       console.log("Sending message to user:", selectedUser.id, "Content:", newMessage);
 
       let messageContent = newMessage.trim();
+      let quotedPreviewContent = "";
+      let quotedPreviewSenderName = "";
+
       if (replyingTo) {
-        // Include the original message as a quote
+        const maxLength = 100; // Max length for quoted preview
+        let contentToQuote = replyingTo.content;
+        if (contentToQuote.length > maxLength) {
+          contentToQuote = contentToQuote.substring(0, maxLength) + "...";
+        }
+        quotedPreviewContent = contentToQuote;
+        quotedPreviewSenderName = replyingTo.senderName;
+
         messageContent = `> Replying to ${replyingTo.senderName}:\n> ${replyingTo.content}\n\n${messageContent}`;
       }
 
@@ -460,6 +470,8 @@ export function DirectMessages() {
         body: JSON.stringify({
           receiverId: selectedUser.id,
           content: messageContent,
+          replyToMessageId: replyingTo?.id,
+          replyToSenderName: replyingTo?.senderName,
         }),
       });
 
@@ -543,10 +555,10 @@ export function DirectMessages() {
     if (messageElement) {
       // Scroll to the message
       messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
+
       // Add highlight effect
       messageElement.classList.add('highlight-flash');
-      
+
       // Remove highlight after animation
       setTimeout(() => {
         messageElement.classList.remove('highlight-flash');
@@ -614,148 +626,109 @@ export function DirectMessages() {
         <CardContent className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full p-4">
             <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  id={`dm-message-${message.id}`}
-                  className={cn(
-                    "flex items-start gap-2 group transition-all duration-300",
-                    message.senderId === user?.id ? "flex-row-reverse" : ""
-                  )}
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>
-                      {message.senderName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 max-w-[70%]">
-                    <div
-                      className={cn(
-                        "rounded-lg p-3 relative",
-                        message.senderId === user?.id
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary"
-                      )}
-                    >
-                      {message.replyToMessageId && (
-                        <div className={cn(
-                          "mb-2 p-2 rounded-md text-sm break-words whitespace-pre-wrap",
+              {messages.map((message) => {
+                const maxLength = 100; // Max length for quoted preview
+                let quotedContent = "";
+                let quotedSenderName = "";
+                let actualMessageContent = message.content;
+
+                if (message.replyToMessageId && message.content.startsWith('> Replying to')) {
+                  const parts = message.content.split('\n\n');
+                  const replyToLine = parts[0];
+                  const originalMessage = parts.slice(1).join('\n\n');
+
+                  const replyToMatch = replyToLine.match(/^> Replying to (.*?):/);
+                  if (replyToMatch && replyToMatch[1]) {
+                    quotedSenderName = replyToMatch[1];
+                  }
+
+                  if (originalMessage.length > maxLength) {
+                    quotedContent = originalMessage.substring(0, maxLength) + "...";
+                  } else {
+                    quotedContent = originalMessage;
+                  }
+                  actualMessageContent = parts.slice(1).join('\n\n'); // Content after the quote
+                }
+
+                return (
+                  <div
+                    key={message.id}
+                    id={`dm-message-${message.id}`}
+                    className={cn(
+                      "flex items-start gap-2 group transition-all duration-300",
+                      message.senderId === user?.id ? "flex-row-reverse" : ""
+                    )}
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>
+                        {message.senderName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 max-w-[70%]">
+                      <div
+                        className={cn(
+                          "rounded-lg p-3 relative",
                           message.senderId === user?.id
-                            ? "bg-primary/20"
-                            : "bg-secondary/50"
-                        )}>
-                          <p className="font-semibold text-xs">
-                            Replying to {message.replyToSenderName}
-                          </p>
-                          <p className="text-xs truncate">
-                            {message.content}
-                          </p>
-                        </div>
-                      )}
-                      {editingMessageId === message.id ? (
-                        <div className="space-y-2">
-                          <Textarea
-                            value={editingContent}
-                            onChange={(e) => setEditingContent(e.target.value)}
-                            className="min-h-[60px] text-sm text-black dark:text-white bg-white dark:bg-gray-800"
-                            autoFocus
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleEditMessage(message.id)}
-                            >
-                              <Check className="h-4 w-4 mr-1" />
-                              Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setEditingMessageId(null);
-                                setEditingContent("");
-                              }}
-                            >
-                              <X className="h-4 w-4 mr-1" />
-                              Cancel
-                            </Button>
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary"
+                        )}
+                      >
+                        {message.replyToMessageId && quotedContent && (
+                          <div
+                            className={cn(
+                              "mb-2 p-2 rounded-md text-sm break-words whitespace-pre-wrap cursor-pointer hover:bg-muted/30 transition-all",
+                              message.senderId === user?.id
+                                ? "bg-primary/20"
+                                : "bg-secondary/50"
+                            )}
+                            onClick={() => {
+                              if (message.replyToMessageId) {
+                                handleClickRepliedMessage(message.replyToMessageId);
+                              }
+                            }}
+                          >
+                            <p className="font-semibold text-xs">
+                              Replying to {quotedSenderName}
+                            </p>
+                            <p className="text-xs">
+                              {quotedContent}
+                            </p>
                           </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="text-sm break-words whitespace-pre-wrap">
-                            {message.content.startsWith('> Replying to') ? (
-                              <div>
-                                {message.content.split('\n\n').map((part, idx) => {
-                                  if (idx === 0) {
-                                    // This is the quoted part - extract original message info
-                                    const replyLines = part.split('\n');
-                                    const replyToLine = replyLines[0]; // "> Replying to Name:"
-                                    const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
-                                    
-                                    // Try to find the original message by matching content
-                                    const originalMsg = messages.find(m => 
-                                      m.content === quotedContent || 
-                                      m.content.includes(quotedContent) ||
-                                      (m.content.startsWith('> Replying to') && m.content.split('\n\n').slice(1).join('\n\n') === quotedContent)
-                                    );
-                                    
-                                    return (
-                                      <div 
-                                        key={idx} 
-                                        className={cn(
-                                          "border-l-4 pl-3 mb-2 italic text-xs cursor-pointer hover:bg-muted/30 transition-all rounded p-2",
-                                          message.senderId === user?.id
-                                            ? "border-primary-foreground/30 opacity-80"
-                                            : "border-primary/50 text-muted-foreground"
-                                        )}
-                                        onClick={() => {
-                                          if (originalMsg) {
-                                            handleClickRepliedMessage(originalMsg.id);
-                                          }
-                                        }}
-                                      >
-                                        <div className="font-semibold mb-1">
-                                          {replyToLine.replace(/^> /, '')}
-                                        </div>
-                                        <div>
-                                          {quotedContent}
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-                                  // This is the actual reply content
-                                  return (
-                                    <div key={idx}>
-                                      {part.split(/(https?:\/\/[^\s]+)/g).map((urlPart, urlIdx) => {
-                                        if (/^https?:\/\/[^\s]+$/.test(urlPart)) {
-                                          return (
-                                            <a
-                                              key={urlIdx}
-                                              href={urlPart}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className={cn(
-                                                "underline hover:opacity-80 break-all",
-                                                message.senderId === user?.id
-                                                  ? "text-primary-foreground"
-                                                  : "text-blue-600"
-                                              )}
-                                              onClick={(e) => e.stopPropagation()}
-                                            >
-                                              {urlPart}
-                                            </a>
-                                          );
-                                        }
-                                        return urlPart;
-                                      })}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                        )}
+                        {editingMessageId === message.id ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              value={editingContent}
+                              onChange={(e) => setEditingContent(e.target.value)}
+                              className="min-h-[60px] text-sm text-black dark:text-white bg-white dark:bg-gray-800"
+                              autoFocus
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleEditMessage(message.id)}
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingMessageId(null);
+                                  setEditingContent("");
+                                }}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-sm break-words whitespace-pre-wrap">
+                              {actualMessageContent.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
                                 if (/^https?:\/\/[^\s]+$/.test(part)) {
                                   return (
                                     <a
@@ -776,112 +749,106 @@ export function DirectMessages() {
                                   );
                                 }
                                 return part;
-                              })
-                            )}
-                          </div>
-                          <p className="text-xs opacity-70 mt-1">
-                            {new Date(message.createdAt).toLocaleTimeString()}
-                            {message.updatedAt && message.updatedAt !== message.createdAt && (
-                              <span className="italic ml-1">• edited</span>
-                            )}
-                          </p>
-                        </>
-                      )}
+                              })}
+                            </div>
+                            <p className="text-xs opacity-70 mt-1">
+                              {new Date(message.createdAt).toLocaleTimeString()}
+                              {message.updatedAt && message.updatedAt !== message.createdAt && (
+                                <span className="italic ml-1">• edited</span>
+                              )}
+                            </p>
+                          </>
+                        )}
 
-                      {message.senderId === user?.id && editingMessageId !== message.id && (
-                        <div className={cn(
-                          "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity",
-                          message.senderId === user?.id ? "left-2" : "right-2"
-                        )}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => {
-                                navigator.clipboard.writeText(message.content);
-                                toast({
-                                  title: "Copied",
-                                  description: "Message copied to clipboard",
-                                });
-                              }}>
-                                <Copy className="h-4 w-4 mr-2" />
-                                Copy
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setEditingMessageId(message.id);
-                                  // Extract only the actual message content, not the quoted part
-                                  if (message.content.startsWith('> Replying to')) {
-                                    const parts = message.content.split('\n\n');
-                                    setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : message.content);
-                                  } else {
-                                    setEditingContent(message.content);
-                                  }
-                                }}
-                              >
-                                <Edit2 className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteMessage(message.id)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
-                                <CornerUpLeft className="h-4 w-4 mr-2" />
-                                Reply
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      )}
-                       {message.senderId !== user?.id && (
-                        <div className={cn(
-                          "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity",
-                          message.senderId === user?.id ? "left-2" : "right-2"
-                        )}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => {
-                                navigator.clipboard.writeText(message.content);
-                                toast({
-                                  title: "Copied",
-                                  description: "Message copied to clipboard",
-                                });
-                              }}>
-                                <Copy className="h-4 w-4 mr-2" />
-                                Copy
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
-                                <CornerUpLeft className="h-4 w-4 mr-2" />
-                                Reply
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      )}
+                        {message.senderId === user?.id && editingMessageId !== message.id && (
+                          <div className={cn(
+                            "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity",
+                            message.senderId === user?.id ? "left-2" : "right-2"
+                          )}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => {
+                                  navigator.clipboard.writeText(message.content);
+                                  toast({
+                                    title: "Copied",
+                                    description: "Message copied to clipboard",
+                                  });
+                                }}>
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Copy
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setEditingMessageId(message.id);
+                                    setEditingContent(actualMessageContent);
+                                  }}
+                                >
+                                  <Edit2 className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteMessage(message.id)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
+                                  <CornerUpLeft className="h-4 w-4 mr-2" />
+                                  Reply
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
+                         {message.senderId !== user?.id && (
+                          <div className={cn(
+                            "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity",
+                            message.senderId === user?.id ? "left-2" : "right-2"
+                          )}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => {
+                                  navigator.clipboard.writeText(message.content);
+                                  toast({
+                                    title: "Copied",
+                                    description: "Message copied to clipboard",
+                                  });
+                                }}>
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Copy
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
+                                  <CornerUpLeft className="h-4 w-4 mr-2" />
+                                  Reply
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
