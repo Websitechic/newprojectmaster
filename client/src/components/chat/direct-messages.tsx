@@ -841,10 +841,7 @@ export function DirectMessages() {
                         )}
 
                         {message.senderId === user?.id && editingMessageId !== message.id && (
-                          <div className={cn(
-                            "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity",
-                            message.senderId === user?.id ? "left-2" : "right-2"
-                          )}>
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -869,7 +866,13 @@ export function DirectMessages() {
                                 <DropdownMenuItem
                                   onClick={() => {
                                     setEditingMessageId(message.id);
-                                    setEditingContent(actualMessageContent);
+                                    // Extract only the actual message content, not the quoted part
+                                    if (message.content.startsWith('> Replying to')) {
+                                      const parts = message.content.split('\n\n');
+                                      setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : '');
+                                    } else {
+                                      setEditingContent(message.content);
+                                    }
                                   }}
                                 >
                                   <Edit2 className="h-4 w-4 mr-2" />
@@ -891,10 +894,7 @@ export function DirectMessages() {
                           </div>
                         )}
                          {message.senderId !== user?.id && (
-                          <div className={cn(
-                            "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity",
-                            message.senderId === user?.id ? "left-2" : "right-2"
-                          )}>
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
