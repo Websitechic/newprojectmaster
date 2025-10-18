@@ -1379,7 +1379,7 @@ End of Report
           status: staff.status,
           workStatus: staff.workStatus,
           breakStartTime: staff.breakStartTime,
-          breakCount: staff.breakCount || 0,
+          breakCount: staff.breakCount,
           absenceReason: staff.absenceReason,
           absenceEndDate: staff.absenceEndDate,
           currentTaskId: staff.currentTaskId,
@@ -1917,7 +1917,7 @@ End of Report
           }
         });
       }
-      
+
       // Store interval ID globally to clear it when timer is paused
       if (!global.timerIntervals) {
         global.timerIntervals = new Map();
@@ -1936,7 +1936,7 @@ End of Report
             .from(tasks)
             .where(eq(tasks.id, taskId))
             .limit(1);
-            
+
           if (!currentTask || !currentTask.isTimerRunning) {
             clearInterval(timerInterval);
             if (global.timerIntervals) {
@@ -1944,10 +1944,10 @@ End of Report
             }
             return;
           }
-          
+
           const elapsedSeconds = Math.floor((new Date().getTime() - new Date(currentTask.timerStartTime!).getTime()) / 1000);
           const currentTimeSpent = (currentTask.timeSpent || 0) + elapsedSeconds;
-          
+
           if (global.connectedClients) {
             global.connectedClients.forEach((client) => {
               if (client.readyState === 1) {
@@ -6112,9 +6112,7 @@ End of Report
     try {
        // Check project access
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-      if (!project) return res.status(404).json({ error: "Project not found" });
-
-      // Check if user is a member of the project (for all roles including customer support)
+      if (!project) return res.status(404).json({ error: "Project not found" });      // Check if user is a member of the project (for all roles including customer support)
       const [membership] = await db
         .select()
         .from(projectMembers)
@@ -7019,11 +7017,6 @@ End of Report
         .delete(resources)
         .where(eq(resources.projectId, projectId));
 
-      // Delete tasks
-      await db
-        .delete(tasks)
-        .where(eq(tasks.projectId, projectId));
-
       // Delete project members
       await db
         .delete(projectMembers)
@@ -7620,7 +7613,7 @@ End of Report
           "task"
         );
       }
-      
+
       // Broadcast timer start to all connected clients
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
@@ -7703,7 +7696,8 @@ End of Report
                 taskId: updatedTask.id,
                 isTimerRunning: updatedTask.isTimerRunning,
                 timeSpent: updatedTask.timeSpent,
-                timerStartTime: null,
+                timerStartTime: updatedTask.timerStartTime,
+                projectId: updatedTask.projectId
               }
             }));
           }
@@ -7754,8 +7748,8 @@ End of Report
         .update(tasks)
         .set({
           isTimerRunning: false,
-          timerStartTime: null,
           timeSpent: newTimeSpent,
+          timerStartTime: null,
         })
         .where(eq(tasks.id, taskId))
         .returning();
@@ -7789,7 +7783,7 @@ End of Report
           "task"
         );
       }
-      
+
       // Broadcast timer stop to all connected clients
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
@@ -7887,7 +7881,7 @@ End of Report
           "task"
         );
       }
-      
+
       // Broadcast timer stop and task completion to all connected clients
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {

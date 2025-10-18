@@ -155,7 +155,7 @@ export default function StaffReport() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [location] = useLocation();
-  
+
   // Check authentication and authorization FIRST
   const hasAccess = user?.role === "project_manager" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager" || user?.specialization === "replit_development" || user?.specialization === "Replit Development";
 
@@ -343,7 +343,10 @@ export default function StaffReport() {
 
   // Group staff by engagement status
   const engagedStaff = filteredStaff?.filter(staff => staff.isCurrentlyEngaged) || [];
+
+  // Staff on break - server auto-ends breaks over 60 minutes
   const onBreakStaff = filteredStaff?.filter(staff => staff.workStatus === 'on_break') || [];
+
   const absentStaff = filteredStaff?.filter(staff => staff.workStatus === 'absent') || [];
 
   // Available staff: those not absent, not on break, and not currently engaged with running timers
