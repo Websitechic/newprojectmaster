@@ -855,32 +855,51 @@ export function DirectMessages() {
         </CardContent>
 
         <CardFooter className="border-t p-4">
-          {replyingTo && (
-            <div className="flex items-center gap-2 mb-2 p-2 bg-secondary rounded-md text-sm">
-              <p className="font-semibold">Replying to {replyingTo.senderName}</p>
-              <p className="truncate flex-1">{replyingTo.content}</p>
-              <Button variant="ghost" size="sm" onClick={handleCancelReply} className="p-1 h-6 w-6">
-                <X className="h-4 w-4" />
+          <div className="w-full space-y-2">
+            {replyingTo && (
+              <div className="p-3 bg-muted/50 border-l-4 border-primary rounded-md">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Reply className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <span className="font-medium text-sm">Replying to {replyingTo.senderName}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-2 break-words">
+                      {replyingTo.content.length > 100 
+                        ? `${replyingTo.content.substring(0, 100)}...` 
+                        : replyingTo.content}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancelReply}
+                    className="h-6 w-6 p-0 flex-shrink-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="flex gap-2 w-full items-end">
+              <Textarea
+                ref={inputRef}
+                placeholder="Type a message... (Shift+Enter for new line, Enter to send)"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                className="min-h-[60px] max-h-[200px] resize-y"
+              />
+              <Button size="icon" onClick={handleSendMessage} className="mb-1">
+                <Send className="h-4 w-4" />
               </Button>
             </div>
-          )}
-          <div className="flex gap-2 w-full items-end">
-            <Textarea
-              ref={inputRef}
-              placeholder="Type a message... (Shift+Enter for new line, Enter to send)"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              className="min-h-[60px] max-h-[200px] resize-y"
-            />
-            <Button size="icon" onClick={handleSendMessage} className="mb-1">
-              <Send className="h-4 w-4" />
-            </Button>
           </div>
         </CardFooter>
       </Card>
