@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +49,7 @@ export default function Projects() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -59,6 +62,11 @@ export default function Projects() {
   });
 
   const filteredProjects = projects?.filter(project => {
+    // Apply search filter
+    if (searchQuery && !project.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
     // Apply status filter first
     if (filter !== "all" && project.status !== filter) return false;
 
@@ -182,6 +190,18 @@ export default function Projects() {
                 <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
                 <p className="text-gray-600 mt-1">Manage and track your digital agency projects</p>
               </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search projects by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
             </div>
 
             {/* Project Status Dashboard Cards - Only for Operations Managers and Project Managers */}
