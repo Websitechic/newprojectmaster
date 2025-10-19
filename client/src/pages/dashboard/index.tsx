@@ -83,22 +83,36 @@ export default function Dashboard() {
     queryKey: ["/api/tasks"],
   });
 
+  // Fetch recent project activity (messages and resources from last 24 hours)
+  const { data: projectActivity } = useQuery<Record<number, { hasMessages: boolean; hasResources: boolean; latestActivity: string }>>({
+    queryKey: ["/api/projects/recent-activity"],
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+  });
+
   // Listen for real-time updates via WebSocket
   useEffect(() => {
     const handleTaskUpdate = () => {
       console.log('Task update event received, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/recent-activity"] });
     };
 
     const handleProjectMessage = () => {
       console.log('Project message event received, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/recent-activity"] });
     };
 
     const handleTimerEvent = () => {
       console.log('Timer event received, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/recent-activity"] });
+    };
+
+    const handleResourceUpdate = () => {
+      console.log('Resource update event received, invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/recent-activity"] });
     };
 
     window.addEventListener('websocket:task_update', handleTaskUpdate);
@@ -109,6 +123,7 @@ export default function Dashboard() {
     window.addEventListener('websocket:task_timer_started', handleTimerEvent);
     window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
     window.addEventListener('websocket:task_timer_update', handleTimerEvent);
+    window.addEventListener('websocket:resource_added', handleResourceUpdate);
 
     return () => {
       window.removeEventListener('websocket:task_update', handleTaskUpdate);
@@ -119,6 +134,7 @@ export default function Dashboard() {
       window.removeEventListener('websocket:task_timer_started', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_paused', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_update', handleTimerEvent);
+      window.removeEventListener('websocket:resource_added', handleResourceUpdate);
     };
   }, [queryClient]);
 
@@ -505,13 +521,18 @@ export default function Dashboard() {
                           {(() => {
                             const activeProjects =
                               projects?.filter((project) => {
-                                // Projects with tasks currently being worked on (in_progress or timer running)
-                                return tasks?.some(
+                                // Check for tasks in progress or with running timers
+                                const hasActiveTasks = tasks?.some(
                                   (task) =>
                                     task.projectId === project.id &&
-                                    (task.status === "in_progress" ||
-                                      task.isTimerRunning),
+                                    (task.status === "in_progress" || task.isTimerRunning)
                                 );
+
+                                // Check for recent team chat messages or resources (last 24 hours)
+                                const activity = projectActivity?.[project.id];
+                                const hasRecentActivity = activity && (activity.hasMessages || activity.hasResources);
+                                
+                                return hasActiveTasks || hasRecentActivity;
                               }) || [];
                             return activeProjects.length;
                           })()}
@@ -522,12 +543,16 @@ export default function Dashboard() {
                       {(() => {
                         const activeProjects =
                           projects?.filter((project) => {
-                            return tasks?.some(
+                            const hasActiveTasks = tasks?.some(
                               (task) =>
                                 task.projectId === project.id &&
-                                (task.status === "in_progress" ||
-                                  task.isTimerRunning),
+                                (task.status === "in_progress" || task.isTimerRunning)
                             );
+
+                            const activity = projectActivity?.[project.id];
+                            const hasRecentActivity = activity && (activity.hasMessages || activity.hasResources);
+
+                            return hasActiveTasks || hasRecentActivity;
                           }) || [];
 
                         if (activeProjects.length === 0) {
@@ -540,24 +565,51 @@ export default function Dashboard() {
 
                         return (
                           <div className="space-y-2">
-                            {activeProjects.map((project) => (
-                              <div
-                                key={project.id}
-                                className="p-2 bg-green-50 rounded-md border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  window.location.href = `/dashboard/projects/${project.id}`;
-                                }}
-                              >
-                                <p className="font-medium text-sm text-green-900">
-                                  {project.name}
-                                </p>
-                                <p className="text-xs text-green-700">
-                                  {project.category?.replace("_", " ")}
-                                </p>
-                              </div>
-                            ))}
+                            {activeProjects.map((project) => {
+                              const hasRunningTimer = tasks?.some(
+                                (task) =>
+                                  task.projectId === project.id && task.isTimerRunning
+                              );
+                              const hasInProgress = tasks?.some(
+                                (task) =>
+                                  task.projectId === project.id && task.status === "in_progress"
+                              );
+                              
+                              const activity = projectActivity?.[project.id];
+                              const hasMessages = activity?.hasMessages || false;
+                              const hasResources = activity?.hasResources || false;
+
+                              // Build activity reason
+                              const reasons = [];
+                              if (hasRunningTimer) reasons.push("Task timer running");
+                              else if (hasInProgress) reasons.push("Task in progress");
+                              if (hasMessages) reasons.push("Recent team chat");
+                              if (hasResources) reasons.push("Resource added");
+                              
+                              const activityReason = reasons.length > 0 ? reasons.join(" • ") : "Active";
+
+                              return (
+                                <div
+                                  key={project.id}
+                                  className="p-2 bg-green-50 rounded-md border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.location.href = `/dashboard/projects/${project.id}`;
+                                  }}
+                                >
+                                  <p className="font-medium text-sm text-green-900">
+                                    {project.name}
+                                  </p>
+                                  <p className="text-xs text-green-700">
+                                    {project.category?.replace("_", " ")}
+                                  </p>
+                                  <p className="text-xs text-green-600 italic mt-1">
+                                    {activityReason}
+                                  </p>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })()}

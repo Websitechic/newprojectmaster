@@ -743,6 +743,72 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get recent project activity (for active projects check)
+  app.get("/api/projects/recent-activity", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const twentyFourHoursAgo = new Date();
+      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+      // Get recent team messages
+      const recentMessages = await db
+        .select({
+          projectId: projectMessages.projectId,
+          createdAt: projectMessages.createdAt,
+        })
+        .from(projectMessages)
+        .where(gte(projectMessages.createdAt, twentyFourHoursAgo))
+        .orderBy(desc(projectMessages.createdAt));
+
+      // Get recent resources
+      const recentResources = await db
+        .select({
+          projectId: resources.projectId,
+          createdAt: resources.createdAt,
+        })
+        .from(resources)
+        .where(gte(resources.createdAt, twentyFourHoursAgo))
+        .orderBy(desc(resources.createdAt));
+
+      // Group by project
+      const activityByProject: Record<number, { hasMessages: boolean; hasResources: boolean; latestActivity: Date }> = {};
+
+      recentMessages.forEach(msg => {
+        if (msg.projectId) {
+          if (!activityByProject[msg.projectId]) {
+            activityByProject[msg.projectId] = { hasMessages: false, hasResources: false, latestActivity: new Date(msg.createdAt) };
+          }
+          activityByProject[msg.projectId].hasMessages = true;
+          const msgDate = new Date(msg.createdAt);
+          if (msgDate > activityByProject[msg.projectId].latestActivity) {
+            activityByProject[msg.projectId].latestActivity = msgDate;
+          }
+        }
+      });
+
+      recentResources.forEach(resource => {
+        if (resource.projectId) {
+          if (!activityByProject[resource.projectId]) {
+            activityByProject[resource.projectId] = { hasMessages: false, hasResources: false, latestActivity: new Date(resource.createdAt) };
+          }
+          activityByProject[resource.projectId].hasResources = true;
+          const resourceDate = new Date(resource.createdAt);
+          if (resourceDate > activityByProject[resource.projectId].latestActivity) {
+            activityByProject[resource.projectId].latestActivity = resourceDate;
+          }
+        }
+      });
+
+      res.json(activityByProject);
+    } catch (error) {
+      console.error("Error fetching recent project activity:", error);
+      res.status(500).json({ error: "Failed to fetch recent activity" });
+    }
+  });
+
   // Get single user details
   app.get("/api/users/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
