@@ -23,6 +23,7 @@ import {
   AlertCircle,
   CheckCircle,
   HelpCircle,
+  Search,
 } from "lucide-react";
 import {
   Collapsible,
@@ -36,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import type { Project, Task } from "@db/schema";
 
 export default function Dashboard() {
@@ -47,6 +49,7 @@ export default function Dashboard() {
     pending: false,
     review: false,
   });
+  const [searchQuery, setSearchQuery] = useState("");
 
   // State for managing expanded descriptions
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
@@ -133,6 +136,15 @@ export default function Dashboard() {
     user?.role === "staff"
       ? tasks?.filter((task) => task.assigneeId === user?.id) || []
       : tasks || [];
+
+  // Apply search filter to tasks (works for both staff and managers)
+  const filteredTasks = user?.role === "staff" 
+    ? staffTasks?.filter((task) =>
+        searchQuery ? task.title.toLowerCase().includes(searchQuery.toLowerCase()) : true
+      )
+    : tasks?.filter((task) =>
+        searchQuery ? task.title.toLowerCase().includes(searchQuery.toLowerCase()) : true
+      );
 
   // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
   const userTasks =
@@ -447,8 +459,20 @@ export default function Dashboard() {
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">All Your Tasks</h2>
 
+                {/* Search Bar */}
+                <div className="relative max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search tasks by title..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
                 {staffTasks && staffTasks.length > 0 ? (
-                  <StaffTaskList tasks={staffTasks} projectId={undefined} />
+                  <StaffTaskList tasks={filteredTasks || staffTasks} projectId={undefined} />
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
                     No tasks assigned to you yet.
@@ -1011,13 +1035,26 @@ export default function Dashboard() {
 
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">All Tasks</h2>
+                
+                {/* Search Bar */}
+                <div className="relative max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search tasks by title..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
                 {tasksLoading ? (
                   <div className="text-center text-muted-foreground mt-8">
                     Loading tasks...
                   </div>
                 ) : tasks && tasks.length > 0 ? (
                   <TaskList
-                    tasks={tasks}
+                    tasks={filteredTasks || tasks}
                     projectId={undefined}
                     showNewTaskButton={false}
                     showProjectInfo={true}
