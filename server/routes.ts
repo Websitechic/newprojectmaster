@@ -7232,6 +7232,17 @@ End of Report
         return res.status(400).json({ error: "Invalid project ID for update" });
       }
 
+      // Verify the project exists before attempting update
+      const existingProjectCheck = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!existingProjectCheck || existingProjectCheck.length === 0) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
       // Update project - use explicit where clause to prevent accidental creation
       const [updatedProject] = await db
         .update(projects)
@@ -7248,9 +7259,9 @@ End of Report
         .where(eq(projects.id, projectId))
         .returning();
 
-      // Verify the update actually happened
-      if (!updatedProject) {
-        return res.status(500).json({ error: "Failed to update project - no project returned" });
+      // Verify the update actually happened and returned the correct project
+      if (!updatedProject || updatedProject.id !== projectId) {
+        return res.status(500).json({ error: "Failed to update project correctly" });t - no project returned" });
       }
 
       // Notify client about project updates

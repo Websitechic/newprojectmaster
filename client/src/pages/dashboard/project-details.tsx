@@ -330,7 +330,11 @@ export default function ProjectDetails() {
                       </DialogHeader>
                       <ProjectForm
                         project={project}
-                        onSuccess={() => window.location.reload()}
+                        onSuccess={() => {
+                          queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
+                          queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+                          window.location.reload();
+                        }}
                       />
                     </DialogContent>
                   </Dialog>
