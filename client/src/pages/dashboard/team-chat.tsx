@@ -248,103 +248,33 @@ export default function TeamChat() {
     },
   });
 
-  // Set up SSE and WebSocket for real-time updates
+  // Listen for real-time message updates to refresh the current conversation
   useEffect(() => {
     if (!user?.id || !projectId) return;
 
-    console.log(`Setting up real-time updates for team chat in project ${projectId}`);
+    const handleTeamMessage = (event: CustomEvent) => {
+      const message = event.detail;
+      console.log("Team message event received in conversation:", message);
 
-    // SSE connection
-    const eventSource = new EventSource("/api/notifications/stream", {
-      withCredentials: true
-    });
-
-    eventSource.onopen = () => {
-      console.log("SSE connection opened for team chat");
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log("SSE message received in team chat:", data);
-        if (data.type === "project_message" && data.data.projectId === projectId) {
-          console.log("🔔 Team message received via SSE");
-
-          // Invalidate queries first
-          queryClient.invalidateQueries({ 
-            queryKey: [`/api/projects/${projectId}/team-messages`] 
-          });
-
-          // Play sound and show browser notification if message is from someone else
-          if (data.data.senderId !== user?.id) {
-            console.log('🔊 Team message from another user, playing sound and showing notification');
-            
-            // Play sound with multiple retry attempts
-            const attemptSound = async (attemptNumber: number) => {
-              try {
-                console.log(`🔊 Team chat sound attempt ${attemptNumber}`);
-                await playNotificationSound();
-                console.log(`✅ Team chat sound attempt ${attemptNumber} completed`);
-              } catch (error) {
-                console.error(`❌ Team chat sound attempt ${attemptNumber} failed:`, error);
-              }
-            };
-            
-            // Multiple attempts with delays
-            setTimeout(() => attemptSound(1), 50);
-            setTimeout(() => attemptSound(2), 200);
-            
-            // Show browser notification
-            const senderName = data.data.senderName || 'Team member';
-            const messagePreview = data.data.content?.substring(0, 100) || 'New message';
-            showNotification(`${senderName} in ${project?.name || 'Team Chat'}`, {
-              body: messagePreview,
-              tag: `team-chat-${projectId}`,
-              data: { url: `/dashboard/team-chat/${projectId}` },
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Error parsing SSE message in team chat:", error);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error("SSE error in team chat:", error);
-    };
-
-    // WebSocket event listeners
-    const handleProjectMessage = (event: CustomEvent) => {
-      const messageData = event.detail;
-      if (messageData.projectId === projectId) {
-        console.log("Team message received via WebSocket, invalidating queries");
-
-        // Play sound and show browser notification if message is from someone else
-        if (messageData.senderId !== user?.id) {
-          playNotificationSound();
-          
-          // Show browser notification
-          const senderName = messageData.senderName || 'Team member';
-          const messagePreview = messageData.content?.substring(0, 100) || 'New message';
-          showNotification(`${senderName} in ${project?.name || 'Team Chat'}`, {
-            body: messagePreview,
-            tag: `team-chat-${projectId}`,
-            data: { url: `/dashboard/team-chat/${projectId}` },
-          });
-        }
-
+      // Only process messages for this project
+      if (message.projectId === parseInt(projectId)) {
+        // Invalidate queries to refresh the UI immediately
         queryClient.invalidateQueries({ 
-          queryKey: [`/api/projects/${projectId}/team-messages`] 
+          queryKey: [`/api/projects/${projectId}/messages`] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/projects/unread-counts"] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/mentions/unread-count"] 
         });
       }
     };
 
-    window.addEventListener('websocket:project_message', handleProjectMessage as EventListener);
+    window.addEventListener('team-message-received', handleTeamMessage as EventListener);
 
     return () => {
-      console.log("Cleaning up real-time connections for team chat");
-      eventSource.close();
-      window.removeEventListener('websocket:project_message', handleProjectMessage as EventListener);
+      window.removeEventListener('team-message-received', handleTeamMessage as EventListener);
     };
   }, [user?.id, projectId, queryClient]);
 
@@ -394,7 +324,7 @@ export default function TeamChat() {
       // Find the original message to check if it has a reply context
       const originalMsg = messages.find(m => m.id === messageId);
       let finalContent = editingContent.trim();
-      
+
       // If the original message was a reply, preserve the quoted part
       if (originalMsg && originalMsg.content.startsWith('> Replying to')) {
         const quotedPart = originalMsg.content.split('\n\n')[0];
@@ -488,12 +418,12 @@ export default function TeamChat() {
       const parts = msg.content.split('\n\n');
       cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : msg.content;
     }
-    
+
     setReplyingTo({
       ...msg,
       content: cleanContent
     });
-    
+
     // Auto-focus the input field with longer delay and multiple attempts
     requestAnimationFrame(() => {
       inputRef.current?.focus();
@@ -908,10 +838,10 @@ export default function TeamChat() {
                       if (pinnedMessageElement) {
                         // Add highlight effect
                         pinnedMessageElement.classList.add('highlight-flash');
-                        
+
                         // Scroll to message
                         pinnedMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        
+
                         // Remove highlight after animation
                         setTimeout(() => {
                           pinnedMessageElement.classList.remove('highlight-flash');
@@ -1018,14 +948,14 @@ export default function TeamChat() {
                                       const replyLines = part.split('\n');
                                       const replyToLine = replyLines[0]; // "> Replying to Name:"
                                       const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
-                                      
+
                                       // Find the original message by matching content
                                       const originalMsg = messages.find(m => 
                                         m.content === quotedContent || 
                                         m.content.includes(quotedContent) ||
                                         (m.content.startsWith('> Replying to') && m.content.split('\n\n').slice(1).join('\n\n') === quotedContent)
                                       );
-                                      
+
                                       return (
                                         <div 
                                           key={idx} 
@@ -1036,10 +966,10 @@ export default function TeamChat() {
                                               if (originalMessageElement) {
                                                 // Add highlight effect
                                                 originalMessageElement.classList.add('highlight-flash');
-                                                
+
                                                 // Scroll to message
                                                 originalMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                
+
                                                 // Remove highlight after animation
                                                 setTimeout(() => {
                                                   originalMessageElement.classList.remove('highlight-flash');

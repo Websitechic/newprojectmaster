@@ -1,6 +1,6 @@
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
@@ -44,11 +44,13 @@ import StaffComplaints from "@/pages/dashboard/staff-complaints";
 import StaffQueries from "@/pages/dashboard/staff-queries";
 import Notes from "@/pages/dashboard/notes";
 import SOPPage from "@/pages/dashboard/sop";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import CommunicationTrackerPage from "@/pages/dashboard/communication-tracker";
 import KPIReportPage from "@/pages/dashboard/kpi-report";
 import ReportIssues from "@/pages/report-issues";
 import ReportManagement from "@/pages/dashboard/report-management";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { useBrowserNotification } from "@/hooks/use-browser-notification";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -68,6 +70,168 @@ function PrivateRoute({ component: Component, ...rest }: any) {
   return <Component {...rest} />;
 }
 
+// Global notification listener component
+function GlobalNotificationListener() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const { playNotificationSound } = useNotificationSound();
+  const { showNotification } = useBrowserNotification();
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const connectSSE = () => {
+      if (isConnecting) return;
+
+      setIsConnecting(true);
+      console.log("🌐 Setting up global SSE connection for real-time notifications...");
+
+      try {
+        const eventSource = new EventSource(`/api/notifications/stream`, {
+          withCredentials: true,
+        });
+
+        eventSource.onopen = () => {
+          console.log("✅ Global SSE connection opened");
+          setIsConnecting(false);
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+          }
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+
+            // Handle notification events
+            if (data.type === 'notification' && data.notification) {
+              console.log('🔔 Global notification received:', data.notification);
+              
+              // Invalidate notifications query to update UI
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+              
+              // Check if should play sound
+              const isDirectMessage = 
+                data.notification.type === 'message' && 
+                data.notification.referenceType === 'direct_message';
+              
+              const isTaskAssignment = 
+                data.notification.type === 'task_assigned' ||
+                data.notification.type === 'task_assignment';
+              
+              if (isDirectMessage || isTaskAssignment) {
+                console.log('🔊 Playing notification sound globally');
+                playNotificationSound().catch(err => {
+                  console.error('Sound playback error:', err);
+                });
+              }
+            }
+            // Handle direct message events
+            else if (data.type === 'direct_message' && data.data) {
+              console.log('💬 Global direct message received:', data.data);
+              
+              // Play sound for all direct messages
+              playNotificationSound().catch(err => {
+                console.error('Sound playback error:', err);
+              });
+              
+              // Show browser notification if message is from another user
+              if (data.data.senderId !== user?.id) {
+                const senderName = data.data.senderName || 'Someone';
+                const messagePreview = data.data.content?.substring(0, 100) || 'New message';
+                showNotification(`${senderName} sent you a message`, {
+                  body: messagePreview,
+                  tag: 'direct-message',
+                  data: { url: '/dashboard/direct-messages' },
+                });
+              }
+              
+              // Dispatch custom event for direct message components
+              window.dispatchEvent(new CustomEvent('direct-message-received', { detail: data.data }));
+              
+              // Invalidate queries
+              queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
+            }
+            // Handle project/team message events
+            else if (data.type === 'project_message' && data.data) {
+              console.log('💬 Global team message received:', data.data);
+              
+              // Play sound for all team messages
+              playNotificationSound().catch(err => {
+                console.error('Sound playback error:', err);
+              });
+              
+              // Show browser notification if message is from another user
+              if (data.data.senderId !== user?.id) {
+                const senderName = data.data.senderName || 'Team member';
+                const messagePreview = data.data.content?.substring(0, 100) || 'New message';
+                const projectName = data.data.projectName || 'Team Chat';
+                showNotification(`${senderName} in ${projectName}`, {
+                  body: messagePreview,
+                  tag: `team-chat-${data.data.projectId}`,
+                  data: { url: `/dashboard/projects/${data.data.projectId}/team-chat` },
+                });
+              }
+              
+              // Dispatch custom event for team chat components
+              window.dispatchEvent(new CustomEvent('team-message-received', { detail: data.data }));
+              
+              // Invalidate queries
+              queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
+            }
+          } catch (error) {
+            console.error("Error parsing global SSE message:", error);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          console.error("Global SSE error:", error);
+          setIsConnecting(false);
+          if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
+          }
+
+          // Reconnect after 5 seconds
+          if (user?.id && !eventSourceRef.current && !reconnectTimeoutRef.current) {
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectTimeoutRef.current = null;
+              connectSSE();
+            }, 5000);
+          }
+        };
+
+        eventSourceRef.current = eventSource;
+      } catch (error) {
+        console.error("Failed to create global SSE connection:", error);
+        setIsConnecting(false);
+      }
+    };
+
+    connectSSE();
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      setIsConnecting(false);
+    };
+  }, [user?.id, queryClient, playNotificationSound, showNotification]);
+
+  return null; // This component doesn't render anything
+}
+
 function Router() {
   const { user, isLoading } = useAuth();
 
@@ -81,6 +245,7 @@ function Router() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {user && <GlobalNotificationListener />}
       <Suspense fallback={
         <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />

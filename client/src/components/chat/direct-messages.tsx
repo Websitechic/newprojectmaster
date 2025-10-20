@@ -82,6 +82,11 @@ export function DirectMessages() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Assuming recipientId is available from context or props in a real app, or derived from selectedUser
+  // For this example, we'll derive it from selectedUser.id when available.
+  const recipientId = selectedUser ? String(selectedUser.id) : null;
+
+
   // Fetch conversations
   useEffect(() => {
     const fetchConversations = async () => {
@@ -140,136 +145,31 @@ export function DirectMessages() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Listen for real-time messages via SSE
+  // Listen for real-time message updates to refresh the current conversation
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log("Setting up SSE connection for direct messages...");
-    const eventSource = new EventSource("/api/notifications/stream", {
-      withCredentials: true
-    });
+    const handleDirectMessage = (event: CustomEvent) => {
+      const message = event.detail;
+      console.log("Direct message event received in conversation:", message);
 
-    eventSource.onopen = () => {
-      console.log("SSE connection opened for direct messages");
-    };
+      // Invalidate queries to refresh UI
+      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log("SSE message received in direct messages:", data);
-
-        if (data.type === "direct_message") {
-          const message = data.data;
-          console.log("🔔 Direct message received:", message);
-
-          // Play sound and show browser notification if message is from someone else
-          if (message.senderId !== user?.id) {
-            console.log('🔊 Direct message from another user, playing sound and showing notification');
-
-            // Play sound with multiple retry attempts
-            const attemptSound = async (attemptNumber: number) => {
-              try {
-                console.log(`🔊 Direct message sound attempt ${attemptNumber}`);
-                await playNotificationSound();
-                console.log(`✅ Direct message sound attempt ${attemptNumber} completed`);
-              } catch (error) {
-                console.error(`❌ Direct message sound attempt ${attemptNumber} failed:`, error);
-              }
-            };
-
-            // Multiple attempts with delays
-            setTimeout(() => attemptSound(1), 50);
-            setTimeout(() => attemptSound(2), 200);
-            
-            // Show browser notification
-            const messagePreview = message.content?.substring(0, 100) || 'New message';
-            showNotification(`New message from ${message.senderName}`, {
-              body: messagePreview,
-              tag: 'direct-message',
-              data: { url: '/dashboard/messages' },
-            });
-          }
-
-          // If the message is from the currently selected user, add it to messages immediately
-          if (selectedUser && message.senderId === selectedUser.id) {
-            console.log("Adding message to current conversation");
-            setMessages(prev => {
-              // Check if message already exists to avoid duplicates
-              const exists = prev.some(m => m.id === message.id);
-              if (!exists) {
-                return [...prev, message];
-              }
-              return prev;
-            });
-          }
-
-          // If the message is TO the currently selected user (we sent it), also add it
-          if (selectedUser && message.receiverId === selectedUser.id && message.senderId === user?.id) {
-            console.log("Adding sent message to current conversation");
-            setMessages(prev => {
-              // Check if message already exists to avoid duplicates
-              const exists = prev.some(m => m.id === message.id);
-              if (!exists) {
-                return [...prev, message];
-              }
-              return prev;
-            });
-          }
-
-          // Update conversations list
-          setConversations(prev => {
-            const updated = [...prev];
-            const otherUserId = message.senderId === user?.id ? message.receiverId : message.senderId;
-            const existingIndex = updated.findIndex(conv => conv.user.id === otherUserId);
-
-            if (existingIndex >= 0) {
-              // Move conversation to top and update
-              const conversation = updated[existingIndex];
-              updated.splice(existingIndex, 1);
-              updated.unshift({
-                ...conversation,
-                lastMessage: {
-                  content: message.content,
-                  createdAt: message.createdAt,
-                  senderId: message.senderId,
-                },
-                unreadCount: selectedUser?.id === otherUserId ? 0 : conversation.unreadCount + (message.senderId === user?.id ? 0 : 1),
-              });
-            } else {
-              // Add new conversation (fetch user details)
-              fetch(`/api/users/${otherUserId}`)
-                .then(res => res.json())
-                .then(userData => {
-                  setConversations(prev => [{
-                    user: userData,
-                    lastMessage: {
-                      content: message.content,
-                      createdAt: message.createdAt,
-                      senderId: message.senderId,
-                    },
-                    unreadCount: message.senderId === user?.id ? 0 : 1,
-                  }, ...prev]);
-                })
-                .catch(error => console.error("Error fetching user data:", error));
-            }
-
-            return updated;
-          });
-        }
-      } catch (error) {
-        console.error("Error parsing SSE message:", error);
+      if (recipientId && message.senderId === parseInt(recipientId)) {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/direct-messages/${recipientId}`]
+        });
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error("SSE error in direct messages:", error);
-    };
+    window.addEventListener('direct-message-received', handleDirectMessage as EventListener);
 
     return () => {
-      console.log("Closing SSE connection for direct messages");
-      eventSource.close();
+      window.removeEventListener('direct-message-received', handleDirectMessage as EventListener);
     };
-  }, [selectedUser, user?.id, playNotificationSound]);
+  }, [user?.id, recipientId, queryClient]);
 
   // WebSocket event listeners for direct messages
   useEffect(() => {
@@ -348,9 +248,9 @@ export function DirectMessages() {
       if (response.ok) {
         const now = new Date().toISOString();
         // Update messages in local state with the full content (including quoted part)
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === messageId 
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === messageId
               ? { ...msg, content: finalContent, updatedAt: now }
               : msg
           )
@@ -572,12 +472,12 @@ export function DirectMessages() {
       const parts = message.content.split('\n\n');
       cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : message.content;
     }
-    
+
     setReplyingTo({
       ...message,
       content: cleanContent
     });
-    
+
     // Auto-focus the input field with longer delay and multiple attempts
     requestAnimationFrame(() => {
       inputRef.current?.focus();
@@ -675,8 +575,8 @@ export function DirectMessages() {
   };
 
   const toggleUserSelection = (userId: number) => {
-    setSelectedForwardUsers(prev => 
-      prev.includes(userId) 
+    setSelectedForwardUsers(prev =>
+      prev.includes(userId)
         ? prev.filter(id => id !== userId)
         : [...prev, userId]
     );
@@ -692,9 +592,9 @@ export function DirectMessages() {
     });
 
     // Update unread count in conversations
-    setConversations(prev => 
-      prev.map(conv => 
-        conv.user.id === selectedUser.id 
+    setConversations(prev =>
+      prev.map(conv =>
+        conv.user.id === selectedUser.id
           ? { ...conv, unreadCount: 0 }
           : conv
       )
@@ -873,21 +773,21 @@ export function DirectMessages() {
                                       // This is the quoted part
                                       const replyLines = part.split('\n');
                                       const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
-                                      
+
                                       // Find the original message by matching content
-                                      const originalMsg = messages.find(m => 
-                                        m.content === quotedContent || 
+                                      const originalMsg = messages.find(m =>
+                                        m.content === quotedContent ||
                                         m.content.includes(quotedContent) ||
                                         (m.content.startsWith('> Replying to') && m.content.split('\n\n').slice(1).join('\n\n') === quotedContent)
                                       );
-                                      
+
                                       return (
-                                        <div 
-                                          key={idx} 
+                                        <div
+                                          key={idx}
                                           className={cn(
                                             "border-l-4 pl-3 mb-2 italic cursor-pointer hover:bg-muted/50 transition-colors rounded",
-                                            message.senderId === user?.id 
-                                              ? "border-primary-foreground/50 text-primary-foreground/80" 
+                                            message.senderId === user?.id
+                                              ? "border-primary-foreground/50 text-primary-foreground/80"
                                               : "border-primary text-muted-foreground"
                                           )}
                                           onClick={() => {
@@ -896,10 +796,10 @@ export function DirectMessages() {
                                               if (originalMessageElement) {
                                                 // Add highlight effect
                                                 originalMessageElement.classList.add('highlight-flash');
-                                                
+
                                                 // Scroll to message
                                                 originalMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                
+
                                                 // Remove highlight after animation
                                                 setTimeout(() => {
                                                   originalMessageElement.classList.remove('highlight-flash');
@@ -1101,7 +1001,7 @@ export function DirectMessages() {
               <ScrollArea className="h-[300px] border rounded-md p-2">
                 <div className="space-y-1">
                   {allUsers
-                    .filter(u => 
+                    .filter(u =>
                       u.id !== user?.id &&
                       (u.name.toLowerCase().includes(forwardSearchQuery.toLowerCase()) ||
                        u.email.toLowerCase().includes(forwardSearchQuery.toLowerCase()))
@@ -1162,8 +1062,8 @@ export function DirectMessages() {
                       <span className="font-medium text-sm">Replying to {replyingTo.senderName}</span>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-2 break-words">
-                      {replyingTo.content.length > 100 
-                        ? `${replyingTo.content.substring(0, 100)}...` 
+                      {replyingTo.content.length > 100
+                        ? `${replyingTo.content.substring(0, 100)}...`
                         : replyingTo.content}
                     </p>
                   </div>
