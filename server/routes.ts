@@ -228,7 +228,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       let userTasks = [];
-      
+
       if (user.role === "staff" || user.role === "intern") {
         // Staff and interns see tasks assigned to them
         userTasks = await db
@@ -3980,8 +3980,15 @@ End of Report
 
       // Add sender name for immediate display
       const messageWithSender = {
-        ...newMessage,
-        senderName: user.name,
+        id: newMessage.id,
+        content: newMessage.content,
+        createdAt: newMessage.createdAt,
+        senderId: newMessage.senderId,
+        sender: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        },
       };
 
       // Check if this is a reply and send notification to the original message sender
@@ -4829,7 +4836,7 @@ End of Report
       const [request] = await db
         .select()
         .from(technicalSupportRequests)
-        .where(eq(technicalSupportRequests.id, requestId))
+        .where(eq(request.id, requestId))
         .limit(1);
 
       if (!request) {
@@ -4875,7 +4882,7 @@ End of Report
       const [request] = await db
         .select()
         .from(technicalSupportRequests)
-        .where(eq(technicalSupportRequests.id, requestId))
+        .where(eq(request.id, requestId))
         .limit(1);
 
       if (!request) {
@@ -5156,7 +5163,7 @@ End of Report
       const [existingRequest] = await db
         .select()
         .from(deadlineExtensionRequests)
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .limit(1);
 
       if (!existingRequest) {
@@ -5181,7 +5188,7 @@ End of Report
           decidedBy: user.id,
           decidedAt: new Date(),
         })
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .returning();
 
       // If approved, update the task
@@ -6015,10 +6022,7 @@ End of Report
         .orderBy(desc(tasks.updatedAt));
 
       res.json(projectTasks);
-    } catch (error) {
-      console.error("Error fetching project tasks:", error);
-      res.status(500).json({ error: "Failed to fetch project tasks" });
-    }
+    } catch (error    );
   });
 
   // Get project resources
@@ -8032,6 +8036,7 @@ End of Report
           isTimerRunning: false,
           timeSpent: newTimeSpent,
           timerStartTime: null,
+          status: "todo",
           updatedAt: now
         })
         .where(eq(tasks.id, taskId))
@@ -8058,6 +8063,7 @@ End of Report
                   isTimerRunning: updatedTask.isTimerRunning,
                   timeSpent: updatedTask.timeSpent,
                   timerStartTime: updatedTask.timerStartTime,
+                  status: updatedTask.status,
                   projectId: updatedTask.projectId
                 }
               }));
@@ -8199,8 +8205,8 @@ End of Report
       // Calculate final time if timer is running
       let finalTimeSpent = task.timeSpent || 0;
       if (task.isTimerRunning && task.timerStartTime) {
-        const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
-        finalTimeSpent += sessionDuration;
+        const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
+        finalTimeSpent += elapsedSeconds;
       }
 
       // Update task as completed and stop timer
