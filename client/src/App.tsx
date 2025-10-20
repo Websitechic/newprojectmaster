@@ -106,6 +106,7 @@ function GlobalNotificationListener() {
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            console.log('🌐 Global SSE message received:', data);
 
             // Handle notification events
             if (data.type === 'notification' && data.notification) {
@@ -124,7 +125,7 @@ function GlobalNotificationListener() {
                 data.notification.type === 'task_assignment';
               
               if (isDirectMessage || isTaskAssignment) {
-                console.log('🔊 Playing notification sound globally');
+                console.log('🔊 Playing notification sound globally for notification');
                 playNotificationSound().catch(err => {
                   console.error('Sound playback error:', err);
                 });
@@ -134,13 +135,16 @@ function GlobalNotificationListener() {
             else if (data.type === 'direct_message' && data.data) {
               console.log('💬 Global direct message received:', data.data);
               
-              // Play sound for all direct messages
-              playNotificationSound().catch(err => {
-                console.error('Sound playback error:', err);
-              });
-              
-              // Show browser notification if message is from another user
+              // Only play sound and show notification if message is from another user
               if (data.data.senderId !== user?.id) {
+                console.log('🔊 Playing sound for incoming direct message from user:', data.data.senderId);
+                
+                // Play sound immediately
+                playNotificationSound().catch(err => {
+                  console.error('Sound playback error:', err);
+                });
+                
+                // Show browser notification
                 const senderName = data.data.senderName || 'Someone';
                 const messagePreview = data.data.content?.substring(0, 100) || 'New message';
                 showNotification(`${senderName} sent you a message`, {
@@ -148,12 +152,14 @@ function GlobalNotificationListener() {
                   tag: 'direct-message',
                   data: { url: '/dashboard/direct-messages' },
                 });
+              } else {
+                console.log('⏭️ Skipping sound - message is from current user');
               }
               
-              // Dispatch custom event for direct message components
+              // Dispatch custom event for direct message components to update UI immediately
               window.dispatchEvent(new CustomEvent('direct-message-received', { detail: data.data }));
               
-              // Invalidate queries
+              // Invalidate queries to refresh data
               queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
               queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
             }
@@ -161,13 +167,16 @@ function GlobalNotificationListener() {
             else if (data.type === 'project_message' && data.data) {
               console.log('💬 Global team message received:', data.data);
               
-              // Play sound for all team messages
-              playNotificationSound().catch(err => {
-                console.error('Sound playback error:', err);
-              });
-              
-              // Show browser notification if message is from another user
+              // Only play sound and show notification if message is from another user
               if (data.data.senderId !== user?.id) {
+                console.log('🔊 Playing sound for incoming team message from user:', data.data.senderId);
+                
+                // Play sound immediately
+                playNotificationSound().catch(err => {
+                  console.error('Sound playback error:', err);
+                });
+                
+                // Show browser notification
                 const senderName = data.data.senderName || 'Team member';
                 const messagePreview = data.data.content?.substring(0, 100) || 'New message';
                 const projectName = data.data.projectName || 'Team Chat';
@@ -176,12 +185,14 @@ function GlobalNotificationListener() {
                   tag: `team-chat-${data.data.projectId}`,
                   data: { url: `/dashboard/projects/${data.data.projectId}/team-chat` },
                 });
+              } else {
+                console.log('⏭️ Skipping sound - message is from current user');
               }
               
-              // Dispatch custom event for team chat components
+              // Dispatch custom event for team chat components to update UI immediately
               window.dispatchEvent(new CustomEvent('team-message-received', { detail: data.data }));
               
-              // Invalidate queries
+              // Invalidate queries to refresh data
               queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
               queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
             }

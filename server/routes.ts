@@ -160,6 +160,25 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+// Helper function to broadcast SSE messages to a specific user
+function broadcastToUser(userId: number | string, message: string) {
+  const id = typeof userId === 'string' ? parseInt(userId) : userId;
+  if (global.sseClients && global.sseClients.has(id)) {
+    const client = global.sseClients.get(id);
+    if (client && !client.writableEnded) {
+      try {
+        client.write(`data: ${message}\n\n`);
+      } catch (error) {
+        console.error(`❌ Error broadcasting SSE message to user ${id}:`, error);
+        global.sseClients.delete(id);
+      }
+    } else {
+      console.log(`⚠️ SSE client for user ${id} is not writable or ended.`);
+    }
+  } else {
+    console.log(`⚠️ No active SSE client found for user ${id}`);
+  }
+}
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -221,7 +240,7 @@ export function registerRoutes(app: Express): Server {
   // Tasks endpoint - returns tasks based on user role
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
+      return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
@@ -2250,6 +2269,15 @@ End of Report
         .where(eq(tasks.id, taskId))
         .returning();
 
+      // Pause user's current task
+      await db
+        .update(users)
+        .set({
+          currentTaskId: null,
+          taskStartTime: null,
+        })
+        .where(eq(users.id, user.id));
+
       // Broadcast timer paused event via WebSocket
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
@@ -3998,7 +4026,7 @@ End of Report
     }
 
     const user = req.user!;
-    const { receiverId, content } = req.body;
+    const { receiverId, content, replyToMessageId, replyToSenderName } = req.body;
     const senderId = user.id; // Define senderId here
 
     try {
@@ -4022,19 +4050,17 @@ End of Report
       const messageWithSender = {
         ...newMessage,
         senderName: user.name,
+        replyToMessageId: replyToMessageId || null,
+        replyToSenderName: replyToSenderName || null,
       };
 
       // Check if this is a reply and send notification to the original message sender
-      if (messageContent.startsWith('> Replying to')) {
-        const replyLines = messageContent.split('\n');
-        const replyToLine = replyLines[0]; // "> Replying to Name:"
-        const replyToName = replyToLine.replace('> Replying to ', '').replace(':', '').trim();
-
-        // Find the user being replied to
+      if (replyToMessageId && replyToSenderName) {
+        // Find the user being replied to (assuming replyToSenderName uniquely identifies the user for this purpose)
         const repliedToUser = await db
           .select()
           .from(users)
-          .where(eq(users.name, replyToName))
+          .where(eq(users.name, replyToSenderName))
           .limit(1);
 
         if (repliedToUser.length > 0 && repliedToUser[0].id !== user.id) {
@@ -4059,7 +4085,6 @@ End of Report
       );
 
       console.log('📧 Direct message notification created:', notification);
-
 
       // Send SSE notification to the receiver
       if (global.sseClients && global.sseClients.has(parseInt(receiverId))) {
@@ -7991,7 +8016,7 @@ End of Report
           currentTaskId: taskId,
           taskStartTime: now,
         })
-        .where(eq(users.id, user.id));
+        .where(eq(users.id, userId));
 
       // Get project manager for notification
       const [project] = await db
@@ -8001,7 +8026,7 @@ End of Report
         .limit(1);
 
       // Notify project manager about task being started
-      if (project && project.managerId && project.managerId !== user.id) {
+      if (project && project.managerId && project.managerId !== userId) {
         await createNotification(
           project.managerId,
           "task_updated",

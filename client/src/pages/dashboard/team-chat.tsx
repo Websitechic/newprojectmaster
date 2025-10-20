@@ -253,14 +253,16 @@ export default function TeamChat() {
     if (!user?.id || !projectId) return;
 
     const handleTeamMessage = (event: CustomEvent) => {
-      const message = event.detail;
-      console.log("Team message event received in conversation:", message);
+      const messageData = event.detail;
+      console.log("Team message event received in conversation:", messageData);
 
       // Only process messages for this project
-      if (message.projectId === parseInt(projectId)) {
+      if (messageData.projectId === projectId) {
+        console.log("Message is for current project, refreshing immediately");
+        
         // Invalidate queries to refresh the UI immediately
         queryClient.invalidateQueries({ 
-          queryKey: [`/api/projects/${projectId}/messages`] 
+          queryKey: [`/api/projects/${projectId}/team-messages`] 
         });
         queryClient.invalidateQueries({ 
           queryKey: ["/api/projects/unread-counts"] 

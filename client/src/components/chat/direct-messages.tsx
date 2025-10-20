@@ -150,17 +150,34 @@ export function DirectMessages() {
     if (!user?.id) return;
 
     const handleDirectMessage = (event: CustomEvent) => {
-      const message = event.detail;
-      console.log("Direct message event received in conversation:", message);
+      const messageData = event.detail;
+      console.log("Direct message event received in conversation:", messageData);
 
-      // Invalidate queries to refresh UI
+      // Update conversations list immediately
       queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
 
-      if (recipientId && message.senderId === parseInt(recipientId)) {
-        queryClient.invalidateQueries({
-          queryKey: [`/api/direct-messages/${recipientId}`]
-        });
+      // If viewing a conversation with the sender, add message immediately
+      if (selectedUser) {
+        const isFromSelectedUser = messageData.senderId === selectedUser.id;
+        const isToSelectedUser = messageData.receiverId === selectedUser.id && messageData.senderId === user?.id;
+        
+        if (isFromSelectedUser || isToSelectedUser) {
+          console.log("Adding message to current conversation immediately");
+          setMessages(prev => {
+            // Check if message already exists to avoid duplicates
+            const exists = prev.some(m => m.id === messageData.id);
+            if (!exists) {
+              return [...prev, messageData];
+            }
+            return prev;
+          });
+          
+          // Also invalidate to ensure consistency
+          queryClient.invalidateQueries({
+            queryKey: [`/api/direct-messages/${selectedUser.id}`]
+          });
+        }
       }
     };
 
@@ -169,7 +186,7 @@ export function DirectMessages() {
     return () => {
       window.removeEventListener('direct-message-received', handleDirectMessage as EventListener);
     };
-  }, [user?.id, recipientId, queryClient]);
+  }, [user?.id, selectedUser, queryClient]);
 
   // WebSocket event listeners for direct messages
   useEffect(() => {
