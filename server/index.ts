@@ -87,26 +87,26 @@ let emailServiceInitialized = false;
     log("Starting server initialization...");
 
     // Auto-migrate database on startup
-    migrate(db, { migrationsFolder: "./migrations" })
-      .then(() => {
-        console.log("Database migrations completed successfully");
-      })
-      .catch((error) => {
-        console.error("Database migration error:", error);
-        // Only continue if it's a duplicate column/constraint error (already applied)
-        const isDuplicateError = error.message && (
-          error.message.includes('already exists') || 
-          error.code === '42701' || // duplicate column
-          error.code === '42P07'    // duplicate table
-        );
-        
-        if (!isDuplicateError) {
-          console.error("Critical migration error, exiting...");
-          process.exit(1);
-        } else {
-          console.log("Migration skipped - schema already up to date");
-        }
-      });
+    try {
+      await migrate(db, { migrationsFolder: "./migrations" });
+      console.log("Database migrations completed successfully");
+    } catch (error: any) {
+      console.error("Database migration error:", error.message || error);
+      // Only continue if it's a duplicate column/constraint error (already applied)
+      const isDuplicateError = error.message && (
+        error.message.includes('already exists') || 
+        error.code === '42701' || // duplicate column
+        error.code === '42P07' || // duplicate table
+        error.code === '42710'    // duplicate object
+      );
+      
+      if (!isDuplicateError) {
+        console.error("Critical migration error, exiting...");
+        process.exit(1);
+      } else {
+        console.log("Migration skipped - schema already up to date");
+      }
+    }
 
     // Initialize email service with timeout
     try {
