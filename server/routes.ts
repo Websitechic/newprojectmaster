@@ -2210,6 +2210,15 @@ End of Report
         .where(eq(tasks.id, taskId))
         .returning();
 
+      // Clear the user's current task assignment
+      await db
+        .update(users)
+        .set({
+          currentTaskId: null,
+          taskStartTime: null,
+        })
+        .where(eq(users.id, user.id));
+
       // Broadcast timer paused event via WebSocket
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
@@ -5119,10 +5128,10 @@ End of Report
           .insert(notifications)
           .values({
             userId: project.managerId,
-            type: "task_updated",
+            type: "task_updated", // Using existing type
             content: `${user.name} has requested a deadline extension for task: ${taskDetails?.title || 'Unknown Task'}`,
             referenceId: newRequest.id,
-            referenceType: "project",
+            referenceType: "project", // Using existing type
           });
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
@@ -5968,7 +5977,7 @@ End of Report
           userEmail: users.email,
         })
         .from(projectMembers)
-        .leftJoin(users, eq(projectMembers.userId, users.id))
+        .leftJoin(users,eq(projectMembers.userId, users.id))
         .where(eq(projectMembers.projectId, projectId));
 
       res.json(members);
@@ -6527,13 +6536,13 @@ End of Report
   });
 
   // Send team message
-  app.post("/api/projects/:id/team-messages", async (req, res) => {
+  app.post("/api/projects/:projectId/team-messages", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    const projectId = parseInt(req.params.id);
+    const projectId = parseInt(req.params.projectId);
     const { content } = req.body;
 
     try {
@@ -6667,7 +6676,7 @@ End of Report
       res.json({ success: true, messageId: newMessage.id, message: messageWithSender });
     } catch (error) {
       console.error("Error sending team message:", error);
-      res.status(500).json({ error: "Failed to send message" });
+      res.status(500).json({ error: "Failed to send team message" });
     }
   });
 
@@ -7171,7 +7180,7 @@ End of Report
         .limit(1);
 
       if (!project) {
-        return res.status(404).json({ error:"Project not found" });
+        return res.status(404).json({"error":"Project not found" });
       }
 
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
