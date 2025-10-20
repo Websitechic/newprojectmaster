@@ -135,8 +135,10 @@ function GlobalNotificationListener() {
             else if (data.type === 'direct_message' && data.data) {
               console.log('💬 Global direct message received:', data.data);
               
-              // Only play sound and show notification if message is from another user
-              if (data.data.senderId !== user?.id) {
+              // Check if this is a message TO the current user (received message)
+              const isReceivedMessage = data.data.receiverId === user?.id && data.data.senderId !== user?.id;
+              
+              if (isReceivedMessage) {
                 console.log('🔊 Playing sound for incoming direct message from user:', data.data.senderId);
                 
                 // Play sound immediately
@@ -153,7 +155,7 @@ function GlobalNotificationListener() {
                   data: { url: '/dashboard/direct-messages' },
                 });
               } else {
-                console.log('⏭️ Skipping sound - message is from current user');
+                console.log('⏭️ Skipping sound - message is from current user or not to current user');
               }
               
               // Dispatch custom event for direct message components to update UI immediately

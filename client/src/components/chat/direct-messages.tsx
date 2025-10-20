@@ -153,11 +153,7 @@ export function DirectMessages() {
       const messageData = event.detail;
       console.log("Direct message event received in conversation:", messageData);
 
-      // Update conversations list immediately
-      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
-
-      // If viewing a conversation with the sender, add message immediately
+      // If viewing a conversation with the sender or receiver, add message immediately
       if (selectedUser) {
         const isFromSelectedUser = messageData.senderId === selectedUser.id;
         const isToSelectedUser = messageData.receiverId === selectedUser.id && messageData.senderId === user?.id;
@@ -172,13 +168,12 @@ export function DirectMessages() {
             }
             return prev;
           });
-          
-          // Also invalidate to ensure consistency
-          queryClient.invalidateQueries({
-            queryKey: [`/api/direct-messages/${selectedUser.id}`]
-          });
         }
       }
+      
+      // Always update conversations list
+      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
     };
 
     window.addEventListener('direct-message-received', handleDirectMessage as EventListener);
@@ -424,7 +419,7 @@ export function DirectMessages() {
         setNewMessage("");
         setReplyingTo(null);
 
-        // Update messages state to include the sent message only if it doesn't exist
+        // Add sent message to UI immediately
         setMessages(prev => {
           const exists = prev.some(m => m.id === sentMessage.id);
           if (!exists) {
@@ -449,7 +444,7 @@ export function DirectMessages() {
                 createdAt: sentMessage.createdAt,
                 senderId: sentMessage.senderId,
               },
-              unreadCount: 0, // We sent it, so it's not unread for us
+              unreadCount: 0,
             });
           } else {
             // Add new conversation at the top
@@ -466,6 +461,10 @@ export function DirectMessages() {
 
           return updated;
         });
+
+        // Invalidate queries to ensure data consistency
+        queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
 
       } else {
         const errorText = await response.text();
