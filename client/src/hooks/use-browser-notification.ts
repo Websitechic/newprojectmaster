@@ -17,6 +17,8 @@ export function useBrowserNotification() {
         Notification.requestPermission().then((result) => {
           setPermission(result);
           console.log('📬 Notification permission:', result);
+        }).catch((error) => {
+          console.error('❌ Error requesting notification permission:', error);
         });
       }
     } else {
@@ -69,14 +71,15 @@ export function useBrowserNotification() {
         }, 5000);
 
         // Focus window and navigate when notification is clicked
-        notification.onclick = () => {
+        notification.onclick = (event: Event) => {
           console.log('📬 Notification clicked, focusing window');
           window.focus();
           
-          // Navigate to the URL if provided
-          if (options?.data?.url) {
-            console.log('📬 Navigating to:', options.data.url);
-            window.location.href = options.data.url;
+          // Navigate to the URL if provided - access from notification.data
+          const notificationEvent = event.target as Notification;
+          if (notificationEvent?.data?.url) {
+            console.log('📬 Navigating to:', notificationEvent.data.url);
+            window.location.href = notificationEvent.data.url;
           }
           
           notification.close();
