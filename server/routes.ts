@@ -228,7 +228,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       let userTasks = [];
-      
+
       if (user.role === "staff" || user.role === "intern") {
         // Staff and interns see tasks assigned to them
         userTasks = await db
@@ -5196,7 +5196,7 @@ End of Report
       const [existingRequest] = await db
         .select()
         .from(deadlineExtensionRequests)
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .limit(1);
 
       if (!existingRequest) {
@@ -5221,7 +5221,7 @@ End of Report
           decidedBy: user.id,
           decidedAt: new Date(),
         })
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .returning();
 
       // If approved, update the task
@@ -6208,7 +6208,7 @@ End of Report
     const projectId = parseInt(req.params.id);
     const { name, link, category } = req.body;
 
-    console.log("Resource link endpoint called:", { projectId, name, link, category, userId: user.id, userRole: user.role });
+    console.log("Resource link endpoint called:", { projectId, name, link, category, userId: user.id, userRole:user.role });
 
     try {
       // Validate required fields
@@ -6560,13 +6560,13 @@ End of Report
   });
 
   // Send team message
-  app.post("/api/projects/:id/team-messages", async (req, res) => {
+  app.post("/api/projects/:projectId/team-messages", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    const projectId = parseInt(req.params.id);
+    const projectId = parseInt(req.params.projectId);
     const { content } = req.body;
 
     try {
@@ -6610,9 +6610,9 @@ End of Report
       const [newMessage] = await db
         .insert(projectMessages)
         .values({
-          content: content.trim(),
           projectId,
           senderId: user.id,
+          content: content.trim(),
           createdAt: now,
           updatedAt: now,
           isEdited: false,
@@ -6687,7 +6687,6 @@ End of Report
               type: "project_message",
               data: {
                 projectId,
-                messageId: newMessage.id,
                 senderId: user.id,
                 senderName: user.name,
                 content: content.trim(),
@@ -6700,7 +6699,7 @@ End of Report
       res.json({ success: true, messageId: newMessage.id, message: messageWithSender });
     } catch (error) {
       console.error("Error sending team message:", error);
-      res.status(500).json({ error: "Failed to send message" });
+      res.status(500).json({ error: "Failed to send team message" });
     }
   });
 
@@ -7545,7 +7544,7 @@ End of Report
               startDate: deliverableStartDate,
               endDate: deliverableEndDate,
               duration,
-              status: "pending" as const,
+              status: deliverable.status || "pending" as const,
               order: typeof deliverable.order === 'number' ? deliverable.order : index,
             };
           });
@@ -8064,7 +8063,7 @@ End of Report
         global.timerIntervals.delete(taskId);
       }
 
-      // Pause the timer
+      // Pause the timer and set status to "todo"
       const now = new Date();
       const [updatedTask] = await db
         .update(tasks)
@@ -8072,6 +8071,7 @@ End of Report
           isTimerRunning: false,
           timeSpent: newTimeSpent,
           timerStartTime: null,
+          status: "todo",
           updatedAt: now
         })
         .where(eq(tasks.id, taskId))
@@ -8098,6 +8098,7 @@ End of Report
                   isTimerRunning: updatedTask.isTimerRunning,
                   timeSpent: updatedTask.timeSpent,
                   timerStartTime: updatedTask.timerStartTime,
+                  status: updatedTask.status,
                   projectId: updatedTask.projectId
                 }
               }));
@@ -8108,7 +8109,7 @@ End of Report
         });
       }
 
-      res.json({ success: true, timeSpent: newTimeSpent, task: updatedTask });
+      res.json(updatedTask);
     } catch (error) {
       console.error("Error pausing task timer:", error);
       res.status(500).json({ error: "Failed to pause timer" });
@@ -8239,8 +8240,8 @@ End of Report
       // Calculate final time if timer is running
       let finalTimeSpent = task.timeSpent || 0;
       if (task.isTimerRunning && task.timerStartTime) {
-        const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
-        finalTimeSpent += sessionDuration;
+        const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
+        finalTimeSpent += elapsedSeconds;
       }
 
       // Update task as completed and stop timer
