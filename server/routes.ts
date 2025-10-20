@@ -575,6 +575,46 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get unread mention counts from notifications
+  app.get("/api/mentions/unread-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      // Get unread mention notifications grouped by project
+      const mentionNotifications = await db
+        .select({
+          projectId: notifications.referenceId,
+          count: sql<number>`count(*)`,
+        })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, user.id),
+            eq(notifications.type, "team_mention"),
+            eq(notifications.read, false),
+            eq(notifications.referenceType, "project")
+          )
+        )
+        .groupBy(notifications.referenceId);
+
+      const counts = mentionNotifications.reduce((acc, notification) => {
+        if (notification.projectId) {
+          acc[notification.projectId] = notification.count;
+        }
+        return acc;
+      }, {} as Record<number, number>);
+
+      res.json(counts);
+    } catch (error) {
+      console.error("Error fetching mention counts:", error);
+      res.status(500).json({ error: "Failed to fetch mention counts" });
+    }
+  });
+
   // Get unread message counts for projects
   app.get("/api/projects/unread-counts", async (req, res) => {
     if (!req.isAuthenticated()) {

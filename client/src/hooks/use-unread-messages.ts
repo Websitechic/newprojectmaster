@@ -44,6 +44,7 @@ export function useProjectUnreadCount(projectId: number) {
 export function useUnreadMessages() {
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
   const [directMessagesCount, setDirectMessagesCount] = useState(0);
+  const [mentionCounts, setMentionCounts] = useState<Record<number, number>>({});
   const { user } = useAuth();
 
   // Fetch project unread counts
@@ -62,6 +63,25 @@ export function useUnreadMessages() {
     } catch (error) {
       console.error('Failed to fetch unread counts:', error);
       setUnreadCounts({});
+    }
+  }, [user]);
+
+  // Fetch mention counts
+  const fetchMentionCounts = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch('/api/mentions/unread-count');
+      if (response.ok) {
+        const counts = await response.json();
+        setMentionCounts(counts);
+      } else {
+        console.warn('Failed to fetch mention counts:', response.status, response.statusText);
+        setMentionCounts({});
+      }
+    } catch (error) {
+      console.error('Failed to fetch mention counts:', error);
+      setMentionCounts({});
     }
   }, [user]);
 
@@ -93,28 +113,33 @@ export function useUnreadMessages() {
     if (!user) {
       setUnreadCounts({});
       setDirectMessagesCount(0);
+      setMentionCounts({});
       return;
     }
 
     // Initial fetch
     fetchUnreadCounts().catch(console.error);
     fetchDirectMessagesCount().catch(console.error);
+    fetchMentionCounts().catch(console.error);
 
     // Set up polling
     const interval = setInterval(() => {
       fetchUnreadCounts().catch(console.error);
       fetchDirectMessagesCount().catch(console.error);
+      fetchMentionCounts().catch(console.error);
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [fetchUnreadCounts, fetchDirectMessagesCount, user]);
+  }, [fetchUnreadCounts, fetchDirectMessagesCount, fetchMentionCounts, user]);
 
   return {
     unreadCounts,
     directMessagesCount,
+    mentionCounts,
     refetch: () => {
       fetchUnreadCounts().catch(console.error);
       fetchDirectMessagesCount().catch(console.error);
+      fetchMentionCounts().catch(console.error);
     }
   };
 }
