@@ -484,29 +484,8 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                           <Button
                             variant="default"
                             size="sm"
-                            onClick={async () => {
-                              // Stop timer if running
-                              if (task.isTimerRunning) {
-                                try {
-                                  await fetch(`/api/tasks/${task.id}/pause-timer`, {
-                                    method: "POST",
-                                    credentials: 'include',
-                                  });
-                                  queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-                                  queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
-                                } catch (error) {
-                                  console.error("Error stopping timer:", error);
-                                  toast({
-                                    title: "Error",
-                                    description: "Failed to stop timer before submitting.",
-                                    variant: "destructive",
-                                  });
-                                  return; // Prevent submission if timer stopping fails
-                                }
-                              }
-                              submitTask.mutate(task.id);
-                            }}
-                            disabled={!task.hasBeenStarted || submitTask.isPending || task.isTimerRunning}
+                            onClick={() => submitTask.mutate(task.id)}
+                            disabled={!task.hasBeenStarted || submitTask.isPending}
                             className="h-8"
                           >
                             <Send className="h-3.5 w-3.5 mr-1" />

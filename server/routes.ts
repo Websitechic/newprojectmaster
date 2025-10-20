@@ -2036,7 +2036,7 @@ End of Report
         });
       }
 
-      // Start the timer
+      // Start the timer and set status to in_progress
       const now = new Date();
       const [updatedTask] = await db
         .update(tasks)
@@ -2044,6 +2044,7 @@ End of Report
           isTimerRunning: true,
           timerStartTime: now,
           hasBeenStarted: true,
+          status: "in_progress",
           updatedAt: now
         })
         .where(eq(tasks.id, taskId))
@@ -2060,7 +2061,8 @@ End of Report
                   taskId: updatedTask.id,
                   isTimerRunning: updatedTask.isTimerRunning,
                   timerStartTime: updatedTask.timerStartTime,
-                  timeSpent: updatedTask.timeSpent || 0
+                  timeSpent: updatedTask.timeSpent || 0,
+                  status: updatedTask.status
                 }
               }));
             } catch (error) {
@@ -2173,7 +2175,7 @@ End of Report
         global.timerIntervals.delete(taskId);
       }
 
-      // Pause the timer
+      // Pause the timer and set status to "todo"
       const now = new Date();
       const [updatedTask] = await db
         .update(tasks)
@@ -2181,6 +2183,7 @@ End of Report
           isTimerRunning: false,
           timeSpent: newTimeSpent,
           timerStartTime: null,
+          status: "todo",
           updatedAt: now
         })
         .where(eq(tasks.id, taskId))
@@ -2198,6 +2201,7 @@ End of Report
                   isTimerRunning: updatedTask.isTimerRunning,
                   timeSpent: updatedTask.timeSpent,
                   timerStartTime: updatedTask.timerStartTime,
+                  status: updatedTask.status,
                   projectId: updatedTask.projectId
                 }
               }));
@@ -2212,6 +2216,88 @@ End of Report
     } catch (error) {
       console.error("Error pausing task timer:", error);
       res.status(500).json({ error: "Failed to pause timer" });
+    }
+  });
+
+  // Submit task for review (Staff and Interns only)
+  app.post("/api/tasks/:id/submit", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern")) {
+      return res.status(403).send("Only staff members and interns can submit tasks");
+    }
+
+    try {
+      const taskId = parseInt(req.params.id);
+      const user = req.user!;
+
+      // Check if task exists and is assigned to this staff member
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(and(
+          eq(tasks.id, taskId),
+          eq(tasks.assigneeId, user.id)
+        ))
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found or not assigned to you" });
+      }
+
+      // If timer is running, stop it first
+      let newTimeSpent = task.timeSpent || 0;
+      if (task.isTimerRunning && task.timerStartTime) {
+        const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
+        newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
+
+        // Clear the timer interval
+        if (global.timerIntervals && global.timerIntervals.has(taskId)) {
+          clearInterval(global.timerIntervals.get(taskId));
+          global.timerIntervals.delete(taskId);
+        }
+      }
+
+      // Update task to review status and stop timer
+      const now = new Date();
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          status: "review",
+          isTimerRunning: false,
+          timeSpent: newTimeSpent,
+          timerStartTime: null,
+          updatedAt: now
+        })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      // Broadcast task update via WebSocket
+      if (global.connectedClients) {
+        global.connectedClients.forEach((client) => {
+          if (client.readyState === 1) {
+            try {
+              client.send(JSON.stringify({
+                type: 'task_updated',
+                data: {
+                  taskId: updatedTask.id,
+                  projectId: updatedTask.projectId,
+                  status: updatedTask.status,
+                  isTimerRunning: updatedTask.isTimerRunning,
+                  timeSpent: updatedTask.timeSpent,
+                  updatedBy: user.id,
+                  updatedAt: now.toISOString()
+                }
+              }));
+            } catch (error) {
+              console.error('Error broadcasting task submission:', error);
+            }
+          }
+        });
+      }
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error submitting task:", error);
+      res.status(500).json({ error: "Failed to submit task" });
     }
   });
 
@@ -4768,7 +4854,7 @@ End of Report
       const [request] = await db
         .select()
         .from(technicalSupportRequests)
-        .where(eq(request.id, requestId))
+        .where(eq(technicalSupportRequests.id, requestId))
         .limit(1);
 
       if (!request) {
