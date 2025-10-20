@@ -399,8 +399,13 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                   <TableCell className="min-w-[110px] max-w-[110px]">
                     <Select
                       value={task.status || 'todo'}
-                      onValueChange={(status) => updateTaskStatus.mutate({ taskId: task.id, status })}
-                      disabled={updateTaskStatus.isPending}
+                      onValueChange={(status) => {
+                        if (status === 'technical_support' && task.isTimerRunning) {
+                          pauseTimer.mutate(task.id);
+                        }
+                        updateTaskStatus.mutate({ taskId: task.id, status });
+                      }}
+                      disabled={updateTaskStatus.isPending || pauseTimer.isPending}
                     >
                       <SelectTrigger className="w-full h-7 text-[11px] px-2">
                         <SelectValue />
@@ -479,7 +484,28 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                           <Button
                             variant="default"
                             size="sm"
-                            onClick={() => submitTask.mutate(task.id)}
+                            onClick={async () => {
+                              // Stop timer if running
+                              if (task.isTimerRunning) {
+                                try {
+                                  await fetch(`/api/tasks/${task.id}/pause-timer`, {
+                                    method: "POST",
+                                    credentials: 'include',
+                                  });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+                                  queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+                                } catch (error) {
+                                  console.error("Error stopping timer:", error);
+                                  toast({
+                                    title: "Error",
+                                    description: "Failed to stop timer before submitting.",
+                                    variant: "destructive",
+                                  });
+                                  return; // Prevent submission if timer stopping fails
+                                }
+                              }
+                              submitTask.mutate(task.id);
+                            }}
                             disabled={!task.hasBeenStarted || submitTask.isPending || task.isTimerRunning}
                             className="h-8"
                           >

@@ -4616,6 +4616,60 @@ End of Report
         return res.status(400).json({ error: "Title and description are required" });
       }
 
+      // If there's a related task, stop timer and change status
+      if (taskId) {
+        const parsedTaskId = parseInt(taskId);
+        const [task] = await db
+          .select()
+          .from(tasks)
+          .where(eq(tasks.id, parsedTaskId))
+          .limit(1);
+
+        if (task) {
+          // Calculate time spent if timer is running
+          let newTimeSpent = task.timeSpent || 0;
+          if (task.isTimerRunning && task.timerStartTime) {
+            const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
+            newTimeSpent += elapsedSeconds;
+          }
+
+          // Stop timer and change status to technical_support
+          await db
+            .update(tasks)
+            .set({
+              isTimerRunning: false,
+              timerStartTime: null,
+              timeSpent: newTimeSpent,
+              status: "technical_support",
+              updatedAt: new Date(),
+            })
+            .where(eq(tasks.id, parsedTaskId));
+
+          // Broadcast task update via WebSocket
+          if (global.connectedClients) {
+            global.connectedClients.forEach((client) => {
+              if (client.readyState === 1) {
+                try {
+                  client.send(JSON.stringify({
+                    type: 'task_updated',
+                    data: {
+                      taskId: parsedTaskId,
+                      projectId: task.projectId,
+                      status: 'technical_support',
+                      isTimerRunning: false,
+                      timeSpent: newTimeSpent,
+                      updatedAt: new Date().toISOString()
+                    }
+                  }));
+                } catch (error) {
+                  console.error('Error broadcasting task update:', error);
+                }
+              }
+            });
+          }
+        }
+      }
+
       const [newRequest] = await db
         .insert(technicalSupportRequests)
         .values({
@@ -4668,7 +4722,7 @@ End of Report
       const [request] = await db
         .select()
         .from(technicalSupportRequests)
-        .where(eq(request.id, requestId))
+        .where(eq(technicalSupportRequests.id, requestId))
         .limit(1);
 
       if (!request) {
