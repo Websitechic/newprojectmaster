@@ -82,7 +82,7 @@ export default function Dashboard() {
   });
 
   // Fetch tasks
-  const { data: tasks } = useQuery<Task[]>({
+  const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
     refetchInterval: 5000,
   });
