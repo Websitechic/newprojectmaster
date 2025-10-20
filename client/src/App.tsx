@@ -135,10 +135,10 @@ function GlobalNotificationListener() {
             else if (data.type === 'direct_message' && data.data) {
               console.log('💬 Global direct message received:', data.data);
               
-              // Check if this is a message TO the current user (received message)
-              const isReceivedMessage = data.data.receiverId === user?.id && data.data.senderId !== user?.id;
+              // Play sound for any message not sent by current user
+              const isIncomingMessage = data.data.senderId !== user?.id;
               
-              if (isReceivedMessage) {
+              if (isIncomingMessage) {
                 console.log('🔊 Playing sound for incoming direct message from user:', data.data.senderId);
                 
                 // Play sound immediately
@@ -146,16 +146,18 @@ function GlobalNotificationListener() {
                   console.error('Sound playback error:', err);
                 });
                 
-                // Show browser notification
-                const senderName = data.data.senderName || 'Someone';
-                const messagePreview = data.data.content?.substring(0, 100) || 'New message';
-                showNotification(`${senderName} sent you a message`, {
-                  body: messagePreview,
-                  tag: 'direct-message',
-                  data: { url: '/dashboard/direct-messages' },
-                });
+                // Show browser notification only if message is TO current user
+                if (data.data.receiverId === user?.id) {
+                  const senderName = data.data.senderName || 'Someone';
+                  const messagePreview = data.data.content?.substring(0, 100) || 'New message';
+                  showNotification(`${senderName} sent you a message`, {
+                    body: messagePreview,
+                    tag: 'direct-message',
+                    data: { url: '/dashboard/direct-messages' },
+                  });
+                }
               } else {
-                console.log('⏭️ Skipping sound - message is from current user or not to current user');
+                console.log('⏭️ Skipping sound - message is from current user');
               }
               
               // Dispatch custom event for direct message components to update UI immediately
