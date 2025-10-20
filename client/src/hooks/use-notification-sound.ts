@@ -75,10 +75,33 @@ export function useNotificationSound() {
   }, [initAudioContext]);
 
   const playNotificationSound = useCallback(async () => {
-    // Sound is disabled - do nothing
-    console.log('🔇 Sound playback is disabled');
-    return;
-  }, []);
+    try {
+      if (!audioContextRef.current || !audioBufferRef.current) {
+        console.log('🔇 Audio not initialized yet, trying to initialize...');
+        await initAudioContext();
+        // If still not initialized after attempt, return
+        if (!audioContextRef.current || !audioBufferRef.current) {
+          console.log('🔇 Audio initialization failed');
+          return;
+        }
+      }
+
+      // Resume context if suspended (required for autoplay policy)
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
+      // Create source node and connect to destination
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBufferRef.current;
+      source.connect(audioContextRef.current.destination);
+      source.start(0);
+      
+      console.log('🔊 Notification sound played successfully');
+    } catch (error) {
+      console.error('❌ Error playing notification sound:', error);
+    }
+  }, [initAudioContext]);
 
   return { playNotificationSound, isInitialized };
 }
