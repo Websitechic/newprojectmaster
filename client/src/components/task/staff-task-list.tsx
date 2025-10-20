@@ -195,7 +195,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
   const updateTaskStatus = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
-      const response = await fetch(`/api/tasks/${taskId}/status`, {
+      const response = await fetch(`/api/tasks/${taskId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -209,8 +209,39 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
       }
       return response.json();
     },
+    onMutate: async ({ taskId, status }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/tasks"] });
+      if (projectId) {
+        await queryClient.cancelQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+      }
+
+      // Snapshot the previous value
+      const previousTasks = queryClient.getQueryData(["/api/tasks"]);
+      const previousProjectTasks = projectId ? queryClient.getQueryData([`/api/projects/${projectId}/tasks`]) : null;
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(["/api/tasks"], (old: Task[] | undefined) => {
+        if (!old) return old;
+        return old.map(task => 
+          task.id === taskId ? { ...task, status: status as any } : task
+        );
+      });
+
+      if (projectId) {
+        queryClient.setQueryData([`/api/projects/${projectId}/tasks`], (old: Task[] | undefined) => {
+          if (!old) return old;
+          return old.map(task => 
+            task.id === taskId ? { ...task, status: status as any } : task
+          );
+        });
+      }
+
+      // Return a context object with the snapshotted value
+      return { previousTasks, previousProjectTasks };
+    },
     onSuccess: (updatedTask) => {
-      // Optimistically update the cache
+      // Update with the actual server data
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
         if (!oldTasks) return [updatedTask];
         return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
@@ -228,7 +259,15 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
         description: "Task status has been updated",
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, context) => {
+      // If the mutation fails, use the context to roll back
+      if (context?.previousTasks) {
+        queryClient.setQueryData(["/api/tasks"], context.previousTasks);
+      }
+      if (context?.previousProjectTasks && projectId) {
+        queryClient.setQueryData([`/api/projects/${projectId}/tasks`], context.previousProjectTasks);
+      }
+
       toast({
         title: "Error",
         description: error.message,

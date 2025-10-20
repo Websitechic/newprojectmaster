@@ -1874,7 +1874,7 @@ End of Report
         .limit(1);
 
       if (!project) {
-        return res.status(404).json({ error: "Project not found" });
+        return res.status(404).json({ error: "Project not found for this task" });
       }
 
       const hasAccess = 
@@ -6168,29 +6168,28 @@ End of Report
   });
 
   // Get project team messages
-  app.get("/api/projects/:id/team-messages", async (req, res) => {
+  app.get("/api/projects/:projectId/team-messages", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    const projectId = parseInt(req.params.id);
+    const projectId = parseInt(req.params.projectId);
 
     try {
        // Check project access
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });      // Check if user is a member of the project (for all roles including customer support)
       const [membership] = await db
-        .select()[
-  {"op": "replace", "content": "// Send SSE notification for mentions\n        if (mentions.length > 0) {\n          for (const mention of mentions) {\n            const mentionedUser = projectMembersData.find(\n              (m: any) => m.id === mention.userId || m.userId === mention.userId\n            );\n            if (mentionedUser) {\n              const mentionedUserId = mentionedUser.id || mentionedUser.userId;\n              // Avoid notifying the sender\n              if (mentionedUserId !== user.id) {\n                await createNotification(\n                  mentionedUserId,\n                  \"mention\",\n                  `${user.name} mentioned you in ${project.name}`,\n                  projectId,\n                  \"team_message\"\n                );\n              }\n            }\n          }\n        }"}
-]          .from(projectMembers)
-          .where(
-            and(
-              eq(projectMembers.projectId, projectId),
-              eq(projectMembers.userId, user.id)
-            )
+        .select()
+        .from(projectMembers)
+        .where(
+          and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.userId, user.id)
           )
-          .limit(1);
+        )
+        .limit(1);
 
       const hasAccess = 
         user.role === "operations_manager" || 
@@ -6204,11 +6203,11 @@ End of Report
         !!membership;
 
       if (!hasAccess) {
-        console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} team members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
+        console.log(`Access denied for user ${user.id} to project ${projectId} team members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
         return res.status(403).send("Access denied - You must be a project member to view team membersst");
       }
 
-      const messages = await db
+      const rawMessages = await db
         .select({
           id: projectMessages.id,
           content: projectMessages.content,
@@ -6216,21 +6215,38 @@ End of Report
           updatedAt: projectMessages.updatedAt,
           isEdited: projectMessages.isEdited,
           senderId: projectMessages.senderId,
-          sender: {
-            id: users.id,
-            name: users.name,
-            email: users.email,
-          },
+          senderName: users.name,
+          senderEmail: users.email,
+          senderUserId: users.id,
         })
         .from(projectMessages)
         .leftJoin(users, eq(projectMessages.senderId, users.id))
         .where(eq(projectMessages.projectId, projectId))
-        .orderBy(asc(projectMessages.createdAt));
+        .orderBy(desc(projectMessages.createdAt))
+        .limit(50);
 
-      res.json(messages);
+      // Transform the data to match expected format
+      const teamMessages = rawMessages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        createdAt: msg.createdAt,
+        updatedAt: msg.updatedAt,
+        isEdited: msg.isEdited,
+        senderId: msg.senderId,
+        sender: msg.senderUserId ? {
+          id: msg.senderUserId,
+          name: msg.senderName || "Unknown",
+          email: msg.senderEmail || "",
+        } : null,
+      }));
+
+      res.json(teamMessages.reverse());
     } catch (error) {
       console.error("Error fetching team messages:", error);
-      res.status(500).json({ error: "Failed to fetch team messages" });
+      res.status(500).json({
+        error: "Failed to fetch team messages",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
@@ -7763,7 +7779,7 @@ End of Report
         })
         .where(eq(users.id, user.id));
 
-      // Broadcast timer pause to all connected clients
+      // Broadcast timer paused event via WebSocket
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
           if (client.readyState === 1) { // WebSocket.OPEN
