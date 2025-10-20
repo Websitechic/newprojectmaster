@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { useUnreadMessages } from "@/hooks/use-unread-messages";
 
 interface UnreadMessage {
   type: "team_chat" | "direct_message";
@@ -111,63 +112,61 @@ export function Header() {
     refetchInterval: 10000,
   });
 
+  // Get mention counts from the hook
+  const { mentionCounts } = useUnreadMessages();
+
   // Combine unread messages
   useEffect(() => {
     const combined: UnreadMessage[] = [];
 
-    // Add team chats with unread messages or mentions
+    // Create a map to track projects with messages/mentions
+    const projectMap = new Map<number, { name: string; count: number; hasMention: boolean }>();
+
+    // Add team chats with unread messages
     Object.entries(teamChatUnreads).forEach(([projectId, count]) => {
       if (count > 0) {
         const project = projects.find((p: any) => p.id === parseInt(projectId));
         if (project) {
-          combined.push({
-            type: "team_chat",
-            id: parseInt(projectId),
+          projectMap.set(parseInt(projectId), {
             name: project.name,
-            unreadCount: count,
-            projectId: parseInt(projectId),
+            count: count,
+            hasMention: false,
           });
         }
       }
     });
 
-    // Add team chat mentions from notifications - check for 'team_mention' type
-    const mentionNotifications = notifications.filter((notif: any) => 
-      notif.type === "team_mention" && 
-      !notif.read
-    );
-
-    mentionNotifications.forEach((notif: any) => {
-      // For team mentions, referenceId is the projectId
-      const projectId = notif.referenceId;
-      
-      if (projectId) {
-        const project = projects.find((p: any) => p.id === projectId);
-
+    // Add/update with mention counts
+    Object.entries(mentionCounts).forEach(([projectId, count]) => {
+      if (count > 0) {
+        const project = projects.find((p: any) => p.id === parseInt(projectId));
         if (project) {
-          // Check if we already have this project in combined
-          const existingIndex = combined.findIndex(msg => 
-            msg.type === "team_chat" && msg.projectId === project.id
-          );
-
-          if (existingIndex === -1) {
-            // Add new entry for mention
-            combined.push({
-              type: "team_chat",
-              id: project.id,
-              name: `${project.name} (mentioned)`,
-              unreadCount: 1,
-              projectId: project.id,
-            });
+          const existing = projectMap.get(parseInt(projectId));
+          if (existing) {
+            // Update existing entry with mention flag
+            existing.hasMention = true;
+            existing.count += count;
           } else {
-            // Increment existing count and update name to show mention
-            combined[existingIndex].unreadCount += 1;
-            if (!combined[existingIndex].name.includes("(mentioned)")) {
-              combined[existingIndex].name = `${project.name} (mentioned)`;
-            }
+            // Add new entry for mention only
+            projectMap.set(parseInt(projectId), {
+              name: project.name,
+              count: count,
+              hasMention: true,
+            });
           }
         }
       }
+    });
+
+    // Convert map to combined array
+    projectMap.forEach((data, projectId) => {
+      combined.push({
+        type: "team_chat",
+        id: projectId,
+        name: data.hasMention ? `${data.name} (mentioned)` : data.name,
+        unreadCount: data.count,
+        projectId: projectId,
+      });
     });
 
     // Add direct messages with unread messages
@@ -186,7 +185,7 @@ export function Header() {
     }
 
     setUnreadMessages(combined);
-  }, [teamChatUnreads, directMessagesData, projects, notifications]);
+  }, [teamChatUnreads, mentionCounts, directMessagesData, projects]);
 
   const handleLogout = async () => {
     try {
