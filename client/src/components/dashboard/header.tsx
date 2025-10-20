@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { useUnreadMessages } from "@/hooks/use-unread-messages";
 
 interface UnreadMessage {
   type: "team_chat" | "direct_message";
