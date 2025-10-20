@@ -7188,7 +7188,7 @@ End of Report
 
     const user = req.user!;
     const projectId = parseInt(req.params.id);
-    const { name, description, type, category, startDate, endDate, clientId, teamMembers } = req.body;
+    let { name, description, type, category, startDate, endDate, clientId, teamMembers } = req.body;
 
     try {
       if (!name || !category || !startDate || !endDate) {
