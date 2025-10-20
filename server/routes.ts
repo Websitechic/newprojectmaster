@@ -1871,25 +1871,38 @@ End of Report
         return res.status(404).json({ error: "Task not found" });
       }
 
-      // Check if user has access to this task's project
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, task.projectId))
+      // Check if task exists and get project information in one query
+      const [taskWithProject] = await db
+        .select({
+          task: tasks,
+          project: projects,
+        })
+        .from(tasks)
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(eq(tasks.id, taskId))
         .limit(1);
+
+      if (!taskWithProject || !taskWithProject.task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const existingTask = taskWithProject.task;
+      const project = taskWithProject.project;
 
       if (!project) {
         return res.status(404).json({ error: "Project not found for this task" });
       }
 
+      // Check if user has access to this task's project
       const hasAccess = 
         user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        task.assigneeId === user.id ||
+        existingTask.assigneeId === user.id ||
         (user.role === "staff" && await db
           .select()
           .from(projectMembers)
@@ -6316,72 +6329,30 @@ End of Report
         .returning();
 
       // Check for @mentions in the message - improved regex to handle spaces
-      const mentionRegex = /@([a-zA-Z0-9_\s]+?)(?=\s|$|@)/g;
-      const mentionMatches = Array.from(content.matchAll(mentionRegex));
+      const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
+      let match;
+      const mentionedUsers = new Set<number>();
 
-      if (mentionMatches.length > 0) {
-        // Extract mentioned user names
-        const mentionedNames = mentionMatches.map(m => m[1].trim().toLowerCase());
+      while ((match = mentionRegex.exec(content)) !== null) {
+        const mentionedName = match[1].trim();
 
-        // Get all project members for mention matching
-        const allProjectMembers = await db
-          .select({
-            userId: projectMembers.userId,
-            userName: users.name,
-          })
-          .from(projectMembers)
-          .innerJoin(users, eq(projectMembers.userId, users.id))
-          .where(
-            and(
-              eq(projectMembers.projectId, projectId),
-              eq(projectMembers.invitationStatus, "accepted")
-            )
+        // Find user by name among project members
+        const mentionedMember = allProjectMembers.find((member: any) => {
+          const memberName = member?.name || member?.userName || '';
+          return memberName && memberName.toLowerCase() === mentionedName.toLowerCase();
+        });
+
+        if (mentionedMember && mentionedMember.id !== user.id && !mentionedUsers.has(mentionedMember.id)) {
+          mentionedUsers.add(mentionedMember.id);
+
+          // Create notification for mentioned user - use team_mention type with projectId as referenceId
+          await createNotification(
+            mentionedMember.id,
+            "team_mention",
+            `${user.name} mentioned you in ${project.name}`,
+            projectId,
+            "project"
           );
-
-        // Find mentioned users - exact name matching
-        const mentionedUsers = allProjectMembers.filter(member => 
-          mentionedNames.some(name => member.userName.toLowerCase() === name)
-        );
-
-        const mentionedUserIds = [...new Set(mentionedUsers.map(m => m.userId))];
-
-        // Create notifications for mentioned users
-        for (const mentionedUserId of mentionedUserIds) {
-          if (mentionedUserId === user.id) continue; // Don't notify self
-
-          try {
-            const [notification] = await db
-              .insert(notifications)
-              .values({
-                userId: mentionedUserId,
-                type: "team_chat_mention",
-                content: `${user.name} mentioned you in ${project.name} team chat`,
-                referenceId: newMessage.id,
-                referenceType: "team_message",
-                read: false,
-                createdAt: new Date().toISOString()
-              })
-              .returning();
-
-            // Send SSE notification if user is connected
-            if (global.sseClients && global.sseClients.has(mentionedUserId)) {
-              const userClient = global.sseClients.get(mentionedUserId);
-              if (userClient && !userClient.writableEnded) {
-                try {
-                  userClient.write(`data: ${JSON.stringify({
-                    type: 'notification',
-                    notification: notification
-                  })}\n\n`);
-                  console.log(`SSE mention notification sent to user ${mentionedUserId}`);
-                } catch (error) {
-                  console.error(`Error sending SSE notification to user ${mentionedUserId}:`, error);
-                  global.sseClients.delete(mentionedUserId);
-                }
-              }
-            }
-          } catch (error) {
-            console.error(`Error creating mention notification for user ${mentionedUserId}:`, error);
-          }
         }
       }
 

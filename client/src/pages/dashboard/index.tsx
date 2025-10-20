@@ -1057,12 +1057,14 @@ export default function Dashboard() {
                 </Card>
               </div>
 
-              {/* Team Lead Tasks Section */}
-              {user?.role === "team_lead" && (
+              {/* Team Lead and Intern Tasks Section */}
+              {(user?.role === "team_lead" || user?.role === "intern") && (
                 <div className="space-y-6 mb-8">
                   <div className="mb-4">
                     <h2 className="text-2xl font-bold">My Tasks</h2>
-                    <p className="text-sm text-gray-600">Tasks assigned to you as Team Lead</p>
+                    <p className="text-sm text-gray-600">
+                      {user?.role === "team_lead" ? "Tasks assigned to you as Team Lead" : "Tasks assigned to you"}
+                    </p>
                   </div>
 
                   {tasks && tasks.filter(task => task.assigneeId === user.id).length > 0 ? (

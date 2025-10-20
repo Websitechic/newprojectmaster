@@ -131,9 +131,9 @@ export function Header() {
       }
     });
 
-    // Add team chat mentions from notifications - check for both 'mention' and 'team_mention' types
+    // Add team chat mentions from notifications - check for 'team_mention' type
     const mentionNotifications = notifications.filter((notif: any) => 
-      (notif.type === "mention" || notif.type === "team_mention") && 
+      notif.type === "team_mention" && 
       !notif.read
     );
 

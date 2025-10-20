@@ -337,7 +337,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     }
   ] : [];
 
-  const staffMenuItems = user?.role === "staff" || user?.role === "intern" ? [
+  const staffMenuItems = (user?.role === "staff" || user?.role === "intern") ? [
     {
       icon: <Calendar size={20} />,
       label: "Leave Application",
