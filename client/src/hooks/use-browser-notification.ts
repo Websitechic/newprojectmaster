@@ -1,5 +1,9 @@
 import { useEffect, useCallback, useState } from 'react';
 
+interface NotificationData {
+  url?: string;
+}
+
 export function useBrowserNotification() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
 
@@ -20,7 +24,10 @@ export function useBrowserNotification() {
     }
   }, []);
 
-  const showNotification = useCallback(async (title: string, options?: NotificationOptions) => {
+  const showNotification = useCallback(async (
+    title: string, 
+    options?: NotificationOptions & { data?: NotificationData }
+  ) => {
     try {
       if (!('Notification' in window)) {
         console.warn('⚠️ Browser notifications not supported');
@@ -44,7 +51,6 @@ export function useBrowserNotification() {
           icon: '/favicon.ico',
           badge: '/favicon.ico',
           tag: 'message-notification',
-          renotify: true,
           requireInteraction: false,
           ...options,
         });
@@ -54,9 +60,15 @@ export function useBrowserNotification() {
           notification.close();
         }, 5000);
 
-        // Focus window when notification is clicked
+        // Focus window and navigate when notification is clicked
         notification.onclick = () => {
           window.focus();
+          
+          // Navigate to the URL if provided
+          if (options?.data?.url) {
+            window.location.href = options.data.url;
+          }
+          
           notification.close();
         };
 

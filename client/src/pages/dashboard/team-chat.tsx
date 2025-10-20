@@ -300,6 +300,7 @@ export default function TeamChat() {
             showNotification(`${senderName} in ${project?.name || 'Team Chat'}`, {
               body: messagePreview,
               tag: `team-chat-${projectId}`,
+              data: { url: `/dashboard/team-chat/${projectId}` },
             });
           }
         }
@@ -328,6 +329,7 @@ export default function TeamChat() {
           showNotification(`${senderName} in ${project?.name || 'Team Chat'}`, {
             body: messagePreview,
             tag: `team-chat-${projectId}`,
+            data: { url: `/dashboard/team-chat/${projectId}` },
           });
         }
 

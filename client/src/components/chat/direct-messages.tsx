@@ -186,6 +186,7 @@ export function DirectMessages() {
             showNotification(`New message from ${message.senderName}`, {
               body: messagePreview,
               tag: 'direct-message',
+              data: { url: '/dashboard/messages' },
             });
           }
 
