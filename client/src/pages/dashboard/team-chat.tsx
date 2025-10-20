@@ -30,6 +30,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import type { Message, Project, User } from "@db/schema";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { useBrowserNotification } from "@/hooks/use-browser-notification";
 
 interface MessageWithSender {
   id: number;
@@ -70,6 +71,7 @@ export default function TeamChat() {
     return stored ? JSON.parse(stored) : null;
   });
   const { playNotificationSound } = useNotificationSound();
+  const { showNotification } = useBrowserNotification();
   const lastMessageCountRef = useRef<number>(0);
 
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
@@ -273,9 +275,9 @@ export default function TeamChat() {
             queryKey: [`/api/projects/${projectId}/team-messages`] 
           });
 
-          // Play sound if message is from someone else
+          // Play sound and show browser notification if message is from someone else
           if (data.data.senderId !== user?.id) {
-            console.log('🔊 Team message from another user, playing sound');
+            console.log('🔊 Team message from another user, playing sound and showing notification');
             
             // Play sound with multiple retry attempts
             const attemptSound = async (attemptNumber: number) => {
@@ -291,6 +293,14 @@ export default function TeamChat() {
             // Multiple attempts with delays
             setTimeout(() => attemptSound(1), 50);
             setTimeout(() => attemptSound(2), 200);
+            
+            // Show browser notification
+            const senderName = data.data.senderName || 'Team member';
+            const messagePreview = data.data.content?.substring(0, 100) || 'New message';
+            showNotification(`${senderName} in ${project?.name || 'Team Chat'}`, {
+              body: messagePreview,
+              tag: `team-chat-${projectId}`,
+            });
           }
         }
       } catch (error) {
@@ -308,9 +318,17 @@ export default function TeamChat() {
       if (messageData.projectId === projectId) {
         console.log("Team message received via WebSocket, invalidating queries");
 
-        // Play sound if message is from someone else
+        // Play sound and show browser notification if message is from someone else
         if (messageData.senderId !== user?.id) {
           playNotificationSound();
+          
+          // Show browser notification
+          const senderName = messageData.senderName || 'Team member';
+          const messagePreview = messageData.content?.substring(0, 100) || 'New message';
+          showNotification(`${senderName} in ${project?.name || 'Team Chat'}`, {
+            body: messagePreview,
+            tag: `team-chat-${projectId}`,
+          });
         }
 
         queryClient.invalidateQueries({ 
