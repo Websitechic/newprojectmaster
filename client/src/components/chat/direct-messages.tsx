@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { useBrowserNotification } from "@/hooks/use-browser-notification";
 import { useAuth } from "@/hooks/use-auth";
 
 interface User {
@@ -77,6 +78,7 @@ export function DirectMessages() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const { playNotificationSound } = useNotificationSound();
+  const { showNotification } = useBrowserNotification();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -160,9 +162,9 @@ export function DirectMessages() {
           const message = data.data;
           console.log("🔔 Direct message received:", message);
 
-          // Play sound if message is from someone else
+          // Play sound and show browser notification if message is from someone else
           if (message.senderId !== user?.id) {
-            console.log('🔊 Direct message from another user, playing sound');
+            console.log('🔊 Direct message from another user, playing sound and showing notification');
 
             // Play sound with multiple retry attempts
             const attemptSound = async (attemptNumber: number) => {
@@ -178,6 +180,13 @@ export function DirectMessages() {
             // Multiple attempts with delays
             setTimeout(() => attemptSound(1), 50);
             setTimeout(() => attemptSound(2), 200);
+            
+            // Show browser notification
+            const messagePreview = message.content?.substring(0, 100) || 'New message';
+            showNotification(`New message from ${message.senderName}`, {
+              body: messagePreview,
+              tag: 'direct-message',
+            });
           }
 
           // If the message is from the currently selected user, add it to messages immediately
