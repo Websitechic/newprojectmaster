@@ -74,15 +74,18 @@ export default function Dashboard() {
 
   const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
   });
 
   // Fetch staff data for assignee names
   const { data: staff, isLoading: staffLoading } = useQuery<Array<{ id: number; name: string }>>({
     queryKey: ["/api/staff"],
+    refetchInterval: 10000, // Refresh every 10 seconds
   });
 
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
   });
 
   // Fetch recent project activity (messages and resources from last 24 hours)
