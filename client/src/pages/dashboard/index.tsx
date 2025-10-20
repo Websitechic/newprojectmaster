@@ -5,7 +5,7 @@ import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { MeetingAlert } from "@/components/dashboard/meeting-alert";
 import { BookingAlert } from "@/components/booking/booking-alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ProjectCard } from "@/components/project/project-card";
 import { TaskList } from "@/components/task/task-list";
 import { StaffTaskList } from "@/components/task/staff-task-list";
@@ -24,6 +24,7 @@ import {
   CheckCircle,
   HelpCircle,
   Search,
+  CheckSquare,
 } from "lucide-react";
 import {
   Collapsible,
@@ -50,6 +51,7 @@ export default function Dashboard() {
     review: false,
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [taskSearchQuery, setTaskSearchQuery] = useState(""); // State for task search
 
   // State for managing expanded descriptions
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
@@ -154,7 +156,7 @@ export default function Dashboard() {
       : tasks || [];
 
   // Apply search filter to tasks (works for both staff and managers)
-  const filteredTasks = user?.role === "staff" 
+  const filteredTasks = user?.role === "staff" || user?.role === "intern"
     ? staffTasks?.filter((task) =>
         searchQuery ? task.title.toLowerCase().includes(searchQuery.toLowerCase()) : true
       )
@@ -164,7 +166,7 @@ export default function Dashboard() {
 
   // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
   const userTasks =
-    user?.role === "staff"
+    user?.role === "staff" || user?.role === "intern"
       ? staffTasks
       : user?.role === "client" &&
           user?.clientType === "support_maintenance_client"
@@ -261,9 +263,10 @@ export default function Dashboard() {
           <BookingAlert />
           {user?.role === "staff" ||
           (user?.role === "client" &&
-            user?.clientType === "support_maintenance_client") ? (
+            user?.clientType === "support_maintenance_client") ||
+          user?.role === "intern" ? ( // Added intern role here
             <>
-              {/* Staff & Support Maintenance Client Dashboard */}
+              {/* Staff & Support Maintenance Client & Intern Dashboard */}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
                 {/* Tasks in Progress */}
@@ -473,7 +476,9 @@ export default function Dashboard() {
 
               {/* Full Task List */}
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold">All Your Tasks</h2>
+                <h2 className="text-2xl font-bold">
+                  {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
+                </h2>
 
                 {staffTasks && staffTasks.length > 0 ? (
                   <StaffTaskList tasks={filteredTasks || staffTasks} projectId={undefined} />
@@ -519,7 +524,7 @@ export default function Dashboard() {
                                 // Check for recent team chat messages or resources (last 24 hours)
                                 const activity = projectActivity?.[project.id];
                                 const hasRecentActivity = activity && (activity.hasMessages || activity.hasResources);
-                                
+
                                 return hasActiveTasks || hasRecentActivity;
                               }) || [];
                             return activeProjects.length;
@@ -562,7 +567,7 @@ export default function Dashboard() {
                                 (task) =>
                                   task.projectId === project.id && task.status === "in_progress"
                               );
-                              
+
                               const activity = projectActivity?.[project.id];
                               const hasMessages = activity?.hasMessages || false;
                               const hasResources = activity?.hasResources || false;
@@ -573,7 +578,7 @@ export default function Dashboard() {
                               else if (hasInProgress) reasons.push("Task in progress");
                               if (hasMessages) reasons.push("Recent team chat");
                               if (hasResources) reasons.push("Resource added");
-                              
+
                               const activityReason = reasons.length > 0 ? reasons.join(" • ") : "Active";
 
                               return (
@@ -1059,7 +1064,7 @@ export default function Dashboard() {
                     <h2 className="text-2xl font-bold">My Tasks</h2>
                     <p className="text-sm text-gray-600">Tasks assigned to you as Team Lead</p>
                   </div>
-                  
+
                   {tasks && tasks.filter(task => task.assigneeId === user.id).length > 0 ? (
                     <StaffTaskList 
                       tasks={tasks.filter(task => task.assigneeId === user.id)} 
@@ -1074,16 +1079,18 @@ export default function Dashboard() {
               )}
 
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold">All Tasks</h2>
-                
+                <h2 className="text-2xl font-bold">
+                  {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
+                </h2>
+
                 {/* Search Bar */}
                 <div className="relative max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     type="text"
                     placeholder="Search tasks by title..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={taskSearchQuery}
+                    onChange={(e) => setTaskSearchQuery(e.target.value)}
                     className="pl-10"
                   />
                 </div>
@@ -1094,7 +1101,16 @@ export default function Dashboard() {
                   </div>
                 ) : tasks && tasks.length > 0 ? (
                   <TaskList
-                    tasks={filteredTasks || tasks}
+                    tasks={
+                      user?.role === "staff" || user?.role === "intern"
+                        ? tasks.filter((task) => 
+                            task.assigneeId === user?.id &&
+                            (!taskSearchQuery || task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+                          )
+                        : tasks.filter((task) => 
+                            !taskSearchQuery || task.title.toLowerCase().includes(taskSearchQuery.toLowerCase())
+                          )
+                    }
                     projectId={undefined}
                     showNewTaskButton={false}
                     showProjectInfo={true}

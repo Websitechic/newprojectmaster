@@ -131,38 +131,40 @@ export function Header() {
       }
     });
 
-    // Add team chat mentions from notifications
+    // Add team chat mentions from notifications - check for both 'mention' and 'team_mention' types
     const mentionNotifications = notifications.filter((notif: any) => 
-      notif.type === "mention" && 
-      notif.referenceType === "team_message" && 
+      (notif.type === "mention" || notif.type === "team_mention") && 
       !notif.read
     );
 
     mentionNotifications.forEach((notif: any) => {
-      // The referenceId is the projectId for team_message type
+      // For team mentions, referenceId is the projectId
       const projectId = notif.referenceId;
-      const project = projects.find((p: any) => p.id === projectId);
+      
+      if (projectId) {
+        const project = projects.find((p: any) => p.id === projectId);
 
-      if (project) {
-        // Check if we already have this project in combined
-        const existingIndex = combined.findIndex(msg => 
-          msg.type === "team_chat" && msg.projectId === project.id
-        );
+        if (project) {
+          // Check if we already have this project in combined
+          const existingIndex = combined.findIndex(msg => 
+            msg.type === "team_chat" && msg.projectId === project.id
+          );
 
-        if (existingIndex === -1) {
-          // Add new entry for mention
-          combined.push({
-            type: "team_chat",
-            id: project.id,
-            name: `${project.name} (mentioned)`,
-            unreadCount: 1,
-            projectId: project.id,
-          });
-        } else {
-          // Increment existing count and update name to show mention
-          combined[existingIndex].unreadCount += 1;
-          if (!combined[existingIndex].name.includes("(mentioned)")) {
-            combined[existingIndex].name = `${project.name} (mentioned)`;
+          if (existingIndex === -1) {
+            // Add new entry for mention
+            combined.push({
+              type: "team_chat",
+              id: project.id,
+              name: `${project.name} (mentioned)`,
+              unreadCount: 1,
+              projectId: project.id,
+            });
+          } else {
+            // Increment existing count and update name to show mention
+            combined[existingIndex].unreadCount += 1;
+            if (!combined[existingIndex].name.includes("(mentioned)")) {
+              combined[existingIndex].name = `${project.name} (mentioned)`;
+            }
           }
         }
       }
