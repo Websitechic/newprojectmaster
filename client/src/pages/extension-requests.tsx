@@ -175,7 +175,7 @@ export default function ExtensionRequestsPage() {
           <div className="flex-1 overflow-auto p-6">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-              <p className="text-gray-600 mt-2">This page is only available to staff members.</p>
+              <p className="text-gray-600 mt-2">This page is only available to staff members and interns.</p>
             </div>
           </div>
         </div>

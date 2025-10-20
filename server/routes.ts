@@ -588,7 +588,7 @@ export function registerRoutes(app: Express): Server {
 
     const {specialization} = req.query;
 
-    // Only apply specialization filter to staff members, not customer support officers or team leads
+    // Only apply specialization filter to staff members and interns, not customer support officers or team leads
     let whereCondition;
 
     if (specialization) {
@@ -597,12 +597,17 @@ export function registerRoutes(app: Express): Server {
           eq(users.role, "staff"),
           eq(users.specialization, specialization as string)
         ),
+        and(
+          eq(users.role, "intern"),
+          eq(users.specialization, specialization as string)
+        ),
         eq(users.role, "customer_support_officer"),
         eq(users.role, "team_lead")
       );
     } else {
       whereCondition = or(
         eq(users.role, "staff"),
+        eq(users.role, "intern"),
         eq(users.role, "customer_support_officer"),
         eq(users.role, "team_lead")
       );
@@ -1348,11 +1353,11 @@ End of Report
     }
 
     try {
-      // Get all staff members with their current work status - using only existing fields
+      // Get all staff members and interns with their current work status - using only existing fields
       const staffMembers = await db
         .select()
         .from(users)
-        .where(eq(users.role, "staff"))
+        .where(or(eq(users.role, "staff"), eq(users.role, "intern")))
         .orderBy(desc(users.lastActive));
 
       // Get all tasks for these staff members - using actual schema fields
@@ -1910,10 +1915,10 @@ End of Report
     }
   });
 
-  // Start task timer (Staff only)
+  // Start task timer (Staff and Interns only)
   app.post("/api/tasks/:id/start-timer", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== "staff") {
-      return res.status(403).send("Only staff members can start timers");
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern")) {
+      return res.status(403).send("Only staff members and interns can start timers");
     }
 
     try {
@@ -2052,10 +2057,10 @@ End of Report
     }
   });
 
-  // Pause task timer (Staff only)
+  // Pause task timer (Staff and Interns only)
   app.post("/api/tasks/:id/pause-timer", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== "staff") {
-      return res.status(403).send("Only staff members can pause timers");
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern")) {
+      return res.status(403).send("Only staff members and interns can pause timers");
     }
 
     try {

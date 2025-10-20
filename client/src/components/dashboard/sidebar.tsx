@@ -337,7 +337,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     }
   ] : [];
 
-  const staffMenuItems = user?.role === "staff" ? [
+  const staffMenuItems = user?.role === "staff" || user?.role === "intern" ? [
     {
       icon: <Calendar size={20} />,
       label: "Leave Application",
@@ -395,7 +395,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     }
   ] : [];
 
-  const technicalSupportMenuItems = user?.role === "staff" ? [
+  const technicalSupportMenuItems = user?.role === "staff" || user?.role === "intern" ? [
     ...(user?.specialization === "technical_support" ? [{
       icon: <Settings size={20} />,
       label: "Technical Management",
@@ -423,7 +423,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     href: "/dashboard/deadline-extension-requests",
     hasUpdate: indicators.extensionRequests,
     key: "deadline-extension-requests",
-  }] : user?.role === "staff" ? [{
+  }] : user?.role === "staff" || user?.role === "intern" ? [{
     icon: <Clock size={20} />,
     label: "Extension Requests",
     href: "/dashboard/extension-requests",
