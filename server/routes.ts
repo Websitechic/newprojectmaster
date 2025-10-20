@@ -228,7 +228,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       let userTasks = [];
-
+      
       if (user.role === "staff" || user.role === "intern") {
         // Staff and interns see tasks assigned to them
         userTasks = await db
@@ -3394,10 +3394,6 @@ End of Report
         return res.status(404).json({ error: "Staff complaint not found" });
       }
 
-      if (existingComplaint.status !== "pending") {
-        return res.status(400).json({ error: "Complaint has already been processed" });
-      }
-
       // Update the complaint
       const [updatedComplaint] = await db
         .update(staffComplaints)
@@ -3824,8 +3820,6 @@ End of Report
           read: directMessages.read,
           createdAt: directMessages.createdAt,
           senderName: users.name,
-          replyToMessageId: directMessages.replyToMessageId,
-          replyToSenderName: directMessages.replyToSenderName,
         })
         .from(directMessages)
         .leftJoin(users, eq(directMessages.senderId, users.id))
@@ -4004,7 +3998,7 @@ End of Report
     }
 
     const user = req.user!;
-    const { receiverId, content, replyToMessageId, replyToSenderName } = req.body;
+    const { receiverId, content } = req.body;
     const senderId = user.id; // Define senderId here
 
     try {
@@ -4014,18 +4008,13 @@ End of Report
 
       const messageContent = content.trim(); // Trim content once
 
-      // Create the message
       const [newMessage] = await db
         .insert(directMessages)
         .values({
-          senderId,
+          senderId: senderId,
           receiverId: parseInt(receiverId),
           content: messageContent,
           read: false,
-          replyToMessageId: replyToMessageId || null,
-          replyToSenderName: replyToSenderName || null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
         })
         .returning();
 
@@ -8083,7 +8072,6 @@ End of Report
           isTimerRunning: false,
           timeSpent: newTimeSpent,
           timerStartTime: null,
-          status: "todo",
           updatedAt: now
         })
         .where(eq(tasks.id, taskId))
@@ -8110,7 +8098,6 @@ End of Report
                   isTimerRunning: updatedTask.isTimerRunning,
                   timeSpent: updatedTask.timeSpent,
                   timerStartTime: updatedTask.timerStartTime,
-                  status: updatedTask.status,
                   projectId: updatedTask.projectId
                 }
               }));
@@ -8252,8 +8239,8 @@ End of Report
       // Calculate final time if timer is running
       let finalTimeSpent = task.timeSpent || 0;
       if (task.isTimerRunning && task.timerStartTime) {
-        const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
-        finalTimeSpent += elapsedSeconds;
+        const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
+        finalTimeSpent += sessionDuration;
       }
 
       // Update task as completed and stop timer
