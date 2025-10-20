@@ -329,10 +329,10 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
               <TableHead className="min-w-[180px]">Task & Project</TableHead>
               <TableHead className="min-w-[250px]">Description</TableHead>
               <TableHead className="min-w-[130px]">Assigned By</TableHead>
-              <TableHead className="min-w-[140px]">Status</TableHead>
-              <TableHead className="min-w-[120px]">Timer</TableHead>
-              <TableHead className="min-w-[100px]">Deadline</TableHead>
-              <TableHead className="text-right min-w-[180px]">Actions</TableHead>
+              <TableHead className="min-w-[160px]">Status</TableHead>
+              <TableHead className="min-w-[150px]">Timer</TableHead>
+              <TableHead className="min-w-[120px]">Deadline</TableHead>
+              <TableHead className="text-right min-w-[200px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -396,7 +396,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         : "Not specified"}
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[110px] max-w-[110px]">
+                  <TableCell className="min-w-[160px]">
                     <Select
                       value={task.status || 'todo'}
                       onValueChange={(status) => {
@@ -419,18 +419,18 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="min-w-[120px]">
+                  <TableCell className="min-w-[150px]">
                     <div className="space-y-1">
                       <div className={`flex items-center gap-1 text-sm ${getTimerColor(task, currentTime)}`}>
-                        <Clock className="h-3.5 w-3.5" />
+                        <Clock className="h-3.5 w-3.5 flex-shrink-0" />
                         <span className={timeOverLimit ? "animate-pulse font-semibold" : ""}>
                           {formatTime(currentTime)}
                         </span>
                         {task.isTimerRunning && (
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
                         )}
                       </div>
-                      <TableCell>
+                      <div className="text-xs text-gray-600">
                         {task.workingHours || task.workingMinutes ? (() => {
                           const hours = task.workingHours || 0;
                           const minutes = task.workingMinutes || 0;
@@ -439,7 +439,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                           if (minutes > 0) return `${minutes}mins`;
                           return "Not set";
                         })() : "Not set"}
-                      </TableCell>
+                      </div>
                       {timeOverLimit && (
                         <div className="text-xs text-red-600 font-medium">
                           Over limit!
@@ -447,16 +447,16 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[140px]">
+                  <TableCell className="min-w-[120px]">
                     {task.deadline ? (
-                      <div className="text-sm">
+                      <div className="text-xs whitespace-nowrap">
                         <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
                         <div className="text-muted-foreground">{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
-                    ) : <span className="text-muted-foreground">None</span>}
+                    ) : <span className="text-muted-foreground text-xs">None</span>}
                   </TableCell>
-                  <TableCell className="text-right min-w-[180px]">
-                    <div className="flex justify-end gap-2">
+                  <TableCell className="text-right min-w-[200px]">
+                    <div className="flex justify-end gap-2 flex-wrap">
                       {task.status !== 'review' && (
                         <>
                           <Button
@@ -467,7 +467,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                               : startTimer.mutate(task.id)
                             }
                             disabled={startTimer.isPending || pauseTimer.isPending}
-                            className="h-8"
+                            className="h-8 whitespace-nowrap"
                           >
                             {task.isTimerRunning ? (
                               <>
@@ -486,7 +486,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                             size="sm"
                             onClick={() => submitTask.mutate(task.id)}
                             disabled={!task.hasBeenStarted || submitTask.isPending}
-                            className="h-8"
+                            className="h-8 whitespace-nowrap"
                           >
                             <Send className="h-3.5 w-3.5 mr-1" />
                             Submit
@@ -494,7 +494,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         </>
                       )}
                       {task.status === 'review' && (
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-200">
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-200 whitespace-nowrap">
                           Under Review
                         </Badge>
                       )}

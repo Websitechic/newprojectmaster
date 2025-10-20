@@ -392,42 +392,42 @@ export default function TechnicalManagementPage() {
                   <thead className="bg-gray-50 border-b sticky top-0 z-10">
                     <tr>
                       <th className="w-6"></th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 min-w-[200px]"
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 min-w-[200px] max-w-[300px]"
                           onClick={() => handleSort('title')}>
                         <div className="flex items-center gap-1">
                           Title
                           {sortBy === 'title' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[100px]"
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[110px]"
                           onClick={() => handleSort('status')}>
                         <div className="flex items-center gap-1">
                           Status
                           {sortBy === 'status' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[80px]"
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[90px]"
                           onClick={() => handleSort('priority')}>
                         <div className="flex items-center gap-1">
                           Priority
                           {sortBy === 'priority' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[120px]"
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[130px]"
                           onClick={() => handleSort('requester')}>
                         <div className="flex items-center gap-1">
                           Requester
                           {sortBy === 'requester' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[120px]"
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[130px]"
                           onClick={() => handleSort('assignedTo')}>
                         <div className="flex items-center gap-1">
                           Assigned
                           {sortBy === 'assignedTo' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[100px]"
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[110px]"
                           onClick={() => handleSort('createdAt')}>
                         <div className="flex items-center gap-1">
                           Created
@@ -441,7 +441,7 @@ export default function TechnicalManagementPage() {
                           {sortBy === 'task' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-center py-2 px-2 font-medium text-gray-700 w-[100px]">Actions</th>
+                      <th className="text-center py-2 px-2 font-medium text-gray-700 w-[120px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -467,10 +467,10 @@ export default function TechnicalManagementPage() {
                             <div className="flex items-start gap-2">
                               {getStatusIcon(request.status)}
                               <div className="min-w-0 flex-1">
-                                <span className="font-medium text-gray-900 block truncate" title={request.title}>
+                                <span className="font-medium text-gray-900 block break-words" title={request.title}>
                                   {request.title}
                                 </span>
-                                <div className="text-xs text-gray-500 truncate mt-0.5" title={request.description}>
+                                <div className="text-xs text-gray-500 break-words mt-0.5" title={request.description}>
                                   {request.description.substring(0, 60)}...
                                 </div>
                               </div>
@@ -490,7 +490,7 @@ export default function TechnicalManagementPage() {
                           <td className="py-2 px-2">
                             <div className="flex items-center gap-1">
                               <User className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                              <span className="text-xs text-gray-700 truncate" title={request.requester.name}>
+                              <span className="text-xs text-gray-700 break-words" title={request.requester.name}>
                                 {request.requester.name}
                               </span>
                             </div>
@@ -499,7 +499,7 @@ export default function TechnicalManagementPage() {
                             {request.assignedTo ? (
                               <div className="flex items-center gap-1">
                                 <UserCheck className="h-3 w-3 text-green-500 flex-shrink-0" />
-                                <span className="text-xs text-green-700 truncate" title={request.assignedTo.name}>
+                                <span className="text-xs text-green-700 break-words" title={request.assignedTo.name}>
                                   {request.assignedTo.name}
                                 </span>
                               </div>
@@ -524,11 +524,11 @@ export default function TechnicalManagementPage() {
                             {request.task ? (
                               <div className="text-xs">
                                 {request.task.projectName && (
-                                  <div className="font-medium text-blue-600 truncate" title={request.task.projectName}>
+                                  <div className="font-medium text-blue-600 break-words" title={request.task.projectName}>
                                     {request.task.projectName}
                                   </div>
                                 )}
-                                <div className="text-gray-600 truncate" title={request.task.title}>
+                                <div className="text-gray-600 break-words" title={request.task.title}>
                                   {request.task.title}
                                 </div>
                               </div>
