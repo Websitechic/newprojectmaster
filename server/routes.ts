@@ -502,12 +502,33 @@ export function registerRoutes(app: Express): Server {
 
           projectsList = supervisorProjects.map(sp => sp.project);
         } else {
-          // Main project managers see projects they manage
-          projectsList = await db
-            .select()
+          // Main project managers see projects they manage OR are members of
+          const managedProjects = await db
+            .select({
+              project: projects,
+            })
             .from(projects)
-            .where(eq(projects.managerId, user.id))
+            .leftJoin(projectMembers, and(
+              eq(projectMembers.projectId, projects.id),
+              eq(projectMembers.userId, user.id),
+              eq(projectMembers.invitationStatus, "accepted")
+            ))
+            .where(
+              or(
+                eq(projects.managerId, user.id),
+                eq(projectMembers.userId, user.id)
+              )
+            )
             .orderBy(desc(projects.updatedAt));
+
+          // Remove duplicates (in case they manage AND are a member)
+          const uniqueProjects = new Map();
+          managedProjects.forEach(mp => {
+            if (mp.project && !uniqueProjects.has(mp.project.id)) {
+              uniqueProjects.set(mp.project.id, mp.project);
+            }
+          });
+          projectsList = Array.from(uniqueProjects.values());
         }
       } else if (user.role === "product_owner") {
         // Product owners see all projects (read-only access)

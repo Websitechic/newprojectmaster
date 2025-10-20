@@ -434,7 +434,7 @@ export default function TechnicalManagementPage() {
                           {sortBy === 'createdAt' && (sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />)}
                         </div>
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[180px]"
+                      <th className="text-left py-2 px-2 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 w-[120px]"
                           onClick={() => handleSort('task')}>
                         <div className="flex items-center gap-1">
                           Task/Project
@@ -508,12 +508,18 @@ export default function TechnicalManagementPage() {
                             )}
                           </td>
                           <td className="py-2 px-2">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3 text-gray-400" />
-                              <span className="text-xs text-gray-500">
-                                {new Date(request.createdAt).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3 text-gray-400" />
+                                <span className="text-xs text-gray-500">
+                                  {new Date(request.createdAt).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-500 pl-4">
+                                {new Date(request.createdAt).toLocaleTimeString('en-US', {
                                   hour: '2-digit',
                                   minute: '2-digit'
                                 })}
@@ -522,13 +528,13 @@ export default function TechnicalManagementPage() {
                           </td>
                           <td className="py-2 px-2">
                             {request.task ? (
-                              <div className="text-xs">
+                              <div className="text-xs max-w-[120px]">
                                 {request.task.projectName && (
-                                  <div className="font-medium text-blue-600 break-words" title={request.task.projectName}>
+                                  <div className="font-medium text-blue-600 break-words hyphens-auto" style={{ wordBreak: 'break-word' }} title={request.task.projectName}>
                                     {request.task.projectName}
                                   </div>
                                 )}
-                                <div className="text-gray-600 break-words" title={request.task.title}>
+                                <div className="text-gray-600 break-words hyphens-auto" style={{ wordBreak: 'break-word' }} title={request.task.title}>
                                   {request.task.title}
                                 </div>
                               </div>
