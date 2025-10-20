@@ -200,6 +200,7 @@ export const notifications = pgTable("notifications", {
       "task_updated",
       "task_completed",
       "mention",
+      "team_mention",
       "technical_support_request",
       "communication_warning",
       "communication_query_discarded",

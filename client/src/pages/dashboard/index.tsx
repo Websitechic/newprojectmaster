@@ -149,9 +149,9 @@ export default function Dashboard() {
     };
   }, [updateStatus]);
 
-  // Filter tasks for staff user or all tasks for managers and support maintenance clients
+  // Filter tasks for staff/intern user or all tasks for managers and support maintenance clients
   const staffTasks =
-    user?.role === "staff"
+    user?.role === "staff" || user?.role === "intern"
       ? tasks?.filter((task) => task.assigneeId === user?.id) || []
       : tasks || [];
 

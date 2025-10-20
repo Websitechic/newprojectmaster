@@ -132,6 +132,9 @@ export default function LeaveApplication() {
     );
   }
 
+  // Interns should have same permissions as staff
+  const isStaffOrIntern = user.role === "staff" || user.role === "intern";
+
   // Fetch existing leave applications
   const { data: leaveApplications, isLoading } = useQuery<LeaveApplication[]>({
     queryKey: ["/api/leave-applications"],

@@ -1984,7 +1984,7 @@ End of Report
       // Broadcast timer started event via WebSocket with current timeSpent
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
-          if (client.readyState === 1) {
+          if (client.readyState === 1) { // WebSocket.OPEN
             try {
               client.send(JSON.stringify({
                 type: 'task_timer_started',
@@ -2121,7 +2121,7 @@ End of Report
       // Broadcast timer paused event via WebSocket
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
-          if (client.readyState === 1) {
+          if (client.readyState === 1) { // WebSocket.OPEN
             try {
               client.send(JSON.stringify({
                 type: 'task_timer_paused',
@@ -4600,7 +4600,7 @@ End of Report
       const [request] = await db
         .select()
         .from(technicalSupportRequests)
-        .where(eq(technicalSupportRequests.id, requestId))
+        .where(eq(request.id, requestId))
         .limit(1);
 
       if (!request) {
@@ -4646,7 +4646,7 @@ End of Report
       const [request] = await db
         .select()
         .from(technicalSupportRequests)
-        .where(eq(technicalSupportRequests.id, requestId))
+        .where(eq(request.id, requestId))
         .limit(1);
 
       if (!request) {
@@ -6329,25 +6329,25 @@ End of Report
         .returning();
 
       // Check for @mentions in the message - improved regex to handle spaces
-      const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
+      const mentionRegex = /@([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
+      const mentions = new Set<number>();
       let match;
-      const mentionedUsers = new Set<number>();
 
       while ((match = mentionRegex.exec(content)) !== null) {
         const mentionedName = match[1].trim();
 
-        // Find user by name among project members
-        const mentionedMember = allProjectMembers.find((member: any) => {
-          const memberName = member?.name || member?.userName || '';
+        // Find user by name from project members
+        const member = projectMembersList.find(m => {
+          const memberName = m.userName || m.name || '';
           return memberName && memberName.toLowerCase() === mentionedName.toLowerCase();
         });
 
-        if (mentionedMember && mentionedMember.id !== user.id && !mentionedUsers.has(mentionedMember.id)) {
-          mentionedUsers.add(mentionedMember.id);
+        if (member && member.userId) {
+          mentions.add(member.userId);
 
           // Create notification for mentioned user - use team_mention type with projectId as referenceId
           await createNotification(
-            mentionedMember.id,
+            member.userId,
             "team_mention",
             `${user.name} mentioned you in ${project.name}`,
             projectId,
@@ -7759,16 +7759,20 @@ End of Report
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
           if (client.readyState === 1) { // WebSocket.OPEN
-            client.send(JSON.stringify({
-              type: 'task_timer_paused',
-              data: {
-                taskId: updatedTask.id,
-                isTimerRunning: updatedTask.isTimerRunning,
-                timeSpent: updatedTask.timeSpent,
-                timerStartTime: updatedTask.timerStartTime,
-                projectId: updatedTask.projectId
-              }
-            }));
+            try {
+              client.send(JSON.stringify({
+                type: 'task_timer_paused',
+                data: {
+                  taskId: updatedTask.id,
+                  isTimerRunning: updatedTask.isTimerRunning,
+                  timeSpent: updatedTask.timeSpent,
+                  timerStartTime: updatedTask.timerStartTime,
+                  projectId: updatedTask.projectId
+                }
+              }));
+            } catch (error) {
+              console.error('Error broadcasting timer pause:', error);
+            }
           }
         });
       }
