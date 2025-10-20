@@ -158,10 +158,10 @@ export default function Dashboard() {
   // Apply search filter to tasks (works for both staff and managers)
   const filteredTasks = user?.role === "staff" || user?.role === "intern"
     ? staffTasks?.filter((task) =>
-        searchQuery ? task.title.toLowerCase().includes(searchQuery.toLowerCase()) : true
+        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
       )
     : tasks?.filter((task) =>
-        searchQuery ? task.title.toLowerCase().includes(searchQuery.toLowerCase()) : true
+        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
       );
 
   // Use appropriate task set based on user role - support maintenance clients see all tasks like managers

@@ -5317,17 +5317,15 @@ End of Report
 
   // Leave Applications API Routes
 
-  // Submit leave application
+  // Submit leave application (Staff, Interns, Customer Support Officers, and Team Leads)
   app.post("/api/leave-applications", upload.single('proofImage'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-
-    // Check if user is staff, product owner, or customer support officer
-    if (user.role !== "staff" && user.role !== "product_owner" && user.role !== "customer_support_officer") {
-      return res.status(403).json({ error: "Only staff members, product owners, and customer support officers can submit leave applications" });
+    if (user.role !== "staff" && user.role !== "intern" && user.role !== "customer_support_officer" && user.role !== "team_lead") {
+      return res.status(403).send("Only staff members, interns, customer support officers, and team leads can submit leave applications");
     }
 
     try {
@@ -5435,7 +5433,7 @@ End of Report
     }
   });
 
-  // Get user's leave applications
+  // Get leave applications (Staff and Interns see their own, Managers see all)
   app.get("/api/leave-applications", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -5443,17 +5441,41 @@ End of Report
 
     const user = req.user!;
 
-    // Check if user is staff, product owner, or customer support officer
-    if (user.role !== "staff" && user.role !== "product_owner" && user.role !== "customer_support_officer") {
-      return res.status(403).json({ error: "Only staff members, product owners, and customer support officers can access leave applications" });
-    }
-
     try {
-      const applications = await db
-        .select()
-        .from(leaveApplications)
-        .where(eq(leaveApplications.userId, user.id))
-        .orderBy(desc(leaveApplications.appliedAt));
+      let applications;
+
+      if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
+        // Project managers, operations managers, and team leads see all applications with user details
+        applications = await db
+          .select({
+            id: leaveApplications.id,
+            userId: leaveApplications.userId,
+            leaveType: leaveApplications.leaveType,
+            reason: leaveApplications.reason,
+            startDate: leaveApplications.startDate,
+            endDate: leaveApplications.endDate,
+            totalDays: leaveApplications.totalDays,
+            proofImageUrl: leaveApplications.proofImageUrl,
+            status: leaveApplications.status,
+            appliedAt: leaveApplications.appliedAt,
+            reviewedAt: leaveApplications.reviewedAt,
+            reviewComments: leaveApplications.reviewComments,
+            userName: users.name,
+            userEmail: users.email,
+          })
+          .from(leaveApplications)
+          .innerJoin(users, eq(leaveApplications.userId, users.id))
+          .orderBy(desc(leaveApplications.appliedAt));
+      } else if (user.role === "staff" || user.role === "intern" || user.role === "customer_support_officer") {
+        // Staff, interns, and customer support officers see only their own applications
+        applications = await db
+          .select()
+          .from(leaveApplications)
+          .where(eq(leaveApplications.userId, user.id))
+          .orderBy(desc(leaveApplications.appliedAt));
+      } else {
+        return res.status(403).send("Access denied");
+      }
 
       res.json(applications);
     } catch (error) {
@@ -6330,44 +6352,81 @@ End of Report
 
       // Check for @mentions in the message - improved regex to handle spaces
       const mentionRegex = /@([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
-      const mentions = new Set<number>();
-      let match;
+      const mentions = [...content.matchAll(mentionRegex)];
 
-      while ((match = mentionRegex.exec(content)) !== null) {
-        const mentionedName = match[1].trim();
+      if (mentions.length > 0) {
+        // Get all project members to find mentioned users
+        const allProjectMembers = await db
+          .select({
+            id: users.id,
+            name: users.name,
+          })
+          .from(projectMembers)
+          .innerJoin(users, eq(projectMembers.userId, users.id))
+          .where(eq(projectMembers.projectId, projectId));
 
-        // Find user by name from project members
-        const member = projectMembersList.find(m => {
-          const memberName = m.userName || m.name || '';
-          return memberName && memberName.toLowerCase() === mentionedName.toLowerCase();
-        });
-
-        if (member && member.userId) {
-          mentions.add(member.userId);
-
-          // Create notification for mentioned user - use team_mention type with projectId as referenceId
-          await createNotification(
-            member.userId,
-            "team_mention",
-            `${user.name} mentioned you in ${project.name}`,
-            projectId,
-            "project"
+        // Also add project manager and team leads
+        const additionalMembers = await db
+          .select({
+            id: users.id,
+            name: users.name,
+          })
+          .from(users)
+          .where(
+            or(
+              eq(users.id, project.managerId),
+              eq(users.role, "team_lead"),
+              eq(users.role, "operations_manager"),
+              eq(users.specialization, "operations_manager")
+            )
           );
+
+        const allMembers = [...allProjectMembers, ...additionalMembers];
+
+        for (const match of mentions) {
+          const mentionedName = match[1].trim();
+
+          // Find user by exact or partial name match
+          const mentionedUser = allMembers.find(member => 
+            member.name && (
+              member.name.toLowerCase() === mentionedName.toLowerCase() ||
+              member.name.toLowerCase().startsWith(mentionedName.toLowerCase())
+            )
+          );
+
+          if (mentionedUser && mentionedUser.id !== user.id) {
+            try {
+              await createNotification(
+                mentionedUser.id,
+                "team_mention",
+                `${user.name} mentioned you in ${project.name}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
+                projectId,
+                "project"
+              );
+            } catch (notifError) {
+              console.error(`Failed to create mention notification for user ${mentionedUser.id}:`, notifError);
+            }
+          }
         }
       }
 
-      // Get the complete message with sender info to return
-      const messageWithSender = {
-        id: newMessage.id,
-        content: newMessage.content,
-        createdAt: newMessage.createdAt,
-        senderId: newMessage.senderId,
-        sender: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        },
-      };
+      // Broadcast via WebSocket
+      if (global.wss) {
+        global.wss.clients.forEach((client: any) => {
+          if (client.readyState === 1 && client.userId) {
+            client.send(JSON.stringify({
+              type: "project_message",
+              data: {
+                projectId,
+                messageId: newMessage.id,
+                senderId: user.id,
+                senderName: user.name,
+                content: content.trim(),
+              }
+            }));
+          }
+        });
+      }
 
       res.json({ success: true, messageId: newMessage.id, message: messageWithSender });
     } catch (error) {
@@ -6426,7 +6485,6 @@ End of Report
 
       // Note: Message updates are handled via query invalidation on the client
       // No need for WebSocket broadcast here as the client will refetch
-
       res.json({ success: true, message: updatedMessage });
     } catch (error) {
       console.error("Error editing team message:", error);
@@ -7699,11 +7757,15 @@ End of Report
 }
   });
 
-  app.post("/api/tasks/:id/pause-timer", requireAuth, async (req, res) => {
-    try {
-      const taskId = parseInt(req.params.id);
-      const userId = req.user!.id;
+  app.post("/api/tasks/:id/pause-timer", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
 
+    const user = req.user!;
+    const taskId = parseInt(req.params.id);
+
+    try {
       const [task] = await db
         .select()
         .from(tasks)
@@ -7715,7 +7777,7 @@ End of Report
       }
 
       // Verify user is assigned to this task
-      if (task.assigneeId !== userId) {
+      if (task.assigneeId !== user.id) {
         return res.status(403).json({ error: "You are not assigned to this task" });
       }
 
