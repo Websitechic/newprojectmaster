@@ -133,16 +133,15 @@ export function Header() {
 
     // Add team chat mentions from notifications
     const mentionNotifications = notifications.filter((notif: any) => 
-      notif.type === "team_chat_mention" && 
+      notif.type === "mention" && 
       notif.referenceType === "team_message" && 
       !notif.read
     );
 
     mentionNotifications.forEach((notif: any) => {
-      // Find the project from the notification content
-      const project = projects.find((p: any) => 
-        notif.content.includes(p.name)
-      );
+      // The referenceId is the projectId for team_message type
+      const projectId = notif.referenceId;
+      const project = projects.find((p: any) => p.id === projectId);
 
       if (project) {
         // Check if we already have this project in combined
@@ -160,8 +159,11 @@ export function Header() {
             projectId: project.id,
           });
         } else {
-          // Increment existing count
+          // Increment existing count and update name to show mention
           combined[existingIndex].unreadCount += 1;
+          if (!combined[existingIndex].name.includes("(mentioned)")) {
+            combined[existingIndex].name = `${project.name} (mentioned)`;
+          }
         }
       }
     });

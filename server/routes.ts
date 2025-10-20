@@ -4125,7 +4125,7 @@ End of Report
           content: content || "",
           type: type || "freetext",
           todoItems: type === "todo" ? todoItems : null,
-                    userId: user.id,
+          userId: user.id,
           createdBy: user.id,
           category: category || "general",
         })
@@ -5771,6 +5771,7 @@ End of Report
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
         (user.role === "staff" && await db
@@ -6180,15 +6181,16 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });      // Check if user is a member of the project (for all roles including customer support)
       const [membership] = await db
-        .select()
-        .from(projectMembers)
-        .where(
-          and(
-            eq(projectMembers.projectId, projectId),
-            eq(projectMembers.userId, user.id)
+        .select()[
+  {"op": "replace", "content": "// Send SSE notification for mentions\n        if (mentions.length > 0) {\n          for (const mention of mentions) {\n            const mentionedUser = projectMembersData.find(\n              (m: any) => m.id === mention.userId || m.userId === mention.userId\n            );\n            if (mentionedUser) {\n              const mentionedUserId = mentionedUser.id || mentionedUser.userId;\n              // Avoid notifying the sender\n              if (mentionedUserId !== user.id) {\n                await createNotification(\n                  mentionedUserId,\n                  \"mention\",\n                  `${user.name} mentioned you in ${project.name}`,\n                  projectId,\n                  \"team_message\"\n                );\n              }\n            }\n          }\n        }"}
+]          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.userId, user.id)
+            )
           )
-        )
-        .limit(1);
+          .limit(1);
 
       const hasAccess = 
         user.role === "operations_manager" || 
@@ -6269,6 +6271,7 @@ End of Report
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
         user.role === "customer_support_officer" ||
+        user.role === "project_manager" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
         !!membership;
@@ -7732,13 +7735,21 @@ End of Report
       const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
       const newTimeSpent = (task.timeSpent || 0) + sessionDuration;
 
-      // Update task with accumulated time and pause timer
+      // Clear the timer interval
+      if (global.timerIntervals && global.timerIntervals.has(taskId)) {
+        clearInterval(global.timerIntervals.get(taskId));
+        global.timerIntervals.delete(taskId);
+      }
+
+      // Pause the timer
+      const now = new Date();
       const [updatedTask] = await db
         .update(tasks)
         .set({
           isTimerRunning: false,
           timeSpent: newTimeSpent,
           timerStartTime: null,
+          updatedAt: now
         })
         .where(eq(tasks.id, taskId))
         .returning();

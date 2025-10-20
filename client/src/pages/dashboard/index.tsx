@@ -475,18 +475,6 @@ export default function Dashboard() {
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">All Your Tasks</h2>
 
-                {/* Search Bar */}
-                <div className="relative max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Search tasks by title..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
                 {staffTasks && staffTasks.length > 0 ? (
                   <StaffTaskList tasks={filteredTasks || staffTasks} projectId={undefined} />
                 ) : (
