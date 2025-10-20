@@ -69,20 +69,30 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   };
 
   // State to track real-time timer updates
-  const [timerUpdates, setTimerUpdates] = useState<Record<number, number>>({});
+  const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
 
-  // Listen for WebSocket timer events and update local state
+  // Update local timers every second for running tasks
   useEffect(() => {
-    const handleTimerUpdate = (event: any) => {
-      const data = event.detail;
-      if (data && data.taskId && data.timeSpent !== undefined) {
-        setTimerUpdates(prev => ({
-          ...prev,
-          [data.taskId]: data.timeSpent
-        }));
-      }
-    };
+    const interval = setInterval(() => {
+      setLocalTimers(prev => {
+        const newTimers = { ...prev };
+        tasks.forEach(task => {
+          if (task.isTimerRunning && task.timerStartTime) {
+            const elapsedSinceStart = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
+            newTimers[task.id] = (task.timeSpent || 0) + elapsedSinceStart;
+          } else {
+            newTimers[task.id] = task.timeSpent || 0;
+          }
+        });
+        return newTimers;
+      });
+    }, 1000);
 
+    return () => clearInterval(interval);
+  }, [tasks]);
+
+  // Listen for WebSocket timer events and invalidate queries
+  useEffect(() => {
     const handleTimerEvent = () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       if (projectId) {
@@ -92,12 +102,12 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
     window.addEventListener('websocket:task_timer_started', handleTimerEvent);
     window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
-    window.addEventListener('websocket:task_timer_update', handleTimerUpdate);
+    window.addEventListener('websocket:task_timer_update', handleTimerEvent);
 
     return () => {
       window.removeEventListener('websocket:task_timer_started', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_paused', handleTimerEvent);
-      window.removeEventListener('websocket:task_timer_update', handleTimerUpdate);
+      window.removeEventListener('websocket:task_timer_update', handleTimerEvent);
     };
   }, [queryClient, projectId]);
 
@@ -434,7 +444,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <TableCell>
                     <div className={`flex items-center gap-1 ${task.isTimerRunning ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
                       <Clock className="h-4 w-4" />
-                      <span>{formatTime(timerUpdates[task.id] !== undefined ? timerUpdates[task.id] : (task.timeSpent || 0))}</span>
+                      <span>{formatTime(localTimers[task.id] || task.timeSpent || 0)}</span>
                       {task.isTimerRunning && (
                         <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
                       )}
