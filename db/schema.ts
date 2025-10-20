@@ -395,6 +395,8 @@ export const directMessages = pgTable("direct_messages", {
   receiverId: integer("receiver_id").references(() => users.id).notNull(),
   content: text("content").notNull(),
   read: boolean("read").default(false).notNull(),
+  replyToMessageId: integer("reply_to_message_id"),
+  replyToSenderName: text("reply_to_sender_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
