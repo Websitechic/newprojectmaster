@@ -6022,7 +6022,10 @@ End of Report
         .orderBy(desc(tasks.updatedAt));
 
       res.json(projectTasks);
-    } catch (error    );
+    } catch (error) {
+      console.error("Error fetching project tasks:", error);
+      res.status(500).json({ error: "Failed to fetch project tasks" });
+    }
   });
 
   // Get project resources
