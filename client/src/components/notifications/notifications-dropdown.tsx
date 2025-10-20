@@ -161,21 +161,33 @@ export function NotificationsDropdown() {
             else if (data.type === 'direct_message' && data.data) {
               console.log('💬 Direct message event received via SSE:', data.data);
               
-              // Play notification sound for direct messages
-              console.log('🔊 Playing sound for direct message');
-              playNotificationSound().catch(err => {
-                console.error('Sound playback error for direct message:', err);
-              });
+              // Play notification sound for direct messages (unless it's from the current user)
+              if (data.data.senderId !== user?.id) {
+                console.log('🔊 Playing sound for incoming direct message');
+                playNotificationSound().catch(err => {
+                  console.error('Sound playback error for direct message:', err);
+                });
+              }
+              
+              // Invalidate queries to update unread counts
+              queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
             }
             // Handle project/team message events
             else if (data.type === 'project_message' && data.data) {
               console.log('💬 Project message event received via SSE:', data.data);
               
-              // Play notification sound for team messages
-              console.log('🔊 Playing sound for team message');
-              playNotificationSound().catch(err => {
-                console.error('Sound playback error for team message:', err);
-              });
+              // Play notification sound for team messages (unless it's from the current user)
+              if (data.data.senderId !== user?.id) {
+                console.log('🔊 Playing sound for incoming team message');
+                playNotificationSound().catch(err => {
+                  console.error('Sound playback error for team message:', err);
+                });
+              }
+              
+              // Invalidate queries to update unread counts
+              queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
             }
           } catch (error) {
             console.error("Error parsing SSE message:", error);
