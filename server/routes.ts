@@ -218,6 +218,74 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Tasks endpoint - returns tasks based on user role
+  app.get("/api/tasks", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      let userTasks = [];
+      
+      if (user.role === "staff" || user.role === "intern") {
+        // Staff and interns see tasks assigned to them
+        userTasks = await db
+          .select()
+          .from(tasks)
+          .where(eq(tasks.assigneeId, user.id))
+          .orderBy(desc(tasks.updatedAt));
+      } else if (user.role === "client") {
+        // Clients see tasks in their projects
+        const clientProjects = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.clientId, user.id));
+
+        const projectIds = clientProjects.map(p => p.id);
+        if (projectIds.length > 0) {
+          userTasks = await db
+            .select()
+            .from(tasks)
+            .where(inArray(tasks.projectId, projectIds))
+            .orderBy(desc(tasks.updatedAt));
+        }
+      } else if (user.role === "project_manager") {
+        // Project managers see all tasks in their projects
+        const managedProjects = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.managerId, user.id));
+
+        const projectIds = managedProjects.map(p => p.id);
+        if (projectIds.length > 0) {
+          userTasks = await db
+            .select()
+            .from(tasks)
+            .where(inArray(tasks.projectId, projectIds))
+            .orderBy(desc(tasks.updatedAt));
+        }
+      } else if (
+        user.role === "operations_manager" ||
+        user.specialization === "operations_manager" ||
+        user.role === "team_lead" ||
+        user.role === "customer_support_officer"
+      ) {
+        // Operations managers, team leads, and customer support officers see all tasks
+        userTasks = await db
+          .select()
+          .from(tasks)
+          .orderBy(desc(tasks.updatedAt));
+      }
+
+      res.json(userTasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ error: "Failed to fetch tasks" });
+    }
+  });
+
   // Notifications endpoint
   app.get("/api/notifications", async (req, res) => {
     if (!req.isAuthenticated()) {
