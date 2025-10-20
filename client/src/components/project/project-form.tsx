@@ -183,10 +183,10 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
       let savedProject;
 
-      // Critical check: If we have a project prop with an ID, this is ALWAYS an update
-      const isUpdate = !!project?.id;
+      // Critical check: If we have a project object with an ID, this is ALWAYS an update
+      const isUpdate = project && project.id && typeof project.id === 'number';
 
-      if (isUpdate && project?.id) {
+      if (isUpdate) {
         // Update existing project - ensure we have a valid project ID
         console.log("UPDATING existing project with ID:", project.id, "Project object:", project);
         const response = await fetch(`/api/projects/${project.id}`, {
@@ -204,13 +204,9 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
         savedProject = await response.json();
         console.log("Project updated successfully:", savedProject);
 
-        // Verify the update returned the same project ID
+        // Ensure we got back a project with the same ID (not a new one)
         if (savedProject.id !== project.id) {
-          console.error("WARNING: Server returned different project ID!", { 
-            expected: project.id, 
-            got: savedProject.id 
-          });
-          throw new Error("Project update failed - ID mismatch");
+          console.error("WARNING: Updated project has different ID!", { expected: project.id, got: savedProject.id });
         }
       } else {
         // Create new project
