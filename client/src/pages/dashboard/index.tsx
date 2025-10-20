@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -81,9 +81,34 @@ export default function Dashboard() {
     queryKey: ["/api/staff"],
   });
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
+  // Fetch tasks
+  const { data: tasks } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
+    refetchInterval: 5000,
   });
+
+  // Local state for real-time timer updates
+  const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
+
+  // Update local timers every second for running tasks
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLocalTimers(prev => {
+        const newTimers = { ...prev };
+        tasks?.forEach(task => {
+          if (task.isTimerRunning && task.timerStartTime) {
+            const elapsedSinceStart = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
+            newTimers[task.id] = (task.timeSpent || 0) + elapsedSinceStart;
+          } else {
+            newTimers[task.id] = task.timeSpent || 0;
+          }
+        });
+        return newTimers;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [tasks]);
 
   // Fetch recent project activity (messages and resources from last 24 hours)
   const { data: projectActivity } = useQuery<Record<number, { hasMessages: boolean; hasResources: boolean; latestActivity: string }>>({
@@ -207,11 +232,12 @@ export default function Dashboard() {
     }));
   };
 
+  // Format time in HH:MM:SS
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const TaskCard = ({
@@ -227,7 +253,7 @@ export default function Dashboard() {
         {showTimer && task.isTimerRunning && (
           <div className="flex items-center gap-1 text-green-600 text-xs">
             <Clock className="h-3 w-3" />
-            <span>{formatTime(task.timeSpent || 0)}</span>
+            <span>{formatTime(localTimers[task.id] || task.timeSpent || 0)}</span>
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           </div>
         )}
@@ -1068,9 +1094,9 @@ export default function Dashboard() {
                   </div>
 
                   {tasks && tasks.filter(task => task.assigneeId === user.id).length > 0 ? (
-                    <StaffTaskList 
-                      tasks={tasks.filter(task => task.assigneeId === user.id)} 
-                      projectId={undefined} 
+                    <StaffTaskList
+                      tasks={tasks.filter(task => task.assigneeId === user.id)}
+                      projectId={undefined}
                     />
                   ) : (
                     <div className="text-center text-muted-foreground py-8 bg-gray-50 rounded-lg">
@@ -1093,11 +1119,11 @@ export default function Dashboard() {
                   <TaskList
                     tasks={
                       user?.role === "staff" || user?.role === "intern"
-                        ? tasks.filter((task) => 
+                        ? tasks.filter((task) =>
                             task.assigneeId === user?.id &&
                             (!taskSearchQuery || task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()))
                           )
-                        : tasks.filter((task) => 
+                        : tasks.filter((task) =>
                             !taskSearchQuery || task.title.toLowerCase().includes(taskSearchQuery.toLowerCase())
                           )
                     }
