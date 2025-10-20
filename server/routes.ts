@@ -6696,6 +6696,16 @@ End of Report
         });
       }
 
+      // Construct message with sender info for response
+      const messageWithSender = {
+        ...newMessage,
+        sender: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        }
+      };
+
       res.json({ success: true, messageId: newMessage.id, message: messageWithSender });
     } catch (error) {
       console.error("Error sending team message:", error);
