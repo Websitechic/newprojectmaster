@@ -29,13 +29,18 @@ export function useBrowserNotification() {
     options?: NotificationOptions & { data?: NotificationData }
   ) => {
     try {
+      console.log('📬 showNotification called with title:', title);
+      
       if (!('Notification' in window)) {
         console.warn('⚠️ Browser notifications not supported');
         return;
       }
 
+      console.log('📬 Current notification permission:', Notification.permission);
+
       // Request permission if not already requested
       if (Notification.permission === 'default') {
+        console.log('📬 Requesting notification permission...');
         const result = await Notification.requestPermission();
         setPermission(result);
         
@@ -47,6 +52,7 @@ export function useBrowserNotification() {
 
       // Only show notification if permission is granted
       if (Notification.permission === 'granted') {
+        console.log('📬 Creating notification with title:', title, 'options:', options);
         const notification = new Notification(title, {
           icon: '/favicon.ico',
           badge: '/favicon.ico',
@@ -55,6 +61,8 @@ export function useBrowserNotification() {
           ...options,
         });
 
+        console.log('✅ Notification created successfully');
+
         // Auto-close notification after 5 seconds
         setTimeout(() => {
           notification.close();
@@ -62,10 +70,12 @@ export function useBrowserNotification() {
 
         // Focus window and navigate when notification is clicked
         notification.onclick = () => {
+          console.log('📬 Notification clicked, focusing window');
           window.focus();
           
           // Navigate to the URL if provided
           if (options?.data?.url) {
+            console.log('📬 Navigating to:', options.data.url);
             window.location.href = options.data.url;
           }
           
