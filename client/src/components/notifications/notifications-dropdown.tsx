@@ -140,51 +140,35 @@ export function NotificationsDropdown() {
               const shouldPlaySound = isDirectMessage || isTaskAssignment;
               
               if (shouldPlaySound) {
-                console.log('🔊 SOUND TRIGGER ACTIVATED:', {
+                console.log('🔊 NOTIFICATION SOUND TRIGGER ACTIVATED:', {
                   type: data.notification.type,
                   referenceType: data.notification.referenceType,
                   notificationId: data.notification.id,
                   isDirectMessage,
                   isTaskAssignment,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
+                  content: data.notification.content?.substring(0, 50)
                 });
                 
-                // Play sound immediately without async wrapper to avoid timing issues
-                playNotificationSound().catch(err => {
-                  console.error('Sound playback error:', err);
-                });
+                // Play sound with comprehensive error handling
+                playNotificationSound()
+                  .then(() => {
+                    console.log('✅ Notification sound played successfully for:', data.notification.type);
+                  })
+                  .catch(err => {
+                    console.error('❌ Notification sound playback error:', {
+                      error: err,
+                      message: err instanceof Error ? err.message : 'Unknown error',
+                      notificationType: data.notification.type,
+                      stack: err instanceof Error ? err.stack : undefined
+                    });
+                  });
               } else {
                 console.log('⏭️ Sound skipped - notification type:', data.notification.type, 'reference:', data.notification.referenceType);
               }
             }
-            // Also handle direct message events from SSE
-            else if (data.type === 'direct_message' && data.data) {
-              console.log('💬 Direct message event received via SSE:', data.data);
-              
-              // Play notification sound immediately for all direct messages
-              console.log('🔊 Playing sound for direct message');
-              playNotificationSound().catch(err => {
-                console.error('Sound playback error for direct message:', err);
-              });
-              
-              // Invalidate queries to update unread counts immediately
-              queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
-              queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
-            }
-            // Handle project/team message events
-            else if (data.type === 'project_message' && data.data) {
-              console.log('💬 Project message event received via SSE:', data.data);
-              
-              // Play notification sound immediately for all team messages
-              console.log('🔊 Playing sound for team message');
-              playNotificationSound().catch(err => {
-                console.error('Sound playback error for team message:', err);
-              });
-              
-              // Invalidate queries to update unread counts immediately
-              queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
-              queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
-            }
+            // Direct message and team message events are now handled by GlobalNotificationListener in App.tsx
+            // Keeping this comment for clarity - sound playback is centralized to avoid duplicates
           } catch (error) {
             console.error("Error parsing SSE message:", error);
           }

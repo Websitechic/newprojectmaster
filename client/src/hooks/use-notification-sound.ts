@@ -144,37 +144,82 @@ export function useNotificationSound() {
   }, [isInitialized, isUnlocked, unlockAudioContext]);
 
   const playNotificationSound = useCallback(async () => {
+    console.log('🔊 playNotificationSound called', {
+      hasAudioContext: !!audioContextRef.current,
+      hasBuffer: !!audioBufferRef.current,
+      isInitialized,
+      isUnlocked,
+      contextState: audioContextRef.current?.state
+    });
+
     try {
+      // Initialize if needed
       if (!audioContextRef.current || !audioBufferRef.current) {
         console.log('🔇 Audio not initialized yet, trying to initialize...');
         await initAudioContext();
+        
+        // Wait a bit for initialization to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         if (!audioContextRef.current || !audioBufferRef.current) {
-          console.log('🔇 Audio initialization failed');
+          console.error('🔇 Audio initialization failed - no context or buffer');
           return;
         }
       }
 
       // Ensure audio is unlocked
-      if (!isUnlocked && !unlockAttemptedRef.current) {
+      if (!isUnlocked) {
+        console.log('🔓 Audio not unlocked, attempting unlock...');
         await unlockAudioContext();
+        
+        // Wait a bit for unlock to complete
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
       // Resume context if suspended
       if (audioContextRef.current.state === 'suspended') {
-        await audioContextRef.current.resume();
+        console.log('⏯️ Resuming suspended audio context...');
+        try {
+          await audioContextRef.current.resume();
+          console.log('✅ Audio context resumed, state:', audioContextRef.current.state);
+        } catch (resumeError) {
+          console.error('❌ Failed to resume audio context:', resumeError);
+          return;
+        }
+      }
+
+      // Double-check we have everything we need
+      if (!audioBufferRef.current) {
+        console.error('❌ Audio buffer missing after initialization');
+        return;
       }
 
       // Create source node and connect to destination
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBufferRef.current;
       source.connect(audioContextRef.current.destination);
+      
+      // Add error handler for the source
+      source.onended = () => {
+        console.log('✅ Notification sound playback completed');
+      };
+      
       source.start(0);
       
-      console.log('🔊 Notification sound played successfully');
+      console.log('🔊 Notification sound started successfully', {
+        contextState: audioContextRef.current.state,
+        bufferDuration: audioBufferRef.current.duration
+      });
     } catch (error) {
-      console.error('❌ Error playing notification sound:', error);
+      console.error('❌ Error playing notification sound:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        contextState: audioContextRef.current?.state,
+        hasBuffer: !!audioBufferRef.current
+      });
     }
-  }, [initAudioContext, unlockAudioContext, isUnlocked]);
+  }, [initAudioContext, unlockAudioContext, isUnlocked, isInitialized]);
 
   return { playNotificationSound, isInitialized, isUnlocked };
 }

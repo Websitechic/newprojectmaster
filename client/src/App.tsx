@@ -134,21 +134,46 @@ function GlobalNotificationListener() {
             }
             // Handle direct message events
             else if (data.type === 'direct_message' && data.data) {
-              console.log('💬 Global direct message received:', data.data);
+              console.log('💬 Global direct message received:', {
+                messageId: data.data.id,
+                senderId: data.data.senderId,
+                receiverId: data.data.receiverId,
+                currentUserId: user?.id,
+                senderName: data.data.senderName
+              });
+              
+              // Validate user is authenticated
+              if (!user || !user.id) {
+                console.warn('⚠️ User not authenticated, skipping sound playback');
+                return;
+              }
               
               // Play sound for any message not sent by current user
-              const isIncomingMessage = data.data.senderId !== user?.id;
+              const isIncomingMessage = data.data.senderId !== user.id;
               
               if (isIncomingMessage) {
-                console.log('🔊 Playing sound for incoming direct message from user:', data.data.senderId);
-                
-                // Play sound immediately
-                playNotificationSound().catch(err => {
-                  console.error('Sound playback error:', err);
+                console.log('🔊 TRIGGER: Playing sound for incoming direct message', {
+                  from: data.data.senderId,
+                  to: data.data.receiverId,
+                  currentUser: user.id,
+                  timestamp: new Date().toISOString()
                 });
                 
+                // Play sound immediately with comprehensive error handling
+                playNotificationSound()
+                  .then(() => {
+                    console.log('✅ Direct message sound played successfully');
+                  })
+                  .catch(err => {
+                    console.error('❌ Direct message sound playback error:', {
+                      error: err,
+                      message: err instanceof Error ? err.message : 'Unknown error',
+                      stack: err instanceof Error ? err.stack : undefined
+                    });
+                  });
+                
                 // Show browser notification only if message is TO current user
-                if (data.data.receiverId === user?.id) {
+                if (data.data.receiverId === user.id) {
                   const senderName = data.data.senderName || 'Someone';
                   const messagePreview = data.data.content?.substring(0, 100) || 'New message';
                   showNotification(`${senderName} sent you a message`, {
@@ -158,7 +183,10 @@ function GlobalNotificationListener() {
                   });
                 }
               } else {
-                console.log('⏭️ Skipping sound - message is from current user');
+                console.log('⏭️ Skipping sound - message is from current user', {
+                  senderId: data.data.senderId,
+                  currentUserId: user.id
+                });
               }
               
               // Dispatch custom event for direct message components to update UI immediately
@@ -170,16 +198,41 @@ function GlobalNotificationListener() {
             }
             // Handle project/team message events
             else if (data.type === 'project_message' && data.data) {
-              console.log('💬 Global team message received:', data.data);
+              console.log('💬 Global team message received:', {
+                messageId: data.data.id,
+                senderId: data.data.senderId,
+                projectId: data.data.projectId,
+                currentUserId: user?.id,
+                senderName: data.data.senderName
+              });
+              
+              // Validate user is authenticated
+              if (!user || !user.id) {
+                console.warn('⚠️ User not authenticated, skipping sound playback');
+                return;
+              }
               
               // Only play sound and show notification if message is from another user
-              if (data.data.senderId !== user?.id) {
-                console.log('🔊 Playing sound for incoming team message from user:', data.data.senderId);
-                
-                // Play sound immediately
-                playNotificationSound().catch(err => {
-                  console.error('Sound playback error:', err);
+              if (data.data.senderId !== user.id) {
+                console.log('🔊 TRIGGER: Playing sound for incoming team message', {
+                  from: data.data.senderId,
+                  project: data.data.projectId,
+                  currentUser: user.id,
+                  timestamp: new Date().toISOString()
                 });
+                
+                // Play sound immediately with comprehensive error handling
+                playNotificationSound()
+                  .then(() => {
+                    console.log('✅ Team message sound played successfully');
+                  })
+                  .catch(err => {
+                    console.error('❌ Team message sound playback error:', {
+                      error: err,
+                      message: err instanceof Error ? err.message : 'Unknown error',
+                      stack: err instanceof Error ? err.stack : undefined
+                    });
+                  });
                 
                 // Show browser notification
                 const senderName = data.data.senderName || 'Team member';
@@ -191,7 +244,10 @@ function GlobalNotificationListener() {
                   data: { url: `/dashboard/projects/${data.data.projectId}/team-chat` },
                 });
               } else {
-                console.log('⏭️ Skipping sound - message is from current user');
+                console.log('⏭️ Skipping sound - message is from current user', {
+                  senderId: data.data.senderId,
+                  currentUserId: user.id
+                });
               }
               
               // Dispatch custom event for team chat components to update UI immediately
