@@ -311,7 +311,7 @@ export default function Dashboard() {
                         </CollapsibleContent>
                       </Collapsible>
                     ) : (
-                      <div className="text-center text-gray-500 py-4">
+                      <div className="text-center text-muted-foreground py-4">
                         <p className="text-sm">No tasks in progress</p>
                       </div>
                     )}
@@ -355,7 +355,7 @@ export default function Dashboard() {
                         </CollapsibleContent>
                       </Collapsible>
                     ) : (
-                      <div className="text-center text-gray-500 py-4">
+                      <div className="text-center text-muted-foreground py-4">
                         <p className="text-sm">No pending tasks</p>
                       </div>
                     )}
@@ -399,7 +399,7 @@ export default function Dashboard() {
                         </CollapsibleContent>
                       </Collapsible>
                     ) : (
-                      <div className="text-center text-gray-500 py-4">
+                      <div className="text-center text-muted-foreground py-4">
                         <p className="text-sm">No tasks in review</p>
                       </div>
                     )}
@@ -433,8 +433,8 @@ export default function Dashboard() {
                                 value={task.id.toString()}
                               >
                                 <div className="flex flex-col items-start">
-                                  <span className="font-medium text-sm text-gray-800 dark:text-gray-200">{task.title}</span>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.description?.substring(0, 50)}...</span>
+                                  <span className="font-medium text-sm text-foreground">{task.title}</span>
+                                  <span className="text-xs text-muted-foreground truncate">{task.description?.substring(0, 50)}...</span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -465,7 +465,7 @@ export default function Dashboard() {
                         </Collapsible>
                       </div>
                     ) : (
-                      <div className="text-center text-gray-500 py-4">
+                      <div className="text-center text-muted-foreground py-4">
                         <p className="text-sm">No technical support tasks</p>
                       </div>
                     )}
@@ -475,7 +475,7 @@ export default function Dashboard() {
 
               {/* Full Task List */}
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+                <h2 className="text-2xl font-bold text-foreground">
                   {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                 </h2>
 
@@ -860,7 +860,7 @@ export default function Dashboard() {
                         </CollapsibleContent>
                       </Collapsible>
                     ) : (
-                      <div className="text-center text-gray-500 py-4">
+                      <div className="text-center text-muted-foreground py-4">
                         <p className="text-sm">No tasks in progress</p>
                       </div>
                     )}
@@ -904,7 +904,7 @@ export default function Dashboard() {
                         </CollapsibleContent>
                       </Collapsible>
                     ) : (
-                      <div className="text-center text-gray-500 py-4">
+                      <div className="text-center text-muted-foreground py-4">
                         <p className="text-sm">No pending tasks</p>
                       </div>
                     )}
@@ -948,7 +948,7 @@ export default function Dashboard() {
                         </CollapsibleContent>
                       </Collapsible>
                     ) : (
-                      <div className="text-center text-gray-500 py-4">
+                      <div className="text-center text-muted-foreground py-4">
                         <p className="text-sm">No tasks in review</p>
                       </div>
                     )}
@@ -982,8 +982,8 @@ export default function Dashboard() {
                                 value={task.id.toString()}
                               >
                                 <div className="flex flex-col items-start">
-                                  <span className="font-medium text-sm text-gray-800 dark:text-gray-200">{task.title}</span>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.description?.substring(0, 50)}...</span>
+                                  <span className="font-medium text-sm text-foreground">{task.title}</span>
+                                  <span className="text-xs text-muted-foreground truncate">{task.description?.substring(0, 50)}...</span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -1014,7 +1014,7 @@ export default function Dashboard() {
                         </Collapsible>
                       </div>
                     ) : (
-                      <div className="text-center text-gray-500 py-4">
+                      <div className="text-center text-muted-foreground py-4">
                         <p className="text-sm">No technical support tasks</p>
                       </div>
                     )}
@@ -1076,7 +1076,7 @@ export default function Dashboard() {
               )}
 
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+                <h2 className="text-2xl font-bold text-foreground">
                   {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                 </h2>
 
