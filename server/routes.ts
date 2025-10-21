@@ -3902,12 +3902,13 @@ End of Report
 
   // Get unread messages count
   app.get("/api/direct-messages/unread-count", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
     try {
-      const user = req.user!;
+      if (!req.isAuthenticated()) {
+        console.log("⚠️ Unread count request - not authenticated");
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const user = req.user;
 
       // Ensure user object has an ID
       if (!user || !user.id) {
@@ -3931,7 +3932,7 @@ End of Report
       res.json({ count });
     } catch (error) {
       console.error("❌ Error fetching unread count:", error);
-      res.status(500).json({ error: "Failed to fetch unread count" });
+      res.status(500).json({ error: "Failed to fetch unread count", details: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 

@@ -90,21 +90,32 @@ export function useUnreadMessages() {
     if (!user) return;
 
     try {
-      const response = await fetch('/api/direct-messages/unread-count');
+      const response = await fetch('/api/direct-messages/unread-count', {
+        credentials: 'include'
+      });
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch unread count');
+        if (response.status === 401) {
+          // Silent fail for authentication issues
+          setDirectMessagesCount(0);
+          return;
+        }
+        console.warn('Failed to fetch unread count:', response.status);
+        setDirectMessagesCount(0);
+        return;
       }
 
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         console.warn('Expected JSON response but got:', contentType);
-        return 0;
+        setDirectMessagesCount(0);
+        return;
       }
 
       const data = await response.json();
       setDirectMessagesCount(data.count || 0);
     } catch (error) {
-      console.error('Failed to fetch direct messages count:', error);
+      // Silent fail to avoid console spam
       setDirectMessagesCount(0);
     }
   }, [user]);
