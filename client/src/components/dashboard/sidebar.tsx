@@ -76,12 +76,12 @@ function SidebarItem({ icon, label, href, active, badge, external, onClick, hasU
       className={cn(
         "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative cursor-pointer",
         active
-          ? "bg-purple-100 text-purple-700 shadow-sm"
-          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+          ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 shadow-sm"
+          : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
       )}
       onClick={onClick}
     >
-      <div className={cn("w-5 h-5 flex-shrink-0", active ? "text-purple-700" : "text-gray-500")}>
+      <div className={cn("w-5 h-5 flex-shrink-0", active ? "text-purple-700 dark:text-purple-300" : "text-gray-500 dark:text-gray-400")}>
         {icon}
       </div>
       <span className="flex-1 truncate">{label}</span>

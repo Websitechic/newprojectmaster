@@ -275,205 +275,127 @@ function Router() {
             {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
           </Route>
           <Route path="/dashboard">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              {user?.role === "client" ? <ClientDashboard /> : <Dashboard />}
-            </div>
+            {user?.role === "client" ? <ClientDashboard /> : <Dashboard />}
           </Route>
           <Route path="/dashboard/projects">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <Projects />
-            </div>
+            <Projects />
           </Route>
           <Route path="/dashboard/projects/:id">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ProjectDetails />
-            </div>
+            <ProjectDetails />
           </Route>
           <Route path="/dashboard/projects/:id/tasks">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ProjectTasks />
-            </div>
+            <ProjectTasks />
           </Route>
           <Route path="/dashboard/projects/:id/team-chat">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <TeamChat />
-            </div>
+            <TeamChat />
           </Route>
           <Route path="/dashboard/projects/:id/client-chat">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ClientChat />
-            </div>
+            <ClientChat />
           </Route>
           <Route path="/dashboard/projects/:id/staff-tasks">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <StaffProjectTasks />
-            </div>
+            <StaffProjectTasks />
           </Route>
           {/* Staff-specific route removed - all users now use standard project details page */}
           <Route path="/dashboard/projects/:id/resources">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ProjectResources />
-            </div>
+            <ProjectResources />
           </Route>
           <Route path="/dashboard/staff-report" component={StaffReport} />
           <Route path="/dashboard/tasks">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <Tasks />
-            </div>
+            <Tasks />
           </Route>
           <Route path="/dashboard/leave-application">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <LeaveApplication />
-            </div>
+            <LeaveApplication />
           </Route>
           <Route path="/dashboard/leave-management">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <LeaveManagement />
-            </div>
+            <LeaveManagement />
           </Route>
           <Route path="/dashboard/bookings" component={Bookings} />
           <Route path="/dashboard/productivity">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <Productivity />
-            </div>
+            <Productivity />
           </Route>
           <Route path="/dashboard/direct-messages">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <DirectMessages />
-            </div>
+            <DirectMessages />
           </Route>
           <Route path="/dashboard/technical-support">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <TechnicalSupport />
-            </div>
+            <TechnicalSupport />
           </Route>
           <Route path="/dashboard/technical-management" component={TechnicalManagementFixed} />
           <Route path="/dashboard/extension-requests">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ExtensionRequestsPage />
-            </div>
+            <ExtensionRequestsPage />
           </Route>
           <Route path="/dashboard/deadline-extension-requests">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <DeadlineExtensionRequests />
-            </div>
+            <DeadlineExtensionRequests />
           </Route>
           <Route path="/dashboard/client-management">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ClientManagement />
-            </div>
+            <ClientManagement />
           </Route>
           <Route path="/dashboard/guide-videos">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <GuideVideos />
-            </div>
+            <GuideVideos />
           </Route>
           <Route path="/dashboard/register-dissatisfaction">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <RegisterDissatisfaction />
-            </div>
+            <RegisterDissatisfaction />
           </Route>
           <Route path="/dashboard/support-policy">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <SupportPolicy />
-            </div>
+            <SupportPolicy />
           </Route>
           <Route path="/dashboard/emergency-support">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <EmergencySupport />
-            </div>
+            <EmergencySupport />
           </Route>
           <Route path="/dashboard/reach-us">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ReachUsPage />
-            </div>
+            <ReachUsPage />
           </Route>
           <Route path="/dashboard/rate-us">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <RateUs />
-            </div>
+            <RateUs />
           </Route>
           <Route path="/dashboard/complaints-management">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ComplaintsManagement />
-            </div>
+            <ComplaintsManagement />
           </Route>
           <Route path="/dashboard/client-accounts" component={ClientAccounts} />
           <Route path="/dashboard/client-sentiment">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ClientSentiment />
-            </div>
+            <ClientSentiment />
           </Route>
           <Route path="/dashboard/client-sentiment-tracker">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ClientSentimentTracker />
-            </div>
+            <ClientSentimentTracker />
           </Route>
           <Route path="/dashboard/memos">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <Memos />
-            </div>
+            <Memos />
           </Route>
           <Route path="/dashboard/notes">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <Notes />
-            </div>
+            <Notes />
           </Route>
           <Route path="/dashboard/staff-queries" component={StaffQueries} />
           <Route path="/dashboard/staff-complaints">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <StaffComplaints />
-            </div>
+            <StaffComplaints />
           </Route>
           <Route path="/dashboard/client-complaints">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ComplaintsManagement />
-            </div>
+            <ComplaintsManagement />
           </Route>
           <Route path="/dashboard/sop">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <SOPPage />
-            </div>
+            <SOPPage />
           </Route>
           <Route path="/dashboard/communication-tracker">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <CommunicationTrackerPage />
-            </div>
+            <CommunicationTrackerPage />
           </Route>
           <Route path="/dashboard/kpi-report">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <KPIReportPage />
-            </div>
+            <KPIReportPage />
           </Route>
           <Route path="/dashboard/technical-support">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <TechnicalSupport />
-            </div>
+            <TechnicalSupport />
           </Route>
           <Route path="/dashboard/technical-management">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <TechnicalManagementFixed />
-            </div>
+            <TechnicalManagementFixed />
           </Route>
           <Route path="/dashboard/deadline-extension-requests">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <DeadlineExtensionRequests />
-            </div>
+            <DeadlineExtensionRequests />
           </Route>
           <Route path="/dashboard/send-complaint">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <SendComplaint />
-            </div>
+            <SendComplaint />
           </Route>
           <Route path="/dashboard/report-issues">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ReportIssues />
-            </div>
+            <ReportIssues />
           </Route>
           <Route path="/dashboard/report-management">
-            <div className="lg:flex min-h-screen lg:ml-64 xl:ml-72">
-              <ReportManagement />
-            </div>
+            <ReportManagement />
           </Route>
           <Route path="*" component={NotFound} />
         </Switch>

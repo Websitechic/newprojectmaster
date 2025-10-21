@@ -224,9 +224,9 @@ export default function Dashboard() {
     task: Task;
     showTimer?: boolean;
   }) => (
-    <div className="border rounded-lg p-3 bg-white hover:bg-gray-50 transition-colors">
+    <div className="border rounded-lg p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
       <div className="flex justify-between items-start mb-2">
-        <h4 className="font-medium text-sm truncate flex-1">{task.title}</h4>
+        <h4 className="font-medium text-sm truncate flex-1 text-gray-800 dark:text-gray-200">{task.title}</h4>
         {showTimer && task.isTimerRunning && (
           <div className="flex items-center gap-1 text-green-600 text-xs">
             <Clock className="h-3 w-3" />
@@ -258,9 +258,9 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
+    <div className="flex min-h-screen w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
+      <div className="flex-1 flex flex-col min-h-screen w-full">
         <Header />
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
           <BookingAlert />
@@ -276,7 +276,7 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-blue-700">
+                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                         <AlertCircle className="h-5 w-5" />
                         Tasks in Progress
                       </div>
@@ -322,7 +322,7 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-orange-700">
+                      <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
                         <Clock className="h-5 w-5" />
                         Pending Tasks
                       </div>
@@ -366,7 +366,7 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-purple-700">
+                      <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
                         <CheckCircle className="h-5 w-5" />
                         Tasks in Review
                       </div>
@@ -410,7 +410,7 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-red-700">
+                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                         <HelpCircle className="h-5 w-5" />
                         Technical Support
                       </div>
@@ -433,12 +433,8 @@ export default function Dashboard() {
                                 value={task.id.toString()}
                               >
                                 <div className="flex flex-col items-start">
-                                  <span className="font-medium text-sm">
-                                    {task.title}
-                                  </span>
-                                  <span className="text-xs text-gray-500 truncate">
-                                    {task.description?.substring(0, 50)}...
-                                  </span>
+                                  <span className="font-medium text-sm text-gray-800 dark:text-gray-200">{task.title}</span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.description?.substring(0, 50)}...</span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -479,7 +475,7 @@ export default function Dashboard() {
 
               {/* Full Task List */}
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
                   {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                 </h2>
 
@@ -500,7 +496,7 @@ export default function Dashboard() {
                 user?.role === "team_lead") && (
                 <>
                   <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Project Status</h2>
+                    <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Project Status</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
@@ -509,7 +505,7 @@ export default function Dashboard() {
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-green-700">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                           <Play className="h-5 w-5" />
                           Active Projects
                         </div>
@@ -587,20 +583,20 @@ export default function Dashboard() {
                               return (
                                 <div
                                   key={project.id}
-                                  className="p-2 bg-green-50 rounded-md border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
+                                  className="p-2 bg-green-50 dark:bg-green-900/30 rounded-md border border-green-200 dark:border-green-700 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     window.location.href = `/dashboard/projects/${project.id}`;
                                   }}
                                 >
-                                  <p className="font-medium text-sm text-green-900">
+                                  <p className="font-medium text-sm text-green-900 dark:text-green-100">
                                     {project.name}
                                   </p>
-                                  <p className="text-xs text-green-700">
+                                  <p className="text-xs text-green-700 dark:text-green-300">
                                     {project.category?.replace("_", " ")}
                                   </p>
-                                  <p className="text-xs text-green-600 italic mt-1">
+                                  <p className="text-xs text-green-600 dark:text-green-400 italic">
                                     {activityReason}
                                   </p>
                                 </div>
@@ -616,7 +612,7 @@ export default function Dashboard() {
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-yellow-700">
+                        <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
                           <Clock className="h-5 w-5" />
                           Pending Projects
                         </div>
@@ -715,20 +711,20 @@ export default function Dashboard() {
                               return (
                                 <div
                                   key={project.id}
-                                  className="p-2 bg-yellow-50 rounded-md border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
+                                  className="p-2 bg-yellow-50 dark:bg-yellow-900/30 rounded-md border border-yellow-200 dark:border-yellow-700 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/50 transition-colors"
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     window.location.href = `/dashboard/projects/${project.id}`;
                                   }}
                                 >
-                                  <p className="font-medium text-sm text-yellow-900">
+                                  <p className="font-medium text-sm text-yellow-900 dark:text-yellow-100">
                                     {project.name}
                                   </p>
-                                  <p className="text-xs text-yellow-700">
+                                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
                                     {project.category?.replace("_", " ")}
                                   </p>
-                                  <p className="text-xs text-yellow-600 italic">
+                                  <p className="text-xs text-yellow-600 dark:text-yellow-400 italic">
                                     {reasonText}
                                   </p>
                                 </div>
@@ -744,7 +740,7 @@ export default function Dashboard() {
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-blue-700">
+                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                           <CheckCircle className="h-5 w-5" />
                           Completed Projects
                         </div>
@@ -796,17 +792,17 @@ export default function Dashboard() {
                             {completedProjects.map((project) => (
                               <div
                                 key={project.id}
-                                className="p-2 bg-blue-50 rounded-md border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
+                                className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-200 dark:border-blue-700 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   window.location.href = `/dashboard/projects/${project.id}`;
                                 }}
                               >
-                                <p className="font-medium text-sm text-blue-900">
+                                <p className="font-medium text-sm text-blue-900 dark:text-blue-100">
                                   {project.name}
                                 </p>
-                                <p className="text-xs text-blue-700">
+                                <p className="text-xs text-blue-700 dark:text-blue-300">
                                   {project.category?.replace("_", " ")}
                                 </p>
                               </div>
@@ -821,7 +817,7 @@ export default function Dashboard() {
               )}
 
               <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Task Status</h2>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Task Status</h2>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
@@ -829,7 +825,7 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-blue-700">
+                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                         <AlertCircle className="h-5 w-5" />
                         Tasks in Progress
                       </div>
@@ -875,7 +871,7 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-orange-700">
+                      <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
                         <Clock className="h-5 w-5" />
                         Pending Tasks
                       </div>
@@ -919,7 +915,7 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-purple-700">
+                      <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
                         <CheckCircle className="h-5 w-5" />
                         Tasks in Review
                       </div>
@@ -963,7 +959,7 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-red-700">
+                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                         <HelpCircle className="h-5 w-5" />
                         Technical Support
                       </div>
@@ -986,12 +982,8 @@ export default function Dashboard() {
                                 value={task.id.toString()}
                               >
                                 <div className="flex flex-col items-start">
-                                  <span className="font-medium text-sm">
-                                    {task.title}
-                                  </span>
-                                  <span className="text-xs text-gray-500 truncate">
-                                    {task.description?.substring(0, 50)}...
-                                  </span>
+                                  <span className="font-medium text-sm text-gray-800 dark:text-gray-200">{task.title}</span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.description?.substring(0, 50)}...</span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -1034,7 +1026,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 gap-6 mb-6">
                 <Card className="max-w-md">
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                    <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                       <CheckCircle className="h-5 w-5" />
                       Overall Progress
                     </CardTitle>
@@ -1042,16 +1034,16 @@ export default function Dashboard() {
                   <CardContent>
                     <div className="space-y-4">
                       <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-600 mb-2">
+                        <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
                           {overallProgress}%
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-2">
                           <div
-                            className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                            className="bg-blue-600 dark:bg-blue-400 h-3 rounded-full transition-all duration-300"
                             style={{ width: `${overallProgress}%` }}
                           />
                         </div>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           {completedTasks} of {totalTasks} tasks completed
                         </p>
                       </div>
@@ -1064,19 +1056,19 @@ export default function Dashboard() {
               {(user?.role === "team_lead" || user?.role === "intern") && (
                 <div className="space-y-6 mb-8">
                   <div className="mb-4">
-                    <h2 className="text-2xl font-bold">My Tasks</h2>
-                    <p className="text-sm text-gray-600">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">My Tasks</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {user?.role === "team_lead" ? "Tasks assigned to you as Team Lead" : "Tasks assigned to you"}
                     </p>
                   </div>
 
                   {tasks && tasks.filter(task => task.assigneeId === user.id).length > 0 ? (
-                    <StaffTaskList 
-                      tasks={tasks.filter(task => task.assigneeId === user.id)} 
-                      projectId={undefined} 
+                    <StaffTaskList
+                      tasks={tasks.filter(task => task.assigneeId === user.id)}
+                      projectId={undefined}
                     />
                   ) : (
-                    <div className="text-center text-muted-foreground py-8 bg-gray-50 rounded-lg">
+                    <div className="text-center text-muted-foreground py-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
                       No tasks assigned to you yet.
                     </div>
                   )}
@@ -1084,7 +1076,7 @@ export default function Dashboard() {
               )}
 
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
                   {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                 </h2>
 
@@ -1096,11 +1088,11 @@ export default function Dashboard() {
                   <TaskList
                     tasks={
                       user?.role === "staff" || user?.role === "intern"
-                        ? tasks.filter((task) => 
+                        ? tasks.filter((task) =>
                             task.assigneeId === user?.id &&
                             (!taskSearchQuery || task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()))
                           )
-                        : tasks.filter((task) => 
+                        : tasks.filter((task) =>
                             !taskSearchQuery || task.title.toLowerCase().includes(taskSearchQuery.toLowerCase())
                           )
                     }
