@@ -1,5 +1,6 @@
 import { Bell, MessageSquare, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -213,8 +214,11 @@ export function Header() {
       <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
       </div>
 
-      {/* Right Section - Unread Messages, Notifications and Profile */}
+      {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}
       <div className="flex items-center gap-2 sm:gap-4">
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* Unread Messages Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
