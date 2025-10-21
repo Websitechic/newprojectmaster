@@ -53,6 +53,11 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import {
+  Sheet,
+  SheetContent,
+} from "@/components/ui/sheet";
+
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -726,14 +731,14 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
   const SidebarContent = () => (
     <>
       {/* Logo Section */}
-      <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-gray-100">
+      <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <span className="text-white font-bold text-lg">W</span>
           </div>
           <div className="min-w-0">
-            <h1 className="text-lg font-bold text-gray-900 truncate">Websitechic</h1>
-            <p className="text-xs text-gray-500 uppercase tracking-wide truncate">Digital Agency</p>
+            <h1 className="text-lg font-bold text-foreground truncate">Websitechic</h1>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide truncate">Digital Agency</p>
           </div>
         </div>
       </div>
@@ -776,16 +781,16 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       </nav>
 
       {/* User Profile */}
-      <div className="px-2 sm:px-4 py-4 border-t border-gray-100">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
-          <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-sm font-medium">
+      <div className="px-2 sm:px-4 py-4 border-t border-border">
+        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-accent">
+          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-primary-foreground text-sm font-medium">
               {user?.name?.charAt(0) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
-            <p className="text-xs text-gray-500 capitalize truncate">
+            <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+            <p className="text-xs text-muted-foreground capitalize truncate">
               {user?.role === 'client' ?
                 `${user?.clientType?.replace('_', ' ') || 'Client'} • ${user?.productService?.replace('_', ' ') || 'Service not specified'}` :
                 user?.role === 'project_manager' && user?.projectManagerType ?
@@ -797,7 +802,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
         </div>
         <Button
           variant="ghost"
-          className="w-full justify-start mt-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+          className="w-full justify-start mt-2 text-muted-foreground hover:text-foreground hover:bg-accent"
           onClick={async () => {
             try {
               await logout();
@@ -821,7 +826,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       <Button
         variant="ghost"
         size="sm"
-        className="mobile-menu-button fixed top-3 left-3 z-50 lg:hidden bg-white shadow-lg hover:bg-gray-50 touch-manipulation rounded-full p-2"
+        className="mobile-menu-button fixed top-3 left-3 z-50 lg:hidden bg-background shadow-lg hover:bg-accent touch-manipulation rounded-full p-2"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       >
         {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
@@ -836,21 +841,16 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       )}
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex fixed left-0 top-0 h-screen w-64 xl:w-72 bg-white border-r border-gray-200 flex-col z-40">
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 border-r border-border bg-background h-screen sticky top-0">
         <SidebarContent />
-      </div>
+      </aside>
 
       {/* Mobile Sidebar */}
-      <div className={cn(
-        "mobile-sidebar fixed inset-y-0 left-0 z-50 w-72 sm:w-80 max-w-[85vw] bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:hidden shadow-xl",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <div className="flex flex-col h-full overflow-hidden">
-          <div className="flex-1 overflow-y-auto overscroll-contain">
-            <SidebarContent />
-          </div>
-        </div>
-      </div>
+      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+        <SheetContent side="left" className="w-64 p-0 bg-background">
+          <SidebarContent />
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

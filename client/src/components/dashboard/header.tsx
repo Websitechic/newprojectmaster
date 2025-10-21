@@ -37,12 +37,12 @@ export function Header() {
     // Try to initialize immediately
     console.log('🎵 Header mounted, initializing audio...');
     window.dispatchEvent(new Event('init-audio'));
-    
+
     // Try to play a silent sound to unlock audio (common mobile browser trick)
     const unlockAudio = () => {
       console.log('🔓 Attempting to unlock audio on user interaction');
       window.dispatchEvent(new Event('init-audio'));
-      
+
       // Try playing the notification sound to fully unlock
       try {
         playNotificationSound();
@@ -209,7 +209,7 @@ export function Header() {
   const totalUnread = unreadMessages.reduce((sum, msg) => sum + msg.unreadCount, 0);
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
+    <header className="h-16 bg-background border-b border-border px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
       {/* Left Section - Spacer */}
       <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
       </div>
