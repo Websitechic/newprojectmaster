@@ -116,32 +116,7 @@ export function useNotificationSound() {
     };
   }, [initAudioContext]);
 
-  // Set up unlock listeners for first user interaction
-  useEffect(() => {
-    if (!isInitialized || isUnlocked) {
-      return;
-    }
-
-    const events = ['click', 'touchstart', 'keydown', 'scroll'];
-    
-    const handleUserInteraction = () => {
-      unlockAudioContext();
-      // Remove listeners after first unlock attempt
-      events.forEach(event => {
-        document.removeEventListener(event, handleUserInteraction);
-      });
-    };
-
-    events.forEach(event => {
-      document.addEventListener(event, handleUserInteraction, { once: true, passive: true });
-    });
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, handleUserInteraction);
-      });
-    };
-  }, [isInitialized, isUnlocked, unlockAudioContext]);
+  // No automatic unlock on user interaction - only unlock when sound needs to play
 
   const playNotificationSound = useCallback(async () => {
     console.log('🔊 playNotificationSound called', {
@@ -167,21 +142,25 @@ export function useNotificationSound() {
         }
       }
 
-      // Ensure audio is unlocked
-      if (!isUnlocked) {
-        console.log('🔓 Audio not unlocked, attempting unlock...');
-        await unlockAudioContext();
-        
-        // Wait a bit for unlock to complete
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-
+      // Auto-unlock audio when trying to play (this happens in response to incoming message)
       // Resume context if suspended
       if (audioContextRef.current.state === 'suspended') {
-        console.log('⏯️ Resuming suspended audio context...');
+        console.log('🔓 Unlocking and resuming audio context for message notification...');
         try {
           await audioContextRef.current.resume();
           console.log('✅ Audio context resumed, state:', audioContextRef.current.state);
+          
+          // Play silent buffer once to unlock if needed
+          if (!isUnlocked) {
+            const silentSource = audioContextRef.current.createBufferSource();
+            silentSource.buffer = silentBufferRef.current;
+            silentSource.connect(audioContextRef.current.destination);
+            silentSource.start(0);
+            setIsUnlocked(true);
+            
+            // Small delay to ensure unlock completes
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
         } catch (resumeError) {
           console.error('❌ Failed to resume audio context:', resumeError);
           return;
@@ -219,7 +198,7 @@ export function useNotificationSound() {
         hasBuffer: !!audioBufferRef.current
       });
     }
-  }, [initAudioContext, unlockAudioContext, isUnlocked, isInitialized]);
+  }, [initAudioContext, isUnlocked, isInitialized]);
 
   return { playNotificationSound, isInitialized, isUnlocked };
 }
