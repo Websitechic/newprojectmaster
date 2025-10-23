@@ -119,23 +119,30 @@ export function useNotificationSound() {
   // Set up automatic unlock on first user interaction
   useEffect(() => {
     const handleFirstInteraction = () => {
+      console.log('👆 User interaction detected, attempting audio unlock');
       if (!isUnlocked && audioContextRef.current && silentBufferRef.current) {
         unlockAudioContext();
       }
     };
 
     // Listen for various user interaction events
-    const events = ['click', 'touchstart', 'keydown'];
+    const events = ['click', 'touchstart', 'keydown', 'mousedown'];
     events.forEach(event => {
       document.addEventListener(event, handleFirstInteraction, { once: true });
     });
+
+    // Also try to unlock immediately on mount (might work in some browsers)
+    if (isInitialized && !isUnlocked) {
+      console.log('🔓 Attempting immediate audio unlock on mount');
+      unlockAudioContext();
+    }
 
     return () => {
       events.forEach(event => {
         document.removeEventListener(event, handleFirstInteraction);
       });
     };
-  }, [isUnlocked, unlockAudioContext]);
+  }, [isUnlocked, unlockAudioContext, isInitialized]);
 
   const playNotificationSound = useCallback(async () => {
     console.log('🔊 playNotificationSound called', {

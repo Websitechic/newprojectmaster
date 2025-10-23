@@ -1,4 +1,4 @@
-import { Bell, MessageSquare, User } from "lucide-react";
+import { Bell, MessageSquare, User, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -30,7 +30,7 @@ export function Header() {
   const { user, logout } = useUser();
   const [_, setLocation] = useLocation();
   const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
-  const { playNotificationSound } = useNotificationSound();
+  const { playNotificationSound, isInitialized, isUnlocked } = useNotificationSound();
 
   // Initialize audio IMMEDIATELY on mount with multiple interaction listeners
   useEffect(() => {
@@ -208,6 +208,22 @@ export function Header() {
 
   const totalUnread = unreadMessages.reduce((sum, msg) => sum + msg.unreadCount, 0);
 
+  const handleTestSound = async () => {
+    console.log('🧪 TEST: Manual sound test triggered', {
+      isInitialized,
+      isUnlocked,
+      timestamp: new Date().toISOString()
+    });
+
+    try {
+      await playNotificationSound();
+      console.log('✅ TEST: Sound played successfully');
+    } catch (error) {
+      console.error('❌ TEST: Sound playback failed:', error);
+    }
+  };
+
+
   return (
     <header className="h-16 bg-background border-b border-border px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
       {/* Left Section - Spacer */}
@@ -216,17 +232,23 @@ export function Header() {
 
       {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}
       <div className="flex items-center gap-2 sm:gap-4">
-        {/* Theme Toggle */}
-        <ThemeToggle />
-
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleTestSound}
+          className="h-9 w-9"
+          title={`Test Sound (Init: ${isInitialized}, Unlocked: ${isUnlocked})`}
+        >
+          <Volume2 className="h-4 w-4" />
+        </Button>
         {/* Unread Messages Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="relative">
               <MessageSquare className="w-5 h-5" />
               {totalUnread > 0 && (
-                <Badge 
-                  variant="destructive" 
+                <Badge
+                  variant="destructive"
                   className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
                 >
                   {totalUnread > 9 ? "9+" : totalUnread}
@@ -270,9 +292,12 @@ export function Header() {
         {/* Notifications */}
         <NotificationsDropdown />
 
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* Audio Context Initializer - triggers on any click */}
-        <div 
-          className="hidden" 
+        <div
+          className="hidden"
           onClick={() => {
             // This ensures audio context is initialized on user interaction
             const event = new CustomEvent('init-audio');
@@ -305,14 +330,14 @@ export function Header() {
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
-            </DropdownMenuItem>
+            </DropdownMenuMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={handleLogout}
             >
               Logout
-            </DropdownMenuItem>
+            </DropdownMenu>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
