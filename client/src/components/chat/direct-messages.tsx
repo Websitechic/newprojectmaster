@@ -153,6 +153,23 @@ export function DirectMessages() {
       const messageData = event.detail;
       console.log("Direct message event received in conversation:", messageData);
 
+      // Play notification sound and show browser notification if message is from someone else
+      if (messageData.senderId !== user?.id) {
+        console.log('🔔 New direct message from another user, playing sound and showing notification');
+        
+        // Play notification sound
+        playNotificationSound();
+        
+        // Show browser notification
+        const senderName = messageData.senderName || 'User';
+        const messagePreview = messageData.content?.substring(0, 100) || 'New message';
+        showNotification(`New message from ${senderName}`, {
+          body: messagePreview,
+          tag: 'direct-message',
+          data: { url: '/dashboard/messages' },
+        });
+      }
+
       // If viewing a conversation with the sender or receiver, add message immediately
       if (selectedUser) {
         const isFromSelectedUser = messageData.senderId === selectedUser.id;
@@ -181,13 +198,30 @@ export function DirectMessages() {
     return () => {
       window.removeEventListener('direct-message-received', handleDirectMessage as EventListener);
     };
-  }, [user?.id, selectedUser, queryClient]);
+  }, [user?.id, selectedUser, queryClient, playNotificationSound, showNotification]);
 
   // WebSocket event listeners for direct messages
   useEffect(() => {
     const handleDirectMessage = (event: CustomEvent) => {
       const messageData = event.detail;
       console.log("Direct message received via WebSocket:", messageData);
+
+      // Play notification sound and show browser notification if message is from someone else
+      if (messageData.senderId !== user?.id) {
+        console.log('🔔 New direct message via WebSocket from another user, playing sound and showing notification');
+        
+        // Play notification sound
+        playNotificationSound();
+        
+        // Show browser notification
+        const senderName = messageData.senderName || 'User';
+        const messagePreview = messageData.content?.substring(0, 100) || 'New message';
+        showNotification(`New message from ${senderName}`, {
+          body: messagePreview,
+          tag: 'direct-message',
+          data: { url: '/dashboard/messages' },
+        });
+      }
 
       // If the message is from the currently selected user, add it to messages immediately
       if (selectedUser && messageData.senderId === selectedUser.id) {
@@ -224,7 +258,7 @@ export function DirectMessages() {
     return () => {
       window.removeEventListener('websocket:direct_message', handleDirectMessage as EventListener);
     };
-  }, [selectedUser, user?.id, queryClient]);
+  }, [selectedUser, user?.id, queryClient, playNotificationSound, showNotification]);
 
   const handleEditMessage = async (messageId: number) => {
     if (!editingContent.trim()) {

@@ -1,0 +1,38 @@
+The current implementation of the sound notification(it works when I go to a new page and click on any part of the page which is not supposed to be) and browser notification for new messages is not working as intended.
+
+Please debug and fix all issues preventing these features from functioning properly.
+Expected Behavior:
+1. When a new message is comes in either from Direct Messages or Team Chat the following should happen immediately and in real-time:
+A notification sound should play instantly.
+A browser notification should appear instantly
+It must work consistently under all conditions:
+✅ When the user is on the same page where the message arrives.
+✅ When the user is on another page within the app.
+✅ When the user is on a different browser tab.
+✅ When the browser window is minimized.
+
+Sound Notification Requirements:
+The sound should not require manual interaction before playing.
+Ensure the sound plays only once per new message (avoid duplicate triggers).
+
+Browser Notification Requirements:
+The browser notification should appear immediately when a message event is received (when a new message comes in)
+Clicking the browser notification should redirect the user to the appropriate chat (either direct message or team chat).
+
+Realtime Messaging Logic:
+a. When a user sends a message in Direct Messages, the receiver should see the new message instantly without needing to refresh the page.
+b. When a message is sent in a Team Chat, all users who are part of that project should also receive the message instantly in real-time.
+*it is important all messages come in when they are meant to so the sound and browser notification can work properly
+
+Testing:
+Test and confirm that both messages on direct messages and teamchats come in immediately they are sent.
+Test and confirm that both sound and browser notifications trigger at the correct time (exactly when a message is received).
+Test all states:
+a. Same page (message conversation open)
+b. Another page in the app
+c. Another browser tab
+d. Browser minimized
+Ensure the sound and browser notifications are properly synchronized with the message delivery event.
+
+Goal:
+Make the notification sound and browser notifications fully reliable, real-time, and independent of user interaction or page state.

@@ -260,6 +260,23 @@ export default function TeamChat() {
       if (messageData.projectId === projectId) {
         console.log("Message is for current project, refreshing immediately");
         
+        // Play notification sound and show browser notification if message is from someone else
+        if (messageData.senderId !== user?.id) {
+          console.log('🔔 New team message from another user, playing sound and showing notification');
+          
+          // Play notification sound
+          playNotificationSound();
+          
+          // Show browser notification
+          const senderName = messageData.senderName || 'Team member';
+          const messagePreview = messageData.content?.substring(0, 100) || 'New message';
+          showNotification(`${senderName} in ${project?.name || 'Team Chat'}`, {
+            body: messagePreview,
+            tag: `team-chat-${projectId}`,
+            data: { url: `/dashboard/team-chat/${projectId}` },
+          });
+        }
+        
         // Invalidate queries to refresh the UI immediately
         queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
@@ -278,7 +295,7 @@ export default function TeamChat() {
     return () => {
       window.removeEventListener('team-message-received', handleTeamMessage as EventListener);
     };
-  }, [user?.id, projectId, queryClient]);
+  }, [user?.id, projectId, queryClient, playNotificationSound, showNotification, project?.name]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
