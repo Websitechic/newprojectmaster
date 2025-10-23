@@ -96,7 +96,7 @@ function GlobalNotificationListener() {
         });
 
         eventSource.onopen = () => {
-          console.log("✅ Global SSE connection opened for user:", user?.id);
+          console.log("✅ Global SSE connection opened");
           setIsConnecting(false);
           if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
@@ -105,20 +105,9 @@ function GlobalNotificationListener() {
         };
 
         eventSource.onmessage = (event) => {
-          console.log('📨 RAW SSE EVENT RECEIVED:', {
-            data: event.data,
-            timestamp: new Date().toISOString(),
-            userId: user?.id
-          });
-          
           try {
             const data = JSON.parse(event.data);
-            console.log('🌐 Global SSE message PARSED:', {
-              type: data.type,
-              hasNotification: !!data.notification,
-              hasData: !!data.data,
-              fullData: data
-            });
+            console.log('🌐 Global SSE message received:', data);
 
             // Handle notification events
             if (data.type === 'notification' && data.notification) {
@@ -167,25 +156,19 @@ function GlobalNotificationListener() {
                   from: data.data.senderId,
                   to: data.data.receiverId,
                   currentUser: user.id,
-                  timestamp: new Date().toISOString(),
-                  messageId: data.data.id
+                  timestamp: new Date().toISOString()
                 });
                 
                 // Play sound immediately with comprehensive error handling
                 playNotificationSound()
                   .then(() => {
-                    console.log('✅ Direct message sound played successfully', {
-                      timestamp: new Date().toISOString(),
-                      messageId: data.data.id
-                    });
+                    console.log('✅ Direct message sound played successfully');
                   })
                   .catch(err => {
                     console.error('❌ Direct message sound playback error:', {
                       error: err,
                       message: err instanceof Error ? err.message : 'Unknown error',
-                      stack: err instanceof Error ? err.stack : undefined,
-                      messageId: data.data.id,
-                      timestamp: new Date().toISOString()
+                      stack: err instanceof Error ? err.stack : undefined
                     });
                   });
                 
@@ -280,12 +263,7 @@ function GlobalNotificationListener() {
         };
 
         eventSource.onerror = (error) => {
-          console.error("❌ Global SSE error:", {
-            error,
-            readyState: eventSource.readyState,
-            userId: user?.id,
-            timestamp: new Date().toISOString()
-          });
+          console.error("Global SSE error:", error);
           setIsConnecting(false);
           if (eventSourceRef.current) {
             eventSourceRef.current.close();
@@ -294,10 +272,8 @@ function GlobalNotificationListener() {
 
           // Reconnect after 5 seconds
           if (user?.id && !eventSourceRef.current && !reconnectTimeoutRef.current) {
-            console.log('🔄 Scheduling SSE reconnection in 5 seconds...');
             reconnectTimeoutRef.current = setTimeout(() => {
               reconnectTimeoutRef.current = null;
-              console.log('🔄 Attempting SSE reconnection...');
               connectSSE();
             }, 5000);
           }
