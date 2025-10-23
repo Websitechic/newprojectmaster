@@ -11,7 +11,7 @@ export default function DirectMessagesPage() {
     <div className="flex h-screen bg-background w-full max-w-none">
       <Sidebar currentPath={location} />
       
-      <div className="flex-1 flex flex-col w-full max-w-none">
+      <div className="flex-1 flex flex-col w-full max-w-none lg:pl-64">
         <Header />
         <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none">
           <div className="flex flex-col space-y-4 lg:space-y-6 w-full max-w-none">

@@ -44,7 +44,7 @@ import type { Project, Task } from "@db/schema";
 export default function Dashboard() {
   const [location, setLocation] = useLocation();
   const { user } = useUser();
-  const { updateStatus } = useWebSocket(user?.id);
+  const { updateStatus, sendMessage } = useWebSocket(user?.id);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     inProgress: false,
     pending: false,
@@ -95,6 +95,59 @@ export default function Dashboard() {
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
   });
 
+  // Function to handle task status changes, including auto-pausing timer
+  const handleTaskStatusChange = async (taskId: number, newStatus: string, projectId?: number) => {
+    const statusToPauseTimer = ["review", "completed", "technical_support"];
+    let taskToUpdate = tasks?.find(task => task.id === taskId);
+
+    if (!taskToUpdate) return;
+
+    const originalStatus = taskToUpdate.status;
+    const originalIsTimerRunning = taskToUpdate.isTimerRunning;
+
+    // Optimistically update UI
+    queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) =>
+      oldTasks?.map(task =>
+        task.id === taskId ? { ...task, status: newStatus, isTimerRunning: statusToPauseTimer.includes(newStatus) ? false : task.isTimerRunning } : task
+      )
+    );
+
+    try {
+      // Send update to backend
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus, isTimerRunning: statusToPauseTimer.includes(newStatus) }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update task status");
+      }
+
+      // Invalidate queries to refetch data from the server
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/recent-activity"] });
+
+      // If the status change should pause the timer and it was running, send a WebSocket message
+      if (statusToPauseTimer.includes(newStatus) && originalIsTimerRunning) {
+        sendMessage({
+          type: "TASK_TIMER_PAUSED",
+          payload: { taskId: taskId, projectId: projectId, userId: user?.id },
+        });
+      }
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      // Revert optimistic update if error occurs
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) =>
+        oldTasks?.map(task =>
+          task.id === taskId ? { ...tasks?.find(t => t.id === taskId), status: originalStatus, isTimerRunning: originalIsTimerRunning } : task
+        )
+      );
+    }
+  };
+
   // Listen for real-time updates via WebSocket
   useEffect(() => {
     const handleTaskUpdate = () => {
@@ -121,6 +174,18 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/projects/recent-activity"] });
     };
 
+    // Handle direct message notification sound
+    const handleDirectMessage = () => {
+      console.log('Direct message event received');
+      // Check if the notification sound is enabled for the user
+      const notificationsEnabled = localStorage.getItem('enableNotificationSound') === 'true';
+      if (notificationsEnabled) {
+        const audio = new Audio('/path/to/notification_sound.wav'); // Replace with the actual path to your sound file
+        audio.play().catch(e => console.error("Audio playback failed:", e));
+      }
+    };
+
+
     window.addEventListener('websocket:task_update', handleTaskUpdate);
     window.addEventListener('websocket:task_created', handleTaskUpdate);
     window.addEventListener('websocket:task_deleted', handleTaskUpdate);
@@ -130,6 +195,7 @@ export default function Dashboard() {
     window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
     window.addEventListener('websocket:task_timer_update', handleTimerEvent);
     window.addEventListener('websocket:resource_added', handleResourceUpdate);
+    window.addEventListener('websocket:direct_message', handleDirectMessage); // Listen for direct message event
 
     return () => {
       window.removeEventListener('websocket:task_update', handleTaskUpdate);
@@ -141,6 +207,7 @@ export default function Dashboard() {
       window.removeEventListener('websocket:task_timer_paused', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_update', handleTimerEvent);
       window.removeEventListener('websocket:resource_added', handleResourceUpdate);
+      window.removeEventListener('websocket:direct_message', handleDirectMessage); // Remove listener
     };
   }, [queryClient]);
 
@@ -262,9 +329,10 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex min-h-screen w-full overflow-hidden">
+    <div className="flex min-h-screen bg-background">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen w-full">
+
+      <div className="flex-1 flex flex-col lg:pl-64">
         <Header />
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
           <BookingAlert />

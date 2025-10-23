@@ -196,6 +196,20 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
   const updateTaskStatus = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
+      // Auto-pause timer if status is changing to review, completed, or technical_support
+      const task = tasks.find(t => t.id === taskId);
+      if (task && task.isTimerRunning && 
+          (status === 'review' || status === 'completed' || status === 'technical_support')) {
+        try {
+          await fetch(`/api/tasks/${taskId}/pause-timer`, {
+            method: "POST",
+            credentials: 'include',
+          });
+        } catch (error) {
+          console.error("Failed to auto-pause timer:", error);
+        }
+      }
+
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: "PUT",
         headers: {

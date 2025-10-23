@@ -116,7 +116,26 @@ export function useNotificationSound() {
     };
   }, [initAudioContext]);
 
-  // No automatic unlock on user interaction - only unlock when sound needs to play
+  // Set up automatic unlock on first user interaction
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      if (!isUnlocked && audioContextRef.current && silentBufferRef.current) {
+        unlockAudioContext();
+      }
+    };
+
+    // Listen for various user interaction events
+    const events = ['click', 'touchstart', 'keydown'];
+    events.forEach(event => {
+      document.addEventListener(event, handleFirstInteraction, { once: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleFirstInteraction);
+      });
+    };
+  }, [isUnlocked, unlockAudioContext]);
 
   const playNotificationSound = useCallback(async () => {
     console.log('🔊 playNotificationSound called', {
@@ -142,28 +161,32 @@ export function useNotificationSound() {
         }
       }
 
-      // Auto-unlock audio when trying to play (this happens in response to incoming message)
-      // Resume context if suspended
+      // Always try to resume if suspended (browsers require user interaction first)
       if (audioContextRef.current.state === 'suspended') {
-        console.log('🔓 Unlocking and resuming audio context for message notification...');
+        console.log('🔓 Attempting to resume suspended audio context...');
         try {
           await audioContextRef.current.resume();
           console.log('✅ Audio context resumed, state:', audioContextRef.current.state);
-          
-          // Play silent buffer once to unlock if needed
-          if (!isUnlocked) {
-            const silentSource = audioContextRef.current.createBufferSource();
-            silentSource.buffer = silentBufferRef.current;
-            silentSource.connect(audioContextRef.current.destination);
-            silentSource.start(0);
-            setIsUnlocked(true);
-            
-            // Small delay to ensure unlock completes
-            await new Promise(resolve => setTimeout(resolve, 50));
-          }
         } catch (resumeError) {
           console.error('❌ Failed to resume audio context:', resumeError);
-          return;
+          // Try to play anyway, might work
+        }
+      }
+
+      // Play silent buffer first to ensure unlock (especially on mobile)
+      if (!isUnlocked && silentBufferRef.current) {
+        try {
+          const silentSource = audioContextRef.current.createBufferSource();
+          silentSource.buffer = silentBufferRef.current;
+          silentSource.connect(audioContextRef.current.destination);
+          silentSource.start(0);
+          setIsUnlocked(true);
+          console.log('🔓 Played silent buffer for unlock');
+          
+          // Small delay to ensure unlock completes
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (unlockError) {
+          console.warn('⚠️ Silent buffer unlock failed:', unlockError);
         }
       }
 
@@ -176,18 +199,26 @@ export function useNotificationSound() {
       // Create source node and connect to destination
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBufferRef.current;
-      source.connect(audioContextRef.current.destination);
+      
+      // Create gain node for volume control
+      const gainNode = audioContextRef.current.createGain();
+      gainNode.gain.value = 0.5; // Set volume to 50%
+      
+      source.connect(gainNode);
+      gainNode.connect(audioContextRef.current.destination);
       
       // Add error handler for the source
       source.onended = () => {
         console.log('✅ Notification sound playback completed');
       };
       
+      // Start playback
       source.start(0);
       
       console.log('🔊 Notification sound started successfully', {
         contextState: audioContextRef.current.state,
-        bufferDuration: audioBufferRef.current.duration
+        bufferDuration: audioBufferRef.current.duration,
+        currentTime: audioContextRef.current.currentTime
       });
     } catch (error) {
       console.error('❌ Error playing notification sound:', {

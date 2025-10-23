@@ -225,6 +225,19 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       const hours = parseInt(data.workingHours) || 0;
       const minutes = parseInt(data.workingMinutes || '0') || 0;
 
+      // Auto-pause timer if status is changing to review, completed, or technical_support
+      if ((data.status === 'review' || data.status === 'completed' || data.status === 'technical_support') && 
+          editTask.isTimerRunning) {
+        try {
+          await fetch(`/api/tasks/${editTask.id}/pause-timer`, {
+            method: "POST",
+            credentials: 'include',
+          });
+        } catch (error) {
+          console.error("Failed to auto-pause timer:", error);
+        }
+      }
+
       const response = await fetch(`/api/tasks/${editTask.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
