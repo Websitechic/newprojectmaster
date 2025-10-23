@@ -148,7 +148,8 @@ function GlobalNotificationListener() {
                 return;
               }
               
-              // Dispatch custom event FIRST for immediate UI update
+              // Dispatch custom event FIRST for immediate UI update - this is critical!
+              console.log('🚀 Dispatching direct-message-received event');
               window.dispatchEvent(new CustomEvent('direct-message-received', { detail: data.data }));
               
               // Play sound for any message not sent by current user
@@ -178,7 +179,7 @@ function GlobalNotificationListener() {
                 }
               }
               
-              // Invalidate queries to refresh data
+              // Invalidate queries AFTER dispatching event
               queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
               queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
             }

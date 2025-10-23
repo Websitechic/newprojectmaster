@@ -153,6 +153,7 @@ export function DirectMessages() {
     const handleDirectMessage = (event: CustomEvent) => {
       const messageData = event.detail;
       console.log("📬 Direct message event received in conversation component:", {
+        messageId: messageData.id,
         messageData,
         currentUserId: user?.id,
         selectedUserId: selectedUser?.id
@@ -164,19 +165,21 @@ export function DirectMessages() {
         const isToSelectedUser = messageData.receiverId === selectedUser.id && messageData.senderId === user?.id;
         
         if (isFromSelectedUser || isToSelectedUser) {
-          console.log("Adding message to current conversation immediately");
+          console.log("✅ Adding message to current conversation immediately");
           setMessages(prev => {
             // Check if message already exists to avoid duplicates
             const exists = prev.some(m => m.id === messageData.id);
             if (!exists) {
+              console.log("✅ Message added to conversation");
               return [...prev, messageData];
             }
+            console.log("⚠️ Message already exists, skipping");
             return prev;
           });
         }
       }
       
-      // Refresh conversations to show new message
+      // Refresh conversations to show new message in list
       const fetchConversations = async () => {
         try {
           const response = await fetch("/api/direct-messages/conversations");
@@ -200,7 +203,7 @@ export function DirectMessages() {
     return () => {
       window.removeEventListener('direct-message-received', handleDirectMessage as EventListener);
     };
-  }, [user?.id, selectedUser, queryClient, setConversations]);
+  }, [user?.id, selectedUser, queryClient]);
 
   // WebSocket event listeners for direct messages
   useEffect(() => {
