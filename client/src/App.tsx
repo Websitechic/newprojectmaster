@@ -142,6 +142,15 @@ function GlobalNotificationListener() {
                 senderName: data.data.senderName
               });
               
+              console.log('📩 Direct message event received in App.tsx:', {
+                type: data.type,
+                senderId: data.data?.senderId,
+                receiverId: data.data?.receiverId,
+                currentUserId: user?.id,
+                hasUser: !!user,
+                dataStructure: data
+              });
+
               // Validate user is authenticated
               if (!user || !user.id) {
                 console.warn('⚠️ User not authenticated, skipping sound playback');
@@ -150,6 +159,13 @@ function GlobalNotificationListener() {
               
               // Play sound for any message not sent by current user
               const isIncomingMessage = data.data.senderId !== user.id;
+              
+              console.log('🔍 Direct message analysis:', {
+                isIncomingMessage,
+                senderId: data.data.senderId,
+                currentUserId: user.id,
+                willPlaySound: isIncomingMessage
+              });
               
               if (isIncomingMessage) {
                 console.log('🔊 TRIGGER: Playing sound for incoming direct message', {

@@ -143,11 +143,20 @@ export function DirectMessages() {
 
   // Listen for real-time message updates to refresh the current conversation
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log('❌ User not authenticated, skipping direct message listener setup');
+      return;
+    }
+
+    console.log('✅ Setting up direct message event listener for user:', user.id);
 
     const handleDirectMessage = (event: CustomEvent) => {
       const messageData = event.detail;
-      console.log("Direct message event received in conversation:", messageData);
+      console.log("📬 Direct message event received in conversation component:", {
+        messageData,
+        currentUserId: user?.id,
+        selectedUserId: selectedUser?.id
+      });
 
       // Note: Notifications and sounds are handled globally in App.tsx
 

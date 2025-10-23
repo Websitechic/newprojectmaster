@@ -2450,7 +2450,7 @@ End of Report
       if (status === 'pending' && existingTask.isTimerRunning && existingTask.timerStartTime) {
         const elapsedSeconds = Math.floor((new Date().getTime() - new Date(existingTask.timerStartTime).getTime()) / 1000);
         const newTimeSpent = (existingTask.timeSpent || 0) + elapsedSeconds;
-        
+
         updateData.isTimerRunning = false;
         updateData.timeSpent = newTimeSpent;
         updateData.timerStartTime = null;
@@ -3462,7 +3462,7 @@ End of Report
         }
       }
 
-      res.json({ success: true, complaint: updatedComplaint });
+      res.json({ success: true, complaint: updatedApplication });
     } catch (error) {
       console.error("Error updating staff complaint:", error);
       res.status(500).json({ error: "Failed to update staff complaint", details: error.message });
@@ -3913,23 +3913,17 @@ End of Report
 
   // Get unread messages count
   app.get("/api/direct-messages/unread-count", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     try {
-      if (!req.isAuthenticated()) {
-        console.log("⚠️ Unread count request - not authenticated");
-        return res.status(401).json({ error: "Not authenticated" });
+      const userId = req.user.id;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID not found" });
       }
 
-      const user = req.user;
-
-      // Ensure user object has an ID
-      if (!user || !user.id) {
-        console.error("❌ No user ID in session for unread count");
-        return res.status(401).json({ error: "Invalid session" });
-      }
-
-      const userId = user.id;
-
-      const unreadCount = await db
+      const unreadMessages = await db
         .select({ count: sql<number>`count(*)` })
         .from(directMessages)
         .where(
@@ -3939,11 +3933,10 @@ End of Report
           )
         );
 
-      const count = unreadCount[0]?.count || 0;
-      res.json({ count });
+      res.json({ count: Number(unreadMessages[0]?.count || 0) });
     } catch (error) {
-      console.error("❌ Error fetching unread count:", error);
-      res.status(500).json({ error: "Failed to fetch unread count", details: error instanceof Error ? error.message : 'Unknown error' });
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
     }
   });
 
@@ -4137,7 +4130,7 @@ End of Report
       res.json(messageWithSender);
     } catch (error) {
       console.error("Error sending direct message:", error);
-      res.status(500).json({ error: "Failed to send message" });
+      res.status(500).json({ error: "Failed to send direct message" });
     }
   });
 
@@ -8124,7 +8117,7 @@ End of Report
         .where(eq(tasks.id, taskId))
         .returning();
 
-      // Clear user's current task
+      // Pause user's current task
       await db
         .update(users)
         .set({
