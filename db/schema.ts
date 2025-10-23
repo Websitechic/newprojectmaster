@@ -161,7 +161,7 @@ export const tasks = pgTable("tasks", {
   projectId: integer("project_id").references(() => projects.id),
   assigneeId: integer("assignee_id").references(() => users.id),
   assignedBy: integer("assigned_by").references(() => users.id),
-  status: text("status", { enum: ["todo", "in_progress", "completed", "review", "technical_support"] }).default("todo"),
+  status: text("status", { enum: ["todo", "in_progress", "completed", "review", "technical_support", "pending"] }).default("todo"),
   priority: text("priority", { enum: ["low", "medium", "high"] }).default("medium"),
   progress: integer("progress").default(0),
   startDate: timestamp("start_date"),

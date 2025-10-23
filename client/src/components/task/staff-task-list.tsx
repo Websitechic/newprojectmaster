@@ -403,15 +403,20 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         if (status === 'technical_support' && task.isTimerRunning) {
                           pauseTimer.mutate(task.id);
                         }
+                        // Auto-start timer when manually changing to in_progress
+                        if (status === 'in_progress' && !task.isTimerRunning) {
+                          startTimer.mutate(task.id);
+                        }
                         updateTaskStatus.mutate({ taskId: task.id, status });
                       }}
-                      disabled={updateTaskStatus.isPending || pauseTimer.isPending}
+                      disabled={updateTaskStatus.isPending || pauseTimer.isPending || startTimer.isPending}
                     >
                       <SelectTrigger className="w-full h-7 text-[11px] px-2">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="todo">To Do</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="in_progress">In Progress</SelectItem>
                         <SelectItem value="review">Review</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>

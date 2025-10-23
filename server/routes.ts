@@ -2157,11 +2157,6 @@ End of Report
         global.timerIntervals = new Map();
       }
 
-      // Clear any existing interval for this task
-      if (global.timerIntervals.has(taskId)) {
-        clearInterval(global.timerIntervals.get(taskId));
-      }
-
       // Set up interval to broadcast time updates every second while timer is running
       const timerInterval = setInterval(async () => {
         try {
@@ -2255,7 +2250,7 @@ End of Report
         global.timerIntervals.delete(taskId);
       }
 
-      // Pause the timer and set status to "todo"
+      // Pause the timer and set status to "pending" (since timer was started before)
       const now = new Date();
       const [updatedTask] = await db
         .update(tasks)
@@ -2263,7 +2258,7 @@ End of Report
           isTimerRunning: false,
           timeSpent: newTimeSpent,
           timerStartTime: null,
-          status: "todo",
+          status: "pending",
           updatedAt: now
         })
         .where(eq(tasks.id, taskId))
@@ -8099,7 +8094,7 @@ End of Report
         global.timerIntervals.delete(taskId);
       }
 
-      // Pause the timer and set status to "todo"
+      // Pause the timer and set status to "pending" (since timer was started before)
       const now = new Date();
       const [updatedTask] = await db
         .update(tasks)
@@ -8107,7 +8102,7 @@ End of Report
           isTimerRunning: false,
           timeSpent: newTimeSpent,
           timerStartTime: null,
-          status: "todo",
+          status: "pending",
           updatedAt: now
         })
         .where(eq(tasks.id, taskId))

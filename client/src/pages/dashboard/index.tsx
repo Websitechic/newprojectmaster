@@ -49,6 +49,7 @@ export default function Dashboard() {
     inProgress: false,
     pending: false,
     review: false,
+    todo: false, // Added state for todo section
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [taskSearchQuery, setTaskSearchQuery] = useState(""); // State for task search
@@ -189,7 +190,8 @@ export default function Dashboard() {
   const tasksInProgress = userTasks.filter(
     (task) => task.status === "in_progress" && !task.isTimerRunning,
   );
-  const pendingTasks = userTasks.filter((task) => task.status === "todo");
+  const pendingTasks = userTasks.filter((task) => task.status === "pending"); // Changed to filter for 'pending' status
+  const todoTasks = userTasks.filter((task) => task.status === "todo"); // Added filtering for 'todo' status
   const tasksInReview = userTasks.filter((task) => task.status === "review");
   const technicalSupportTasks = userTasks.filter(
     (task) => task.status === "technical_support",
@@ -246,7 +248,9 @@ export default function Dashboard() {
               ? "To Do"
               : task.status === "review"
                 ? "Review"
-                : task.status}
+                : task.status === "pending" // Added pending status display
+                  ? "Pending"
+                  : task.status}
         </Badge>
         {task.deadline && (
           <span className="text-xs text-gray-400">
@@ -318,7 +322,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Pending Tasks */}
+                {/* Pending Tasks (paused timer) */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
@@ -326,7 +330,9 @@ export default function Dashboard() {
                         <Clock className="h-5 w-5" />
                         Pending Tasks
                       </div>
-                      <Badge variant="secondary">{pendingTasks.length}</Badge>
+                      <Badge variant="secondary">
+                        {pendingTasks.length}
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -358,6 +364,66 @@ export default function Dashboard() {
                       <div className="text-center text-muted-foreground py-4">
                         <p className="text-sm">No pending tasks</p>
                       </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Todo Tasks */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
+                        <Clock className="h-5 w-5" />
+                        Todo Tasks
+                      </div>
+                      <Badge variant="secondary">
+                        {todoTasks.length}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {todoTasks.length > 0 ? (
+                      <Collapsible
+                        open={openSections.todo}
+                        onOpenChange={() => toggleSection("todo")}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between"
+                          >
+                            View Tasks
+                            {openSections.todo ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2">
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {todoTasks.map((task) => (
+                              <div
+                                key={task.id}
+                                className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                              >
+                                <div className="font-medium truncate">
+                                  {task.title}
+                                </div>
+                                {task.deadline && (
+                                  <div className="text-muted-foreground">
+                                    Due: {new Date(task.deadline).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No todo tasks
+                      </p>
                     )}
                   </CardContent>
                 </Card>
@@ -867,7 +933,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Pending Tasks */}
+                {/* Pending Tasks (paused timer) */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center justify-between">
@@ -875,7 +941,9 @@ export default function Dashboard() {
                         <Clock className="h-5 w-5" />
                         Pending Tasks
                       </div>
-                      <Badge variant="secondary">{pendingTasks.length}</Badge>
+                      <Badge variant="secondary">
+                        {pendingTasks.length}
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -907,6 +975,66 @@ export default function Dashboard() {
                       <div className="text-center text-muted-foreground py-4">
                         <p className="text-sm">No pending tasks</p>
                       </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Todo Tasks */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
+                        <Clock className="h-5 w-5" />
+                        Todo Tasks
+                      </div>
+                      <Badge variant="secondary">
+                        {todoTasks.length}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {todoTasks.length > 0 ? (
+                      <Collapsible
+                        open={openSections.todo}
+                        onOpenChange={() => toggleSection("todo")}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between"
+                          >
+                            View Tasks
+                            {openSections.todo ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2">
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {todoTasks.map((task) => (
+                              <div
+                                key={task.id}
+                                className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                              >
+                                <div className="font-medium truncate">
+                                  {task.title}
+                                </div>
+                                {task.deadline && (
+                                  <div className="text-muted-foreground">
+                                    Due: {new Date(task.deadline).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No todo tasks
+                      </p>
                     )}
                   </CardContent>
                 </Card>

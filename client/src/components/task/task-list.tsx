@@ -349,6 +349,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
           case 'completed': return 'bg-green-100 text-green-800';
           case 'review': return 'bg-yellow-100 text-yellow-800';
           case 'technical_support': return 'bg-red-100 text-red-800';
+          case 'pending': return 'bg-orange-100 text-orange-800';
           default: return 'bg-gray-100 text-gray-800';
         }
       };
@@ -559,6 +560,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="review">Review</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
