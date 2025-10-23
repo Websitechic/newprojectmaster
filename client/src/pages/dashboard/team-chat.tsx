@@ -29,8 +29,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import type { Message, Project, User } from "@db/schema";
-import { useNotificationSound } from "@/hooks/use-notification-sound";
-import { useBrowserNotification } from "@/hooks/use-browser-notification";
 
 interface MessageWithSender {
   id: number;
@@ -70,8 +68,6 @@ export default function TeamChat() {
     const stored = localStorage.getItem(`pinned-message-${projectId}`);
     return stored ? JSON.parse(stored) : null;
   });
-  const { playNotificationSound } = useNotificationSound();
-  const { showNotification } = useBrowserNotification();
   const lastMessageCountRef = useRef<number>(0);
 
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
@@ -260,24 +256,8 @@ export default function TeamChat() {
       if (messageData.projectId === projectId) {
         console.log("Message is for current project, refreshing immediately");
         
-        // Play notification sound and show browser notification if message is from someone else
-        if (messageData.senderId !== user?.id) {
-          console.log('🔔 New team message from another user, playing sound and showing notification');
-          
-          // Play notification sound
-          playNotificationSound();
-          
-          // Show browser notification
-          const senderName = messageData.senderName || 'Team member';
-          const messagePreview = messageData.content?.substring(0, 100) || 'New message';
-          showNotification(`${senderName} in ${project?.name || 'Team Chat'}`, {
-            body: messagePreview,
-            tag: `team-chat-${projectId}`,
-            data: { url: `/dashboard/team-chat/${projectId}` },
-          });
-        }
-        
         // Invalidate queries to refresh the UI immediately
+        // Note: Notifications and sounds are handled globally in App.tsx
         queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
         });
@@ -295,7 +275,7 @@ export default function TeamChat() {
     return () => {
       window.removeEventListener('team-message-received', handleTeamMessage as EventListener);
     };
-  }, [user?.id, projectId, queryClient, playNotificationSound, showNotification, project?.name]);
+  }, [user?.id, projectId, queryClient]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
