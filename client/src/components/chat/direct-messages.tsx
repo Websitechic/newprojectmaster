@@ -176,7 +176,21 @@ export function DirectMessages() {
         }
       }
       
-      // Always update conversations list
+      // Refresh conversations to show new message
+      const fetchConversations = async () => {
+        try {
+          const response = await fetch("/api/direct-messages/conversations");
+          if (response.ok) {
+            const data = await response.json();
+            setConversations(data);
+          }
+        } catch (error) {
+          console.error("Error fetching conversations:", error);
+        }
+      };
+      fetchConversations();
+      
+      // Also invalidate queries
       queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
     };
@@ -186,7 +200,7 @@ export function DirectMessages() {
     return () => {
       window.removeEventListener('direct-message-received', handleDirectMessage as EventListener);
     };
-  }, [user?.id, selectedUser, queryClient]);
+  }, [user?.id, selectedUser, queryClient, setConversations]);
 
   // WebSocket event listeners for direct messages
   useEffect(() => {

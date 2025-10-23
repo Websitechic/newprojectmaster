@@ -87,7 +87,7 @@ export function useUnreadMessages() {
 
   // Fetch direct messages unread count
   const fetchDirectMessagesCount = useCallback(async () => {
-    if (!user) {
+    if (!user || !user.id) {
       setDirectMessagesCount(0);
       return;
     }

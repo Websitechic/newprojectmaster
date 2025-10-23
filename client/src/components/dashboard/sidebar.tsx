@@ -178,7 +178,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
 
   // SSE connection for real-time updates
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user || !user.id) return;
 
     let eventSource: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout | null = null;
@@ -195,15 +195,18 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
         });
 
         eventSource.onopen = () => {
-          console.log('SSE connection opened');
+          console.log('Sidebar SSE connection opened');
           isConnecting = false;
         };
 
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            if (data.type === 'direct_message') {
-              setUnreadDirectMessages(prev => prev + 1);
+            if (data.type === 'direct_message' && data.data) {
+              // Only increment if message is TO current user
+              if (data.data.receiverId === user.id) {
+                setUnreadDirectMessages(prev => prev + 1);
+              }
             }
           } catch (error) {
             console.error('Failed to parse SSE message:', error);
@@ -211,7 +214,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
         };
 
         eventSource.onerror = (error) => {
-          console.error('SSE connection error:', error);
+          console.error('Sidebar SSE connection error:', error);
           isConnecting = false;
 
           if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
@@ -232,9 +235,10 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       }
     };
 
+    // Wait for authentication to be fully established
     const connectionDelay = setTimeout(() => {
       connectSSE();
-    }, 3000);
+    }, 1000);
 
     return () => {
       clearTimeout(connectionDelay);
