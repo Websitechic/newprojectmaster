@@ -2446,6 +2446,22 @@ End of Report
         updateData.assigneeId = assigneeId && assigneeId !== 'unassigned' ? parseInt(assigneeId) : null;
       }
 
+      // If status is changing to 'pending' and timer is running, pause the timer
+      if (status === 'pending' && existingTask.isTimerRunning && existingTask.timerStartTime) {
+        const elapsedSeconds = Math.floor((new Date().getTime() - new Date(existingTask.timerStartTime).getTime()) / 1000);
+        const newTimeSpent = (existingTask.timeSpent || 0) + elapsedSeconds;
+        
+        updateData.isTimerRunning = false;
+        updateData.timeSpent = newTimeSpent;
+        updateData.timerStartTime = null;
+
+        // Clear the timer interval
+        if (global.timerIntervals && global.timerIntervals.has(taskId)) {
+          clearInterval(global.timerIntervals.get(taskId));
+          global.timerIntervals.delete(taskId);
+        }
+      }
+
       updateData.updatedAt = new Date();
 
       // Update the task

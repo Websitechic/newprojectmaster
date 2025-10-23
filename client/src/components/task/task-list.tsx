@@ -559,7 +559,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todo">To Do</SelectItem>
+                    {(!editTask || (!editTask.hasBeenStarted && (editTask.timeSpent || 0) === 0)) && (
+                      <SelectItem value="todo">To Do</SelectItem>
+                    )}
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="review">Review</SelectItem>

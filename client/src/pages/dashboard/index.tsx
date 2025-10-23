@@ -188,7 +188,7 @@ export default function Dashboard() {
   // Categorize tasks
   const activeTask = staffTasks.find((task) => task.isTimerRunning);
   const tasksInProgress = userTasks.filter(
-    (task) => task.status === "in_progress" && !task.isTimerRunning,
+    (task) => task.status === "in_progress"
   );
   const pendingTasks = userTasks.filter((task) => task.status === "pending"); // Changed to filter for 'pending' status
   const todoTasks = userTasks.filter((task) => task.status === "todo"); // Added filtering for 'todo' status

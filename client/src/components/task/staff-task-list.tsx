@@ -22,6 +22,7 @@ import {
 import { Play, Pause, Send, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import type { Task, Project } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 interface StaffTaskListProps {
   tasks: Task[];
@@ -223,7 +224,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
       // Optimistically update to the new value
       queryClient.setQueryData(["/api/tasks"], (old: Task[] | undefined) => {
         if (!old) return old;
-        return old.map(task => 
+        return old.map(task =>
           task.id === taskId ? { ...task, status: status as any } : task
         );
       });
@@ -231,7 +232,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
       if (projectId) {
         queryClient.setQueryData([`/api/projects/${projectId}/tasks`], (old: Task[] | undefined) => {
           if (!old) return old;
-          return old.map(task => 
+          return old.map(task =>
             task.id === taskId ? { ...task, status: status as any } : task
           );
         });
@@ -403,6 +404,10 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         if (status === 'technical_support' && task.isTimerRunning) {
                           pauseTimer.mutate(task.id);
                         }
+                        // Auto-pause timer when manually changing to pending
+                        if (status === 'pending' && task.isTimerRunning) {
+                          pauseTimer.mutate(task.id);
+                        }
                         // Auto-start timer when manually changing to in_progress
                         if (status === 'in_progress' && !task.isTimerRunning) {
                           startTimer.mutate(task.id);
@@ -415,7 +420,9 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todo">To Do</SelectItem>
+                        {(!task.hasBeenStarted && (task.timeSpent || 0) === 0) && (
+                          <SelectItem value="todo">To Do</SelectItem>
+                        )}
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="in_progress">In Progress</SelectItem>
                         <SelectItem value="review">Review</SelectItem>
