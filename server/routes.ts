@@ -5859,7 +5859,8 @@ End of Report
       const [existingApplication] = await db
         .select()
         .from(leaveApplications)
-        .where(eq(existingApplication.id, applicationId        .limit(1);
+        .where(eq(leaveApplications.id, applicationId))
+        .limit(1);
 
       if (!existingApplication) {
         return res.status(404).json({ error: "Leave application not found" });
