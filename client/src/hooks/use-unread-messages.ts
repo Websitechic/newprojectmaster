@@ -87,7 +87,10 @@ export function useUnreadMessages() {
 
   // Fetch direct messages unread count
   const fetchDirectMessagesCount = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setDirectMessagesCount(0);
+      return;
+    }
 
     try {
       const response = await fetch('/api/direct-messages/unread-count', {
@@ -95,19 +98,12 @@ export function useUnreadMessages() {
       });
       
       if (!response.ok) {
-        if (response.status === 401) {
-          // Silent fail for authentication issues
-          setDirectMessagesCount(0);
-          return;
-        }
-        console.warn('Failed to fetch unread count:', response.status);
         setDirectMessagesCount(0);
         return;
       }
 
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        console.warn('Expected JSON response but got:', contentType);
         setDirectMessagesCount(0);
         return;
       }

@@ -3426,7 +3426,7 @@ End of Report
       const [existingComplaint] = await db
         .select()
         .from(staffComplaints)
-        .where(eq(staffComplaints.id, complaintId))
+        .where(eq(existingComplaint.id, complaintId))
         .limit(1);
 
       if (!existingComplaint) {
@@ -3441,7 +3441,7 @@ End of Report
           reviewComments: reviewComments || null,
           reviewedAt: new Date(),
         })
-        .where(eq(staffComplaints.id, complaintId))
+        .where(eq(existingComplaint.id, complaintId))
         .returning();
 
       console.log("Staff complaint updated successfully:", updatedComplaint);
@@ -3462,7 +3462,7 @@ End of Report
         }
       }
 
-      res.json({ success: true, complaint: updatedApplication });
+      res.json({ success: true, complaint: updatedComplaint }); // Corrected variable name
     } catch (error) {
       console.error("Error updating staff complaint:", error);
       res.status(500).json({ error: "Failed to update staff complaint", details: error.message });
@@ -4059,6 +4059,16 @@ End of Report
         replyToSenderName: replyToSenderName || null,
       };
 
+      // Add sender object for consistency with other message types
+      messageWithSender.sender = {
+        id: user.id,
+        name: user.name,
+        email: user.email, // Assuming email is available and relevant
+        role: user.role,
+        specialization: user.specialization,
+      };
+
+
       // Check if this is a reply and send notification to the original message sender
       if (replyToMessageId && replyToSenderName) {
         // Find the user being replied to (assuming replyToSenderName uniquely identifies the user for this purpose)
@@ -4081,7 +4091,7 @@ End of Report
       }
 
       // Create notification for receiver - use 'message' type to trigger sound
-      const notification = await createNotification(
+      await createNotification(
         parseInt(receiverId),
         "message",
         `New message from ${user.name}`,
@@ -4089,39 +4099,37 @@ End of Report
         "direct_message"
       );
 
-      console.log('📧 Direct message notification created:', notification);
+      console.log('📧 Direct message notification created for receiver:', receiverId);
 
-      // Send SSE notification to the receiver
+      // Broadcast message to both sender and receiver via SSE
+      const broadcastMessage = {
+        type: "direct_message",
+        data: messageWithSender
+      };
+
+      // Send to receiver
       if (global.sseClients && global.sseClients.has(parseInt(receiverId))) {
         const receiverClient = global.sseClients.get(parseInt(receiverId));
         if (receiverClient && !receiverClient.writableEnded) {
           try {
-            receiverClient.write(`data: ${JSON.stringify({
-              type: "direct_message",
-              data: messageWithSender
-            })}\n\n`);
-            console.log(`SSE notification sent to receiver ${receiverId}`);
+            receiverClient.write(`data: ${JSON.stringify(broadcastMessage)}\n\n`);
+            console.log(`✅ SSE message sent to receiver ${receiverId}`);
           } catch (error) {
-            console.error("Error sending SSE notification to receiver:", error);
+            console.error(`❌ Error sending SSE to receiver ${receiverId}:`, error);
             global.sseClients.delete(parseInt(receiverId));
           }
         }
-      } else {
-        console.log(`No SSE client found for receiver ${receiverId}`);
       }
 
-      // Also send SSE notification to the sender for their own UI updates
+      // Send to sender for UI update
       if (global.sseClients && global.sseClients.has(senderId)) {
         const senderClient = global.sseClients.get(senderId);
         if (senderClient && !senderClient.writableEnded) {
           try {
-            senderClient.write(`data: ${JSON.stringify({
-              type: "direct_message",
-              data: messageWithSender
-            })}\n\n`);
-            console.log(`SSE notification sent to sender ${senderId}`);
+            senderClient.write(`data: ${JSON.stringify(broadcastMessage)}\n\n`);
+            console.log(`✅ SSE message sent to sender ${senderId}`);
           } catch (error) {
-            console.error("Error sending SSE notification to sender:", error);
+            console.error(`❌ Error sending SSE to sender ${senderId}:`, error);
             global.sseClients.delete(senderId);
           }
         }
@@ -5851,8 +5859,7 @@ End of Report
       const [existingApplication] = await db
         .select()
         .from(leaveApplications)
-        .where(eq(existingApplication.id, applicationId))
-        .limit(1);
+        .where(eq(existingApplication.id, applicationId        .limit(1);
 
       if (!existingApplication) {
         return res.status(404).json({ error: "Leave application not found" });
@@ -5884,7 +5891,7 @@ End of Report
             type: "task_updated", // Using existing type
             content: `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
             referenceId: updatedApplication.id,
-            referenceType: "project", // Using existing type
+            referenceType: "leave_application", // Using a more specific type
           });
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
@@ -6733,6 +6740,8 @@ End of Report
           id: user.id,
           name: user.name,
           email: user.email,
+          role: user.role,
+          specialization: user.specialization,
         }
       };
 

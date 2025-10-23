@@ -141,51 +141,29 @@ function GlobalNotificationListener() {
                 currentUserId: user?.id,
                 senderName: data.data.senderName
               });
-              
-              console.log('📩 Direct message event received in App.tsx:', {
-                type: data.type,
-                senderId: data.data?.senderId,
-                receiverId: data.data?.receiverId,
-                currentUserId: user?.id,
-                hasUser: !!user,
-                dataStructure: data
-              });
 
               // Validate user is authenticated
               if (!user || !user.id) {
-                console.warn('⚠️ User not authenticated, skipping sound playback');
+                console.warn('⚠️ User not authenticated, skipping message processing');
                 return;
               }
+              
+              // Dispatch custom event FIRST for immediate UI update
+              window.dispatchEvent(new CustomEvent('direct-message-received', { detail: data.data }));
               
               // Play sound for any message not sent by current user
               const isIncomingMessage = data.data.senderId !== user.id;
               
-              console.log('🔍 Direct message analysis:', {
-                isIncomingMessage,
-                senderId: data.data.senderId,
-                currentUserId: user.id,
-                willPlaySound: isIncomingMessage
-              });
-              
               if (isIncomingMessage) {
-                console.log('🔊 TRIGGER: Playing sound for incoming direct message', {
-                  from: data.data.senderId,
-                  to: data.data.receiverId,
-                  currentUser: user.id,
-                  timestamp: new Date().toISOString()
-                });
+                console.log('🔊 TRIGGER: Playing sound for incoming direct message');
                 
-                // Play sound immediately with comprehensive error handling
+                // Play sound
                 playNotificationSound()
                   .then(() => {
                     console.log('✅ Direct message sound played successfully');
                   })
                   .catch(err => {
-                    console.error('❌ Direct message sound playback error:', {
-                      error: err,
-                      message: err instanceof Error ? err.message : 'Unknown error',
-                      stack: err instanceof Error ? err.stack : undefined
-                    });
+                    console.error('❌ Direct message sound playback error:', err);
                   });
                 
                 // Show browser notification only if message is TO current user
@@ -198,15 +176,7 @@ function GlobalNotificationListener() {
                     data: { url: '/dashboard/direct-messages' },
                   });
                 }
-              } else {
-                console.log('⏭️ Skipping sound - message is from current user', {
-                  senderId: data.data.senderId,
-                  currentUserId: user.id
-                });
               }
-              
-              // Dispatch custom event for direct message components to update UI immediately
-              window.dispatchEvent(new CustomEvent('direct-message-received', { detail: data.data }));
               
               // Invalidate queries to refresh data
               queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });

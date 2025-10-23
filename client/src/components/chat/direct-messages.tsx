@@ -141,7 +141,7 @@ export function DirectMessages() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Listen for real-time message updates to refresh the current conversation
+  // Listen for real-time message updates via SSE and custom events
   useEffect(() => {
     if (!user?.id) {
       console.log('❌ User not authenticated, skipping direct message listener setup');
@@ -157,8 +157,6 @@ export function DirectMessages() {
         currentUserId: user?.id,
         selectedUserId: selectedUser?.id
       });
-
-      // Note: Notifications and sounds are handled globally in App.tsx
 
       // If viewing a conversation with the sender or receiver, add message immediately
       if (selectedUser) {
