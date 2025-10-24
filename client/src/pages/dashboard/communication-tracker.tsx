@@ -278,9 +278,9 @@ export default function CommunicationTracker() {
   return (
     <div className="flex h-screen w-full max-w-none">
       <Sidebar currentPath="/dashboard/communication-tracker" />
-      <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none">
+      <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none min-w-0">
           <div className="w-full max-w-none">
             <div className="flex justify-between items-center mb-6">
               <div>

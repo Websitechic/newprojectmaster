@@ -82,11 +82,11 @@ export default function SOPPage() {
 
   if (!isOperationsManager) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen w-full">
         <Sidebar currentPath="/dashboard/sop" />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <Header />
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center w-full">
             <div className="text-center">
               <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>

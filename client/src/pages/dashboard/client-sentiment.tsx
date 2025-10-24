@@ -148,11 +148,11 @@ export default function ClientSentiment() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-6 w-full">
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900 flex items-center justify-center gap-2">

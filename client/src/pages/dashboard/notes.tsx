@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -200,11 +199,11 @@ export default function Notes() {
 
   if (!isOperationsManager) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen w-full">
         <Sidebar currentPath={location} />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <Header />
-          <div className="flex-1 overflow-auto p-6">
+          <div className="flex-1 overflow-auto p-6 w-full">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
               <p className="text-gray-600 mt-2">This page is only available to operations managers.</p>
@@ -403,11 +402,11 @@ export default function Notes() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen w-full">
         <Sidebar currentPath={location} />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <Header />
-          <div className="flex items-center justify-center min-h-screen">
+          <div className="flex-1 overflow-auto p-6 w-full">
             <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
           </div>
         </div>
@@ -416,12 +415,12 @@ export default function Notes() {
   }
 
   return (
-    <div className="flex h-screen w-full max-w-none">
+    <div className="flex h-screen w-full">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none">
-          <div className="w-full max-w-none space-y-4 lg:space-y-6">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full">
+          <div className="w-full space-y-4 lg:space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">

@@ -227,9 +227,9 @@ export default function ReportIssues() {
   return (
     <div className="flex min-h-screen w-full max-w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
+      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0 overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
+        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full min-w-0">
           <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">

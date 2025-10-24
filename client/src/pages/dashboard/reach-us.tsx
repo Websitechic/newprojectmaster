@@ -17,12 +17,12 @@ export default function ReachUsPage() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background w-full">
       <Sidebar currentPath={location} />
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-6 w-full">
           <div className="flex flex-col space-y-6 max-w-2xl mx-auto">
             <div className="text-center">
               <h1 className="text-3xl font-bold mb-2">Reach Out to Product Manager</h1>

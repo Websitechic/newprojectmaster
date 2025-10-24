@@ -133,9 +133,9 @@ export default function ClientManagement() {
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 w-full">
         <Header />
-        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
+        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full min-w-0">
           <div className="space-y-6 w-full max-w-none min-w-0">
             {/* Header */}
             <div className="flex items-center gap-4">

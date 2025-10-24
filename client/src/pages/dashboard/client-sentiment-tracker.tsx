@@ -146,11 +146,11 @@ export default function ClientSentimentTracker() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-6 w-full">
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>

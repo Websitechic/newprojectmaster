@@ -186,11 +186,11 @@ export default function LeaveManagement() {
   const reviewedApplications = leaveApplications?.filter(app => app.status !== "pending") || [];
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full">
       <Sidebar currentPath="/dashboard/leave-management" />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-6 w-full">
           <div className="flex flex-col space-y-6">
             <div>
               <h1 className="text-2xl font-bold">Leave Management</h1>
