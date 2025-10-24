@@ -136,26 +136,51 @@
   }
 
   /* Fix sidebar overlap - ensure main content has proper left margin on desktop */
-  @media (min-width: 768px) {
-    .sidebar-layout {
-      display: flex;
-      min-height: 100vh;
-      width: 100%;
-    }
-    
-    .sidebar-layout > aside {
-      flex-shrink: 0;
-    }
-    
-    .sidebar-layout > .flex-1 {
-      flex: 1;
-      min-width: 0;
-      width: 100%;
-    }
+  .sidebar-layout {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+    overflow: hidden;
+  }
+  
+  .sidebar-layout > aside {
+    flex-shrink: 0;
+  }
+  
+  .sidebar-layout > .flex-1 {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Ensure all dashboard pages don't overlap with sidebar */
+  .flex.h-screen {
+    overflow: hidden;
+  }
+
+  .flex.h-screen.w-full {
+    max-width: 100vw;
   }
 
   .dashboard-main {
     @apply flex-1 overflow-auto p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-none;
+  }
+
+  /* Global fix for all pages with sidebar */
+  .flex.h-screen > .flex-1 {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .flex.h-screen > .flex-1 > .flex-1 {
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   /* Ensure main content wrapper doesn't overlap with sidebar */
@@ -167,6 +192,16 @@
     .main-content-wrapper {
       width: 100%;
       max-width: 100%;
+    }
+  }
+
+  /* Fix for pages where content might overlap sidebar */
+  @media (min-width: 768px) {
+    .flex.h-screen.w-full > div:first-child + div {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
     }
   }
 
