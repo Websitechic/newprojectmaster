@@ -145,8 +145,6 @@
   
   .sidebar-layout > aside {
     flex-shrink: 0;
-    position: relative;
-    z-index: 10;
   }
   
   .sidebar-layout > .flex-1 {
@@ -161,20 +159,10 @@
   /* Ensure all dashboard pages don't overlap with sidebar */
   .flex.h-screen {
     overflow: hidden;
-    position: relative;
   }
 
   .flex.h-screen.w-full {
     max-width: 100vw;
-  }
-
-  /* Fix for pages with flex h-screen layout */
-  .flex.h-screen > div:not([role="complementary"]) {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
   }
 
   .dashboard-main {
@@ -183,23 +171,16 @@
 
   /* Global fix for all pages with sidebar */
   .flex.h-screen > .flex-1 {
-    display: flex !important;
-    flex-direction: column !important;
-    min-width: 0 !important;
-    width: 100% !important;
-    overflow: hidden !important;
-    position: relative !important;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
   }
 
   .flex.h-screen > .flex-1 > .flex-1 {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-  }
-
-  /* Specific fix for content overflow */
-  .flex.h-screen .overflow-auto {
-    max-width: 100%;
-    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   /* Ensure main content wrapper doesn't overlap with sidebar */
@@ -216,57 +197,20 @@
 
   /* Fix for pages where content might overlap sidebar */
   @media (min-width: 768px) {
-    .flex.h-screen.w-full > div:first-child + div,
-    .flex.h-screen.w-full > aside + div {
-      flex: 1 !important;
-      min-width: 0 !important;
-      display: flex !important;
-      flex-direction: column !important;
-      overflow: hidden !important;
-    }
-  }
-
-  /* Ensure all direct children after sidebar use proper flex */
-  .flex.h-screen > aside + div,
-  .flex.h-screen > div[role="complementary"] + div {
-    flex: 1;
-    min-width: 0;
-    max-width: calc(100vw - 256px); /* Subtract sidebar width */
-  }
-
-  @media (max-width: 1024px) {
-    .flex.h-screen > aside + div,
-    .flex.h-screen > div[role="complementary"] + div {
-      max-width: 100vw;
+    .flex.h-screen.w-full > div:first-child + div {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
     }
   }
 
   .dashboard-header {
     @apply sticky top-0 z-30 bg-background border-b border-border p-3 sm:p-4;
-    width: 100%;
-    max-width: 100%;
   }
 
   .dashboard-content-area {
     @apply flex-1 p-3 sm:p-4 md:p-6 lg:p-8;
-    width: 100%;
-    max-width: 100%;
-  }
-
-  /* Critical fix: Ensure no content overlaps with sidebar */
-  body .flex.h-screen {
-    display: flex !important;
-  }
-
-  body .flex.h-screen > * {
-    flex-shrink: 0;
-  }
-
-  body .flex.h-screen > .flex-1 {
-    flex-shrink: 1 !important;
-    flex-grow: 1 !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
   }
 
   /* Enhanced table responsive */
