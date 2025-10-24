@@ -195,11 +195,11 @@ export default function DeadlineExtensionRequestsPage() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-6 w-full">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-3xl font-bold">Deadline Extension Requests</h1>
