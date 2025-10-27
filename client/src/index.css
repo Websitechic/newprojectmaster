@@ -169,13 +169,20 @@
     @apply flex-1 overflow-auto p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-none;
   }
 
-  /* Global fix for all pages with sidebar */
+  /* Global fix for all pages with sidebar - add left margin on desktop */
   .flex.h-screen > .flex-1 {
     display: flex;
     flex-direction: column;
     min-width: 0;
     width: 100%;
     overflow: hidden;
+  }
+
+  @media (min-width: 1024px) {
+    .flex.h-screen > .flex-1 {
+      margin-left: 256px; /* Sidebar width */
+      width: calc(100% - 256px);
+    }
   }
 
   .flex.h-screen > .flex-1 > .flex-1 {
@@ -188,7 +195,7 @@
     @apply flex-1 flex flex-col overflow-hidden w-full max-w-none;
   }
   
-  @media (min-width: 768px) {
+  @media (min-width: 1024px) {
     .main-content-wrapper {
       width: 100%;
       max-width: 100%;
@@ -196,12 +203,16 @@
   }
 
   /* Fix for pages where content might overlap sidebar */
-  @media (min-width: 768px) {
-    .flex.h-screen.w-full > div:first-child + div {
+  @media (min-width: 1024px) {
+    .flex.h-screen.w-full > div:first-child + div,
+    .flex.h-screen > aside + div,
+    .flex.h-screen.w-full > aside + div {
       flex: 1;
       min-width: 0;
       display: flex;
       flex-direction: column;
+      margin-left: 256px; /* Account for fixed sidebar */
+      width: calc(100% - 256px);
     }
   }
 
