@@ -169,21 +169,13 @@
     @apply flex-1 overflow-auto p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-none;
   }
 
-  /* Global fix for all pages with sidebar - add left margin on desktop */
+  /* Global fix for all pages with sidebar */
   .flex.h-screen > .flex-1 {
     display: flex;
     flex-direction: column;
     min-width: 0;
     width: 100%;
     overflow: hidden;
-  }
-
-  @media (min-width: 1024px) {
-    /* Only apply margin to main content, not to the entire flex container */
-    .flex.h-screen:has(aside) .flex-1:not(aside) {
-      margin-left: 256px; /* Sidebar width */
-      width: calc(100% - 256px);
-    }
   }
 
   .flex.h-screen > .flex-1 > .flex-1 {
@@ -195,24 +187,11 @@
   .main-content-wrapper {
     @apply flex-1 flex flex-col overflow-hidden w-full max-w-none;
   }
-  
-  @media (min-width: 1024px) {
-    .main-content-wrapper {
-      width: 100%;
-      max-width: 100%;
-    }
-  }
 
-  /* Fix for pages where content might overlap sidebar */
+  /* Add left padding on desktop to account for fixed sidebar */
   @media (min-width: 1024px) {
-    /* Target only the main content area that comes after the sidebar */
-    .flex.h-screen > aside + div {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      margin-left: 0; /* Sidebar is fixed, so no margin needed here */
-      width: 100%;
+    .flex.h-screen > div:not(aside) {
+      padding-left: 256px; /* Sidebar width */
     }
   }
 
