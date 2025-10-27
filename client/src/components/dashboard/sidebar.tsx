@@ -845,8 +845,10 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       )}
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 border-r border-border bg-background h-screen fixed top-0 left-0 overflow-y-auto z-30">
-        <SidebarContent />
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 border-r border-border bg-background h-screen fixed top-0 left-0 z-30 overflow-hidden">
+        <div className="flex flex-col h-full overflow-y-auto">
+          <SidebarContent />
+        </div>
       </aside>
 
       {/* Mobile Sidebar */}
