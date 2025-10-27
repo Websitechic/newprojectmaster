@@ -184,12 +184,13 @@ export function DirectMessages() {
         return updated;
       });
 
-      // If viewing a conversation with the sender or receiver, add message immediately
+      // If viewing a conversation, check if message is part of it
       if (selectedUser) {
-        const isFromSelectedUser = messageData.senderId === selectedUser.id;
-        const isToSelectedUser = messageData.receiverId === selectedUser.id && messageData.senderId === user?.id;
+        const isMessageInConversation = 
+          (messageData.senderId === selectedUser.id && messageData.receiverId === user.id) ||
+          (messageData.senderId === user.id && messageData.receiverId === selectedUser.id);
         
-        if (isFromSelectedUser || isToSelectedUser) {
+        if (isMessageInConversation) {
           console.log("✅ Adding message to current conversation immediately");
           setMessages(prev => {
             // Check if message already exists to avoid duplicates

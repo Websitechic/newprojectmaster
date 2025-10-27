@@ -328,6 +328,11 @@ export default function Dashboard() {
     </div>
   );
 
+  // Filter tasks for staff/intern role based on search query
+  const filteredStaffTasks = staffTasks.filter((task) =>
+    taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
+  );
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar currentPath={location} />
