@@ -8,9 +8,9 @@ export default function EmergencySupport() {
   const [location] = useLocation();
 
   return (
-    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
+    <div className="flex h-screen w-full">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
           <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-6">

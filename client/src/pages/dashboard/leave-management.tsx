@@ -190,8 +190,8 @@ export default function LeaveManagement() {
       <Sidebar currentPath="/dashboard/leave-management" />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6 w-full">
-          <div className="flex flex-col space-y-6">
+        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
+          <div className="space-y-4 lg:space-y-6">
             <div>
               <h1 className="text-2xl font-bold">Leave Management</h1>
               <p className="text-muted-foreground mt-1">
