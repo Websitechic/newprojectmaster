@@ -84,26 +84,23 @@ function GlobalNotificationListener() {
 
   // Unlock audio on first user interaction - CRITICAL for mobile browsers
   useEffect(() => {
-    const unlockAudio = async () => {
+    const unlockAudio = () => {
       if (audioUnlockedRef.current) return;
       
       console.log('🔓 Unlocking audio context on user interaction...');
-      audioUnlockedRef.current = true;
       
       // Dispatch init-audio event to unlock
       window.dispatchEvent(new Event('init-audio'));
       
-      // Try to play a silent sound to fully unlock
-      try {
-        await playNotificationSound();
-        console.log('✅ Audio context unlocked successfully');
-      } catch (e) {
-        console.log('Initial audio unlock attempt (expected to fail):', e);
-      }
+      // Mark as unlocked after a brief delay to ensure event is processed
+      setTimeout(() => {
+        audioUnlockedRef.current = true;
+        console.log('✅ Audio context unlock initiated');
+      }, 100);
     };
 
     // Listen to multiple interaction events
-    const events = ['click', 'touchstart', 'keydown', 'touchend'];
+    const events = ['click', 'touchstart', 'keydown', 'touchend', 'mousedown'];
     events.forEach(event => {
       document.addEventListener(event, unlockAudio, { once: true, capture: true, passive: true });
     });
@@ -113,7 +110,7 @@ function GlobalNotificationListener() {
         document.removeEventListener(event, unlockAudio, { capture: true });
       });
     };
-  }, [playNotificationSound]);
+  }, []); // Empty dependency array - this should only run once on mount
 
   useEffect(() => {
     if (!user?.id) return;
@@ -190,29 +187,53 @@ function GlobalNotificationListener() {
               const isIncomingMessage = data.data.senderId !== user.id;
               
               if (isIncomingMessage) {
-                console.log('🔊 TRIGGER: Playing sound for incoming direct message');
+                console.log('🔊 TRIGGER: Playing sound for incoming direct message', {
+                  senderId: data.data.senderId,
+                  receiverId: data.data.receiverId,
+                  currentUserId: user.id,
+                  audioUnlocked: audioUnlockedRef.current,
+                  timestamp: new Date().toISOString()
+                });
                 
                 // Ensure audio is unlocked before playing
                 if (!audioUnlockedRef.current) {
                   console.log('⚠️ Audio not unlocked yet, attempting unlock...');
                   window.dispatchEvent(new Event('init-audio'));
-                  audioUnlockedRef.current = true;
+                  // Small delay to allow unlock to process
+                  setTimeout(() => {
+                    audioUnlockedRef.current = true;
+                  }, 50);
                 }
                 
-                // Play sound with retry logic
-                const playSoundWithRetry = async (retries = 3) => {
+                // Play sound with retry logic and proper error handling
+                const playSoundWithRetry = async (retries = 5) => {
                   for (let i = 0; i < retries; i++) {
                     try {
+                      // Add small delay before first attempt to ensure audio is ready
+                      if (i === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                      }
+                      
                       await playNotificationSound();
-                      console.log('✅ Direct message sound played successfully');
+                      console.log('✅ Direct message sound played successfully on attempt', i + 1);
                       return;
                     } catch (err) {
-                      console.error(`❌ Direct message sound attempt ${i + 1} failed:`, err);
+                      console.error(`❌ Direct message sound attempt ${i + 1}/${retries} failed:`, {
+                        error: err,
+                        message: err instanceof Error ? err.message : 'Unknown error'
+                      });
+                      
+                      // If this isn't the last attempt, wait before retrying
                       if (i < retries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
+                        await new Promise(resolve => setTimeout(resolve, 150));
+                        
+                        // Try to unlock again before retry
+                        window.dispatchEvent(new Event('init-audio'));
                       }
                     }
                   }
+                  
+                  console.error('❌ All direct message sound playback attempts failed');
                 };
                 
                 playSoundWithRetry();

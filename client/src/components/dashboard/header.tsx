@@ -42,13 +42,6 @@ export function Header() {
     const unlockAudio = () => {
       console.log('🔓 Attempting to unlock audio on user interaction');
       window.dispatchEvent(new Event('init-audio'));
-
-      // Try playing the notification sound to fully unlock
-      try {
-        playNotificationSound();
-      } catch (e) {
-        console.log('Initial sound play failed (expected):', e);
-      }
     };
 
     // Listen to multiple events
@@ -62,7 +55,7 @@ export function Header() {
         document.removeEventListener(event, unlockAudio, { capture: true });
       });
     };
-  }, [playNotificationSound]);
+  }, []); // Empty dependency array to avoid infinite loops
 
   // Fetch team chat unread counts
   const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({
