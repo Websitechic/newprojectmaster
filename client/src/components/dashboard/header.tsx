@@ -30,7 +30,7 @@ export function Header() {
   const { user, logout } = useUser();
   const [_, setLocation] = useLocation();
   const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
-  const { playNotificationSound } = useNotificationSound();
+  const { playNotificationSound, isUnlocked } = useNotificationSound();
 
   // Initialize audio IMMEDIATELY on mount with multiple interaction listeners
   useEffect(() => {
@@ -210,8 +210,13 @@ export function Header() {
 
   return (
     <header className="h-16 bg-background border-b border-border px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
-      {/* Left Section - Spacer */}
+      {/* Left Section - Audio Unlock Reminder */}
       <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
+        {!isUnlocked && (
+          <div className="text-xs text-muted-foreground animate-pulse">
+            Click anywhere to enable notification sounds
+          </div>
+        )}
       </div>
 
       {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}
