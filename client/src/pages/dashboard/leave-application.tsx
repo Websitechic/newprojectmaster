@@ -255,8 +255,8 @@ export default function LeaveApplication() {
       <Sidebar currentPath="/dashboard/leave-application" />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6 w-full">
-          <div className="flex flex-col space-y-6">
+        <div className="flex-1 overflow-auto p-6 w-full max-h-full">
+          <div className="flex flex-col space-y-6 max-w-full">
             <div>
               <h1 className="text-2xl font-bold">Leave Application</h1>
               <p className="text-muted-foreground mt-1">
@@ -264,7 +264,7 @@ export default function LeaveApplication() {
               </p>
             </div>
 
-            <Tabs defaultValue="apply" className="w-full">
+            <Tabs defaultValue="apply" className="w-full max-w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="apply" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
@@ -276,7 +276,7 @@ export default function LeaveApplication() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="apply" className="space-y-6">
+          <TabsContent value="apply" className="space-y-6 max-w-full">
             {/* Leave Balance Card */}
             <Card>
               <CardHeader>

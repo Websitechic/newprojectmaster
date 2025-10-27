@@ -150,13 +150,38 @@ export function DirectMessages() {
 
     console.log('✅ Setting up direct message event listener for user:', user.id);
 
-    const handleDirectMessage = (event: CustomEvent) => {
-      const messageData = event.detail;
+    const handleDirectMessage = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const messageData = customEvent.detail;
       console.log("📬 Direct message event received in conversation component:", {
         messageId: messageData.id,
         messageData,
         currentUserId: user?.id,
         selectedUserId: selectedUser?.id
+      });
+
+      // Update conversations list first
+      setConversations(prev => {
+        const updated = [...prev];
+        const otherUserId = messageData.senderId === user.id ? messageData.receiverId : messageData.senderId;
+        const existingIndex = updated.findIndex(conv => conv.user.id === otherUserId);
+
+        if (existingIndex >= 0) {
+          // Move conversation to top and update last message
+          const conversation = updated[existingIndex];
+          updated.splice(existingIndex, 1);
+          updated.unshift({
+            ...conversation,
+            lastMessage: {
+              content: messageData.content,
+              createdAt: messageData.createdAt,
+              senderId: messageData.senderId,
+            },
+            unreadCount: messageData.senderId === user.id ? 0 : conversation.unreadCount + 1,
+          });
+        }
+
+        return updated;
       });
 
       // If viewing a conversation with the sender or receiver, add message immediately
@@ -179,29 +204,14 @@ export function DirectMessages() {
         }
       }
       
-      // Refresh conversations to show new message in list
-      const fetchConversations = async () => {
-        try {
-          const response = await fetch("/api/direct-messages/conversations");
-          if (response.ok) {
-            const data = await response.json();
-            setConversations(data);
-          }
-        } catch (error) {
-          console.error("Error fetching conversations:", error);
-        }
-      };
-      fetchConversations();
-      
-      // Also invalidate queries
+      // Invalidate queries for consistency
       queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
     };
 
-    window.addEventListener('direct-message-received', handleDirectMessage as EventListener);
+    window.addEventListener('direct-message-received', handleDirectMessage);
 
     return () => {
-      window.removeEventListener('direct-message-received', handleDirectMessage as EventListener);
+      window.removeEventListener('direct-message-received', handleDirectMessage);
     };
   }, [user?.id, selectedUser, queryClient]);
 
