@@ -32,30 +32,10 @@ export function Header() {
   const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
   const { playNotificationSound, isUnlocked } = useNotificationSound();
 
-  // Initialize audio IMMEDIATELY on mount with multiple interaction listeners
+  // Initialize audio on mount - no need for event listeners here since App.tsx handles it
   useEffect(() => {
-    // Try to initialize immediately
-    console.log('🎵 Header mounted, initializing audio...');
-    window.dispatchEvent(new Event('init-audio'));
-
-    // Try to play a silent sound to unlock audio (common mobile browser trick)
-    const unlockAudio = () => {
-      console.log('🔓 Attempting to unlock audio on user interaction');
-      window.dispatchEvent(new Event('init-audio'));
-    };
-
-    // Listen to multiple events
-    const events = ['click', 'touchstart', 'keydown'];
-    events.forEach(event => {
-      document.addEventListener(event, unlockAudio, { once: true, capture: true, passive: true });
-    });
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, unlockAudio, { capture: true });
-      });
-    };
-  }, []); // Empty dependency array to avoid infinite loops
+    console.log('🎵 Header mounted');
+  }, [])
 
   // Fetch team chat unread counts
   const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({
@@ -268,15 +248,7 @@ export function Header() {
         {/* Notifications */}
         <NotificationsDropdown />
 
-        {/* Audio Context Initializer - triggers on any click */}
-        <div 
-          className="hidden" 
-          onClick={() => {
-            // This ensures audio context is initialized on user interaction
-            const event = new CustomEvent('init-audio');
-            window.dispatchEvent(event);
-          }}
-        />
+        
 
         {/* Profile Dropdown */}
         <DropdownMenu>

@@ -82,6 +82,15 @@ function GlobalNotificationListener() {
   const { showNotification } = useBrowserNotification();
   const audioUnlockedRef = useRef(false);
 
+  // Check if audio was previously unlocked in this session
+  useEffect(() => {
+    const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
+    if (wasUnlocked) {
+      audioUnlockedRef.current = true;
+      console.log('✅ Audio was already unlocked in this session');
+    }
+  }, []);
+
   // Unlock audio on first user interaction - CRITICAL for mobile browsers
   useEffect(() => {
     const unlockAudio = () => {
@@ -92,10 +101,11 @@ function GlobalNotificationListener() {
       // Dispatch init-audio event to unlock
       window.dispatchEvent(new Event('init-audio'));
       
-      // Mark as unlocked after a brief delay to ensure event is processed
+      // Mark as unlocked and persist to sessionStorage
       setTimeout(() => {
         audioUnlockedRef.current = true;
-        console.log('✅ Audio context unlock initiated');
+        sessionStorage.setItem('audioUnlocked', 'true');
+        console.log('✅ Audio context unlock initiated and persisted');
       }, 100);
     };
 
@@ -110,7 +120,7 @@ function GlobalNotificationListener() {
         document.removeEventListener(event, unlockAudio, { capture: true });
       });
     };
-  }, []); // Empty dependency array - this should only run once on mount
+  }, [])
 
   useEffect(() => {
     if (!user?.id) return;
