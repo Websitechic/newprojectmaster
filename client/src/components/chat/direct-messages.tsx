@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy, Reply, Forward } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,58 +83,46 @@ export function DirectMessages() {
   const recipientId = selectedUser ? String(selectedUser.id) : null;
 
 
-  // Fetch conversations
-  useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        const response = await fetch("/api/direct-messages/conversations");
-        if (response.ok) {
-          const data = await response.json();
-          setConversations(data);
-        }
-      } catch (error) {
-        console.error("Error fetching conversations:", error);
-      }
-    };
+  // Fetch conversations with polling backup
+  const { data: fetchedConversations } = useQuery({
+    queryKey: ["/api/direct-messages/conversations"],
+    enabled: !!user,
+    refetchInterval: 2000, // Poll every 2 seconds like team chat
+  });
 
-    fetchConversations();
-  }, []);
+  // Update conversations state when data changes
+  useEffect(() => {
+    if (fetchedConversations) {
+      setConversations(fetchedConversations);
+    }
+  }, [fetchedConversations]);
 
   // Fetch all users for new conversations
+  const { data: fetchedUsers = [] } = useQuery({
+    queryKey: ["/api/users"],
+    enabled: !!user,
+  });
+
+  // Update users state when data changes
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await fetch("/api/users");
-        if (response.ok) {
-          const data = await response.json();
-          setAllUsers(data);
-        }
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      }
-    };
-
-    fetchUsers();
-  }, []);
-
-  // Fetch messages when a user is selected
-  useEffect(() => {
-    if (selectedUser) {
-      const fetchMessages = async () => {
-        try {
-          const response = await fetch(`/api/direct-messages/${selectedUser.id}`);
-          if (response.ok) {
-            const data = await response.json();
-            setMessages(data);
-          }
-        } catch (error) {
-          console.error("Error fetching messages:", error);
-        }
-      };
-
-      fetchMessages();
+    if (fetchedUsers) {
+      setAllUsers(fetchedUsers);
     }
-  }, [selectedUser]);
+  }, [fetchedUsers]);
+
+  // Fetch messages when a user is selected with polling backup
+  const { data: fetchedMessages } = useQuery({
+    queryKey: [`/api/direct-messages/${selectedUser?.id}`],
+    enabled: !!selectedUser,
+    refetchInterval: 2000, // Poll every 2 seconds like team chat
+  });
+
+  // Update messages state when data changes
+  useEffect(() => {
+    if (fetchedMessages) {
+      setMessages(fetchedMessages);
+    }
+  }, [fetchedMessages]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -205,7 +193,9 @@ export function DirectMessages() {
         }
       }
       
-      // Invalidate queries for consistency
+      // Invalidate queries to ensure fresh data on next poll
+      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/direct-messages/${selectedUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
     };
 
