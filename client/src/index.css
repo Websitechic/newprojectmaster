@@ -179,7 +179,8 @@
   }
 
   @media (min-width: 1024px) {
-    .flex.h-screen > .flex-1 {
+    /* Only apply margin to main content, not to the entire flex container */
+    .flex.h-screen:has(aside) .flex-1:not(aside) {
       margin-left: 256px; /* Sidebar width */
       width: calc(100% - 256px);
     }
@@ -204,15 +205,14 @@
 
   /* Fix for pages where content might overlap sidebar */
   @media (min-width: 1024px) {
-    .flex.h-screen.w-full > div:first-child + div,
-    .flex.h-screen > aside + div,
-    .flex.h-screen.w-full > aside + div {
+    /* Target only the main content area that comes after the sidebar */
+    .flex.h-screen > aside + div {
       flex: 1;
       min-width: 0;
       display: flex;
       flex-direction: column;
-      margin-left: 256px; /* Account for fixed sidebar */
-      width: calc(100% - 256px);
+      margin-left: 0; /* Sidebar is fixed, so no margin needed here */
+      width: 100%;
     }
   }
 
