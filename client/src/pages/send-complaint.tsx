@@ -55,7 +55,7 @@ export default function SendComplaint() {
         });
         return;
       }
-      
+
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
@@ -65,14 +65,14 @@ export default function SendComplaint() {
         });
         return;
       }
-      
+
       setScreenshot(file);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim() || !formData.email.trim() || !formData.detailedExplanation.trim()) {
       toast({
         title: "Missing information",
@@ -90,7 +90,7 @@ export default function SendComplaint() {
       formDataToSend.append('email', formData.email.trim());
       formDataToSend.append('department', formData.department);
       formDataToSend.append('detailedExplanation', formData.detailedExplanation.trim());
-      
+
       if (screenshot) {
         formDataToSend.append('screenshot', screenshot);
       }
@@ -108,12 +108,12 @@ export default function SendComplaint() {
       if (response.ok) {
         const result = await response.json();
         console.log('Complaint submitted successfully:', result);
-        
+
         toast({
           title: "Complaint submitted successfully",
           description: "Your complaint has been submitted and will be reviewed by operations management.",
         });
-        
+
         // Reset form
         setFormData({
           name: user?.name || "",
@@ -122,7 +122,7 @@ export default function SendComplaint() {
           detailedExplanation: "",
         });
         setScreenshot(null);
-        
+
         // Reset file input
         const fileInput = document.getElementById('screenshot') as HTMLInputElement;
         if (fileInput) {
@@ -151,7 +151,7 @@ export default function SendComplaint() {
       <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
         <Header />
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
-          <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <div className="w-full max-w-6xl mx-auto space-y-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Send Your Complaint
@@ -175,7 +175,7 @@ export default function SendComplaint() {
           <Alert className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Important:</strong> This form is for legitimate workplace complaints and concerns. 
+              <strong>Important:</strong> This form is for legitimate workplace complaints and concerns.
               Please provide accurate and detailed information to help us address your issue effectively.
             </AlertDescription>
           </Alert>
@@ -329,7 +329,7 @@ function ComplaintHistoryTable() {
       reviewed: { variant: "default" as const, label: "Reviewed", color: "bg-blue-100 text-blue-800" },
       resolved: { variant: "secondary" as const, label: "Resolved", color: "bg-green-100 text-green-800" },
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
@@ -395,16 +395,16 @@ function ComplaintHistoryTable() {
               </td>
               <td className="border border-gray-200 px-4 py-2 text-sm text-gray-900 max-w-xs">
                 <p className="truncate" title={complaint.detailedExplanation}>
-                  {complaint.detailedExplanation.length > 100 
-                    ? `${complaint.detailedExplanation.substring(0, 100)}...` 
+                  {complaint.detailedExplanation.length > 100
+                    ? `${complaint.detailedExplanation.substring(0, 100)}...`
                     : complaint.detailedExplanation}
                 </p>
               </td>
               <td className="border border-gray-200 px-4 py-2 text-sm text-gray-600 max-w-xs">
                 {complaint.reviewComments ? (
                   <p className="truncate" title={complaint.reviewComments}>
-                    {complaint.reviewComments.length > 100 
-                      ? `${complaint.reviewComments.substring(0, 100)}...` 
+                    {complaint.reviewComments.length > 100
+                      ? `${complaint.reviewComments.substring(0, 100)}...`
                       : complaint.reviewComments}
                   </p>
                 ) : (

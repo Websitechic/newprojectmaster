@@ -249,7 +249,7 @@ export default function TechnicalSupportPage() {
       <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
         <Header />
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
-          <div className="container mx-auto p-6">
+          <div className="w-full max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Technical Support</h1>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
