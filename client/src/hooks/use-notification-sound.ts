@@ -6,7 +6,10 @@ export function useNotificationSound() {
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const silentBufferRef = useRef<AudioBuffer | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    // Check sessionStorage on initial render
+    return sessionStorage.getItem('audioUnlocked') === 'true';
+  });
   const initializingRef = useRef(false);
   const unlockAttemptedRef = useRef(false);
 
@@ -98,7 +101,8 @@ export function useNotificationSound() {
       source.start(0);
       
       setIsUnlocked(true);
-      console.log('✅ Audio context unlocked successfully');
+      sessionStorage.setItem('audioUnlocked', 'true');
+      console.log('✅ Audio context unlocked successfully and persisted');
     } catch (error) {
       console.error('❌ Error unlocking audio context:', error);
       unlockAttemptedRef.current = false; // Allow retry
@@ -118,6 +122,12 @@ export function useNotificationSound() {
 
   // Set up automatic unlock on first user interaction
   useEffect(() => {
+    // Skip if already unlocked (including from sessionStorage)
+    if (isUnlocked) {
+      console.log('⏭️ Auto-unlock skipped - already unlocked');
+      return;
+    }
+
     const handleFirstInteraction = () => {
       if (!isUnlocked && audioContextRef.current && silentBufferRef.current) {
         unlockAudioContext();

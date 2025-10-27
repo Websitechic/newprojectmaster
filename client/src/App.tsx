@@ -82,19 +82,24 @@ function GlobalNotificationListener() {
   const { showNotification } = useBrowserNotification();
   const audioUnlockedRef = useRef(false);
 
-  // Check if audio was previously unlocked in this session
+  // Initialize audio unlock state from sessionStorage
   useEffect(() => {
     const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
     if (wasUnlocked) {
       audioUnlockedRef.current = true;
       console.log('✅ Audio was already unlocked in this session');
+      // Ensure audio context is initialized even after page navigation
+      window.dispatchEvent(new Event('init-audio'));
     }
   }, []);
 
   // Unlock audio on first user interaction - CRITICAL for mobile browsers
   useEffect(() => {
     const unlockAudio = () => {
-      if (audioUnlockedRef.current) return;
+      if (audioUnlockedRef.current) {
+        console.log('⏭️ Audio already unlocked, skipping');
+        return;
+      }
       
       console.log('🔓 Unlocking audio context on user interaction...');
       
@@ -102,24 +107,24 @@ function GlobalNotificationListener() {
       window.dispatchEvent(new Event('init-audio'));
       
       // Mark as unlocked and persist to sessionStorage
-      setTimeout(() => {
-        audioUnlockedRef.current = true;
-        sessionStorage.setItem('audioUnlocked', 'true');
-        console.log('✅ Audio context unlock initiated and persisted');
-      }, 100);
+      audioUnlockedRef.current = true;
+      sessionStorage.setItem('audioUnlocked', 'true');
+      console.log('✅ Audio context unlock initiated and persisted to sessionStorage');
     };
 
-    // Listen to multiple interaction events
-    const events = ['click', 'touchstart', 'keydown', 'touchend', 'mousedown'];
-    events.forEach(event => {
-      document.addEventListener(event, unlockAudio, { once: true, capture: true, passive: true });
-    });
-
-    return () => {
+    // Only add listeners if not already unlocked
+    if (!audioUnlockedRef.current) {
+      const events = ['click', 'touchstart', 'keydown', 'touchend', 'mousedown'];
       events.forEach(event => {
-        document.removeEventListener(event, unlockAudio, { capture: true });
+        document.addEventListener(event, unlockAudio, { once: true, capture: true, passive: true });
       });
-    };
+
+      return () => {
+        events.forEach(event => {
+          document.removeEventListener(event, unlockAudio, { capture: true });
+        });
+      };
+    }
   }, [])
 
   useEffect(() => {

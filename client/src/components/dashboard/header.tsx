@@ -32,11 +32,6 @@ export function Header() {
   const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
   const { playNotificationSound, isUnlocked } = useNotificationSound();
 
-  // Initialize audio on mount - no need for event listeners here since App.tsx handles it
-  useEffect(() => {
-    console.log('🎵 Header mounted');
-  }, [])
-
   // Fetch team chat unread counts
   const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({
     queryKey: ["/api/projects/unread-counts"],
