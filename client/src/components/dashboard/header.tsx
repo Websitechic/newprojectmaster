@@ -178,13 +178,32 @@ export function Header() {
 
   return (
     <header className="h-16 bg-background border-b border-border px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
-      {/* Left Section - Audio Unlock Reminder */}
+      {/* Left Section - Audio Status Toggle */}
       <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
-        {!isUnlocked && (
-          <div className="text-xs text-muted-foreground animate-pulse">
-            Click anywhere to enable notification sounds
-          </div>
-        )}
+        <Button
+          variant={isUnlocked ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            if (!isUnlocked) {
+              // Trigger audio unlock
+              window.dispatchEvent(new Event('init-audio'));
+              playNotificationSound();
+            }
+          }}
+          className="gap-2"
+        >
+          {isUnlocked ? (
+            <>
+              <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              Sound Enabled
+            </>
+          ) : (
+            <>
+              <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full"></span>
+              Enable Sound
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}

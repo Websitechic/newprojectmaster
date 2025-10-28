@@ -1,8 +1,21 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
+// Global audio context to persist across component unmounts
+const getGlobalAudioContext = (): AudioContext | null => {
+  if (typeof window === 'undefined') return null;
+  if (!(window as any).__globalAudioContext) {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioContext) {
+      (window as any).__globalAudioContext = new AudioContext();
+      console.log('🎵 Created global AudioContext');
+    }
+  }
+  return (window as any).__globalAudioContext || null;
+};
+
 export function useNotificationSound() {
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(getGlobalAudioContext());
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const silentBufferRef = useRef<AudioBuffer | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -51,17 +64,13 @@ export function useNotificationSound() {
     initializingRef.current = true;
 
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) {
+      // Use global audio context
+      audioContextRef.current = getGlobalAudioContext();
+      
+      if (!audioContextRef.current) {
         console.warn('⚠️ AudioContext not supported');
         initializingRef.current = false;
         return;
-      }
-
-      // Create new context if needed
-      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-        audioContextRef.current = new AudioContext();
-        console.log('🎵 Created new AudioContext');
       }
 
       // Create buffers
@@ -109,16 +118,30 @@ export function useNotificationSound() {
     }
   }, []);
 
-  // Initialize on mount
+  // Initialize on mount and listen for manual unlock events
   useEffect(() => {
     initAudioContext();
 
-    return () => {
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
+    // Listen for init-audio event (fired from App.tsx or Header)
+    const handleInitAudio = () => {
+      console.log('🎵 Manual audio init event received');
+      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+        initAudioContext();
+      }
+      // Always try to unlock when event is fired
+      if (audioContextRef.current && silentBufferRef.current) {
+        unlockAudioContext();
       }
     };
-  }, [initAudioContext]);
+
+    window.addEventListener('init-audio', handleInitAudio);
+
+    return () => {
+      window.removeEventListener('init-audio', handleInitAudio);
+      // DON'T close audio context on unmount - keep it alive across pages
+      // This is the key fix for cross-page navigation
+    };
+  }, [initAudioContext, unlockAudioContext]);
 
   // Set up automatic unlock on first user interaction
   useEffect(() => {
