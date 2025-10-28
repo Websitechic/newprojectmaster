@@ -125,15 +125,29 @@ export function useNotificationSound() {
   // Initialize on mount and restore unlock state from sessionStorage
   useEffect(() => {
     // Initialize audio context first
-    initAudioContext();
-
-    // Check if audio was previously unlocked
-    const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
-    if (wasUnlocked) {
-      console.log('✅ Restoring audio unlock state from previous session');
-      setIsUnlocked(true);
-      unlockAttemptedRef.current = true;
-    }
+    const init = async () => {
+      await initAudioContext();
+      
+      // Check if audio was previously unlocked AFTER initialization
+      const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
+      if (wasUnlocked) {
+        console.log('✅ Restoring audio unlock state from previous session');
+        setIsUnlocked(true);
+        unlockAttemptedRef.current = true;
+        
+        // Ensure context is running
+        if (audioContextRef.current?.state === 'suspended') {
+          try {
+            await audioContextRef.current.resume();
+            console.log('✅ Audio context resumed on restore');
+          } catch (err) {
+            console.error('Error resuming audio context:', err);
+          }
+        }
+      }
+    };
+    
+    init();
 
     // Listen for init-audio event (fired from App.tsx or Header)
     const handleInitAudio = async () => {
@@ -192,16 +206,11 @@ export function useNotificationSound() {
       hasBuffer: !!audioBufferRef.current,
       isInitialized,
       isUnlocked,
-      contextState: audioContextRef.current?.state
+      contextState: audioContextRef.current?.state,
+      sessionUnlocked: sessionStorage.getItem('audioUnlocked')
     });
 
     try {
-      // Check if audio is unlocked
-      if (!isUnlocked) {
-        console.warn('⚠️ Audio not unlocked yet - sound will not play');
-        return;
-      }
-
       // Initialize if needed
       if (!audioContextRef.current || !audioBufferRef.current) {
         console.error('🔇 Audio not initialized');
@@ -210,6 +219,7 @@ export function useNotificationSound() {
 
       // Resume if suspended
       if (audioContextRef.current.state === 'suspended') {
+        console.log('⏯️ Resuming suspended audio context');
         await audioContextRef.current.resume();
       }
 
@@ -231,7 +241,7 @@ export function useNotificationSound() {
     } catch (error) {
       console.error('❌ Error playing notification sound:', error);
     }
-  }, [isUnlocked, isInitialized]);
+  }, [isInitialized]);
 
   return { playNotificationSound, isInitialized, isUnlocked };
 }
