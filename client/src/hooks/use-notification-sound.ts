@@ -1,25 +1,15 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
-// Global audio context to persist across component unmounts
-const getGlobalAudioContext = (): AudioContext | null => {
-  if (typeof window === 'undefined') return null;
-  if (!(window as any).__globalAudioContext) {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (AudioContext) {
-      (window as any).__globalAudioContext = new AudioContext();
-      console.log('🎵 Created global AudioContext');
-    }
-  }
-  return (window as any).__globalAudioContext || null;
-};
-
 export function useNotificationSound() {
-  const audioContextRef = useRef<AudioContext | null>(getGlobalAudioContext());
+  const audioContextRef = useRef<AudioContext | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const silentBufferRef = useRef<AudioBuffer | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    // Check sessionStorage on initial render
+    return sessionStorage.getItem('audioUnlocked') === 'true';
+  });
   const initializingRef = useRef(false);
   const unlockAttemptedRef = useRef(false);
 
@@ -61,13 +51,17 @@ export function useNotificationSound() {
     initializingRef.current = true;
 
     try {
-      // Use global audio context
-      audioContextRef.current = getGlobalAudioContext();
-      
-      if (!audioContextRef.current) {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) {
         console.warn('⚠️ AudioContext not supported');
         initializingRef.current = false;
         return;
+      }
+
+      // Create new context if needed
+      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+        audioContextRef.current = new AudioContext();
+        console.log('🎵 Created new AudioContext');
       }
 
       // Create buffers
@@ -86,23 +80,18 @@ export function useNotificationSound() {
 
   // Unlock audio context with silent buffer
   const unlockAudioContext = useCallback(async () => {
+    if (unlockAttemptedRef.current || !audioContextRef.current || !silentBufferRef.current) {
+      return;
+    }
+
+    unlockAttemptedRef.current = true;
+
     try {
       console.log('🔓 Attempting to unlock audio on user interaction');
-      
-      if (!audioContextRef.current) {
-        console.error('❌ No audio context available');
-        return false;
-      }
-
-      if (!silentBufferRef.current) {
-        console.error('❌ No silent buffer available');
-        return false;
-      }
       
       // Resume if suspended
       if (audioContextRef.current.state === 'suspended') {
         await audioContextRef.current.resume();
-        console.log('✅ Audio context resumed from suspended state');
       }
 
       // Play silent buffer to unlock
@@ -111,78 +100,36 @@ export function useNotificationSound() {
       source.connect(audioContextRef.current.destination);
       source.start(0);
       
-      unlockAttemptedRef.current = true;
       setIsUnlocked(true);
       sessionStorage.setItem('audioUnlocked', 'true');
       console.log('✅ Audio context unlocked successfully and persisted');
-      return true;
     } catch (error) {
       console.error('❌ Error unlocking audio context:', error);
-      return false;
+      unlockAttemptedRef.current = false; // Allow retry
     }
   }, []);
 
-  // Initialize on mount and restore unlock state from sessionStorage
+  // Initialize on mount
   useEffect(() => {
-    // Initialize audio context first
-    const init = async () => {
-      await initAudioContext();
-      
-      // Check if audio was previously unlocked AFTER initialization
-      const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
-      if (wasUnlocked) {
-        console.log('✅ Restoring audio unlock state from previous session');
-        setIsUnlocked(true);
-        unlockAttemptedRef.current = true;
-        
-        // Ensure context is running
-        if (audioContextRef.current?.state === 'suspended') {
-          try {
-            await audioContextRef.current.resume();
-            console.log('✅ Audio context resumed on restore');
-          } catch (err) {
-            console.error('Error resuming audio context:', err);
-          }
-        }
-      }
-    };
-    
-    init();
-
-    // Listen for init-audio event (fired from App.tsx or Header)
-    const handleInitAudio = async () => {
-      console.log('🎵 Manual audio init event received');
-      
-      // Initialize if needed
-      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-        await initAudioContext();
-        // Wait for initialization to complete
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      // Always try to unlock when event is fired
-      if (audioContextRef.current && silentBufferRef.current) {
-        await unlockAudioContext();
-      }
-    };
-
-    window.addEventListener('init-audio', handleInitAudio);
+    initAudioContext();
 
     return () => {
-      window.removeEventListener('init-audio', handleInitAudio);
-      // DON'T close audio context on unmount - keep it alive across pages
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
     };
-  }, [initAudioContext, unlockAudioContext]);
+  }, [initAudioContext]);
 
-  // Set up automatic unlock on first user interaction (only if not already unlocked)
+  // Set up automatic unlock on first user interaction
   useEffect(() => {
+    // Skip if already unlocked (including from sessionStorage)
     if (isUnlocked) {
+      console.log('⏭️ Auto-unlock skipped - already unlocked');
       return;
     }
 
     const handleFirstInteraction = () => {
       if (!isUnlocked && audioContextRef.current && silentBufferRef.current) {
-        console.log('🔓 Auto-unlocking on first interaction');
         unlockAudioContext();
       }
     };
@@ -206,21 +153,57 @@ export function useNotificationSound() {
       hasBuffer: !!audioBufferRef.current,
       isInitialized,
       isUnlocked,
-      contextState: audioContextRef.current?.state,
-      sessionUnlocked: sessionStorage.getItem('audioUnlocked')
+      contextState: audioContextRef.current?.state
     });
 
     try {
       // Initialize if needed
       if (!audioContextRef.current || !audioBufferRef.current) {
-        console.error('🔇 Audio not initialized');
-        return;
+        console.log('🔇 Audio not initialized yet, trying to initialize...');
+        await initAudioContext();
+        
+        // Wait a bit for initialization to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (!audioContextRef.current || !audioBufferRef.current) {
+          console.error('🔇 Audio initialization failed - no context or buffer');
+          return;
+        }
       }
 
-      // Resume if suspended
+      // Always try to resume if suspended (browsers require user interaction first)
       if (audioContextRef.current.state === 'suspended') {
-        console.log('⏯️ Resuming suspended audio context');
-        await audioContextRef.current.resume();
+        console.log('🔓 Attempting to resume suspended audio context...');
+        try {
+          await audioContextRef.current.resume();
+          console.log('✅ Audio context resumed, state:', audioContextRef.current.state);
+        } catch (resumeError) {
+          console.error('❌ Failed to resume audio context:', resumeError);
+          // Try to play anyway, might work
+        }
+      }
+
+      // Play silent buffer first to ensure unlock (especially on mobile)
+      if (!isUnlocked && silentBufferRef.current) {
+        try {
+          const silentSource = audioContextRef.current.createBufferSource();
+          silentSource.buffer = silentBufferRef.current;
+          silentSource.connect(audioContextRef.current.destination);
+          silentSource.start(0);
+          setIsUnlocked(true);
+          console.log('🔓 Played silent buffer for unlock');
+          
+          // Small delay to ensure unlock completes
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (unlockError) {
+          console.warn('⚠️ Silent buffer unlock failed:', unlockError);
+        }
+      }
+
+      // Double-check we have everything we need
+      if (!audioBufferRef.current) {
+        console.error('❌ Audio buffer missing after initialization');
+        return;
       }
 
       // Create source node and connect to destination
@@ -234,14 +217,29 @@ export function useNotificationSound() {
       source.connect(gainNode);
       gainNode.connect(audioContextRef.current.destination);
       
+      // Add error handler for the source
+      source.onended = () => {
+        console.log('✅ Notification sound playback completed');
+      };
+      
       // Start playback
       source.start(0);
       
-      console.log('🔊 Notification sound started successfully');
+      console.log('🔊 Notification sound started successfully', {
+        contextState: audioContextRef.current.state,
+        bufferDuration: audioBufferRef.current.duration,
+        currentTime: audioContextRef.current.currentTime
+      });
     } catch (error) {
-      console.error('❌ Error playing notification sound:', error);
+      console.error('❌ Error playing notification sound:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        contextState: audioContextRef.current?.state,
+        hasBuffer: !!audioBufferRef.current
+      });
     }
-  }, [isInitialized]);
+  }, [initAudioContext, isUnlocked, isInitialized]);
 
   return { playNotificationSound, isInitialized, isUnlocked };
 }

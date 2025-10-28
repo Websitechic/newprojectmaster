@@ -178,38 +178,13 @@ export function Header() {
 
   return (
     <header className="h-16 bg-background border-b border-border px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
-      {/* Left Section - Audio Status Toggle */}
+      {/* Left Section - Audio Unlock Reminder */}
       <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
-        <Button
-          variant={isUnlocked ? "default" : "outline"}
-          size="sm"
-          onClick={() => {
-            console.log('🔘 Sound button clicked, current state:', { isUnlocked });
-            
-            if (!isUnlocked) {
-              // Trigger audio unlock event
-              window.dispatchEvent(new Event('init-audio'));
-            }
-            
-            // Play test sound after a brief delay
-            setTimeout(() => {
-              playNotificationSound();
-            }, 200);
-          }}
-          className="gap-2"
-        >
-          {isUnlocked ? (
-            <>
-              <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              Sound Enabled
-            </>
-          ) : (
-            <>
-              <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full"></span>
-              Enable Sound
-            </>
-          )}
-        </Button>
+        {!isUnlocked && (
+          <div className="text-xs text-muted-foreground animate-pulse">
+            Click anywhere to enable notification sounds
+          </div>
+        )}
       </div>
 
       {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}
