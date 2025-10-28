@@ -19,10 +19,7 @@ export function useNotificationSound() {
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const silentBufferRef = useRef<AudioBuffer | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isUnlocked, setIsUnlocked] = useState(() => {
-    // Check sessionStorage on initial render
-    return sessionStorage.getItem('audioUnlocked') === 'true';
-  });
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const initializingRef = useRef(false);
   const unlockAttemptedRef = useRef(false);
 
@@ -118,9 +115,18 @@ export function useNotificationSound() {
     }
   }, []);
 
-  // Initialize on mount and listen for manual unlock events
+  // Initialize on mount and restore unlock state from sessionStorage
   useEffect(() => {
+    // Initialize audio context first
     initAudioContext();
+
+    // Check if audio was previously unlocked
+    const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
+    if (wasUnlocked) {
+      console.log('✅ Restoring audio unlock state from previous session');
+      setIsUnlocked(true);
+      unlockAttemptedRef.current = true;
+    }
 
     // Listen for init-audio event (fired from App.tsx or Header)
     const handleInitAudio = () => {
@@ -139,20 +145,18 @@ export function useNotificationSound() {
     return () => {
       window.removeEventListener('init-audio', handleInitAudio);
       // DON'T close audio context on unmount - keep it alive across pages
-      // This is the key fix for cross-page navigation
     };
   }, [initAudioContext, unlockAudioContext]);
 
-  // Set up automatic unlock on first user interaction
+  // Set up automatic unlock on first user interaction (only if not already unlocked)
   useEffect(() => {
-    // Skip if already unlocked (including from sessionStorage)
     if (isUnlocked) {
-      console.log('⏭️ Auto-unlock skipped - already unlocked');
       return;
     }
 
     const handleFirstInteraction = () => {
       if (!isUnlocked && audioContextRef.current && silentBufferRef.current) {
+        console.log('🔓 Auto-unlocking on first interaction');
         unlockAudioContext();
       }
     };

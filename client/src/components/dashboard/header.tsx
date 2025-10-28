@@ -183,11 +183,21 @@ export function Header() {
         <Button
           variant={isUnlocked ? "default" : "outline"}
           size="sm"
-          onClick={() => {
-            if (!isUnlocked) {
-              // Trigger audio unlock
-              window.dispatchEvent(new Event('init-audio'));
-              playNotificationSound();
+          onClick={async () => {
+            console.log('🔘 Sound button clicked, current state:', { isUnlocked });
+            
+            // Always trigger audio init and play sound
+            window.dispatchEvent(new Event('init-audio'));
+            
+            // Small delay to ensure init completes
+            await new Promise(resolve => setTimeout(resolve, 150));
+            
+            // Play test sound
+            try {
+              await playNotificationSound();
+              console.log('✅ Test sound played successfully');
+            } catch (err) {
+              console.error('❌ Test sound failed:', err);
             }
           }}
           className="gap-2"
