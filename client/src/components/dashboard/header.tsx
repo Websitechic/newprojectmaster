@@ -30,7 +30,17 @@ export function Header() {
   const { user, logout } = useUser();
   const [_, setLocation] = useLocation();
   const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
-  const { playNotificationSound, isUnlocked } = useNotificationSound();
+  const { playNotificationSound, isUnlocked, isInitialized } = useNotificationSound();
+  const [showUnlockButton, setShowUnlockButton] = useState(false);
+
+  // Only show unlock status when user is logged in AND audio is initialized
+  useEffect(() => {
+    if (user && isInitialized) {
+      setShowUnlockButton(true);
+    } else {
+      setShowUnlockButton(false);
+    }
+  }, [user, isInitialized]);
 
   // Fetch team chat unread counts
   const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({
@@ -158,8 +168,9 @@ export function Header() {
 
   const handleLogout = async () => {
     try {
-      // Clear audio unlock state
+      // Clear audio unlock state completely
       sessionStorage.removeItem('audioUnlocked');
+      setShowUnlockButton(false);
       
       await logout();
       window.location.href = "/auth";
@@ -167,6 +178,7 @@ export function Header() {
       console.error("Logout failed:", error);
       // Still clear audio unlock state on error
       sessionStorage.removeItem('audioUnlocked');
+      setShowUnlockButton(false);
       window.location.href = "/auth";
     }
   };
@@ -185,7 +197,7 @@ export function Header() {
     <header className="h-16 bg-background border-b border-border px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
       {/* Left Section - Audio Unlock Status */}
       <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
-        {user && (
+        {showUnlockButton && (
           <Button
             variant="ghost"
             size="sm"

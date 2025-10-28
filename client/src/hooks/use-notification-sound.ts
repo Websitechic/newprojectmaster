@@ -110,9 +110,13 @@ export function useNotificationSound() {
 
   // Initialize on mount and restore unlock state from sessionStorage
   useEffect(() => {
+    let mounted = true;
+    
     // Initialize audio context first
     const init = async () => {
       await initAudioContext();
+
+      if (!mounted) return;
 
       // Check if audio was previously unlocked AFTER initialization
       const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
@@ -125,15 +129,22 @@ export function useNotificationSound() {
           try {
             await audioContextRef.current.resume();
             console.log('✅ Audio context resumed on restore');
-            setIsUnlocked(true);
+            if (mounted) {
+              setIsUnlocked(true);
+            }
           } catch (err) {
             console.error('Error resuming audio context:', err);
             // If resume fails, audio is not truly unlocked
             sessionStorage.removeItem('audioUnlocked');
             unlockAttemptedRef.current = false;
+            if (mounted) {
+              setIsUnlocked(false);
+            }
           }
         } else {
-          setIsUnlocked(true);
+          if (mounted) {
+            setIsUnlocked(true);
+          }
         }
       }
     };
@@ -147,11 +158,10 @@ export function useNotificationSound() {
     window.addEventListener('init-audio', handleInitAudio);
 
     return () => {
+      mounted = false;
       window.removeEventListener('init-audio', handleInitAudio);
-      // Cleanup audio context on unmount
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close().catch(err => console.error('Error closing audio context:', err));
-      }
+      // Don't close audio context on unmount - keep it alive for page navigation
+      // Only close when user logs out (handled in Header component)
     };
   }, [initAudioContext, unlockAudioContext]);
 
@@ -207,7 +217,7 @@ export function useNotificationSound() {
         }
       }
 
-      // CRITICAL: Resume audio context if suspended
+      // CRITICAL: Always try to resume audio context to handle page navigation
       if (audioContextRef.current.state === 'suspended') {
         console.log('⏸️ Audio context suspended, attempting resume...');
         try {
@@ -224,9 +234,38 @@ export function useNotificationSound() {
           console.error('❌ Failed to resume audio context:', resumeError);
           console.warn('⚠️ Audio may not play - user interaction required');
 
-          // Dispatch event to request user interaction
-          window.dispatchEvent(new CustomEvent('audio-needs-unlock'));
-          return;
+          // Try to unlock via silent buffer
+          if (silentBufferRef.current) {
+            try {
+              const silentSource = audioContextRef.current.createBufferSource();
+              silentSource.buffer = silentBufferRef.current;
+              silentSource.connect(audioContextRef.current.destination);
+              silentSource.start(0);
+              await new Promise(resolve => setTimeout(resolve, 50));
+              
+              if (audioContextRef.current.state === 'running') {
+                console.log('✅ Audio unlocked via silent buffer after navigation');
+                setIsUnlocked(true);
+                sessionStorage.setItem('audioUnlocked', 'true');
+              } else {
+                console.error('❌ Audio context still not running after unlock attempt');
+                return;
+              }
+            } catch (unlockError) {
+              console.error('❌ Silent buffer unlock failed:', unlockError);
+              return;
+            }
+          } else {
+            return;
+          }
+        }
+      } else if (audioContextRef.current.state === 'running') {
+        // Even if running, ensure unlock state is set
+        if (!isUnlocked) {
+          console.log('✅ Audio context running, updating unlock state');
+          setIsUnlocked(true);
+          sessionStorage.setItem('audioUnlocked', 'true');
+          unlockAttemptedRef.current = true;
         }
       }
 
