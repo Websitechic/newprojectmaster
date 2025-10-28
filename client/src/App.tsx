@@ -82,14 +82,12 @@ function GlobalNotificationListener() {
   const { showNotification } = useBrowserNotification();
   const audioUnlockedRef = useRef(false);
 
-  // Initialize audio unlock state from sessionStorage
+  // Track audio unlock state
   useEffect(() => {
     const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
     if (wasUnlocked) {
       audioUnlockedRef.current = true;
-      console.log('✅ Audio was already unlocked in this session');
-      // Ensure audio context is initialized even after page navigation
-      window.dispatchEvent(new Event('init-audio'));
+      console.log('✅ Audio was previously unlocked in this session');
     }
   }, []);
 

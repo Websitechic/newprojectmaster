@@ -33,14 +33,15 @@ export function Header() {
   const { playNotificationSound, isUnlocked, isInitialized } = useNotificationSound();
   const [showUnlockButton, setShowUnlockButton] = useState(false);
 
-  // Only show unlock status when user is logged in AND audio is initialized
+  // Only show unlock button when user is logged in
+  // The button will show current unlock state (enabled/not enabled)
   useEffect(() => {
-    if (user && isInitialized) {
+    if (user) {
       setShowUnlockButton(true);
     } else {
       setShowUnlockButton(false);
     }
-  }, [user, isInitialized]);
+  }, [user]);
 
   // Fetch team chat unread counts
   const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({
