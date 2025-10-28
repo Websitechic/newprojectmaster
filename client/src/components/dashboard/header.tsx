@@ -158,10 +158,15 @@ export function Header() {
 
   const handleLogout = async () => {
     try {
+      // Clear audio unlock state
+      sessionStorage.removeItem('audioUnlocked');
+      
       await logout();
       window.location.href = "/auth";
     } catch (error) {
       console.error("Logout failed:", error);
+      // Still clear audio unlock state on error
+      sessionStorage.removeItem('audioUnlocked');
       window.location.href = "/auth";
     }
   };
@@ -180,18 +185,20 @@ export function Header() {
     <header className="h-16 bg-background border-b border-border px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
       {/* Left Section - Audio Unlock Status */}
       <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            if (!isUnlocked) {
-              window.dispatchEvent(new Event('init-audio'));
-            }
-          }}
-          className={`text-xs ${isUnlocked ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground animate-pulse'}`}
-        >
-          {isUnlocked ? '✓ Sound Enabled' : '🔊 Click to Enable Notification Sound'}
-        </Button>
+        {user && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (!isUnlocked) {
+                window.dispatchEvent(new Event('init-audio'));
+              }
+            }}
+            className={`text-xs ${isUnlocked ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground animate-pulse'}`}
+          >
+            {isUnlocked ? '✓ Sound Enabled' : '🔊 Click to Enable Notification Sound'}
+          </Button>
+        )}
       </div>
 
       {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}
