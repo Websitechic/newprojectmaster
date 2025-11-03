@@ -226,6 +226,13 @@ export function registerRoutes(app: Express): Server {
   // User endpoint for authentication
   app.get("/api/user", (req, res) => {
     try {
+      console.log('Auth check:', { 
+        isAuthenticated: req.isAuthenticated(), 
+        hasUser: !!req.user,
+        sessionID: req.session?.id,
+        cookie: req.session?.cookie 
+      });
+      
       if (req.isAuthenticated() && req.user) {
         res.json(req.user);
       } else {

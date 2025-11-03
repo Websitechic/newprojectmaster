@@ -81,8 +81,12 @@ const registerSchema = z.object({
 
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
+  
+  // Always trust proxy for Replit deployments
+  app.set("trust proxy", 1);
+  
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID || "your-secret-key",
+    secret: process.env.REPL_ID || process.env.SESSION_SECRET || "fallback-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
     rolling: true, // Reset maxAge on every request
@@ -90,17 +94,13 @@ export function setupAuth(app: Express) {
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
     cookie: {
-      secure: app.get("env") === "production", // Use secure cookies in production
+      secure: false, // Set to false for Replit's proxy setup
       httpOnly: true,
       sameSite: "lax",
       maxAge: 60 * 60 * 1000, // 1 hour of inactivity
       path: '/'
     },
     name: 'connect.sid' // Explicit session cookie name
-  };
-
-  if (app.get("env") === "production") {
-    app.set("trust proxy", 1);
   }
 
   app.use(session(sessionSettings));
@@ -177,14 +177,22 @@ export function setupAuth(app: Express) {
           console.error('Error updating user status on login:', error);
         }
 
-        return res.json({
-          message: "Login successful",
-          user: {
-            id: user.id,
-            username: user.username,
-            role: user.role,
-            name: user.name
+        // Ensure session is saved before responding
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error('Session save error:', saveErr);
+            return next(saveErr);
           }
+          
+          return res.json({
+            message: "Login successful",
+            user: {
+              id: user.id,
+              username: user.username,
+              role: user.role,
+              name: user.name
+            }
+          });
         });
       });
     })(req, res, next);
