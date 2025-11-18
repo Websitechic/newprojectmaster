@@ -132,7 +132,7 @@ export default function LeaveApplication() {
     );
   }
 
-  // Interns and project managers have same permissions as staff
+  // All these roles have same permissions to apply for leave
   const isStaffOrIntern = user.role === "staff" || user.role === "intern" || user.role === "project_manager";
 
   // Fetch existing leave applications

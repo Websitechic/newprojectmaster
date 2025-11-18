@@ -5700,15 +5700,15 @@ End of Report
 
   // Leave Applications API Routes
 
-  // Submit leave application (Staff, Interns, Customer Support Officers, and Team Leads)
+  // Submit leave application (Staff, Interns, Customer Support Officers, Team Leads, and Project Managers)
   app.post("/api/leave-applications", upload.single('proofImage'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    if (user.role !== "staff" && user.role !== "intern" && user.role !== "customer_support_officer" && user.role !== "team_lead") {
-      return res.status(403).send("Only staff members, interns, customer support officers, and team leads can submit leave applications");
+    if (user.role !== "staff" && user.role !== "intern" && user.role !== "customer_support_officer" && user.role !== "team_lead" && user.role !== "project_manager") {
+      return res.status(403).send("Only staff members, interns, customer support officers, team leads, and project managers can submit leave applications");
     }
 
     try {
@@ -5816,7 +5816,7 @@ End of Report
     }
   });
 
-  // Get leave applications (Staff and Interns see their own, Managers see all)
+  // Get leave applications (Staff, Interns, Project Managers see their own; Managers see all)
   app.get("/api/leave-applications", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -5827,8 +5827,8 @@ End of Report
     try {
       let applications;
 
-      if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
-        // Project managers, operations managers, and team leads see all applications with user details
+      if (user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
+        // Operations managers and team leads see all applications with user details
         applications = await db
           .select({
             id: leaveApplications.id,
@@ -5849,8 +5849,8 @@ End of Report
           .from(leaveApplications)
           .innerJoin(users, eq(leaveApplications.userId, users.id))
           .orderBy(desc(leaveApplications.appliedAt));
-      } else if (user.role === "staff" || user.role === "intern" || user.role === "customer_support_officer") {
-        // Staff, interns, and customer support officers see only their own applications
+      } else if (user.role === "staff" || user.role === "intern" || user.role === "customer_support_officer" || user.role === "project_manager") {
+        // Staff, interns, customer support officers, and project managers see only their own applications
         applications = await db
           .select()
           .from(leaveApplications)
