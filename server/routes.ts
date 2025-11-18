@@ -220,8 +220,18 @@ export function registerRoutes(app: Express): Server {
     next();
   });
 
-  // Static file serving AFTER API middleware
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  // Static file serving AFTER API middleware with caching
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+    maxAge: '1d', // Cache for 1 day
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, filePath) => {
+      // Set cache control headers for images
+      if (filePath.match(/\.(jpg|jpeg|png|gif|pdf|xlsx|xls|doc|docx)$/i)) {
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+      }
+    }
+  }));
 
   // User endpoint for authentication
   app.get("/api/user", (req, res) => {
@@ -5935,7 +5945,7 @@ End of Report
       const [existingApplication] = await db
         .select()
         .from(leaveApplications)
-        .where(eq(existingApplication.id, applicationId))
+        .where(eq(leaveApplications.id, applicationId))
         .limit(1);
 
       if (!existingApplication) {
@@ -5956,7 +5966,7 @@ End of Report
           reviewedBy: user.id,
           updatedAt: new Date(),
         })
-        .where(eq(existingApplication.id, applicationId))
+        .where(eq(leaveApplications.id, applicationId))
         .returning();
 
       // Create notification for the applicant
