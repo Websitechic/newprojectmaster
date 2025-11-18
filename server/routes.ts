@@ -1657,6 +1657,8 @@ End of Report
 
       // Get current meetings for staff members
       const now = new Date();
+      console.log('🕐 Current server time for meeting detection:', now.toISOString());
+      
       const currentBookings = await db
         .select({
           id: bookings.id,
@@ -1678,6 +1680,16 @@ End of Report
             sql`${bookings.endTime} >= ${now}`
           )
         );
+      
+      console.log('📅 Found current bookings:', currentBookings.length);
+      currentBookings.forEach(booking => {
+        console.log(`  - Booking #${booking.id}: "${booking.title}"`, {
+          start: booking.startTime,
+          end: booking.endTime,
+          participants: booking.participants,
+          participantCount: booking.participants?.length || 0
+        });
+      });
 
       // Add meeting info to staff report
       const staffReportWithMeetings = staffReport.map(staff => {
@@ -1695,6 +1707,10 @@ End of Report
           participantCount: staffMeetings[0].participants.length,
           schedulerName: staffMeetings[0].schedulerName || "Unknown",
         } : null;
+
+        if (currentMeeting) {
+          console.log(`👤 Staff #${staff.id} (${staff.name}) is in meeting: "${currentMeeting.title}"`);
+        }
 
         return {
           ...staff,
