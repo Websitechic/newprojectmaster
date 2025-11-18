@@ -232,7 +232,7 @@ export function registerRoutes(app: Express): Server {
         sessionID: req.session?.id,
         cookie: req.session?.cookie 
       });
-      
+
       if (req.isAuthenticated() && req.user) {
         res.json(req.user);
       } else {
@@ -2557,7 +2557,7 @@ End of Report
         return res.status(404).json({ error: "Project not found for this task" });
       }
 
-      // Check permissions - ensure project.id exists
+      // Check permissions
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isProductOwner = user.role === "product_owner";
@@ -5730,7 +5730,7 @@ End of Report
               type: "task_assigned", // Using existing type
               content: `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
               referenceId: newApplication.id,
-              referenceType: "project", // Using existing type
+              referenceType: "leave_application", // Using a more specific type
             });
         } catch (notificationError) {
           console.error("Error creating notification:", notificationError);
@@ -5864,7 +5864,7 @@ End of Report
       const [existingApplication] = await db
         .select()
         .from(leaveApplications)
-        .where(eq(leaveApplications.id, applicationId))
+        .where(eq(existingApplication.id, applicationId))
         .limit(1);
 
       if (!existingApplication) {
@@ -6073,6 +6073,7 @@ End of Report
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
         (user.role === "staff" && await db
@@ -6188,7 +6189,7 @@ End of Report
 
       // Check if project exists
       const [project] = await db
-        .select()
+                .select()
         .from(projects)
         .where(eq(projects.id, projectId))
         .limit(1);
@@ -8202,6 +8203,12 @@ End of Report
       // Calculate session duration
       const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
       const newTimeSpent = (task.timeSpent || 0) + sessionDuration;
+
+      // Clear the timer interval
+      if (global.timerIntervals && global.timerIntervals.has(taskId)) {
+        clearInterval(global.timerIntervals.get(taskId));
+        global.timerIntervals.delete(taskId);
+      }
 
       // Update task with accumulated time and pause timer
       const [updatedTask] = await db

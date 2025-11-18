@@ -409,6 +409,16 @@ export default function ProjectDetails() {
                           </div>
                         </div>
                       )}
+
+                      {project.manager && (
+                        <div className="flex items-center gap-3">
+                          <User className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">Created By</p>
+                            <p className="text-sm text-muted-foreground">{project.manager.name}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-4">
