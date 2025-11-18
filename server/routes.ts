@@ -381,6 +381,57 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Meeting status checker - runs every minute to broadcast meeting changes
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      
+      // Get all scheduled bookings
+      const allBookings = await db
+        .select({
+          id: bookings.id,
+          startTime: bookings.startTime,
+          endTime: bookings.endTime,
+          participants: bookings.participants,
+        })
+        .from(bookings)
+        .where(eq(bookings.status, "scheduled"));
+      
+      // Check for meetings that just started or ended
+      allBookings.forEach(booking => {
+        const startTime = new Date(booking.startTime);
+        const endTime = new Date(booking.endTime);
+        
+        // Check if meeting is currently active
+        const isActive = startTime <= now && now < endTime;
+        
+        // Broadcast update if there are participants
+        if (booking.participants && booking.participants.length > 0) {
+          if (global.connectedClients) {
+            global.connectedClients.forEach((client) => {
+              if (client.readyState === 1) {
+                try {
+                  client.send(JSON.stringify({
+                    type: 'meeting_update',
+                    data: {
+                      meetingId: booking.id,
+                      status: isActive ? 'active' : 'inactive',
+                      timestamp: now.toISOString()
+                    }
+                  }));
+                } catch (error) {
+                  console.error('Error broadcasting meeting status:', error);
+                }
+              }
+            });
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error in meeting status check:", error);
+    }
+  }, 60000); // Run every minute
+
   // Enhanced deadline and notification checking - runs every hour
   setInterval(async () => {
     try {
@@ -1657,7 +1708,8 @@ End of Report
 
       // Get current meetings for staff members
       const now = new Date();
-      console.log('🕐 Current server time for meeting detection:', now.toISOString());
+      const nowISO = now.toISOString();
+      console.log('🕐 Current server time for meeting detection:', nowISO);
       
       const currentBookings = await db
         .select({
@@ -1673,28 +1725,32 @@ End of Report
         })
         .from(bookings)
         .leftJoin(users, eq(bookings.scheduledBy, users.id))
-        .where(
-          and(
-            eq(bookings.status, "scheduled"),
-            sql`${bookings.startTime} <= ${now}`,
-            sql`${bookings.endTime} >= ${now}`
-          )
-        );
+        .where(eq(bookings.status, "scheduled"));
       
-      console.log('📅 Found current bookings:', currentBookings.length);
-      currentBookings.forEach(booking => {
-        console.log(`  - Booking #${booking.id}: "${booking.title}"`, {
-          start: booking.startTime,
-          end: booking.endTime,
-          participants: booking.participants,
-          participantCount: booking.participants?.length || 0
-        });
+      // Filter bookings that are currently active (start <= now < end)
+      const activeBookings = currentBookings.filter(booking => {
+        const startTime = new Date(booking.startTime);
+        const endTime = new Date(booking.endTime);
+        const isActive = startTime <= now && now < endTime;
+        
+        if (isActive) {
+          console.log(`✅ Active booking #${booking.id}: "${booking.title}"`, {
+            start: startTime.toISOString(),
+            end: endTime.toISOString(),
+            now: nowISO,
+            participants: booking.participants?.length || 0
+          });
+        }
+        
+        return isActive;
       });
+      
+      console.log('📅 Found active bookings:', activeBookings.length, 'out of', currentBookings.length, 'scheduled');
 
       // Add meeting info to staff report
       const staffReportWithMeetings = staffReport.map(staff => {
-        const staffMeetings = currentBookings.filter(booking =>
-          booking.participants.includes(staff.id)
+        const staffMeetings = activeBookings.filter(booking =>
+          booking.participants && booking.participants.includes(staff.id)
         );
 
         const currentMeeting = staffMeetings.length > 0 ? {
@@ -1709,7 +1765,7 @@ End of Report
         } : null;
 
         if (currentMeeting) {
-          console.log(`👤 Staff #${staff.id} (${staff.name}) is in meeting: "${currentMeeting.title}"`);
+          console.log(`👤 Staff #${staff.id} (${staff.name}) is in meeting: "${currentMeeting.title}" scheduled by ${currentMeeting.schedulerName}`);
         }
 
         return {

@@ -1,5 +1,5 @@
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -172,12 +172,27 @@ export default function StaffReport() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [location] = useLocation();
+  const queryClient = useQueryClient();
 
   // Check authentication and authorization FIRST
   const hasAccess = user?.role === "project_manager" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager" || user?.specialization === "replit_development" || user?.specialization === "Replit Development";
 
   const [filterSpecialization, setFilterSpecialization] = useState<string | null>(null);
   const [taskView, setTaskView] = useState<'active' | 'all'>('active');
+
+  // Listen for WebSocket meeting updates and refresh data
+  useEffect(() => {
+    const handleMeetingUpdate = () => {
+      // Invalidate and refetch staff report when meetings change
+      queryClient.invalidateQueries({ queryKey: ["/api/staff-report"] });
+    };
+
+    window.addEventListener('websocket:meeting_update', handleMeetingUpdate);
+
+    return () => {
+      window.removeEventListener('websocket:meeting_update', handleMeetingUpdate);
+    };
+  }, []);
 
   const { data: staffReport, isLoading, error } = useQuery<StaffMember[], Error>({
     queryKey: ["/api/staff-report"],
@@ -211,8 +226,8 @@ export default function StaffReport() {
       }
       return failureCount < 3;
     },
-    refetchOnWindowFocus: false,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000, // Refresh every 10 seconds for real-time meeting updates
     onError: (error) => {
       console.error("Staff report query error:", error);
       toast({
@@ -676,10 +691,12 @@ export default function StaffReport() {
                           )}
                         </TableCell>
                         <TableCell className="text-center">
-                          {staff.currentMeeting?.schedulerName ? (
-                            <span className="text-sm font-medium">{staff.currentMeeting.schedulerName}</span>
+                          {staff.currentMeeting ? (
+                            <div className="text-sm">
+                              <span className="font-medium">{staff.currentMeeting.schedulerName || "Unknown"}</span>
+                            </div>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Unknown</span>
+                            <span className="text-xs text-muted-foreground">N/A</span>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
