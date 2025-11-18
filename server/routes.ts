@@ -513,7 +513,7 @@ export function registerRoutes(app: Express): Server {
           .leftJoin(users, eq(projects.managerId, users.id))
           .where(eq(projects.clientId, user.id))
           .orderBy(desc(projects.updatedAt));
-        
+
         projectsList = projectsList.map(p => ({
           ...p.project,
           manager: p.manager ? {
@@ -3260,10 +3260,6 @@ End of Report
       }
 
       // Additional validation
-      if (!staffName.trim()) {
-        return res.status(400).json({ error: "Staff name cannot be empty" });
-      }
-
       if (!whyQuery.trim()) {
         return res.status(400).json({ error: "Query explanation cannot be empty" });
       }
@@ -3484,7 +3480,7 @@ End of Report
   // Update staff complaint status (Operations Manager only)
   app.put("/api/staff-complaints/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
+      return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
@@ -3542,7 +3538,7 @@ End of Report
             "task_updated",
             `Your staff complaint has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
             complaintId,
-            "project"
+            "project" // Reference type might need adjustment depending on context
           );
         } catch (notificationError) {
           console.error("Error creating notification for staff complaint update:", notificationError);
@@ -5971,15 +5967,13 @@ End of Report
 
       // Create notification for the applicant
       try {
-        await db
-          .insert(notifications)
-          .values({
-            userId: updatedApplication.userId,
-            type: "task_updated", // Using existing type
-            content: `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
-            referenceId: updatedApplication.id,
-            referenceType: "leave_application", // Using a more specific type
-          });
+        await createNotification(
+          updatedApplication.userId,
+          "task_updated",
+          `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
+          updatedApplication.id,
+          "leave_application"
+        );
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
         // Continue execution even if notification fails
@@ -6365,7 +6359,7 @@ End of Report
       // Check user access permissions
       const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
       const isTeamLead = user.role === 'team_lead';
-      const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
+      const isProjectManager = user.role === 'project_manager' && project.managerId=== user.id;
       const isCustomerSupportOfficer = user.role === 'customer_support_officer';
       const isClient = user.role === 'client' && project.clientId === user.id;
 
