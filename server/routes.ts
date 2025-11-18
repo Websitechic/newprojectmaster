@@ -495,10 +495,23 @@ export function registerRoutes(app: Express): Server {
       if (user.role === "client") {
         // Clients see projects they're assigned to as clientId
         projectsList = await db
-          .select()
+          .select({
+            project: projects,
+            manager: users,
+          })
           .from(projects)
+          .leftJoin(users, eq(projects.managerId, users.id))
           .where(eq(projects.clientId, user.id))
           .orderBy(desc(projects.updatedAt));
+        
+        projectsList = projectsList.map(p => ({
+          ...p.project,
+          manager: p.manager ? {
+            id: p.manager.id,
+            name: p.manager.name,
+            email: p.manager.email,
+          } : null
+        }));
       } else if (user.role === "project_manager") {
         if (user.projectManagerType === "supervisor") {
           // Supervisor project managers see only DPL Outright and DPL Partnership projects
@@ -2003,6 +2016,64 @@ End of Report
     } catch (error) {
       console.error("Error deleting SOP:", error);
       res.status(500).json({ error: "Failed to delete SOP" });
+    }
+  });
+
+  // Get individual project details
+  app.get("/api/projects/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+
+    try {
+      const [projectData] = await db
+        .select({
+          project: projects,
+          manager: users,
+          client: users,
+        })
+        .from(projects)
+        .leftJoin(users, eq(projects.managerId, users.id))
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!projectData || !projectData.project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const project = {
+        ...projectData.project,
+        manager: projectData.manager ? {
+          id: projectData.manager.id,
+          name: projectData.manager.name,
+          email: projectData.manager.email,
+        } : null,
+      };
+
+      // Get client info separately if clientId exists
+      if (project.clientId) {
+        const [clientData] = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+          })
+          .from(users)
+          .where(eq(users.id, project.clientId))
+          .limit(1);
+
+        if (clientData) {
+          project.client = clientData;
+        }
+      }
+
+      res.json(project);
+    } catch (error) {
+      console.error("Error fetching project:", error);
+      res.status(500).json({ error: "Failed to fetch project" });
     }
   });
 
