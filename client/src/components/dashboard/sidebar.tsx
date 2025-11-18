@@ -334,6 +334,13 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
     {
       icon: <Calendar size={20} />,
+      label: "Leave Application",
+      href: "/dashboard/leave-application",
+      hasUpdate: indicators.leaveApplications,
+      key: "leave-application",
+    },
+    {
+      icon: <Calendar size={20} />,
       label: "Leave Management",
       href: "/dashboard/leave-management",
       key: "leave-management",
