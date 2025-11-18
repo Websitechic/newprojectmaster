@@ -1,10 +1,9 @@
 import { Server as HTTPServer } from "http";
-import { Server as SocketIOServer } from "socket.io";
+import { Server as SocketIOServer, Socket } from "socket.io";
 import { db } from "@db";
 import { projectMembers } from "@db/schema";
 import { eq } from "drizzle-orm";
-import { Session } from "express-session";
-import { Server as WsServer } from "socket.io";
+import type { Session } from "express-session";
 
 interface JoinRoomData {
   roomId: string;
@@ -17,17 +16,15 @@ interface SignalData {
   callerId?: string;
 }
 
-// Extend the Socket type to include session
-declare module "socket.io" {
-  interface Socket {
-    request: {
-      session: Session & {
-        passport?: {
-          user?: number;
-        };
+// Properly extend the Socket type with session
+interface CustomSocket extends Socket {
+  request: Socket["request"] & {
+    session: Session & {
+      passport?: {
+        user?: number;
       };
     };
-  }
+  };
 }
 
 export function setupVideoSocket(httpServer: HTTPServer) {
@@ -40,27 +37,40 @@ export function setupVideoSocket(httpServer: HTTPServer) {
       methods: ["GET", "POST"],
       credentials: true
     },
-    transports: ["websocket", "polling"]
+    transports: ["websocket", "polling"],
+    cookie: {
+      name: "io",
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax"
+    }
   });
 
-  // Authentication middleware
-  io.use(async (socket, next) => {
+  // Socket authentication middleware
+  io.use(async (socket: CustomSocket, next) => {
     try {
-      const session = socket.request.session;
-      if (session?.passport?.user) {
-        socket.data.userId = session.passport.user;
-        next();
-      } else {
-        next(new Error("Authentication required"));
+      if (!socket.request.session) {
+        console.error("No session found in socket request");
+        return next(new Error("No session found"));
       }
+
+      const userId = socket.request.session?.passport?.user;
+      if (!userId) {
+        console.error("No user found in session passport");
+        return next(new Error("Authentication required"));
+      }
+
+      socket.data.userId = userId;
+      console.log("Socket authenticated for user:", userId);
+      next();
     } catch (error) {
       console.error("Socket authentication error:", error);
       next(new Error("Authentication failed"));
     }
   });
 
-  io.on("connection", (socket) => {
-    console.log("New socket connection:", socket.id);
+  io.on("connection", (socket: CustomSocket) => {
+    console.log("New socket connection:", socket.id, "User:", socket.data.userId);
 
     socket.on("join-room", async ({ roomId, userId }: JoinRoomData) => {
       try {

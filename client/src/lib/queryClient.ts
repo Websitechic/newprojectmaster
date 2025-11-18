@@ -18,9 +18,11 @@ export const queryClient = new QueryClient({
 
         return res.json();
       },
-      refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      refetchInterval: false, // Disabled by default, enabled per-query where needed
+      refetchOnWindowFocus: true, // Refetch when user returns to tab for fresh data
+      refetchOnMount: true, // Refetch on mount for fresh data
+      refetchOnReconnect: true, // Refetch on reconnect
+      staleTime: 30000, // Mark data as stale after 30 seconds
       retry: false,
     },
     mutations: {

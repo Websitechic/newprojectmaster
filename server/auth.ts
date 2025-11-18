@@ -5,10 +5,11 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, type User as SelectUser } from "@db/schema";
+import { users, type User as SelectUser, UserStatus } from "@db/schema";
 import { db } from "@db";
-import { eq } from "drizzle-orm";
+import { eq, and, gt, or } from "drizzle-orm";
 import { z } from "zod";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./services/email";
 
 const scryptAsync = promisify(scrypt);
 const crypto = {
@@ -18,14 +19,37 @@ const crypto = {
     return `${buf.toString("hex")}.${salt}`;
   },
   compare: async (suppliedPassword: string, storedPassword: string) => {
-    const [hashedPassword, salt] = storedPassword.split(".");
-    const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
-    const suppliedPasswordBuf = (await scryptAsync(
-      suppliedPassword,
-      salt,
-      64
-    )) as Buffer;
-    return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+    // Handle malformed password hashes
+    if (!storedPassword || typeof storedPassword !== 'string') {
+      console.error('Invalid stored password format:', storedPassword);
+      return false;
+    }
+
+    const parts = storedPassword.split(".");
+    if (parts.length !== 2) {
+      console.error('Malformed password hash - expected format: hash.salt, got:', storedPassword);
+      return false;
+    }
+
+    const [hashedPassword, salt] = parts;
+
+    if (!hashedPassword || !salt) {
+      console.error('Missing hash or salt in stored password');
+      return false;
+    }
+
+    try {
+      const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
+      const suppliedPasswordBuf = (await scryptAsync(
+        suppliedPassword,
+        salt,
+        64
+      )) as Buffer;
+      return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+    } catch (error) {
+      console.error('Error comparing passwords:', error);
+      return false;
+    }
   },
 };
 
@@ -47,28 +71,36 @@ const registerSchema = z.object({
   password: z.string().min(6),
   name: z.string(),
   email: z.string().email(),
-  role: z.enum(["client", "project_manager", "staff"]),
+  role: z.enum(["client", "project_manager", "staff", "intern", "product_owner", "customer_support_officer", "operations_manager", "team_lead"]),
+  breakOneTime: z.string().optional(), // Daily break time
+  specialization: z.string().optional(),
+  productService: z.string().optional(),
+  clientType: z.string().optional(),
+  projectManagerType: z.enum(["main", "supervisor"]).optional() // New field for project manager type
 });
 
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
+  
+  // Always trust proxy for Replit deployments
+  app.set("trust proxy", 1);
+  
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID || "your-secret-key",
+    secret: process.env.REPL_ID || process.env.SESSION_SECRET || "fallback-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
+    rolling: true, // Reset maxAge on every request
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
     cookie: {
-      secure: app.get("env") === "production",
+      secure: false, // Set to false for Replit's proxy setup
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-  };
-
-  if (app.get("env") === "production") {
-    app.set("trust proxy", 1);
+      maxAge: 60 * 60 * 1000, // 1 hour of inactivity
+      path: '/'
+    },
+    name: 'connect.sid' // Explicit session cookie name
   }
 
   app.use(session(sessionSettings));
@@ -116,31 +148,75 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
+    passport.authenticate("local", async (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
         return next(err);
       }
       if (!user) {
         return res.status(401).json({ message: info.message || "Authentication failed" });
       }
-      req.logIn(user, (err) => {
+
+      // Login the user
+      req.logIn(user, async (err) => {
         if (err) {
           return next(err);
         }
-        return res.json({ 
-          message: "Login successful",
-          user: {
-            id: user.id,
-            username: user.username,
-            role: user.role,
-            name: user.name
+
+        // Update user status to online and last active timestamp
+        try {
+          await db
+            .update(users)
+            .set({
+              status: UserStatus.ONLINE,
+              lastActive: new Date()
+            })
+            .where(eq(users.id, user.id));
+
+          console.log(`User ${user.id} (${user.username}) is now online`);
+        } catch (error) {
+          console.error('Error updating user status on login:', error);
+        }
+
+        // Ensure session is saved before responding
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error('Session save error:', saveErr);
+            return next(saveErr);
           }
+          
+          return res.json({
+            message: "Login successful",
+            user: {
+              id: user.id,
+              username: user.username,
+              role: user.role,
+              name: user.name
+            }
+          });
         });
       });
     })(req, res, next);
   });
 
-  app.post("/api/logout", (req, res, next) => {
+  app.post("/api/logout", async (req, res, next) => {
+    // First update the user's status to offline
+    if (req.isAuthenticated() && req.user) {
+      try {
+        await db
+          .update(users)
+          .set({
+            status: UserStatus.OFFLINE,
+            lastActive: new Date()
+          })
+          .where(eq(users.id, req.user.id));
+
+        console.log(`User ${req.user.id} (${req.user.username}) is now offline`);
+      } catch (error) {
+        console.error('Error updating user status on logout:', error);
+      }
+    }
+
+    // Then proceed with the normal logout
     req.logout((err) => {
       if (err) {
         return next(err);
@@ -172,7 +248,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password, role, name, email } = result.data;
+      const { username, password, role, name, email, breakOneTime, specialization, productService, clientType, projectManagerType } = result.data;
 
       // Check if user already exists
       const [existingUser] = await db
@@ -185,20 +261,55 @@ export function setupAuth(app: Express) {
         return res.status(400).send("Username already exists");
       }
 
+      // Validate break time for non-client users
+      if (role !== "client") {
+        if (!breakOneTime) {
+          return res.status(400).send("Daily break time is required for staff and project managers");
+        }
+      }
+
+      // Validate project manager type
+      if (role === "project_manager" && (!projectManagerType || !["main", "supervisor"].includes(projectManagerType))) {
+        return res.status(400).send("Project manager type is required and must be either 'main' or 'supervisor'");
+      }
+
       // Hash the password
       const hashedPassword = await crypto.hash(password);
+
+      // Prepare user data
+      const userData: any = {
+        username,
+        password: hashedPassword,
+        name,
+        email,
+        role: role as any,
+        status: UserStatus.ONLINE, // Set to online since they'll be logged in
+        emailVerified: false,
+        onboardingStatus: "not_onboarded",
+        projectManagerType: role === "project_manager" ? projectManagerType : null,
+      };
+
+      // Add specialization for staff and intern users
+      if ((role === "staff" || role === "intern") && specialization) {
+        userData.specialization = specialization as any;
+      }
+
+      // Add client-specific fields
+      if (role === "client") {
+        if (productService) userData.productService = productService as any;
+        if (clientType) userData.clientType = clientType as any;
+      }
+
+      // Add break times for non-client users
+      if (role !== "client") {
+        if (breakOneTime) userData.breakOneTime = breakOneTime;
+      }
+
 
       // Create the new user
       const [newUser] = await db
         .insert(users)
-        .values({
-          username,
-          password: hashedPassword,
-          role,
-          name,
-          email,
-          status: "offline",
-        })
+        .values(userData)
         .returning();
 
       // Log the user in after registration
@@ -208,9 +319,9 @@ export function setupAuth(app: Express) {
         }
         return res.json({
           message: "Registration successful",
-          user: { 
-            id: newUser.id, 
-            username: newUser.username, 
+          user: {
+            id: newUser.id,
+            username: newUser.username,
             role: newUser.role,
             name: newUser.name
           },

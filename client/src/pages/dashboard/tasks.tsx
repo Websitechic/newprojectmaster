@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { useLocation } from "wouter";
@@ -11,38 +11,52 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import type { Task, Project } from "@db/schema";
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, Search } from "lucide-react";
 
 export default function Tasks() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
   const [selectedProject, setSelectedProject] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
+  const { data: tasks, isLoading: tasksLoading, error: tasksError } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
-    refetchOnWindowFocus: true,
-    staleTime: 0, // Always fetch fresh data
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchInterval: false,
+    staleTime: Infinity, // Never mark as stale - rely on optimistic updates
     gcTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: !!user, // Only fetch if user is authenticated
   });
 
-  const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
+  const { data: projects, isLoading: projectsLoading, error: projectsError } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
-    refetchOnWindowFocus: true,
-    staleTime: 0, // Always fetch fresh data
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    staleTime: 30000, // 30 seconds
     gcTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled: !!user, // Only fetch if user is authenticated
   });
 
   const filteredTasks = tasks?.filter((task: Task) => {
+    // Apply search filter
+    if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
     if (filter === "all" && !selectedProject) return true;
     if (filter !== "all" && !selectedProject) return task.status === filter;
     if (filter === "all" && selectedProject) return task.projectId === parseInt(selectedProject);
     return task.status === filter && task.projectId === parseInt(selectedProject);
   });
+
+  // Mock definition of canCreateTasks for demonstration since it's missing
+  const canCreateTasks = user?.role === "project_manager" || (user?.role === "staff" && user?.specialization === "technical_support");
 
   if (!user) {
     return null; // Let the auth redirect handle this
@@ -56,40 +70,72 @@ export default function Tasks() {
     );
   }
 
+  // Handle potential errors from queries
+  if (tasksError) {
+    return (
+      <div className="flex items-center justify-center h-screen text-red-500">
+        Error loading tasks: {tasksError.message}
+      </div>
+    );
+  }
+  if (projectsError) {
+    return (
+      <div className="flex items-center justify-center h-screen text-red-500">
+        Error loading projects: {projectsError.message}
+      </div>
+    );
+  }
+
+
   return (
     <div className="flex h-screen">
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <div className="flex-1 overflow-auto p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Tasks</h1>
-            <div className="flex gap-4">
-              <Select value={selectedProject} onValueChange={setSelectedProject}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Projects</SelectItem>
-                  {projects?.map((project) => (
-                    <SelectItem key={project.id} value={project.id.toString()}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Tasks</SelectItem>
-                  <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="review">Review</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="space-y-4 mb-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold">Tasks</h1>
+              <div className="flex gap-4">
+                <Select value={selectedProject} onValueChange={setSelectedProject}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Projects</SelectItem>
+                    {projects?.map((project) => (
+                      <SelectItem key={project.id} value={project.id.toString()}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filter} onValueChange={setFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Tasks</SelectItem>
+                    <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="review">Review</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search tasks by title..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
             </div>
           </div>
 

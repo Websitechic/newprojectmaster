@@ -1,56 +1,309 @@
-import { Bell, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Bell, MessageSquare, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { useUser } from "@/hooks/use-user";
+import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { useUnreadMessages } from "@/hooks/use-unread-messages";
+
+interface UnreadMessage {
+  type: "team_chat" | "direct_message";
+  id: number;
+  name: string;
+  unreadCount: number;
+  projectId?: number;
+  userId?: number;
+}
 
 export function Header() {
+  const { user, logout } = useUser();
+  const [_, setLocation] = useLocation();
+  const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
+  const { playNotificationSound, isUnlocked, isInitialized } = useNotificationSound();
+  const [showUnlockButton, setShowUnlockButton] = useState(false);
+
+  // Only show unlock button when user is logged in
+  // The button will show current unlock state (enabled/not enabled)
+  useEffect(() => {
+    if (user) {
+      setShowUnlockButton(true);
+    } else {
+      setShowUnlockButton(false);
+    }
+  }, [user]);
+
+  // Fetch team chat unread counts
+  const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({
+    queryKey: ["/api/projects/unread-counts"],
+    queryFn: async () => {
+      const response = await fetch("/api/projects/unread-counts", {
+        credentials: 'include'
+      });
+      if (!response.ok) return {};
+      return await response.json();
+    },
+    enabled: !!user,
+    refetchInterval: 10000,
+  });
+
+  // Fetch direct messages unread count
+  const { data: directMessagesData } = useQuery({
+    queryKey: ["/api/direct-messages/conversations"],
+    queryFn: async () => {
+      const response = await fetch("/api/direct-messages/conversations");
+      if (!response.ok) return [];
+      return await response.json();
+    },
+    enabled: !!user,
+    refetchInterval: 10000,
+  });
+
+  // Fetch project details for team chats
+  const { data: projects = [] } = useQuery({
+    queryKey: ["/api/projects"],
+    queryFn: async () => {
+      const response = await fetch("/api/projects");
+      if (!response.ok) return [];
+      return await response.json();
+    },
+    enabled: !!user,
+  });
+
+  // Fetch notifications to check for mentions
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["/api/notifications"],
+    queryFn: async () => {
+      const response = await fetch("/api/notifications");
+      if (!response.ok) return [];
+      return await response.json();
+    },
+    enabled: !!user,
+    refetchInterval: 10000,
+  });
+
+  // Get mention counts from the hook
+  const { mentionCounts } = useUnreadMessages();
+
+  // Combine unread messages
+  useEffect(() => {
+    const combined: UnreadMessage[] = [];
+
+    // Create a map to track projects with messages/mentions
+    const projectMap = new Map<number, { name: string; count: number; hasMention: boolean }>();
+
+    // Add team chats with unread messages
+    Object.entries(teamChatUnreads).forEach(([projectId, count]) => {
+      if (count > 0) {
+        const project = projects.find((p: any) => p.id === parseInt(projectId));
+        if (project) {
+          projectMap.set(parseInt(projectId), {
+            name: project.name,
+            count: count,
+            hasMention: false,
+          });
+        }
+      }
+    });
+
+    // Add/update with mention counts
+    Object.entries(mentionCounts).forEach(([projectId, count]) => {
+      if (count > 0) {
+        const project = projects.find((p: any) => p.id === parseInt(projectId));
+        if (project) {
+          const existing = projectMap.get(parseInt(projectId));
+          if (existing) {
+            // Update existing entry with mention flag
+            existing.hasMention = true;
+            existing.count += count;
+          } else {
+            // Add new entry for mention only
+            projectMap.set(parseInt(projectId), {
+              name: project.name,
+              count: count,
+              hasMention: true,
+            });
+          }
+        }
+      }
+    });
+
+    // Convert map to combined array
+    projectMap.forEach((data, projectId) => {
+      combined.push({
+        type: "team_chat",
+        id: projectId,
+        name: data.hasMention ? `${data.name} (mentioned)` : data.name,
+        unreadCount: data.count,
+        projectId: projectId,
+      });
+    });
+
+    // Add direct messages with unread messages
+    if (directMessagesData) {
+      directMessagesData.forEach((conv: any) => {
+        if (conv.unreadCount > 0) {
+          combined.push({
+            type: "direct_message",
+            id: conv.user.id,
+            name: conv.user.name,
+            unreadCount: conv.unreadCount,
+            userId: conv.user.id,
+          });
+        }
+      });
+    }
+
+    setUnreadMessages(combined);
+  }, [teamChatUnreads, mentionCounts, directMessagesData, projects]);
+
+  const handleLogout = async () => {
+    try {
+      // Clear audio unlock state completely
+      sessionStorage.removeItem('audioUnlocked');
+      setShowUnlockButton(false);
+      
+      await logout();
+      window.location.href = "/auth";
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Still clear audio unlock state on error
+      sessionStorage.removeItem('audioUnlocked');
+      setShowUnlockButton(false);
+      window.location.href = "/auth";
+    }
+  };
+
+  const handleMessageClick = (message: UnreadMessage) => {
+    if (message.type === "team_chat" && message.projectId) {
+      setLocation(`/dashboard/projects/${message.projectId}/team-chat`);
+    } else if (message.type === "direct_message") {
+      setLocation("/dashboard/direct-messages");
+    }
+  };
+
+  const totalUnread = unreadMessages.reduce((sum, msg) => sum + msg.unreadCount, 0);
+
   return (
-    <header className="h-16 border-b px-6 flex items-center justify-between">
-      <div className="flex items-center flex-1 max-w-lg">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search..."
-            className="pl-10 w-full"
-          />
-        </div>
+    <header className="h-16 bg-background border-b border-border px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
+      {/* Left Section - Audio Unlock Status */}
+      <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
+        {showUnlockButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (!isUnlocked) {
+                window.dispatchEvent(new Event('init-audio'));
+              }
+            }}
+            className={`text-xs ${isUnlocked ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground animate-pulse'}`}
+          >
+            {isUnlocked ? '✓ Sound Enabled' : '🔊 Click to Enable Notification Sound'}
+          </Button>
+        )}
       </div>
 
-      <div className="flex items-center gap-4">
+      {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}
+      <div className="flex items-center gap-2 sm:gap-4">
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
+        {/* Unread Messages Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center">
-                3
-              </span>
+            <Button variant="ghost" size="sm" className="relative">
+              <MessageSquare className="w-5 h-5" />
+              {totalUnread > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  {totalUnread > 9 ? "9+" : totalUnread}
+                </Badge>
+              )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuItem className="cursor-pointer">
-              <div className="flex flex-col">
-                <p className="font-medium">New task assigned</p>
-                <p className="text-sm text-muted-foreground">
-                  John assigned you a new task
-                </p>
+          <DropdownMenuContent align="end" className="w-72">
+            <div className="px-2 py-1.5 text-sm font-semibold">
+              Unread Messages
+            </div>
+            <DropdownMenuSeparator />
+            {unreadMessages.length === 0 ? (
+              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                No unread messages
               </div>
+            ) : (
+              unreadMessages.map((message) => (
+                <DropdownMenuItem
+                  key={`${message.type}-${message.id}`}
+                  onClick={() => handleMessageClick(message)}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-medium">{message.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {message.type === "team_chat" ? "Team Chat" : "Direct Message"}
+                      </span>
+                    </div>
+                    <Badge variant="destructive" className="ml-2">
+                      {message.unreadCount}
+                    </Badge>
+                  </div>
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Notifications */}
+        <NotificationsDropdown />
+
+        
+
+        {/* Profile Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">
+                  {user?.name?.charAt(0) || 'U'}
+                </span>
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <div className="flex flex-col space-y-1 p-2">
+              <p className="text-sm font-medium leading-none">{user?.name}</p>
+              <p className="text-xs leading-none text-muted-foreground capitalize">
+                {user?.role === 'client' ?
+                  `${user?.clientType?.replace('_', ' ') || 'Client'}` :
+                  user?.role?.replace('_', ' ')
+                }
+              </p>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">
-              <div className="flex flex-col">
-                <p className="font-medium">Project update</p>
-                <p className="text-sm text-muted-foreground">
-                  Website redesign is 70% complete
-                </p>
-              </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              className="text-destructive focus:text-destructive"
+              onClick={handleLogout}
+            >
+              Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

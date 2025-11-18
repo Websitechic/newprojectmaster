@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -12,19 +12,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash, Plus } from "lucide-react";
-import type { Task } from "@db/schema";
+import { Pencil, Trash, Plus, Clock } from "lucide-react";
+import type { Task, Project } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 
 interface TaskFormData {
   title: string;
   description: string;
-  status: 'todo' | 'in_progress' | 'completed' | 'review';
+  status: 'todo' | 'in_progress' | 'completed' | 'review' | 'technical_support';
   assigneeId: string;
+  startDate: string;
   deadline: string;
+  workingHours: string;
+  workingMinutes: string;
 }
 
 const defaultTask: TaskFormData = {
@@ -32,10 +36,21 @@ const defaultTask: TaskFormData = {
   description: "",
   status: "todo",
   assigneeId: "",
+  startDate: "",
   deadline: "",
+  workingHours: "",
+  workingMinutes: "0",
 };
 
-export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: number }) {
+interface TaskListProps {
+  tasks: Task[];
+  projectId?: number;
+  isStaffView?: boolean;
+  showNewTaskButton?: boolean;
+  showProjectInfo?: boolean;
+}
+
+export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true, showProjectInfo = false }: TaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -43,32 +58,111 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<TaskFormData>(defaultTask);
 
-  const { data: staff } = useQuery<{ id: number; name: string }[]>({
+  // State for managing expanded descriptions
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
+
+  const toggleDescription = (taskId: number) => {
+    setExpandedDescriptions((prev) => ({
+      ...prev,
+      [taskId]: !prev[taskId],
+    }));
+  };
+
+  // State to track real-time timer updates
+  const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
+
+  // Update local timers every second for running tasks
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLocalTimers(prev => {
+        const newTimers = { ...prev };
+        tasks.forEach(task => {
+          if (task.isTimerRunning && task.timerStartTime) {
+            const elapsedSinceStart = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
+            newTimers[task.id] = (task.timeSpent || 0) + elapsedSinceStart;
+          } else {
+            newTimers[task.id] = task.timeSpent || 0;
+          }
+        });
+        return newTimers;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [tasks]);
+
+  // Listen for WebSocket timer events and invalidate queries
+  useEffect(() => {
+    const handleTimerEvent = () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+      }
+    };
+
+    window.addEventListener('websocket:task_timer_started', handleTimerEvent);
+    window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
+    window.addEventListener('websocket:task_timer_update', handleTimerEvent);
+
+    return () => {
+      window.removeEventListener('websocket:task_timer_started', handleTimerEvent);
+      window.removeEventListener('websocket:task_timer_paused', handleTimerEvent);
+      window.removeEventListener('websocket:task_timer_update', handleTimerEvent);
+    };
+  }, [queryClient, projectId]);
+
+  const { data: staff, isLoading: staffLoading } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/staff", projectId],
     refetchOnWindowFocus: true,
     enabled: !!user, // Only fetch if user is authenticated
   });
 
+  // Get all projects to display project names when showProjectInfo is true
+  const { data: projects } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    enabled: !!user && showProjectInfo,
+  });
+
+  // Create a map of project IDs to project names
+  const projectMap = projects?.reduce((acc, project) => {
+    acc[project.id] = project.name;
+    return acc;
+  }, {} as Record<number, string>) || {};
+
+  // Removed WebSocket listeners to prevent infinite re-render loop
+  // Optimistic updates in mutations handle immediate UI updates
+
   const handleEditClick = (task: Task) => {
     setEditTask(task);
+
     setFormData({
       title: task.title,
       description: task.description || "",
       status: task.status as TaskFormData["status"] || "todo",
       assigneeId: task.assigneeId?.toString() || "",
+      startDate: task.startDate ? new Date(task.startDate).toISOString().slice(0, 16) : "",
       deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : "",
+      workingHours: task.workingHours?.toString() || "",
+      workingMinutes: task.workingMinutes?.toString() || "0",
     });
     setIsDialogOpen(true);
   };
 
   const handleNewTask = () => {
     setEditTask(null);
-    setFormData(defaultTask);
+    // If technical support staff, default to assigning to themselves
+    const initialFormData = user?.role === "staff" && user?.specialization === "technical_support"
+      ? { ...defaultTask, assigneeId: user.id.toString() }
+      : defaultTask;
+    setFormData(initialFormData);
     setIsDialogOpen(true);
   };
 
   const createTask = useMutation({
     mutationFn: async (data: TaskFormData) => {
+      const hours = parseInt(data.workingHours) || 0;
+      const minutes = parseInt(data.workingMinutes || '0') || 0;
+
       const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -77,7 +171,10 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
           ...data,
           projectId,
           assigneeId: data.assigneeId && data.assigneeId !== 'unassigned' ? parseInt(data.assigneeId) : null,
+          startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+          workingHours: hours || null,
+          workingMinutes: minutes || null,
         }),
       });
 
@@ -87,21 +184,23 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
       }
       return response.json();
     },
-    onSuccess: (data) => {
-      // Update both global and project-specific tasks
+    onSuccess: (newTask) => {
+      console.log("Task created, updating cache:", newTask);
+
+      // Immediately update the cache with the new task
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
-        if (!oldTasks) return [data];
-        return [...oldTasks, data];
+        const updated = oldTasks ? [newTask, ...oldTasks] : [newTask];
+        console.log("Updated global tasks cache:", updated.length, "tasks");
+        return updated;
       });
 
-      queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
-        if (!oldTasks) return [data];
-        return [...oldTasks, data];
-      });
-
-      // Invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+      if (projectId) {
+        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+          const updated = oldTasks ? [newTask, ...oldTasks] : [newTask];
+          console.log("Updated project tasks cache:", updated.length, "tasks");
+          return updated;
+        });
+      }
 
       setIsDialogOpen(false);
       setFormData(defaultTask);
@@ -123,6 +222,22 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
     mutationFn: async (data: TaskFormData) => {
       if (!editTask) throw new Error("No task selected for update");
 
+      const hours = parseInt(data.workingHours) || 0;
+      const minutes = parseInt(data.workingMinutes || '0') || 0;
+
+      // Auto-pause timer if status is changing to review, completed, or technical_support
+      if ((data.status === 'review' || data.status === 'completed' || data.status === 'technical_support') && 
+          editTask.isTimerRunning) {
+        try {
+          await fetch(`/api/tasks/${editTask.id}/pause-timer`, {
+            method: "POST",
+            credentials: 'include',
+          });
+        } catch (error) {
+          console.error("Failed to auto-pause timer:", error);
+        }
+      }
+
       const response = await fetch(`/api/tasks/${editTask.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -130,7 +245,10 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
         body: JSON.stringify({
           ...data,
           assigneeId: data.assigneeId && data.assigneeId !== 'unassigned' ? parseInt(data.assigneeId) : null,
+          startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+          workingHours: hours || null,
+          workingMinutes: minutes || null,
         }),
       });
 
@@ -141,17 +259,25 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
 
       return response.json();
     },
-    onSuccess: (response) => {
-      // Update the cache immediately
+    onSuccess: (updatedTask) => {
+      // Update the cache immediately with the updated task
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
-        if (!oldTasks) return [response.task];
-        return oldTasks.map(task => task.id === response.task.id ? response.task : task);
+        if (!oldTasks) return [updatedTask];
+        return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
       });
 
-      queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
-        if (!oldTasks) return [response.task];
-        return oldTasks.map(task => task.id === response.task.id ? response.task : task);
-      });
+      if (projectId) {
+        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+          if (!oldTasks) return [updatedTask];
+          return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+        });
+      }
+
+      // Invalidate queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+      }
 
       setIsDialogOpen(false);
       setEditTask(null);
@@ -180,10 +306,20 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
         const errorText = await response.text();
         throw new Error(errorText || 'Failed to delete task');
       }
+      return taskId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] }); //Invalidate project tasks as well
+    onSuccess: (deletedTaskId) => {
+      // Optimistically remove the task from cache
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
+        return oldTasks ? oldTasks.filter(task => task.id !== deletedTaskId) : [];
+      });
+
+      if (projectId) {
+        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+          return oldTasks ? oldTasks.filter(task => task.id !== deletedTaskId) : [];
+        });
+      }
+
       toast({
         title: "Success",
         description: "Task deleted successfully",
@@ -198,6 +334,13 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
     },
   });
 
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editTask) {
@@ -207,13 +350,54 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
     }
   };
 
+  // Filter tasks for staff view to only show tasks assigned to the current user
+  const filteredTasks = isStaffView
+    ? tasks.filter((task) => task.assigneeId === user?.staffId)
+    : tasks;
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+          case 'todo': return 'bg-gray-100 text-gray-800';
+          case 'in_progress': return 'bg-blue-100 text-blue-800';
+          case 'completed': return 'bg-green-100 text-green-800';
+          case 'review': return 'bg-yellow-100 text-yellow-800';
+          case 'technical_support': return 'bg-red-100 text-red-800';
+          case 'pending': return 'bg-orange-100 text-orange-800';
+          default: return 'bg-gray-100 text-gray-800';
+        }
+      };
+
+    const formatDescription = (description: string | null | undefined, taskId: number) => {
+        if (!description) return "No description";
+        const isExpanded = expandedDescriptions[taskId];
+        const maxLength = 50; // Define your desired max length for truncation
+
+        if (description.length <= maxLength) {
+          return description;
+        }
+
+        return (
+          <span>
+            {isExpanded ? description : description.substring(0, maxLength) + "..."}
+            <button
+              onClick={() => toggleDescription(taskId)}
+              className="ml-2 text-blue-500 hover:underline"
+            >
+              {isExpanded ? "Show less" : "Show more"}
+            </button>
+          </span>
+        );
+      };
+
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <Button onClick={handleNewTask}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Task
-        </Button>
+        { !isStaffView && showNewTaskButton && (user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "customer_support_officer" || user?.role === "team_lead" || (user?.role === "staff" && user?.specialization === "technical_support")) && (
+          <Button onClick={handleNewTask}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Task
+          </Button>
+        )}
       </div>
 
       <div className="rounded-md border">
@@ -224,45 +408,118 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
               <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Assignee</TableHead>
+              {showProjectInfo && <TableHead>Project</TableHead>}
+              {showProjectInfo && <TableHead>Time Spent</TableHead>}
+              <TableHead>Start Date</TableHead>
               <TableHead>Deadline</TableHead>
+              <TableHead>Working Hours</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tasks.map((task) => (
+            {filteredTasks.map((task) => (
               <TableRow key={task.id}>
                 <TableCell className="font-medium">{task.title}</TableCell>
-                <TableCell>{task.description}</TableCell>
+                <TableCell className="max-w-xs">
+                    {formatDescription(task.description, task.id)}
+                </TableCell>
                 <TableCell>
-                  <Badge className={`bg-${task.status === 'completed' ? 'green' : task.status === 'in_progress' ? 'blue' : task.status === 'review' ? 'yellow' : 'gray'}-500`}>
-                    {task.status?.replace('_', ' ') || 'todo'}
+                  <Badge className={getStatusColor(task.status)}>
+                    <div className="text-center leading-tight">
+                      {(task.status?.replace('_', ' ') || 'todo').split(' ').map((word, idx) => (
+                        <div key={idx}>{word}</div>
+                      ))}
+                    </div>
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {staff?.find((s) => s.id === task.assigneeId)?.name || "Unassigned"}
+                  <div className="text-sm leading-tight">
+                    {(() => {
+                      if (!task || !task.assigneeId) return "Unassigned";
+                      const assignee = staff?.find((s) => s && s.id === task.assigneeId);
+                      const name = assignee?.name || "Unassigned";
+                      const role = assignee?.role === 'team_lead' ? ' (Team Lead)' : '';
+                      return (name + role).split(' ').map((word, idx) => (
+                        <div key={idx}>{word}</div>
+                      ));
+                    })()}
+                  </div>
+                </TableCell>
+                {showProjectInfo && (
+                  <TableCell>
+                    <div className="text-sm leading-tight">
+                      {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
+                        <div key={idx}>{word}</div>
+                      )) : "No Project"}
+                    </div>
+                  </TableCell>
+                )}
+                {showProjectInfo && (
+                  <TableCell>
+                    <div className={`flex items-center gap-1 ${task.isTimerRunning ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
+                      <Clock className="h-4 w-4" />
+                      <span>{formatTime(localTimers[task.id] || task.timeSpent || 0)}</span>
+                      {task.isTimerRunning && (
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
+                <TableCell>
+                  {task.startDate ? (
+                    <div className="text-sm">
+                      <div>{new Date(task.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                      <div className="text-muted-foreground">{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
+                  ) : "Not set"}
                 </TableCell>
                 <TableCell>
-                  {task.deadline
-                    ? new Date(task.deadline).toLocaleDateString()
-                    : "No deadline"}
+                  {task.deadline ? (
+                    <div className="text-sm">
+                      <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                      <div className="text-muted-foreground">{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
+                  ) : "No deadline"}
+                </TableCell>
+                <TableCell>
+                  {task.workingHours || task.workingMinutes ? (() => {
+                    const hours = task.workingHours || 0;
+                    const minutes = task.workingMinutes || 0;
+                    if (hours > 0 && minutes > 0) return `${hours}hr ${minutes}mins`;
+                    if (hours > 0) return `${hours}hr`;
+                    if (minutes > 0) return `${minutes}mins`;
+                    return "Not set";
+                  })() : "Not set"}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditClick(task)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteTask.mutate(task.id)}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {!isStaffView ? (
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (task && task.id) {
+                            handleEditClick(task);
+                          }
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (task && task.id) {
+                            deleteTask.mutate(task.id);
+                          }
+                        }}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">View Only</span>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -271,11 +528,12 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[800px] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editTask ? "Edit Task" : "Create New Task"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Title - Full width */}
             <div className="space-y-2">
               <Label htmlFor="title">Title</Label>
               <Input
@@ -286,65 +544,138 @@ export function TaskList({ tasks, projectId }: { tasks: Task[]; projectId: numbe
                 required
               />
             </div>
+
+            {/* Task Details - Full width */}
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
+              <Label htmlFor="description">Task Details</Label>
+              <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Enter task description"
+                placeholder="Enter detailed task description..."
+                rows={4}
+                className="resize-none min-h-[100px]"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: TaskFormData["status"]) =>
-                  setFormData({ ...formData, status: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="review">Review</SelectItem>
-                </SelectContent>
-              </Select>
+
+            {/* Two column grid for medium screens and up */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: TaskFormData["status"]) =>
+                    setFormData({ ...formData, status: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(!editTask || (!editTask.hasBeenStarted && (editTask.timeSpent || 0) === 0)) && (
+                      <SelectItem value="todo">To Do</SelectItem>
+                    )}
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="review">Review</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="technical_support">Technical Support</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assignee">Assignee</Label>
+                <Select
+                  value={formData.assigneeId}
+                  onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select assignee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {user?.role === "staff" && user?.specialization === "technical_support" ? (
+                      // Technical support staff can only assign to themselves
+                      <SelectItem value={user.id.toString()}>
+                        {user.name} (Me)
+                      </SelectItem>
+                    ) : (
+                      // Project managers can assign to anyone
+                      <>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {staff?.map((member) => (
+                          <SelectItem key={member.id} value={member.id.toString()}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input
+                  id="startDate"
+                  type="datetime-local"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="deadline">Deadline</Label>
+                <Input
+                  id="deadline"
+                  type="datetime-local"
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                />
+              </div>
             </div>
+
+            {/* Working time - Hours and Minutes */}
             <div className="space-y-2">
-              <Label htmlFor="assignee">Assignee</Label>
-              <Select
-                value={formData.assigneeId}
-                onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select assignee" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {staff?.map((member) => (
-                    <SelectItem key={member.id} value={member.id.toString()}>
-                      {member.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Working Time Allocation</Label>
+              <div className="flex gap-4 max-w-md">
+                <div className="flex-1">
+                  <Label htmlFor="workingHours" className="text-sm text-muted-foreground">Hours</Label>
+                  <Input
+                    id="workingHours"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.workingHours}
+                    onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="workingMinutes" className="text-sm text-muted-foreground">Minutes</Label>
+                  <Input
+                    id="workingMinutes"
+                    type="number"
+                    min="0"
+                    max="59"
+                    step="1"
+                    value={formData.workingMinutes || '0'}
+                    onChange={(e) => setFormData({ ...formData, workingMinutes: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Total: {formData.workingHours || '0'}h {formData.workingMinutes || '0'}m
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="deadline">Deadline</Label>
-              <Input
-                id="deadline"
-                type="datetime-local"
-                value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-              />
+
+            {/* Submit button */}
+            <div className="pt-4 border-t">
+              <Button type="submit" className="w-full md:w-auto md:min-w-[200px]">
+                {editTask ? "Update Task" : "Create Task"}
+              </Button>
             </div>
-            <Button type="submit" className="w-full">
-              {editTask ? "Update Task" : "Create Task"}
-            </Button>
           </form>
         </DialogContent>
       </Dialog>

@@ -1,0 +1,1507 @@
+api/user:1  Failed to load resource: the server responded with a status of 401 (Unauthorized)
+ User not authenticated (401)
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🌐 Setting up global SSE connection for real-time notifications...
+ Setting up SSE connection for notifications...
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🌐 Setting up global SSE connection for real-time notifications...
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🔊 Audio initialized: false
+ Fetching notifications for user: 16
+ Setting up SSE connection for notifications...
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🎵 Header mounted, initializing audio...
+ Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:158
+(anonymous) @ index.tsx:143
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:158
+(anonymous) @ index.tsx:145
+safelyCallDestroy @ chunk-XQLYTHWV.js?v=7bcce5ec:16748
+commitHookEffectListUnmount @ chunk-XQLYTHWV.js?v=7bcce5ec:16875
+invokePassiveEffectUnmountInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:18363
+invokeEffectsInDev @ chunk-XQLYTHWV.js?v=7bcce5ec:19701
+commitDoubleInvokeEffectsInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:19682
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19503
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🔊 Audio initialized: false
+ Setting up SSE connection for notifications...
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🎵 Header mounted, initializing audio...
+ Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:158
+(anonymous) @ index.tsx:143
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+invokePassiveEffectMountInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:18324
+invokeEffectsInDev @ chunk-XQLYTHWV.js?v=7bcce5ec:19701
+commitDoubleInvokeEffectsInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:19686
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19503
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ 🔊 Audio initialized: true
+ 🎵 Header mounted, initializing audio...
+ Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1980:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:143:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:941:13
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1915:15)
+    at Popper (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1972:11)
+    at Menu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:97:11)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at DropdownMenu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:907:5)
+    at ThemeToggle (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/theme-toggle.tsx:29:24)
+    at div
+    at header
+    at Header (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/dashboard/header.tsx:38:28)
+    at div
+    at div
+    at Dashboard (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/pages/dashboard/index.tsx:55:35)
+    at Route (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:265:16)
+    at Switch (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:321:17)
+    at Suspense
+    at div
+    at Router (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/App.tsx?v=nyZmNj2TRaFXqFdmEx3sX:281:31)
+    at AuthProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at ThemeProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-theme.tsx:21:3)
+    at QueryClientProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=7bcce5ec:2805:3)
+    at App
+printWarning @ chunk-XQLYTHWV.js?v=7bcce5ec:521
+error @ chunk-XQLYTHWV.js?v=7bcce5ec:505
+checkForNestedUpdates @ chunk-XQLYTHWV.js?v=7bcce5ec:19665
+scheduleUpdateOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18533
+dispatchSetState @ chunk-XQLYTHWV.js?v=7bcce5ec:12403
+(anonymous) @ chunk-LJ726XOC.js?v=7bcce5ec:1985
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:19328
+workLoop @ chunk-XQLYTHWV.js?v=7bcce5ec:197
+flushWork @ chunk-XQLYTHWV.js?v=7bcce5ec:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7bcce5ec:384
+ Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1980:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:143:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:941:13
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1915:15)
+    at Popper (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1972:11)
+    at Menu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:97:11)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at DropdownMenu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:907:5)
+    at ThemeToggle (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/theme-toggle.tsx:29:24)
+    at div
+    at header
+    at Header (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/dashboard/header.tsx:38:28)
+    at div
+    at div
+    at Dashboard (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/pages/dashboard/index.tsx:55:35)
+    at Route (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:265:16)
+    at Switch (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:321:17)
+    at Suspense
+    at div
+    at Router (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/App.tsx?v=nyZmNj2TRaFXqFdmEx3sX:281:31)
+    at AuthProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at ThemeProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-theme.tsx:21:3)
+    at QueryClientProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=7bcce5ec:2805:3)
+    at App
+printWarning @ chunk-XQLYTHWV.js?v=7bcce5ec:521
+error @ chunk-XQLYTHWV.js?v=7bcce5ec:505
+checkForNestedUpdates @ chunk-XQLYTHWV.js?v=7bcce5ec:19665
+scheduleUpdateOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18533
+dispatchSetState @ chunk-XQLYTHWV.js?v=7bcce5ec:12403
+(anonymous) @ chunk-LJ726XOC.js?v=7bcce5ec:1985
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:19328
+workLoop @ chunk-XQLYTHWV.js?v=7bcce5ec:197
+flushWork @ chunk-XQLYTHWV.js?v=7bcce5ec:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7bcce5ec:384
+ Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1980:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:143:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:941:13
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1915:15)
+    at Popper (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1972:11)
+    at Menu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:97:11)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at DropdownMenu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:907:5)
+    at ThemeToggle (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/theme-toggle.tsx:29:24)
+    at div
+    at header
+    at Header (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/dashboard/header.tsx:38:28)
+    at div
+    at div
+    at Dashboard (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/pages/dashboard/index.tsx:55:35)
+    at Route (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:265:16)
+    at Switch (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:321:17)
+    at Suspense
+    at div
+    at Router (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/App.tsx?v=nyZmNj2TRaFXqFdmEx3sX:281:31)
+    at AuthProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at ThemeProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-theme.tsx:21:3)
+    at QueryClientProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=7bcce5ec:2805:3)
+    at App
+printWarning @ chunk-XQLYTHWV.js?v=7bcce5ec:521
+error @ chunk-XQLYTHWV.js?v=7bcce5ec:505
+checkForNestedUpdates @ chunk-XQLYTHWV.js?v=7bcce5ec:19665
+scheduleUpdateOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18533
+dispatchSetState @ chunk-XQLYTHWV.js?v=7bcce5ec:12403
+(anonymous) @ chunk-LJ726XOC.js?v=7bcce5ec:1985
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:19328
+workLoop @ chunk-XQLYTHWV.js?v=7bcce5ec:197
+flushWork @ chunk-XQLYTHWV.js?v=7bcce5ec:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7bcce5ec:384
+ Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1980:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:143:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:941:13
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1915:15)
+    at Popper (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1972:11)
+    at Menu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:97:11)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at DropdownMenu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:907:5)
+    at ThemeToggle (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/theme-toggle.tsx:29:24)
+    at div
+    at header
+    at Header (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/dashboard/header.tsx:38:28)
+    at div
+    at div
+    at Dashboard (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/pages/dashboard/index.tsx:55:35)
+    at Route (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:265:16)
+    at Switch (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:321:17)
+    at Suspense
+    at div
+    at Router (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/App.tsx?v=nyZmNj2TRaFXqFdmEx3sX:281:31)
+    at AuthProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at ThemeProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-theme.tsx:21:3)
+    at QueryClientProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=7bcce5ec:2805:3)
+    at App
+printWarning @ chunk-XQLYTHWV.js?v=7bcce5ec:521
+error @ chunk-XQLYTHWV.js?v=7bcce5ec:505
+checkForNestedUpdates @ chunk-XQLYTHWV.js?v=7bcce5ec:19665
+scheduleUpdateOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18533
+dispatchSetState @ chunk-XQLYTHWV.js?v=7bcce5ec:12403
+(anonymous) @ chunk-LJ726XOC.js?v=7bcce5ec:1985
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:19328
+workLoop @ chunk-XQLYTHWV.js?v=7bcce5ec:197
+flushWork @ chunk-XQLYTHWV.js?v=7bcce5ec:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7bcce5ec:384
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1980:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:143:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:941:13
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1915:15)
+    at Popper (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1972:11)
+    at Menu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:97:11)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at DropdownMenu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:907:5)
+    at ThemeToggle (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/theme-toggle.tsx:29:24)
+    at div
+    at header
+    at Header (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/dashboard/header.tsx:38:28)
+    at div
+    at div
+    at Dashboard (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/pages/dashboard/index.tsx:55:35)
+    at Route (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:265:16)
+    at Switch (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:321:17)
+    at Suspense
+    at div
+    at Router (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/App.tsx?v=nyZmNj2TRaFXqFdmEx3sX:281:31)
+    at AuthProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at ThemeProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-theme.tsx:21:3)
+    at QueryClientProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=7bcce5ec:2805:3)
+    at App
+printWarning @ chunk-XQLYTHWV.js?v=7bcce5ec:521
+error @ chunk-XQLYTHWV.js?v=7bcce5ec:505
+checkForNestedUpdates @ chunk-XQLYTHWV.js?v=7bcce5ec:19665
+scheduleUpdateOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18533
+dispatchSetState @ chunk-XQLYTHWV.js?v=7bcce5ec:12403
+(anonymous) @ chunk-LJ726XOC.js?v=7bcce5ec:1985
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:19328
+workLoop @ chunk-XQLYTHWV.js?v=7bcce5ec:197
+flushWork @ chunk-XQLYTHWV.js?v=7bcce5ec:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7bcce5ec:384
+ Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1980:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:143:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:941:13
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1915:15)
+    at Popper (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1972:11)
+    at Menu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:97:11)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at DropdownMenu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:907:5)
+    at ThemeToggle (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/theme-toggle.tsx:29:24)
+    at div
+    at header
+    at Header (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/dashboard/header.tsx:38:28)
+    at div
+    at div
+    at Dashboard (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/pages/dashboard/index.tsx:55:35)
+    at Route (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:265:16)
+    at Switch (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:321:17)
+    at Suspense
+    at div
+    at Router (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/App.tsx?v=nyZmNj2TRaFXqFdmEx3sX:281:31)
+    at AuthProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at ThemeProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-theme.tsx:21:3)
+    at QueryClientProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=7bcce5ec:2805:3)
+    at App
+printWarning @ chunk-XQLYTHWV.js?v=7bcce5ec:521
+error @ chunk-XQLYTHWV.js?v=7bcce5ec:505
+checkForNestedUpdates @ chunk-XQLYTHWV.js?v=7bcce5ec:19665
+scheduleUpdateOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18533
+dispatchSetState @ chunk-XQLYTHWV.js?v=7bcce5ec:12403
+(anonymous) @ chunk-LJ726XOC.js?v=7bcce5ec:1985
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:19328
+workLoop @ chunk-XQLYTHWV.js?v=7bcce5ec:197
+flushWork @ chunk-XQLYTHWV.js?v=7bcce5ec:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7bcce5ec:384
+ Notifications fetched: Array(59)
+ Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1980:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:143:13
+    at https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:941:13
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1915:15)
+    at Popper (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LJ726XOC.js?v=7bcce5ec:1972:11)
+    at Menu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:97:11)
+    at Provider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-KFL2BQUL.js?v=7bcce5ec:38:15)
+    at DropdownMenu (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=7bcce5ec:907:5)
+    at ThemeToggle (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/theme-toggle.tsx:29:24)
+    at div
+    at header
+    at Header (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/components/dashboard/header.tsx:38:28)
+    at div
+    at div
+    at Dashboard (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/pages/dashboard/index.tsx:55:35)
+    at Route (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:265:16)
+    at Switch (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7bcce5ec:321:17)
+    at Suspense
+    at div
+    at Router (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/App.tsx?v=nyZmNj2TRaFXqFdmEx3sX:281:31)
+    at AuthProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at ThemeProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/src/hooks/use-theme.tsx:21:3)
+    at QueryClientProvider (https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=7bcce5ec:2805:3)
+    at App
+printWarning @ chunk-XQLYTHWV.js?v=7bcce5ec:521
+error @ chunk-XQLYTHWV.js?v=7bcce5ec:505
+checkForNestedUpdates @ chunk-XQLYTHWV.js?v=7bcce5ec:19665
+scheduleUpdateOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18533
+dispatchSetState @ chunk-XQLYTHWV.js?v=7bcce5ec:12403
+(anonymous) @ chunk-LJ726XOC.js?v=7bcce5ec:1985
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:19328
+workLoop @ chunk-XQLYTHWV.js?v=7bcce5ec:197
+flushWork @ chunk-XQLYTHWV.js?v=7bcce5ec:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7bcce5ec:384
+ SSE connection opened for notifications
+ SSE message received: Object
+ SSE connection opened for notifications
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ 🔓 Attempting to unlock audio on user interaction
+ 🔊 playNotificationSound called Object
+ 🔊 Notification sound started successfully Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+ 🔓 Attempting to unlock audio on user interaction
+ 🔊 playNotificationSound called Object
+ 🔊 Notification sound started successfully Object
+ ✅ Notification sound playback completed
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ ✅ Notification sound playback completed
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+ SSE connection opened
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/ws' failed: WebSocket is closed before the connection is established.
+(anonymous) @ use-websocket.ts:128
+safelyCallDestroy @ chunk-XQLYTHWV.js?v=7bcce5ec:16748
+commitHookEffectListUnmount @ chunk-XQLYTHWV.js?v=7bcce5ec:16875
+commitPassiveUnmountInsideDeletedTreeOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18283
+commitPassiveUnmountEffectsInsideOfDeletedTree_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18245
+commitPassiveUnmountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18181
+commitPassiveUnmountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18169
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19489
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+flushSync @ chunk-XQLYTHWV.js?v=7bcce5ec:18959
+flushSync$1 @ chunk-XQLYTHWV.js?v=7bcce5ec:21538
+dispatchDiscreteCustomEvent @ chunk-JVRV33CZ.js?v=7bcce5ec:52
+handleSelect @ @radix-ui_react-drop…u.js?v=7bcce5ec:429
+handleEvent @ chunk-OD433RWB.js?v=7bcce5ec:6
+callCallback2 @ chunk-XQLYTHWV.js?v=7bcce5ec:3674
+invokeGuardedCallbackDev @ chunk-XQLYTHWV.js?v=7bcce5ec:3699
+invokeGuardedCallback @ chunk-XQLYTHWV.js?v=7bcce5ec:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-XQLYTHWV.js?v=7bcce5ec:3736
+executeDispatch @ chunk-XQLYTHWV.js?v=7bcce5ec:7014
+processDispatchQueueItemsInOrder @ chunk-XQLYTHWV.js?v=7bcce5ec:7034
+processDispatchQueue @ chunk-XQLYTHWV.js?v=7bcce5ec:7043
+dispatchEventsForPlugins @ chunk-XQLYTHWV.js?v=7bcce5ec:7051
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:7174
+batchedUpdates$1 @ chunk-XQLYTHWV.js?v=7bcce5ec:18913
+batchedUpdates @ chunk-XQLYTHWV.js?v=7bcce5ec:3579
+dispatchEventForPluginEventSystem @ chunk-XQLYTHWV.js?v=7bcce5ec:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-XQLYTHWV.js?v=7bcce5ec:5478
+dispatchEvent @ chunk-XQLYTHWV.js?v=7bcce5ec:5472
+dispatchDiscreteEvent @ chunk-XQLYTHWV.js?v=7bcce5ec:5449
+ Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:158
+(anonymous) @ index.tsx:145
+safelyCallDestroy @ chunk-XQLYTHWV.js?v=7bcce5ec:16748
+commitHookEffectListUnmount @ chunk-XQLYTHWV.js?v=7bcce5ec:16875
+commitPassiveUnmountInsideDeletedTreeOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18283
+commitPassiveUnmountEffectsInsideOfDeletedTree_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18245
+commitPassiveUnmountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18181
+commitPassiveUnmountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18169
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19489
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+flushSync @ chunk-XQLYTHWV.js?v=7bcce5ec:18959
+flushSync$1 @ chunk-XQLYTHWV.js?v=7bcce5ec:21538
+dispatchDiscreteCustomEvent @ chunk-JVRV33CZ.js?v=7bcce5ec:52
+handleSelect @ @radix-ui_react-drop…u.js?v=7bcce5ec:429
+handleEvent @ chunk-OD433RWB.js?v=7bcce5ec:6
+callCallback2 @ chunk-XQLYTHWV.js?v=7bcce5ec:3674
+invokeGuardedCallbackDev @ chunk-XQLYTHWV.js?v=7bcce5ec:3699
+invokeGuardedCallback @ chunk-XQLYTHWV.js?v=7bcce5ec:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-XQLYTHWV.js?v=7bcce5ec:3736
+executeDispatch @ chunk-XQLYTHWV.js?v=7bcce5ec:7014
+processDispatchQueueItemsInOrder @ chunk-XQLYTHWV.js?v=7bcce5ec:7034
+processDispatchQueue @ chunk-XQLYTHWV.js?v=7bcce5ec:7043
+dispatchEventsForPlugins @ chunk-XQLYTHWV.js?v=7bcce5ec:7051
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:7174
+batchedUpdates$1 @ chunk-XQLYTHWV.js?v=7bcce5ec:18913
+batchedUpdates @ chunk-XQLYTHWV.js?v=7bcce5ec:3579
+dispatchEventForPluginEventSystem @ chunk-XQLYTHWV.js?v=7bcce5ec:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-XQLYTHWV.js?v=7bcce5ec:5478
+dispatchEvent @ chunk-XQLYTHWV.js?v=7bcce5ec:5472
+dispatchDiscreteEvent @ chunk-XQLYTHWV.js?v=7bcce5ec:5449
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🔊 Audio initialized: false
+ Setting up SSE connection for notifications...
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🎵 Header mounted, initializing audio...
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🔊 Audio initialized: false
+ Setting up SSE connection for notifications...
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🎵 Header mounted, initializing audio...
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🔊 Audio initialized: true
+ 🎵 Header mounted, initializing audio...
+ WebSocket error: Event
+ws.current.onerror @ use-websocket.ts:103
+ WebSocket connection closed: 1006 
+ Attempting WebSocket reconnection 1/5 in 1000ms
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE connection opened for notifications
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+ 🔓 Attempting to unlock audio on user interaction
+ 🔊 playNotificationSound called Object
+ 🔊 Notification sound started successfully Object
+ 🔓 Attempting to unlock audio on user interaction
+ 🔊 playNotificationSound called Object
+ 🔊 Notification sound started successfully Object
+ ✅ Notification sound playback completed
+ ✅ Notification sound playback completed
+ SSE connection opened
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ `DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+(anonymous) @ chunk-RBGKBZV5.js?v=7bcce5ec:324
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ chunk-RBGKBZV5.js?v=7bcce5ec:338
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ `DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+(anonymous) @ chunk-RBGKBZV5.js?v=7bcce5ec:324
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+invokePassiveEffectMountInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:18324
+invokeEffectsInDev @ chunk-XQLYTHWV.js?v=7bcce5ec:19701
+commitDoubleInvokeEffectsInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:19686
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19503
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ chunk-RBGKBZV5.js?v=7bcce5ec:338
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+invokePassiveEffectMountInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:18324
+invokeEffectsInDev @ chunk-XQLYTHWV.js?v=7bcce5ec:19701
+commitDoubleInvokeEffectsInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:19686
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19503
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🔊 Audio initialized: false
+ Fetching notifications for user: 16
+ Setting up SSE connection for notifications...
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🎵 Header mounted, initializing audio...
+ Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:158
+(anonymous) @ index.tsx:143
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7bcce5ec:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7bcce5ec:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7bcce5ec:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/ws' failed: WebSocket is closed before the connection is established.
+(anonymous) @ use-websocket.ts:128
+safelyCallDestroy @ chunk-XQLYTHWV.js?v=7bcce5ec:16748
+commitHookEffectListUnmount @ chunk-XQLYTHWV.js?v=7bcce5ec:16875
+invokePassiveEffectUnmountInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:18363
+invokeEffectsInDev @ chunk-XQLYTHWV.js?v=7bcce5ec:19701
+commitDoubleInvokeEffectsInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:19682
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19503
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:158
+(anonymous) @ index.tsx:145
+safelyCallDestroy @ chunk-XQLYTHWV.js?v=7bcce5ec:16748
+commitHookEffectListUnmount @ chunk-XQLYTHWV.js?v=7bcce5ec:16875
+invokePassiveEffectUnmountInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:18363
+invokeEffectsInDev @ chunk-XQLYTHWV.js?v=7bcce5ec:19701
+commitDoubleInvokeEffectsInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:19682
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19503
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🔊 Audio initialized: false
+ Setting up SSE connection for notifications...
+ 🎵 Created new AudioContext
+ ✅ Audio buffers created, state: running
+ 🎵 Header mounted, initializing audio...
+ Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:158
+(anonymous) @ index.tsx:143
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+invokePassiveEffectMountInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:18324
+invokeEffectsInDev @ chunk-XQLYTHWV.js?v=7bcce5ec:19701
+commitDoubleInvokeEffectsInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:19686
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19503
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ 🔊 Audio initialized: true
+ 🎵 Header mounted, initializing audio...
+ WebSocket error: Event
+ws.current.onerror @ use-websocket.ts:103
+ WebSocket connection closed: 1006 
+ Attempting WebSocket reconnection 1/5 in 1000ms
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Notifications fetched: Array(59)
+ SSE connection opened for notifications
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+ 🔓 Attempting to unlock audio on user interaction
+ 🔊 playNotificationSound called Object
+ 🔊 Notification sound started successfully Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ 🔓 Attempting to unlock audio on user interaction
+ 🔊 playNotificationSound called Object
+ 🔊 Notification sound started successfully Object
+ ✅ Notification sound playback completed
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+ ✅ Notification sound playback completed
+ SSE connection opened
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+api/notifications/786:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+ Failed to delete notification: 
+deleteNotification @ notifications-dropdown.tsx:269
+api/notifications/786:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+ Failed to delete notification: 
+deleteNotification @ notifications-dropdown.tsx:269
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Fetching notifications for user: 16
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+ Notifications fetched: Array(51)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ 🔓 Attempting to unlock audio on user interaction
+ 🔊 playNotificationSound called Object
+ 🔊 Notification sound started successfully Object
+ ✅ Notification sound playback completed
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+ SSE message received: Object
+ Fetching notifications for user: 16
+ User authenticated successfully: 16
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Notifications fetched: Array(50)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/ws' failed: 
+(anonymous) @ use-websocket.ts:38
+ WebSocket error: Event
+ws.current.onerror @ use-websocket.ts:103
+ WebSocket connection closed: 1006 
+ Attempting WebSocket reconnection 2/5 in 2000ms
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/ws' failed: 
+(anonymous) @ use-websocket.ts:38
+(anonymous) @ use-websocket.ts:124
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7bcce5ec:16915
+invokePassiveEffectMountInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:18324
+invokeEffectsInDev @ chunk-XQLYTHWV.js?v=7bcce5ec:19701
+commitDoubleInvokeEffectsInDEV @ chunk-XQLYTHWV.js?v=7bcce5ec:19686
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19503
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7bcce5ec:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=7bcce5ec:19416
+commitRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7bcce5ec:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7bcce5ec:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=7bcce5ec:18627
+ WebSocket error: Event
+ws.current.onerror @ use-websocket.ts:103
+ WebSocket connection closed: 1006 
+ Attempting WebSocket reconnection 2/5 in 2000ms
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+ WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/ws' failed: 
+(anonymous) @ use-websocket.ts:38
+ WebSocket error: Event
+ws.current.onerror @ use-websocket.ts:103
+ WebSocket connection closed: 1006 
+ Attempting WebSocket reconnection 3/5 in 3000ms
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/ws' failed: 
+(anonymous) @ use-websocket.ts:38
+ WebSocket error: Event
+ws.current.onerror @ use-websocket.ts:103
+ WebSocket connection closed: 1006 
+ Attempting WebSocket reconnection 3/5 in 3000ms
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/ws' failed: 
+(anonymous) @ use-websocket.ts:38
+ WebSocket error: Event
+ws.current.onerror @ use-websocket.ts:103
+ WebSocket connection closed: 1006 
+ Attempting WebSocket reconnection 4/5 in 3000ms
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/ws' failed: 
+(anonymous) @ use-websocket.ts:38
+ WebSocket error: Event
+ws.current.onerror @ use-websocket.ts:103
+ WebSocket connection closed: 1006 
+ Attempting WebSocket reconnection 4/5 in 3000ms
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ SSE message received: Object
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+ Failed to fetch direct messages count: 
+(anonymous) @ use-unread-messages.ts:97
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+use-auth.tsx:227 SSE message received: Object
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+use-websocket.ts:182 WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/ws' failed: WebSocket is closed before the connection is established.
+(anonymous) @ use-websocket.ts:182
+use-websocket.ts:218 Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:218
+use-notification-sound.ts:61 🎵 Created new AudioContext
+use-notification-sound.ts:69 ✅ Audio buffers created, state: running
+notifications-dropdown.tsx:39 🔊 Audio initialized: false
+notifications-dropdown.tsx:85 Setting up SSE connection for notifications...
+use-notification-sound.ts:61 🎵 Created new AudioContext
+use-notification-sound.ts:69 ✅ Audio buffers created, state: running
+header.tsx:38 🎵 Header mounted, initializing audio...
+use-notification-sound.ts:61 🎵 Created new AudioContext
+use-notification-sound.ts:69 ✅ Audio buffers created, state: running
+notifications-dropdown.tsx:39 🔊 Audio initialized: false
+notifications-dropdown.tsx:85 Setting up SSE connection for notifications...
+use-notification-sound.ts:61 🎵 Created new AudioContext
+use-notification-sound.ts:69 ✅ Audio buffers created, state: running
+header.tsx:38 🎵 Header mounted, initializing audio...
+notifications-dropdown.tsx:39 🔊 Audio initialized: true
+header.tsx:38 🎵 Header mounted, initializing audio...
+use-websocket.ts:148 WebSocket error: Event
+ws.current.onerror @ use-websocket.ts:148
+use-websocket.ts:121 WebSocket connection closed: 1006 
+use-websocket.ts:134 Attempting WebSocket reconnection 5/5 in 3000ms
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+notifications-dropdown.tsx:93 SSE connection opened for notifications
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+use-unread-messages.ts:107 Failed to fetch direct messages count: Error: Failed to fetch unread count
+    at use-unread-messages.ts:95:15
+(anonymous) @ use-unread-messages.ts:107
+header.tsx:43 🔓 Attempting to unlock audio on user interaction
+use-notification-sound.ts:122 🔊 playNotificationSound called Object
+use-notification-sound.ts:188 🔊 Notification sound started successfully Object
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+use-notification-sound.ts:183 ✅ Notification sound playback completed
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+use-unread-messages.ts:107 Failed to fetch direct messages count: Error: Failed to fetch unread count
+    at use-unread-messages.ts:95:15
+(anonymous) @ use-unread-messages.ts:107
+use-websocket.ts:27 Max WebSocket reconnect attempts reached.
+(anonymous) @ use-websocket.ts:27
+sidebar.tsx:198 SSE connection opened
+use-notification-sound.ts:61 🎵 Created new AudioContext
+use-notification-sound.ts:69 ✅ Audio buffers created, state: running
+notifications-dropdown.tsx:39 🔊 Audio initialized: false
+notifications-dropdown.tsx:49 Fetching notifications for user: 16
+notifications-dropdown.tsx:85 Setting up SSE connection for notifications...
+use-notification-sound.ts:61 🎵 Created new AudioContext
+use-notification-sound.ts:69 ✅ Audio buffers created, state: running
+header.tsx:38 🎵 Header mounted, initializing audio...
+use-websocket.ts:218 Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:218
+use-websocket.ts:182 WebSocket connection to 'wss://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/ws' failed: WebSocket is closed before the connection is established.
+(anonymous) @ use-websocket.ts:182
+use-websocket.ts:218 Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:218
+use-notification-sound.ts:61 🎵 Created new AudioContext
+use-notification-sound.ts:69 ✅ Audio buffers created, state: running
+notifications-dropdown.tsx:39 🔊 Audio initialized: false
+notifications-dropdown.tsx:85 Setting up SSE connection for notifications...
+use-notification-sound.ts:61 🎵 Created new AudioContext
+use-notification-sound.ts:69 ✅ Audio buffers created, state: running
+header.tsx:38 🎵 Header mounted, initializing audio...
+use-websocket.ts:218 Cannot update status: WebSocket not open.
+(anonymous) @ use-websocket.ts:218
+notifications-dropdown.tsx:39 🔊 Audio initialized: true
+header.tsx:38 🎵 Header mounted, initializing audio...
+use-websocket.ts:148 WebSocket error: Event
+ws.current.onerror @ use-websocket.ts:148
+use-websocket.ts:121 WebSocket connection closed: 1006 
+use-websocket.ts:134 Attempting WebSocket reconnection 1/5 in 1000ms
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+notifications-dropdown.tsx:60 Notifications fetched: Array(50)
+notifications-dropdown.tsx:93 SSE connection opened for notifications
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+use-unread-messages.ts:107 Failed to fetch direct messages count: Error: Failed to fetch unread count
+    at use-unread-messages.ts:95:15
+(anonymous) @ use-unread-messages.ts:107
+header.tsx:43 🔓 Attempting to unlock audio on user interaction
+use-notification-sound.ts:122 🔊 playNotificationSound called Object
+use-notification-sound.ts:188 🔊 Notification sound started successfully Object
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+use-notification-sound.ts:183 ✅ Notification sound playback completed
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+use-unread-messages.ts:107 Failed to fetch direct messages count: Error: Failed to fetch unread count
+    at use-unread-messages.ts:95:15
+(anonymous) @ use-unread-messages.ts:107
+sidebar.tsx:198 SSE connection opened
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+api/direct-messages/unread-count:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+use-auth.tsx:227 SSE message received: Object
+use-sidebar-indicators.ts:27  GET https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/api/direct-messages/unread-count 400 (Bad Request)
+queryFn @ use-sidebar-indicators.ts:27
+fetchFn @ @tanstack_react-query.js?v=7bcce5ec:840
+run @ @tanstack_react-query.js?v=7bcce5ec:494
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+use-sidebar-indicators.ts:27  GET https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/api/direct-messages/unread-count 400 (Bad Request)
+queryFn @ use-sidebar-indicators.ts:27
+fetchFn @ @tanstack_react-query.js?v=7bcce5ec:840
+run @ @tanstack_react-query.js?v=7bcce5ec:494
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+use-unread-messages.ts:93  GET https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/api/direct-messages/unread-count 400 (Bad Request)
+(anonymous) @ use-unread-messages.ts:93
+(anonymous) @ use-unread-messages.ts:128
+use-unread-messages.ts:107 Failed to fetch direct messages count: Error: Failed to fetch unread count
+    at use-unread-messages.ts:95:15
+(anonymous) @ use-unread-messages.ts:107
+await in (anonymous)
+(anonymous) @ use-unread-messages.ts:128
+use-sidebar-indicators.ts:27  GET https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/api/direct-messages/unread-count 400 (Bad Request)
+queryFn @ use-sidebar-indicators.ts:27
+fetchFn @ @tanstack_react-query.js?v=7bcce5ec:840
+run @ @tanstack_react-query.js?v=7bcce5ec:494
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+use-sidebar-indicators.ts:27  GET https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/api/direct-messages/unread-count 400 (Bad Request)
+queryFn @ use-sidebar-indicators.ts:27
+fetchFn @ @tanstack_react-query.js?v=7bcce5ec:840
+run @ @tanstack_react-query.js?v=7bcce5ec:494
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+use-sidebar-indicators.ts:27  GET https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/api/direct-messages/unread-count 400 (Bad Request)
+queryFn @ use-sidebar-indicators.ts:27
+fetchFn @ @tanstack_react-query.js?v=7bcce5ec:840
+run @ @tanstack_react-query.js?v=7bcce5ec:494
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+use-auth.tsx:227 SSE message received: {type: 'heartbeat'}
+use-sidebar-indicators.ts:27  GET https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/api/direct-messages/unread-count 400 (Bad Request)
+queryFn @ use-sidebar-indicators.ts:27
+fetchFn @ @tanstack_react-query.js?v=7bcce5ec:840
+run @ @tanstack_react-query.js?v=7bcce5ec:494
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+use-sidebar-indicators.ts:27  GET https://5e34c30e-b4e1-410a-9b6a-63e64c7461ae-00-2lspo3sh9yh3y.riker.replit.dev/api/direct-messages/unread-count 400 (Bad Request)
+queryFn @ use-sidebar-indicators.ts:27
+fetchFn @ @tanstack_react-query.js?v=7bcce5ec:840
+run @ @tanstack_react-query.js?v=7bcce5ec:494
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
+setInterval
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=7bcce5ec:2243
+updateTimers_fn @ @tanstack_react-query.js?v=7bcce5ec:2250
+onQueryUpdate @ @tanstack_react-query.js?v=7bcce5ec:2206
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:998
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:997
+batch @ @tanstack_react-query.js?v=7bcce5ec:583
+dispatch_fn @ @tanstack_react-query.js?v=7bcce5ec:996
+setData @ @tanstack_react-query.js?v=7bcce5ec:696
+onSuccess @ @tanstack_react-query.js?v=7bcce5ec:897
+resolve @ @tanstack_react-query.js?v=7bcce5ec:456
+Promise.then
+run @ @tanstack_react-query.js?v=7bcce5ec:498
+start @ @tanstack_react-query.js?v=7bcce5ec:536
+fetch @ @tanstack_react-query.js?v=7bcce5ec:926
+executeFetch_fn @ @tanstack_react-query.js?v=7bcce5ec:2211
+(anonymous) @ @tanstack_react-query.js?v=7bcce5ec:2245
