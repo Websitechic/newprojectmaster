@@ -483,7 +483,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                   </TableCell>
                   <TableCell className="text-right min-w-[200px]">
                     <div className="flex justify-end gap-2 flex-wrap">
-                      {task.status !== 'review' && task.status !== 'completed' && (
+                      {task.status !== 'review' && task.status !== 'completed' && task.status !== 'technical_support' && (
                         <>
                           <Button
                             variant="outline"
@@ -527,6 +527,11 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       {task.status === 'completed' && (
                         <Badge variant="outline" className="bg-green-50 text-green-800 border-green-200 whitespace-nowrap">
                           Completed
+                        </Badge>
+                      )}
+                      {task.status === 'technical_support' && (
+                        <Badge variant="outline" className="bg-red-50 text-red-800 border-red-200 whitespace-nowrap">
+                          Technical Support
                         </Badge>
                       )}
                     </div>
