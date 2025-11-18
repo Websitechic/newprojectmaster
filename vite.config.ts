@@ -22,11 +22,13 @@ export default defineConfig({
   },
   server: {
     host: "0.0.0.0",
-    port: 3000,
-    strictPort: true,
+    port: 5000,
+    strictPort: false,
     hmr: {
-      clientPort: 443,
       protocol: "wss",
+      host: undefined,
+      port: undefined,
+      clientPort: 443,
     },
   },
 });
