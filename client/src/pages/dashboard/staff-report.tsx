@@ -641,6 +641,7 @@ export default function StaffReport() {
                       <TableHead>Staff Member</TableHead>
                       <TableHead>Meeting Title</TableHead>
                       <TableHead className="text-center">Type</TableHead>
+                      <TableHead className="text-center">Scheduled By</TableHead>
                       <TableHead className="text-center">Participants</TableHead>
                       <TableHead className="text-center">Started</TableHead>
                       <TableHead className="text-right">Ends At</TableHead>
@@ -657,12 +658,10 @@ export default function StaffReport() {
                         </TableCell>
                         <TableCell>
                           {staff.currentMeeting ? (
-                            <Badge variant="outline" className="bg-purple-50 text-purple-800 border-purple-200">
-                              <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-                                {staff.currentMeeting.title}
-                              </div>
-                            </Badge>
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                              <span className="font-medium text-purple-900">{staff.currentMeeting.title}</span>
+                            </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">No meeting</span>
                           )}
@@ -677,18 +676,27 @@ export default function StaffReport() {
                           )}
                         </TableCell>
                         <TableCell className="text-center">
-                          {staff.currentMeeting?.participantCount || 0}
+                          {staff.currentMeeting?.schedulerName ? (
+                            <span className="text-sm font-medium">{staff.currentMeeting.schedulerName}</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Unknown</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="bg-gray-50 border-gray-200">
+                            {staff.currentMeeting?.participantCount || 0}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-center">
                           {staff.currentMeeting?.startTime ? (
-                            formatDate(staff.currentMeeting.startTime, "h:mm a")
+                            <span className="text-sm">{formatDate(staff.currentMeeting.startTime, "h:mm a")}</span>
                           ) : (
                             "N/A"
                           )}
                         </TableCell>
                         <TableCell className="text-right text-sm">
                           {staff.currentMeeting?.endTime ? (
-                            formatDate(staff.currentMeeting.endTime, "h:mm a")
+                            <span className="font-medium">{formatDate(staff.currentMeeting.endTime, "h:mm a")}</span>
                           ) : (
                             "N/A"
                           )}

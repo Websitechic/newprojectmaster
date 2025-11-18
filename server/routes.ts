@@ -1666,8 +1666,11 @@ End of Report
           startTime: bookings.startTime,
           endTime: bookings.endTime,
           meetingLink: bookings.meetingLink,
+          scheduledBy: bookings.scheduledBy,
+          schedulerName: users.name,
         })
         .from(bookings)
+        .leftJoin(users, eq(bookings.scheduledBy, users.id))
         .where(
           and(
             eq(bookings.status, "scheduled"),
@@ -1690,6 +1693,7 @@ End of Report
           endTime: staffMeetings[0].endTime,
           meetingLink: staffMeetings[0].meetingLink,
           participantCount: staffMeetings[0].participants.length,
+          schedulerName: staffMeetings[0].schedulerName || "Unknown",
         } : null;
 
         return {
