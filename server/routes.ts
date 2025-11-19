@@ -1213,27 +1213,64 @@ export function registerRoutes(app: Express): Server {
         dayEnd.setHours(23, 59, 59, 999);
 
         const dayTasks = allUserTasks.filter(task => {
-          const taskDate = new Date(task.updatedAt);
-          return taskDate >= dayStart && taskDate <= dayEnd && (task.timeSpent || 0) > 0;
+          // Check if task has sessions on this day
+          const sessions = (task.timerSessions as any) || [];
+          const hasSessionToday = sessions.some((session: any) => {
+            const sessionStart = new Date(session.startTime);
+            return sessionStart >= dayStart && sessionStart <= dayEnd;
+          });
+          
+          // Also include tasks with currently running timer started today
+          if (task.isTimerRunning && task.timerStartTime) {
+            const timerDate = new Date(task.timerStartTime);
+            if (timerDate >= dayStart && timerDate <= dayEnd) {
+              return true;
+            }
+          }
+          
+          return hasSessionToday;
         });
 
         // Calculate workday span from timer sessions (first timer start to last timer end)
-        const timerTasks = dayTasks.filter(task => task.timerStartTime);
-        if (timerTasks.length > 0) {
-          const timerStarts = timerTasks.map(task => new Date(task.timerStartTime!)).sort((a, b) => a.getTime() - b.getTime());
-          const timerEnds = timerTasks.map(task => {
-            const start = new Date(task.timerStartTime!);
-            return new Date(start.getTime() + ((task.timeSpent || 0) * 1000));
-          }).sort((a, b) => b.getTime() - a.getTime());
+        let workdayStart = null;
+        let workdayEnd = null;
+        let totalSpanHours = day.actualWorkHours; // Default to actual work hours
 
-          day.workdayStart = timerStarts[0].toISOString();
-          day.workdayEnd = timerEnds[0].toISOString();
-          // Total span is the time between first start and last end
-          day.totalSpanHours = (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60);
-        } else {
-          // If no timer data, total span equals actual work
-          day.totalSpanHours = day.actualWorkHours;
+        if (dayTasks.length > 0) {
+          const allSessionTimes: Date[] = [];
+          
+          dayTasks.forEach(task => {
+            const sessions = (task.timerSessions as any) || [];
+            sessions.forEach((session: any) => {
+              const sessionStart = new Date(session.startTime);
+              const sessionEnd = new Date(session.endTime);
+              if (sessionStart >= dayStart && sessionStart <= dayEnd) {
+                allSessionTimes.push(sessionStart);
+                allSessionTimes.push(sessionEnd);
+              }
+            });
+            
+            // Include running timer
+            if (task.isTimerRunning && task.timerStartTime) {
+              const timerDate = new Date(task.timerStartTime);
+              if (timerDate >= dayStart && timerDate <= dayEnd) {
+                allSessionTimes.push(timerDate);
+                allSessionTimes.push(new Date()); // Current time as end
+              }
+            }
+          });
+
+          if (allSessionTimes.length > 0) {
+            allSessionTimes.sort((a, b) => a.getTime() - b.getTime());
+            workdayStart = allSessionTimes[0].toISOString();
+            workdayEnd = allSessionTimes[allSessionTimes.length - 1].toISOString();
+            totalSpanHours = (allSessionTimes[allSessionTimes.length - 1].getTime() - allSessionTimes[0].getTime()) / (1000 * 60 * 60);
+          }
         }
+
+        day.workdayStart = workdayStart;
+        day.workdayEnd = workdayEnd;
+        day.totalSpanHours = totalSpanHours;
 
         // Calculate performance status based on actual work hours
         if (day.actualWorkHours >= 4) {
