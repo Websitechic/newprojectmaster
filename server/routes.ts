@@ -1327,6 +1327,8 @@ export function registerRoutes(app: Express): Server {
       console.error("Error fetching productivity data:", error);
       res.status(500).json({ error: "Failed to fetch productivity data" });
     }
+  });etch productivity data" });
+    }
   });
 
   // Productivity API endpoint for individual users
@@ -1365,10 +1367,195 @@ export function registerRoutes(app: Express): Server {
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
 
-      // Get ALL tasks for the user (not just by update date)
+      // Get ALL tasks for the user with timer sessions
       const allUserTasks = await db
         .select()
         .from(tasks)
+        .where(eq(tasks.assigneeId, user.id));
+
+      // Get projects for task names
+      const userProjects = await db
+        .select()
+        .from(projects)
+        .leftJoin(projectMembers, eq(projects.id, projectMembers.projectId))
+        .where(
+          or(
+            eq(projects.managerId, user.id),
+            eq(projectMembers.userId, user.id),
+            eq(projects.clientId, user.id)
+          )
+        );
+
+      const projectMap = new Map(
+        userProjects.map(p => [p.projects.id, p.projects.name])
+      );
+
+      // Helper function to filter timer sessions by date
+      const getSessionsForDate = (task: any, startDate: Date, endDate: Date) => {
+        if (!task.timerSessions || !Array.isArray(task.timerSessions)) {
+          return [];
+        }
+
+        return task.timerSessions.filter((session: any) => {
+          const sessionStart = new Date(session.startTime);
+          return sessionStart >= startDate && sessionStart <= endDate;
+        });
+      };
+
+      // Calculate today's data
+      const todayTasks = allUserTasks.filter(task => {
+        const sessions = getSessionsForDate(task, startOfDay, endOfDay);
+        return sessions.length > 0;
+      });
+
+      const todayTaskBreakdown = todayTasks.map(task => {
+        const sessions = getSessionsForDate(task, startOfDay, endOfDay);
+        const timeSpent = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+
+        return {
+          taskId: task.id,
+          title: task.title,
+          projectName: projectMap.get(task.projectId) || 'Unknown Project',
+          timeSpent: timeSpent,
+          status: task.status,
+          isCompleted: task.status === 'completed',
+          workingHours: task.workingHours || 0,
+          workingMinutes: task.workingMinutes || 0
+        };
+      });
+
+      const totalTimeWorkedToday = todayTaskBreakdown.reduce((sum, t) => sum + t.timeSpent, 0);
+
+      // Calculate weekly breakdown (Monday to Friday)
+      const weeklyBreakdown = [];
+      for (let i = 0; i < 5; i++) {
+        const dayStart = new Date(weekStart);
+        dayStart.setDate(weekStart.getDate() + i);
+        dayStart.setHours(0, 0, 0, 0);
+
+        const dayEnd = new Date(dayStart);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const dayTasks = allUserTasks.filter(task => {
+          const sessions = getSessionsForDate(task, dayStart, dayEnd);
+          return sessions.length > 0;
+        });
+
+        const dayTaskTitles = dayTasks.map(t => t.title);
+        const totalDayTime = dayTasks.reduce((sum, task) => {
+          const sessions = getSessionsForDate(task, dayStart, dayEnd);
+          return sum + sessions.reduce((s: number, sess: any) => s + (sess.duration || 0), 0);
+        }, 0);
+
+        // Calculate workday span
+        let workdayStart = null;
+        let workdayEnd = null;
+        let totalSpanSeconds = 0;
+
+        const allDaySessions = dayTasks.flatMap(task => 
+          getSessionsForDate(task, dayStart, dayEnd)
+        ).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+        if (allDaySessions.length > 0) {
+          workdayStart = allDaySessions[0].startTime;
+          workdayEnd = allDaySessions[allDaySessions.length - 1].endTime;
+          
+          const startTime = new Date(workdayStart);
+          const endTime = new Date(workdayEnd);
+          totalSpanSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
+        }
+
+        const hours = totalDayTime / 3600;
+        let performanceStatus = 'poor';
+        let performanceColor = '#EF4444';
+
+        if (hours >= 4) {
+          performanceStatus = 'good';
+          performanceColor = '#22C55E';
+        } else if (hours >= 2) {
+          performanceStatus = 'fair';
+          performanceColor = '#EAB308';
+        }
+
+        weeklyBreakdown.push({
+          day: dayStart.toISOString().split('T')[0],
+          dayName: dayStart.toLocaleDateString('en-US', { weekday: 'short' }),
+          timeSpent: totalDayTime,
+          hours: hours,
+          taskCount: dayTasks.length,
+          tasks: dayTaskTitles,
+          workdayStart: workdayStart,
+          workdayEnd: workdayEnd,
+          totalSpanHours: totalSpanSeconds / 3600,
+          performanceStatus: performanceStatus,
+          performanceColor: performanceColor
+        });
+      }
+
+      // Calculate yesterday's data
+      const yesterdayTasks = allUserTasks.filter(task => {
+        const sessions = getSessionsForDate(task, startOfYesterday, endOfYesterday);
+        return sessions.length > 0;
+      });
+
+      const yesterdayTaskBreakdown = yesterdayTasks.map(task => {
+        const sessions = getSessionsForDate(task, startOfYesterday, endOfYesterday);
+        const timeSpent = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+
+        return {
+          taskId: task.id,
+          title: task.title,
+          projectName: projectMap.get(task.projectId) || 'Unknown Project',
+          timeSpent: timeSpent,
+          status: task.status,
+          isCompleted: task.status === 'completed',
+          workingHours: task.workingHours || 0,
+          workingMinutes: task.workingMinutes || 0
+        };
+      });
+
+      const totalTimeWorkedYesterday = yesterdayTaskBreakdown.reduce((sum, t) => sum + t.timeSpent, 0);
+
+      // Calculate this week's data
+      const weekTasks = allUserTasks.filter(task => {
+        const sessions = getSessionsForDate(task, weekStart, weekEnd);
+        return sessions.length > 0;
+      });
+
+      const weekCompletedTasks = weekTasks.filter(t => t.status === 'completed').length;
+      const totalWeekTime = weekTasks.reduce((sum, task) => {
+        const sessions = getSessionsForDate(task, weekStart, weekEnd);
+        return sum + sessions.reduce((s: number, sess: any) => s + (sess.duration || 0), 0);
+      }, 0);
+
+      const productivityStats = {
+        today: {
+          totalTasksWorkedOn: todayTasks.length,
+          totalTasksCompleted: todayTasks.filter(t => t.status === 'completed').length,
+          totalTimeWorked: totalTimeWorkedToday,
+          taskBreakdown: todayTaskBreakdown,
+          weeklyBreakdown: weeklyBreakdown
+        },
+        yesterday: {
+          totalTasksWorkedOn: yesterdayTasks.length,
+          totalTasksCompleted: yesterdayTasks.filter(t => t.status === 'completed').length,
+          totalTimeWorked: totalTimeWorkedYesterday,
+          taskBreakdown: yesterdayTaskBreakdown,
+          weeklyBreakdown: []
+        },
+        thisWeek: {
+          totalTasks: weekTasks.length,
+          completedTasks: weekCompletedTasks,
+          totalTime: totalWeekTime
+        }
+      };
+
+      res.json(productivityStats);
+    } catch (error) {
+      console.error("Error fetching productivity data:", error);
+      res.status(500).json({ error: "Failed to fetch productivity data" });
+    }
+  });
         .where(eq(tasks.assigneeId, user.id));
 
       // Filter tasks by actual work done (timer sessions) for today
