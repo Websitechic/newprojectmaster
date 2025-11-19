@@ -1,6 +1,5 @@
-
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -120,10 +119,10 @@ export default function KPIReportPage() {
     queryKey: ["/api/kpi-report/productivity", selectedStaff, dateRange],
     queryFn: async () => {
       if (!selectedStaff) return null;
-      
+
       const endDate = new Date();
       const startDate = subDays(endDate, dateRange);
-      
+
       const response = await fetch(
         `/api/kpi-report/productivity?staffId=${selectedStaff}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
       );
@@ -170,6 +169,12 @@ export default function KPIReportPage() {
   };
 
   const selectedStaffMember = staffMembers.find(s => s.id.toString() === selectedStaff);
+
+  // Sort daily data by date descending
+  const sortedDailyData = useMemo(() => {
+    if (!productivityData?.dailyData) return [];
+    return [...productivityData.dailyData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [productivityData?.dailyData]);
 
   return (
     <div className="flex h-screen w-full">
@@ -249,8 +254,8 @@ export default function KPIReportPage() {
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
                       Employee
                     </label>
-                    <Select 
-                      value={selectedStaff} 
+                    <Select
+                      value={selectedStaff}
                       onValueChange={setSelectedStaff}
                       disabled={!selectedDepartment}
                     >
@@ -365,7 +370,7 @@ export default function KPIReportPage() {
                 <CardHeader>
                   <CardTitle>Weekly Activity Tracking</CardTitle>
                   <CardDescription>
-                    Daily productivity trend for {selectedStaffMember?.name}
+                    Detailed breakdown of daily work performance
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -374,14 +379,14 @@ export default function KPIReportPage() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="day" />
                       <YAxis label={{ value: 'Hours', angle: -90, position: 'insideLeft' }} />
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value: number, name: string) => [
                           `${value.toFixed(2)} hours`,
                           name === "hours" ? "Actual Work" : "Total Span"
                         ]}
                         labelFormatter={(label) => `Day: ${label}`}
                       />
-                      <Bar dataKey="totalSpanHours" fill="#E5E7EB" name="Total Span" />
+                      <Bar dataKey="totalSpanHours" fill="#9CA3AF" name="Total Span" />
                       <Bar dataKey="hours" fill="#3b82f6" name="Actual Work" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -415,33 +420,49 @@ export default function KPIReportPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {productivityData.dailyData.map((day, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">
-                              {format(new Date(day.date), "MMM dd, yyyy")}
-                            </TableCell>
-                            <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
-                            <TableCell className="font-medium">
-                              {formatTime(day.actualWorkHours)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-600">{day.taskCount} tasks</span>
-                                {day.tasks.length > 0 && (
-                                  <div className="text-xs text-gray-500">
-                                    {day.tasks.slice(0, 2).join(", ")}
-                                    {day.tasks.length > 2 && ` +${day.tasks.length - 2} more`}
-                                  </div>
+                        {sortedDailyData.map((day, index) => {
+                          const [expanded, setExpanded] = useState(false);
+                          const displayedTasks = expanded ? day.tasks : day.tasks.slice(0, 3);
+
+                          return (
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">
+                                {format(new Date(day.date), "MMM dd, yyyy")}
+                              </TableCell>
+                              <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
+                              <TableCell className="font-medium">
+                                {formatTime(day.actualWorkHours)}
+                              </TableCell>
+                              <TableCell className="whitespace-normal break-words">
+                                {day.tasks.length > 0 ? (
+                                  <>
+                                    <div className="flex flex-col gap-1">
+                                      {displayedTasks.map((task, taskIndex) => (
+                                        <div key={taskIndex} className="text-sm text-gray-600">
+                                          {task.split(' ').map((word, wordIndex) => (
+                                            <span key={wordIndex} className="inline-block">{word}<br /></span>
+                                          ))}
+                                        </div>
+                                      ))}
+                                    </div>
+                                    {day.tasks.length > 3 && (
+                                      <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setExpanded(!expanded)}>
+                                        {expanded ? 'Show Less' : `Show More (${day.tasks.length - 3} more)`}
+                                      </Button>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-sm text-gray-500">No tasks recorded</span>
                                 )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={getStatusColor(day.performanceStatus)}>
-                                {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={getStatusColor(day.performanceStatus)}>
+                                  {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   )}
