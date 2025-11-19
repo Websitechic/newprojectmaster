@@ -1392,10 +1392,29 @@ export function registerRoutes(app: Express): Server {
         });
       };
 
+      // Helper to calculate current running timer time
+      const getCurrentTimerTime = (task: any, startDate: Date, endDate: Date) => {
+        if (!task.isTimerRunning || !task.timerStartTime) {
+          return 0;
+        }
+        
+        const timerStart = new Date(task.timerStartTime);
+        // Check if timer was started during the target date
+        if (timerStart >= startDate && timerStart <= endDate) {
+          const now = new Date();
+          const elapsed = Math.floor((now.getTime() - timerStart.getTime()) / 1000);
+          return elapsed;
+        }
+        
+        return 0;
+      };
+
       // Process today's data
       const todayTaskBreakdown = allUserTasks.map(task => {
         const sessions = getSessionsForDate(task, startOfDay, endOfDay);
-        const timeSpent = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+        const sessionTime = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+        const runningTime = getCurrentTimerTime(task, startOfDay, endOfDay);
+        const timeSpent = sessionTime + runningTime;
 
         return {
           taskId: task.id,
@@ -1423,7 +1442,9 @@ export function registerRoutes(app: Express): Server {
 
         const dayTasksData = allUserTasks.map(task => {
           const sessions = getSessionsForDate(task, dayStart, dayEnd);
-          const timeSpent = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+          const sessionTime = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+          const runningTime = getCurrentTimerTime(task, dayStart, dayEnd);
+          const timeSpent = sessionTime + runningTime;
           return { task, timeSpent, sessions };
         }).filter(d => d.timeSpent > 0);
 
@@ -1494,7 +1515,9 @@ export function registerRoutes(app: Express): Server {
       // Week data
       const weekTasksData = allUserTasks.map(task => {
         const sessions = getSessionsForDate(task, weekStart, weekEnd);
-        const timeSpent = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+        const sessionTime = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+        const runningTime = getCurrentTimerTime(task, weekStart, weekEnd);
+        const timeSpent = sessionTime + runningTime;
         return { task, timeSpent };
       }).filter(d => d.timeSpent > 0);
 
