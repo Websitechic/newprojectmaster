@@ -1367,48 +1367,36 @@ export function registerRoutes(app: Express): Server {
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
 
-      // Get ALL tasks for the user with timer sessions
+      // Get ALL tasks for the user
       const allUserTasks = await db
         .select()
         .from(tasks)
         .where(eq(tasks.assigneeId, user.id));
 
       // Get projects for task names
-      const userProjects = await db
+      const projectIds = [...new Set(allUserTasks.map(t => t.projectId).filter(Boolean))];
+      const projectsData = projectIds.length > 0 ? await db
         .select()
         .from(projects)
-        .leftJoin(projectMembers, eq(projects.id, projectMembers.projectId))
-        .where(
-          or(
-            eq(projects.managerId, user.id),
-            eq(projectMembers.userId, user.id),
-            eq(projects.clientId, user.id)
-          )
-        );
+        .where(inArray(projects.id, projectIds)) : [];
 
-      const projectMap = new Map(
-        userProjects.map(p => [p.projects.id, p.projects.name])
-      );
+      const projectMap = new Map(projectsData.map(p => [p.id, p.name]));
 
-      // Helper function to filter timer sessions by date
+      // Helper function to get sessions for a date range
       const getSessionsForDate = (task: any, startDate: Date, endDate: Date) => {
         if (!task.timerSessions || !Array.isArray(task.timerSessions)) {
           return [];
         }
 
         return task.timerSessions.filter((session: any) => {
+          if (!session.startTime) return false;
           const sessionStart = new Date(session.startTime);
           return sessionStart >= startDate && sessionStart <= endDate;
         });
       };
 
-      // Calculate today's data
-      const todayTasks = allUserTasks.filter(task => {
-        const sessions = getSessionsForDate(task, startOfDay, endOfDay);
-        return sessions.length > 0;
-      });
-
-      const todayTaskBreakdown = todayTasks.map(task => {
+      // Process today's data
+      const todayTaskBreakdown = allUserTasks.map(task => {
         const sessions = getSessionsForDate(task, startOfDay, endOfDay);
         const timeSpent = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
 
@@ -1422,11 +1410,11 @@ export function registerRoutes(app: Express): Server {
           workingHours: task.workingHours || 0,
           workingMinutes: task.workingMinutes || 0
         };
-      });
+      }).filter(t => t.timeSpent > 0);
 
       const totalTimeWorkedToday = todayTaskBreakdown.reduce((sum, t) => sum + t.timeSpent, 0);
 
-      // Calculate weekly breakdown (Monday to Friday)
+      // Generate weekly breakdown (Mon-Fri)
       const weeklyBreakdown = [];
       for (let i = 0; i < 5; i++) {
         const dayStart = new Date(weekStart);
@@ -1436,33 +1424,28 @@ export function registerRoutes(app: Express): Server {
         const dayEnd = new Date(dayStart);
         dayEnd.setHours(23, 59, 59, 999);
 
-        const dayTasks = allUserTasks.filter(task => {
+        const dayTasksData = allUserTasks.map(task => {
           const sessions = getSessionsForDate(task, dayStart, dayEnd);
-          return sessions.length > 0;
-        });
+          const timeSpent = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+          return { task, timeSpent, sessions };
+        }).filter(d => d.timeSpent > 0);
 
-        const dayTaskTitles = dayTasks.map(t => t.title);
-        const totalDayTime = dayTasks.reduce((sum, task) => {
-          const sessions = getSessionsForDate(task, dayStart, dayEnd);
-          return sum + sessions.reduce((s: number, sess: any) => s + (sess.duration || 0), 0);
-        }, 0);
+        const totalDayTime = dayTasksData.reduce((sum, d) => sum + d.timeSpent, 0);
+        const dayTaskTitles = dayTasksData.map(d => d.task.title);
 
         // Calculate workday span
         let workdayStart = null;
         let workdayEnd = null;
-        let totalSpanSeconds = 0;
+        let totalSpanHours = 0;
 
-        const allDaySessions = dayTasks.flatMap(task => 
-          getSessionsForDate(task, dayStart, dayEnd)
-        ).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+        const allSessions = dayTasksData.flatMap(d => d.sessions)
+          .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
-        if (allDaySessions.length > 0) {
-          workdayStart = allDaySessions[0].startTime;
-          workdayEnd = allDaySessions[allDaySessions.length - 1].endTime;
-          
-          const startTime = new Date(workdayStart);
-          const endTime = new Date(workdayEnd);
-          totalSpanSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
+        if (allSessions.length > 0) {
+          workdayStart = allSessions[0].startTime;
+          workdayEnd = allSessions[allSessions.length - 1].endTime;
+          const spanSeconds = (new Date(workdayEnd).getTime() - new Date(workdayStart).getTime()) / 1000;
+          totalSpanHours = spanSeconds / 3600;
         }
 
         const hours = totalDayTime / 3600;
@@ -1482,23 +1465,18 @@ export function registerRoutes(app: Express): Server {
           dayName: dayStart.toLocaleDateString('en-US', { weekday: 'short' }),
           timeSpent: totalDayTime,
           hours: hours,
-          taskCount: dayTasks.length,
+          taskCount: dayTasksData.length,
           tasks: dayTaskTitles,
           workdayStart: workdayStart,
           workdayEnd: workdayEnd,
-          totalSpanHours: totalSpanSeconds / 3600,
+          totalSpanHours: totalSpanHours,
           performanceStatus: performanceStatus,
           performanceColor: performanceColor
         });
       }
 
-      // Calculate yesterday's data
-      const yesterdayTasks = allUserTasks.filter(task => {
-        const sessions = getSessionsForDate(task, startOfYesterday, endOfYesterday);
-        return sessions.length > 0;
-      });
-
-      const yesterdayTaskBreakdown = yesterdayTasks.map(task => {
+      // Yesterday's data
+      const yesterdayTaskBreakdown = allUserTasks.map(task => {
         const sessions = getSessionsForDate(task, startOfYesterday, endOfYesterday);
         const timeSpent = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
 
@@ -1512,39 +1490,37 @@ export function registerRoutes(app: Express): Server {
           workingHours: task.workingHours || 0,
           workingMinutes: task.workingMinutes || 0
         };
-      });
+      }).filter(t => t.timeSpent > 0);
 
       const totalTimeWorkedYesterday = yesterdayTaskBreakdown.reduce((sum, t) => sum + t.timeSpent, 0);
 
-      // Calculate this week's data
-      const weekTasks = allUserTasks.filter(task => {
+      // Week data
+      const weekTasksData = allUserTasks.map(task => {
         const sessions = getSessionsForDate(task, weekStart, weekEnd);
-        return sessions.length > 0;
-      });
+        const timeSpent = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+        return { task, timeSpent };
+      }).filter(d => d.timeSpent > 0);
 
-      const weekCompletedTasks = weekTasks.filter(t => t.status === 'completed').length;
-      const totalWeekTime = weekTasks.reduce((sum, task) => {
-        const sessions = getSessionsForDate(task, weekStart, weekEnd);
-        return sum + sessions.reduce((s: number, sess: any) => s + (sess.duration || 0), 0);
-      }, 0);
+      const totalWeekTime = weekTasksData.reduce((sum, d) => sum + d.timeSpent, 0);
+      const weekCompletedTasks = weekTasksData.filter(d => d.task.status === 'completed').length;
 
       const productivityStats = {
         today: {
-          totalTasksWorkedOn: todayTasks.length,
-          totalTasksCompleted: todayTasks.filter(t => t.status === 'completed').length,
+          totalTasksWorkedOn: todayTaskBreakdown.length,
+          totalTasksCompleted: todayTaskBreakdown.filter(t => t.isCompleted).length,
           totalTimeWorked: totalTimeWorkedToday,
           taskBreakdown: todayTaskBreakdown,
           weeklyBreakdown: weeklyBreakdown
         },
         yesterday: {
-          totalTasksWorkedOn: yesterdayTasks.length,
-          totalTasksCompleted: yesterdayTasks.filter(t => t.status === 'completed').length,
+          totalTasksWorkedOn: yesterdayTaskBreakdown.length,
+          totalTasksCompleted: yesterdayTaskBreakdown.filter(t => t.isCompleted).length,
           totalTimeWorked: totalTimeWorkedYesterday,
           taskBreakdown: yesterdayTaskBreakdown,
           weeklyBreakdown: []
         },
         thisWeek: {
-          totalTasks: weekTasks.length,
+          totalTasks: weekTasksData.length,
           completedTasks: weekCompletedTasks,
           totalTime: totalWeekTime
         }
