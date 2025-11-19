@@ -1285,6 +1285,10 @@ export function registerRoutes(app: Express): Server {
           day.performanceColor = '#EF4444';
         }
 
+        // Filter tasks that were worked on this specific day (for task list display)
+        day.tasks = currentDayTasks.map(task => task.title);
+        day.taskCount = currentDayTasks.length;
+
         return day;
       });
 
@@ -1541,24 +1545,6 @@ export function registerRoutes(app: Express): Server {
           workdayEnd = timerEnds[0].toISOString();
           totalSpanHours = Math.max(hours, (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60));
         }
-
-        // Filter tasks that were worked on this specific day
-        const dayTasks = weekTasks.filter(task => {
-          const sessions = (task.timerSessions as any) || [];
-          const hasSessionToday = sessions.some((session: any) => {
-            const sessionStart = new Date(session.startTime);
-            return sessionStart >= dayStart && sessionStart <= dayEnd;
-          });
-          
-          if (task.isTimerRunning && task.timerStartTime) {
-            const timerDate = new Date(task.timerStartTime);
-            if (timerDate >= dayStart && timerDate <= dayEnd) {
-              return true;
-            }
-          }
-          
-          return hasSessionToday;
-        });
 
         weeklyBreakdown.push({
           day: currentDay.toISOString().split('T')[0],
