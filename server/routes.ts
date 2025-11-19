@@ -385,7 +385,7 @@ export function registerRoutes(app: Express): Server {
   setInterval(async () => {
     try {
       const now = new Date();
-      
+
       // Get all scheduled bookings
       const allBookings = await db
         .select({
@@ -396,15 +396,15 @@ export function registerRoutes(app: Express): Server {
         })
         .from(bookings)
         .where(eq(bookings.status, "scheduled"));
-      
+
       // Check for meetings that just started or ended
       allBookings.forEach(booking => {
         const startTime = new Date(booking.startTime);
         const endTime = new Date(booking.endTime);
-        
+
         // Check if meeting is currently active
         const isActive = startTime <= now && now < endTime;
-        
+
         // Broadcast update if there are participants
         if (booking.participants && booking.participants.length > 0) {
           if (global.connectedClients) {
@@ -1167,7 +1167,7 @@ export function registerRoutes(app: Express): Server {
           if (dailyMap.has(dateKey)) {
             const dailyData = dailyMap.get(dateKey);
             const hoursWorked = task.timeSpent / 3600; // Convert seconds to hours
-            
+
             // Calculate assigned time for this task
             const assignedSeconds = ((task.workingHours || 0) * 3600) + ((task.workingMinutes || 0) * 60);
             const assignedHours = assignedSeconds / 3600;
@@ -1189,7 +1189,7 @@ export function registerRoutes(app: Express): Server {
             const elapsedSeconds = Math.floor((Date.now() - timerDate.getTime()) / 1000);
             const currentTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
             const hoursWorked = currentTimeSpent / 3600;
-            
+
             // Calculate assigned time for this task
             const assignedSeconds = ((task.workingHours || 0) * 3600) + ((task.workingMinutes || 0) * 60);
             const assignedHours = assignedSeconds / 3600;
@@ -1220,7 +1220,7 @@ export function registerRoutes(app: Express): Server {
             const sessionStart = new Date(session.startTime);
             return sessionStart >= dayStart && sessionStart <= dayEnd;
           });
-          
+
           // Also include tasks with currently running timer started today
           if (task.isTimerRunning && task.timerStartTime) {
             const timerDate = new Date(task.timerStartTime);
@@ -1228,7 +1228,7 @@ export function registerRoutes(app: Express): Server {
               return true;
             }
           }
-          
+
           return hasSessionToday;
         });
 
@@ -1239,7 +1239,7 @@ export function registerRoutes(app: Express): Server {
 
         if (currentDayTasks.length > 0) {
           const allSessionTimes: Date[] = [];
-          
+
           currentDayTasks.forEach(task => {
             const sessions = (task.timerSessions as any) || [];
             sessions.forEach((session: any) => {
@@ -1250,7 +1250,7 @@ export function registerRoutes(app: Express): Server {
                 allSessionTimes.push(sessionEnd);
               }
             });
-            
+
             // Include running timer
             if (task.isTimerRunning && task.timerStartTime) {
               const timerDate = new Date(task.timerStartTime);
@@ -1327,10 +1327,7 @@ export function registerRoutes(app: Express): Server {
       console.error("Error fetching productivity data:", error);
       res.status(500).json({ error: "Failed to fetch productivity data" });
     }
-  });etch productivity data" });
-    }
   });
-
   // Productivity API endpoint for individual users
   app.get("/api/productivity", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -1532,221 +1529,6 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch productivity data" });
     }
   });
-        .where(eq(tasks.assigneeId, user.id));
-
-      // Filter tasks by actual work done (timer sessions) for today
-      const todayTasks = allUserTasks.filter(task => {
-        // Check if task has sessions today
-        const sessions = (task.timerSessions as any) || [];
-        const hasSessionToday = sessions.some((session: any) => {
-          const sessionStart = new Date(session.startTime);
-          return sessionStart >= startOfDay && sessionStart <= endOfDay;
-        });
-        
-        // Also include tasks with currently running timer started today
-        if (task.isTimerRunning && task.timerStartTime) {
-          const timerDate = new Date(task.timerStartTime);
-          if (timerDate >= startOfDay && timerDate <= endOfDay) {
-            return true;
-          }
-        }
-        
-        return hasSessionToday;
-      });
-
-      const yesterdayTasks = allUserTasks.filter(task => {
-        const updateDate = new Date(task.updatedAt);
-        return updateDate >= startOfYesterday && updateDate <= endOfYesterday;
-      });
-
-      const weekTasks = allUserTasks.filter(task => {
-        const updateDate = new Date(task.updatedAt);
-        return updateDate >= weekStart && updateDate <= weekEnd;
-      });
-
-      // Get project names for tasks
-      const allTaskIds = [...todayTasks, ...yesterdayTasks, ...weekTasks].map(t => t.projectId).filter(Boolean);
-      const projectsData = allTaskIds.length > 0 ? await db
-        .select()
-        .from(projects)
-        .where(inArray(projects.id, allTaskIds)) : [];
-
-      const projectMap = new Map(projectsData.map(p => [p.id, p.name]));
-
-      // Process today's data - calculate time from sessions that occurred today
-      const todayTaskBreakdown = todayTasks.map(task => {
-        const sessions = (task.timerSessions as any) || [];
-        
-        // Sum up all session durations that occurred today
-        let todayTimeSpent = sessions
-          .filter((session: any) => {
-            const sessionStart = new Date(session.startTime);
-            return sessionStart >= startOfDay && sessionStart <= endOfDay;
-          })
-          .reduce((total: number, session: any) => total + (session.duration || 0), 0);
-
-        // Add current session time if timer is running and started today
-        if (task.isTimerRunning && task.timerStartTime) {
-          const timerDate = new Date(task.timerStartTime);
-          if (timerDate >= startOfDay && timerDate <= endOfDay) {
-            const currentSessionTime = Math.floor((Date.now() - timerDate.getTime()) / 1000);
-            todayTimeSpent += currentSessionTime;
-          }
-        }
-
-        return {
-          taskId: task.id,
-          title: task.title,
-          projectName: projectMap.get(task.projectId) || "Unknown Project",
-          timeSpent: todayTimeSpent,
-          status: task.status,
-          isCompleted: task.status === 'completed',
-          workingHours: task.workingHours || 8,
-          workingMinutes: task.workingMinutes || 0,
-          isTimerRunning: task.isTimerRunning || false,
-          timerStartTime: task.timerStartTime
-        };
-      });
-
-      // Calculate total time including running timers
-      const totalTimeWorked = todayTaskBreakdown.reduce((total, task) => total + task.timeSpent, 0);
-
-      const todayData = {
-        totalTasksWorkedOn: todayTasks.length,
-        totalTasksCompleted: todayTasks.filter(task => task.status === 'completed').length,
-        totalTimeWorked,
-        taskBreakdown: todayTaskBreakdown,
-        weeklyBreakdown: [] // Will be populated below
-      };
-
-      // Process yesterday's data
-      const yesterdayTaskBreakdown = yesterdayTasks.map(task => ({
-        taskId: task.id,
-        title: task.title,
-        projectName: projectMap.get(task.projectId) || "Unknown Project",
-        timeSpent: task.timeSpent || 0,
-        status: task.status,
-        isCompleted: task.status === 'completed',
-        workingHours: task.workingHours || 8
-      }));
-
-      const yesterdayData = {
-        totalTasksWorkedOn: yesterdayTasks.length,
-        totalTasksCompleted: yesterdayTasks.filter(task => task.status === 'completed').length,
-        totalTimeWorked: yesterdayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0),
-        taskBreakdown: yesterdayTaskBreakdown,
-        weeklyBreakdown: []
-      };
-
-      // Generate weekly breakdown (Mon-Fri)
-      const weeklyBreakdown = [];
-      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-      for (let i = 0; i < 7; i++) {
-        const currentDay = new Date(weekStart);
-        currentDay.setDate(weekStart.getDate() + i);
-
-        const dayStart = new Date(currentDay);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(currentDay);
-        dayEnd.setHours(23, 59, 59, 999);
-
-        // Calculate time worked this day from timer sessions
-        let totalTime = 0;
-        
-        weekTasks.forEach(task => {
-          const sessions = (task.timerSessions as any) || [];
-          
-          // Sum sessions that occurred on this specific day
-          const daySessionTime = sessions
-            .filter((session: any) => {
-              const sessionStart = new Date(session.startTime);
-              return sessionStart >= dayStart && sessionStart <= dayEnd;
-            })
-            .reduce((sum: number, session: any) => sum + (session.duration || 0), 0);
-          
-          totalTime += daySessionTime;
-          
-          // Add running timer time if it started today
-          if (task.isTimerRunning && task.timerStartTime) {
-            const timerDate = new Date(task.timerStartTime);
-            if (timerDate >= dayStart && timerDate <= dayEnd) {
-              const currentSessionTime = Math.floor((Date.now() - timerDate.getTime()) / 1000);
-              totalTime += currentSessionTime;
-            }
-          }
-        });
-
-        const hours = totalTime / 3600; // Convert seconds to hours
-
-        // Calculate performance status (consistent with daily data)
-        let performanceStatus = 'poor';
-        let performanceColor = '#EF4444';
-
-        if (hours >= 4) {
-          performanceStatus = 'good';
-          performanceColor = '#10B981';
-        } else if (hours >= 2) {
-          performanceStatus = 'fair';
-          performanceColor = '#F59E0B';
-        }
-
-        // Get first and last timer activities for workday span calculation
-        const timerTasks = dayTasks.filter(task => task.timerStartTime);
-        let workdayStart = null;
-        let workdayEnd = null;
-        let totalSpanHours = hours; // Default to actual work hours
-
-        if (timerTasks.length > 0) {
-          const timerStarts = timerTasks.map(task => new Date(task.timerStartTime)).sort((a, b) => a.getTime() - b.getTime());
-          const timerEnds = timerTasks.map(task => {
-            const start = new Date(task.timerStartTime);
-            return new Date(start.getTime() + ((task.timerDuration || 0) * 1000));
-          }).sort((a, b) => b.getTime() - a.getTime());
-
-          workdayStart = timerStarts[0].toISOString();
-          workdayEnd = timerEnds[0].toISOString();
-          totalSpanHours = Math.max(hours, (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60));
-        }
-
-        weeklyBreakdown.push({
-          day: currentDay.toISOString().split('T')[0],
-          dayName: dayNames[currentDay.getDay()],
-          timeSpent: totalTime,
-          hours,
-          taskCount: dayTasks.length,
-          tasks: dayTasks.map(task => task.title),
-          workdayStart,
-          workdayEnd,
-          totalSpanHours,
-          performanceStatus,
-          performanceColor
-        });
-      }
-
-      // Add weekly breakdown to today's data (for the chart)
-      todayData.weeklyBreakdown = weeklyBreakdown;
-
-      // Calculate week summary
-      const weekData = {
-        totalTasks: weekTasks.length,
-        completedTasks: weekTasks.filter(task => task.status === 'completed').length,
-        totalTime: weekTasks.reduce((total, task) => total + (task.timeSpent || 0), 0)
-      };
-
-      const response = {
-        today: todayData,
-        yesterday: yesterdayData,
-        thisWeek: weekData
-      };
-
-      res.json(response);
-    } catch (error) {
-      console.error("Error fetching productivity data:", error);
-      res.status(500).json({ error: "Failed to fetch productivity data" });
-    }
-  });
-
   // Export KPI report (Operations Manager and Team Lead only)
   app.post("/api/kpi-report/export", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -2009,7 +1791,7 @@ End of Report
       const now = new Date();
       const nowISO = now.toISOString();
       console.log('🕐 Current server time for meeting detection:', nowISO);
-      
+
       const currentBookings = await db
         .select({
           id: bookings.id,
@@ -2025,13 +1807,13 @@ End of Report
         .from(bookings)
         .leftJoin(users, eq(bookings.scheduledBy, users.id))
         .where(eq(bookings.status, "scheduled"));
-      
+
       // Filter bookings that are currently active (start <= now < end)
       const activeBookings = currentBookings.filter(booking => {
         const startTime = new Date(booking.startTime);
         const endTime = new Date(booking.endTime);
         const isActive = startTime <= now && now < endTime;
-        
+
         if (isActive) {
           console.log(`✅ Active booking #${booking.id}: "${booking.title}"`, {
             start: startTime.toISOString(),
@@ -2040,10 +1822,10 @@ End of Report
             participants: booking.participants?.length || 0
           });
         }
-        
+
         return isActive;
       });
-      
+
       console.log('📅 Found active bookings:', activeBookings.length, 'out of', currentBookings.length, 'scheduled');
 
       // Add meeting info to staff report
@@ -2251,7 +2033,7 @@ End of Report
           .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
           .orderBy(desc(sops.updatedAt));
       } catch (dbError) {
-        // If reference_link column doesn't exist, select without it
+        // If reference_link column doesn't exist, select basic fields
         console.log("reference_link column may not exist, selecting basic fields");
         sopList = await db
           .select({
@@ -2849,7 +2631,7 @@ End of Report
       // If timer is running, stop it first and store the session
       let newTimeSpent = task.timeSpent || 0;
       let timerSessions = (task.timerSessions as any) || [];
-      
+
       if (task.isTimerRunning && task.timerStartTime) {
         const startTime = new Date(task.timerStartTime);
         const endTime = new Date();
@@ -2897,8 +2679,6 @@ End of Report
                   taskId: updatedTask.id,
                   projectId: updatedTask.projectId,
                   status: updatedTask.status,
-                  isTimerRunning: updatedTask.isTimerRunning,
-                  timeSpent: updatedTask.timeSpent,
                   updatedBy: user.id,
                   updatedAt: now.toISOString()
                 }
@@ -3959,6 +3739,10 @@ End of Report
 
       if (!existingComplaint) {
         return res.status(404).json({ error: "Staff complaint not found" });
+      }
+
+      if (existingComplaint.status !== "pending") {
+        return res.status(400).json({ error: "Complaint has already been processed" });
       }
 
       // Update the complaint
@@ -5901,7 +5685,7 @@ End of Report
         // Get Monday of target week
         const dayOfWeek = targetDate.getDay();
         const diff = targetDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-        const monday =      new Date(targetDate.setDate(diff));
+        const monday = new Date(targetDate.setDate(diff));
         monday.setHours(0, 0, 0, 0);
 
         const mondayStr = monday.toISOString().split('T')[0];
@@ -5955,7 +5739,7 @@ End of Report
       // Get current week dates
       const now = new Date();
       const dayOfWeek = now.getDay();
-      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const diff = now.getDate() -dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
       const monday = new Date(now.setDate(diff));
       monday.setHours(0, 0, 0, 0);
 
@@ -7503,7 +7287,7 @@ End of Report
             )
           )
           .limit(1)
-          .then.then(members => members.length > 0)
+          .then.then(members => members.length > 0) // This line has a double .then, needs fixing
         );
 
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
@@ -8647,6 +8431,7 @@ End of Report
         .set({
           isTimerRunning: false,
           timeSpent: newTimeSpent,
+          timerSessions: task.timerSessions ? [...task.timerSessions, { startTime: task.timerStartTime, endTime: now.toISOString(), duration: sessionDuration }] : [{ startTime: task.timerStartTime, endTime: now.toISOString(), duration: sessionDuration }],
           timerStartTime: null,
           status: "pending",
           updatedAt: now
@@ -8737,6 +8522,7 @@ End of Report
         .set({
           isTimerRunning: false,
           timeSpent: newTimeSpent,
+          timerSessions: task.timerSessions ? [...task.timerSessions, { startTime: task.timerStartTime, endTime: new Date().toISOString(), duration: sessionDuration }] : [{ startTime: task.timerStartTime, endTime: new Date().toISOString(), duration: sessionDuration }],
           timerStartTime: null,
         })
         .where(eq(tasks.id, taskId))
