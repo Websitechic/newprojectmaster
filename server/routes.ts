@@ -1212,7 +1212,8 @@ export function registerRoutes(app: Express): Server {
         const dayEnd = new Date(day.date);
         dayEnd.setHours(23, 59, 59, 999);
 
-        const dayTasks = allUserTasks.filter(task => {
+        // Filter tasks that have timer sessions on this specific day
+        const currentDayTasks = allUserTasks.filter(task => {
           // Check if task has sessions on this day
           const sessions = (task.timerSessions as any) || [];
           const hasSessionToday = sessions.some((session: any) => {
@@ -1236,10 +1237,10 @@ export function registerRoutes(app: Express): Server {
         let workdayEnd = null;
         let totalSpanHours = day.actualWorkHours; // Default to actual work hours
 
-        if (dayTasks.length > 0) {
+        if (currentDayTasks.length > 0) {
           const allSessionTimes: Date[] = [];
           
-          dayTasks.forEach(task => {
+          currentDayTasks.forEach(task => {
             const sessions = (task.timerSessions as any) || [];
             sessions.forEach((session: any) => {
               const sessionStart = new Date(session.startTime);
