@@ -168,7 +168,8 @@ export const tasks = pgTable("tasks", {
   deadline: timestamp("deadline"),
   workingHours: integer('working_hours').default(0),
   workingMinutes: integer('working_minutes').default(0),
-  timeSpent: integer("time_spent").default(0), // in seconds
+  timeSpent: integer("time_spent").default(0), // in seconds - total accumulated time
+  timerSessions: jsonb("timer_sessions").$type<Array<{startTime: string; endTime: string; duration: number}>>().default([]),
   isTimerRunning: boolean("is_timer_running").default(false),
   timerStartTime: timestamp("timer_start_time"),
   hasBeenStarted: boolean("has_been_started").default(false),

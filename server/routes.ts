@@ -1329,24 +1329,24 @@ export function registerRoutes(app: Express): Server {
         .from(tasks)
         .where(eq(tasks.assigneeId, user.id));
 
-      // Filter tasks by actual work done (timer sessions or time spent) rather than update date
+      // Filter tasks by actual work done (timer sessions) for today
       const todayTasks = allUserTasks.filter(task => {
-        // Include tasks that have time spent today or currently running timer
+        // Check if task has sessions today
+        const sessions = (task.timerSessions as any) || [];
+        const hasSessionToday = sessions.some((session: any) => {
+          const sessionStart = new Date(session.startTime);
+          return sessionStart >= startOfDay && sessionStart <= endOfDay;
+        });
+        
+        // Also include tasks with currently running timer started today
         if (task.isTimerRunning && task.timerStartTime) {
           const timerDate = new Date(task.timerStartTime);
-          return timerDate >= startOfDay && timerDate <= endOfDay;
+          if (timerDate >= startOfDay && timerDate <= endOfDay) {
+            return true;
+          }
         }
-
-        // Include tasks that have accumulated time and were worked on today
-        if (task.timeSpent && task.timeSpent > 0) {
-          // Check if task was updated today (as proxy for work done)
-          const updateDate = new Date(task.updatedAt);
-          return updateDate >= startOfDay && updateDate <= endOfDay;
-        }
-
-        // Include tasks that were started or modified today
-        const updateDate = new Date(task.updatedAt);
-        return updateDate >= startOfDay && updateDate <= endOfDay;
+        
+        return hasSessionToday;
       });
 
       const yesterdayTasks = allUserTasks.filter(task => {
@@ -1368,24 +1368,36 @@ export function registerRoutes(app: Express): Server {
 
       const projectMap = new Map(projectsData.map(p => [p.id, p.name]));
 
-      // Process today's data with current timer sessions
+      // Process today's data - calculate time from sessions that occurred today
       const todayTaskBreakdown = todayTasks.map(task => {
-        let currentTimeSpent = task.timeSpent || 0;
+        const sessions = (task.timerSessions as any) || [];
+        
+        // Sum up all session durations that occurred today
+        let todayTimeSpent = sessions
+          .filter((session: any) => {
+            const sessionStart = new Date(session.startTime);
+            return sessionStart >= startOfDay && sessionStart <= endOfDay;
+          })
+          .reduce((total: number, session: any) => total + (session.duration || 0), 0);
 
-        // Add current session time if timer is running
+        // Add current session time if timer is running and started today
         if (task.isTimerRunning && task.timerStartTime) {
-          const sessionTime = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
-          currentTimeSpent += sessionTime;
+          const timerDate = new Date(task.timerStartTime);
+          if (timerDate >= startOfDay && timerDate <= endOfDay) {
+            const currentSessionTime = Math.floor((Date.now() - timerDate.getTime()) / 1000);
+            todayTimeSpent += currentSessionTime;
+          }
         }
 
         return {
           taskId: task.id,
           title: task.title,
           projectName: projectMap.get(task.projectId) || "Unknown Project",
-          timeSpent: currentTimeSpent,
+          timeSpent: todayTimeSpent,
           status: task.status,
           isCompleted: task.status === 'completed',
           workingHours: task.workingHours || 8,
+          workingMinutes: task.workingMinutes || 0,
           isTimerRunning: task.isTimerRunning || false,
           timerStartTime: task.timerStartTime
         };
@@ -1434,13 +1446,32 @@ export function registerRoutes(app: Express): Server {
         const dayEnd = new Date(currentDay);
         dayEnd.setHours(23, 59, 59, 999);
 
-        // Get tasks for this specific day
-        const dayTasks = weekTasks.filter(task => {
-          const taskDate = new Date(task.updatedAt);
-          return taskDate >= dayStart && taskDate <= dayEnd;
+        // Calculate time worked this day from timer sessions
+        let totalTime = 0;
+        
+        weekTasks.forEach(task => {
+          const sessions = (task.timerSessions as any) || [];
+          
+          // Sum sessions that occurred on this specific day
+          const daySessionTime = sessions
+            .filter((session: any) => {
+              const sessionStart = new Date(session.startTime);
+              return sessionStart >= dayStart && sessionStart <= dayEnd;
+            })
+            .reduce((sum: number, session: any) => sum + (session.duration || 0), 0);
+          
+          totalTime += daySessionTime;
+          
+          // Add running timer time if it started today
+          if (task.isTimerRunning && task.timerStartTime) {
+            const timerDate = new Date(task.timerStartTime);
+            if (timerDate >= dayStart && timerDate <= dayEnd) {
+              const currentSessionTime = Math.floor((Date.now() - timerDate.getTime()) / 1000);
+              totalTime += currentSessionTime;
+            }
+          }
         });
 
-        const totalTime = dayTasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
         const hours = totalTime / 3600; // Convert seconds to hours
 
         // Calculate performance status (consistent with daily data)
@@ -2512,8 +2543,19 @@ End of Report
       }
 
       // Calculate elapsed time
-      const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime!).getTime()) / 1000);
+      const startTime = new Date(task.timerStartTime!);
+      const endTime = new Date();
+      const elapsedSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
       const newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
+
+      // Store this timer session
+      const timerSessions = (task.timerSessions as any) || [];
+      const newSession = {
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        duration: elapsedSeconds
+      };
+      timerSessions.push(newSession);
 
       // Clear the timer interval
       if (global.timerIntervals && global.timerIntervals.has(taskId)) {
@@ -2528,6 +2570,7 @@ End of Report
         .set({
           isTimerRunning: false,
           timeSpent: newTimeSpent,
+          timerSessions: timerSessions,
           timerStartTime: null,
           status: "pending",
           updatedAt: now
@@ -2598,11 +2641,23 @@ End of Report
         return res.status(404).json({ error: "Task not found or not assigned to you" });
       }
 
-      // If timer is running, stop it first
+      // If timer is running, stop it first and store the session
       let newTimeSpent = task.timeSpent || 0;
+      let timerSessions = (task.timerSessions as any) || [];
+      
       if (task.isTimerRunning && task.timerStartTime) {
-        const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
+        const startTime = new Date(task.timerStartTime);
+        const endTime = new Date();
+        const elapsedSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
         newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
+
+        // Store this final session
+        const newSession = {
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          duration: elapsedSeconds
+        };
+        timerSessions.push(newSession);
 
         // Clear the timer interval
         if (global.timerIntervals && global.timerIntervals.has(taskId)) {
@@ -2619,6 +2674,7 @@ End of Report
           status: "review",
           isTimerRunning: false,
           timeSpent: newTimeSpent,
+          timerSessions: timerSessions,
           timerStartTime: null,
           updatedAt: now
         })
