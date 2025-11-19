@@ -1147,6 +1147,7 @@ export function registerRoutes(app: Express): Server {
           date: dateKey,
           totalSpanHours: 0,
           actualWorkHours: 0,
+          assignedHours: 0, // Add assigned hours tracking
           performanceStatus: 'poor',
           performanceColor: '#EF4444',
           taskCount: 0,
@@ -1166,8 +1167,13 @@ export function registerRoutes(app: Express): Server {
           if (dailyMap.has(dateKey)) {
             const dailyData = dailyMap.get(dateKey);
             const hoursWorked = task.timeSpent / 3600; // Convert seconds to hours
+            
+            // Calculate assigned time for this task
+            const assignedSeconds = ((task.workingHours || 0) * 3600) + ((task.workingMinutes || 0) * 60);
+            const assignedHours = assignedSeconds / 3600;
 
             dailyData.actualWorkHours += hoursWorked;
+            dailyData.assignedHours += assignedHours; // Track assigned hours
             dailyData.taskCount += 1;
             dailyData.tasks.push(task.title);
           }
@@ -1183,8 +1189,13 @@ export function registerRoutes(app: Express): Server {
             const elapsedSeconds = Math.floor((Date.now() - timerDate.getTime()) / 1000);
             const currentTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
             const hoursWorked = currentTimeSpent / 3600;
+            
+            // Calculate assigned time for this task
+            const assignedSeconds = ((task.workingHours || 0) * 3600) + ((task.workingMinutes || 0) * 60);
+            const assignedHours = assignedSeconds / 3600;
 
             dailyData.actualWorkHours += hoursWorked;
+            dailyData.assignedHours += assignedHours;
             if (!dailyData.tasks.includes(task.title)) {
               dailyData.taskCount += 1;
               dailyData.tasks.push(task.title);
@@ -1206,7 +1217,7 @@ export function registerRoutes(app: Express): Server {
           return taskDate >= dayStart && taskDate <= dayEnd && (task.timeSpent || 0) > 0;
         });
 
-        // Calculate workday span from timer sessions
+        // Calculate workday span from timer sessions (first timer start to last timer end)
         const timerTasks = dayTasks.filter(task => task.timerStartTime);
         if (timerTasks.length > 0) {
           const timerStarts = timerTasks.map(task => new Date(task.timerStartTime!)).sort((a, b) => a.getTime() - b.getTime());
@@ -1217,8 +1228,10 @@ export function registerRoutes(app: Express): Server {
 
           day.workdayStart = timerStarts[0].toISOString();
           day.workdayEnd = timerEnds[0].toISOString();
-          day.totalSpanHours = Math.max(day.actualWorkHours, (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60));
+          // Total span is the time between first start and last end
+          day.totalSpanHours = (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60);
         } else {
+          // If no timer data, total span equals actual work
           day.totalSpanHours = day.actualWorkHours;
         }
 

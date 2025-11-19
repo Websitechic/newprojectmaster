@@ -217,27 +217,15 @@ export default function ProductivityPage() {
   })) || [];
 
   // Calculate productivity metrics for the productivity card
+  // Total Span = Sum of assigned working hours for all tasks
   const totalAssignedTime = productivityData?.today?.taskBreakdown?.reduce((total, task) => {
-    // Get working hours and minutes from task or estimate based on task status and complexity
     const workingHours = (task as any).workingHours || 0;
     const workingMinutes = (task as any).workingMinutes || 0;
-
-    // If not explicitly set, estimate
-    let estimatedSeconds = 0;
-    if (workingHours === 0 && workingMinutes === 0) {
-      if (task.status === 'completed') {
-        estimatedSeconds = Math.max(task.timeSpent, 3600); // Use actual time if > 0, otherwise minimum 1 hour
-      } else if (task.timeSpent > 0) {
-        estimatedSeconds = Math.max(task.timeSpent * 1.25, 7200); // Estimate 25% more than current time, minimum 2 hours
-      } else {
-        estimatedSeconds = 10800; // Default estimate for new tasks (3 hours)
-      }
-    } else {
-      estimatedSeconds = (workingHours * 3600) + (workingMinutes * 60);
-    }
-    return total + estimatedSeconds;
+    const assignedSeconds = (workingHours * 3600) + (workingMinutes * 60);
+    return total + assignedSeconds;
   }, 0) || 0;
 
+  // Actual Work = Sum of time actually spent (tracked via timers)
   const totalActualTime = productivityData?.today?.totalTimeWorked || 0;
 
   if (isLoading) {
