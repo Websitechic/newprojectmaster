@@ -1542,6 +1542,24 @@ export function registerRoutes(app: Express): Server {
           totalSpanHours = Math.max(hours, (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60));
         }
 
+        // Filter tasks that were worked on this specific day
+        const dayTasks = weekTasks.filter(task => {
+          const sessions = (task.timerSessions as any) || [];
+          const hasSessionToday = sessions.some((session: any) => {
+            const sessionStart = new Date(session.startTime);
+            return sessionStart >= dayStart && sessionStart <= dayEnd;
+          });
+          
+          if (task.isTimerRunning && task.timerStartTime) {
+            const timerDate = new Date(task.timerStartTime);
+            if (timerDate >= dayStart && timerDate <= dayEnd) {
+              return true;
+            }
+          }
+          
+          return hasSessionToday;
+        });
+
         weeklyBreakdown.push({
           day: currentDay.toISOString().split('T')[0],
           dayName: dayNames[currentDay.getDay()],
