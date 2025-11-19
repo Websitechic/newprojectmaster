@@ -1122,21 +1122,14 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Staff ID, start date, and end date are required" });
       }
 
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
 
-      // Get all tasks for the staff member within the date range
-      const staffTasks = await db
+      // Get ALL tasks for the staff member (not filtered by date)
+      const allUserTasks = await db
         .select()
         .from(tasks)
-        .where(
-          and(
-            eq(tasks.assigneeId, parseInt(staffId as string)),
-            gte(tasks.updatedAt, start),
-            eq(tasks.isTimerRunning, false) // Only completed timer sessions
-          )
-        )
-        .orderBy(desc(tasks.updatedAt));
+        .where(eq(tasks.assigneeId, parseInt(staffId as string)));
 
       // Process daily productivity data
       const dailyMap = new Map();
@@ -1157,56 +1150,113 @@ export function registerRoutes(app: Express): Server {
           performanceStatus: 'poor',
           performanceColor: '#EF4444',
           taskCount: 0,
-          tasks: []
+          tasks: [],
+          workdayStart: null,
+          workdayEnd: null
         });
       });
 
-      // Process tasks and calculate productivity
-      staffTasks.forEach(task => {
-        if (task.timerStartTime && task.timerDuration) {
-          const taskDate = new Date(task.timerStartTime);
-          const dateKey = taskDate.toISOString().split('T')[0];
+      // Process tasks - filter by actual work done (timer sessions)
+      allUserTasks.forEach(task => {
+        // Check if task has time spent and was worked on during our date range
+        if (task.timeSpent && task.timeSpent > 0) {
+          const updateDate = new Date(task.updatedAt);
+          const dateKey = updateDate.toISOString().split('T')[0];
 
           if (dailyMap.has(dateKey)) {
             const dailyData = dailyMap.get(dateKey);
-            const hoursWorked = task.timerDuration / 3600; // Convert seconds to hours
+            const hoursWorked = task.timeSpent / 3600; // Convert seconds to hours
 
             dailyData.actualWorkHours += hoursWorked;
             dailyData.taskCount += 1;
             dailyData.tasks.push(task.title);
+          }
+        }
 
-            // Calculate performance status (standardized with productivity page)
-            if (dailyData.actualWorkHours >= 4) {
-              dailyData.performanceStatus = 'good';
-              dailyData.performanceColor = '#10B981';
-            } else if (dailyData.actualWorkHours >= 2) {
-              dailyData.performanceStatus = 'fair';
-              dailyData.performanceColor = '#F59E0B';
+        // Also check for running timers started during our date range
+        if (task.isTimerRunning && task.timerStartTime) {
+          const timerDate = new Date(task.timerStartTime);
+          const dateKey = timerDate.toISOString().split('T')[0];
+
+          if (dailyMap.has(dateKey)) {
+            const dailyData = dailyMap.get(dateKey);
+            const elapsedSeconds = Math.floor((Date.now() - timerDate.getTime()) / 1000);
+            const currentTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
+            const hoursWorked = currentTimeSpent / 3600;
+
+            dailyData.actualWorkHours += hoursWorked;
+            if (!dailyData.tasks.includes(task.title)) {
+              dailyData.taskCount += 1;
+              dailyData.tasks.push(task.title);
             }
           }
         }
       });
 
-      const dailyData = Array.from(dailyMap.values());
+      // Calculate workday span and performance status for each day
+      const dailyDataArray = Array.from(dailyMap.values()).map(day => {
+        // Filter tasks worked on this day
+        const dayStart = new Date(day.date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(day.date);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const dayTasks = allUserTasks.filter(task => {
+          const taskDate = new Date(task.updatedAt);
+          return taskDate >= dayStart && taskDate <= dayEnd && (task.timeSpent || 0) > 0;
+        });
+
+        // Calculate workday span from timer sessions
+        const timerTasks = dayTasks.filter(task => task.timerStartTime);
+        if (timerTasks.length > 0) {
+          const timerStarts = timerTasks.map(task => new Date(task.timerStartTime!)).sort((a, b) => a.getTime() - b.getTime());
+          const timerEnds = timerTasks.map(task => {
+            const start = new Date(task.timerStartTime!);
+            return new Date(start.getTime() + ((task.timeSpent || 0) * 1000));
+          }).sort((a, b) => b.getTime() - a.getTime());
+
+          day.workdayStart = timerStarts[0].toISOString();
+          day.workdayEnd = timerEnds[0].toISOString();
+          day.totalSpanHours = Math.max(day.actualWorkHours, (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60));
+        } else {
+          day.totalSpanHours = day.actualWorkHours;
+        }
+
+        // Calculate performance status based on actual work hours
+        if (day.actualWorkHours >= 4) {
+          day.performanceStatus = 'good';
+          day.performanceColor = '#10B981';
+        } else if (day.actualWorkHours >= 2) {
+          day.performanceStatus = 'fair';
+          day.performanceColor = '#F59E0B';
+        } else {
+          day.performanceStatus = 'poor';
+          day.performanceColor = '#EF4444';
+        }
+
+        return day;
+      });
 
       // Calculate weekly data for chart
-      const weeklyData = dailyData.map(day => ({
+      const weeklyData = dailyDataArray.map(day => ({
         day: new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }),
         hours: day.actualWorkHours,
-        totalSpanHours: Math.max(day.actualWorkHours, 8), // Assume 8-hour work day
+        totalSpanHours: day.totalSpanHours,
         performanceStatus: day.performanceStatus,
-        performanceColor: day.performanceColor
+        performanceColor: day.performanceColor,
+        taskCount: day.taskCount,
+        tasks: day.tasks
       }));
 
       // Calculate summary
-      const totalDays = dailyData.length;
-      const avgHoursPerDay = dailyData.reduce((sum, day) => sum + day.actualWorkHours, 0) / totalDays;
-      const goodDays = dailyData.filter(day => day.performanceStatus === 'good').length;
-      const fairDays = dailyData.filter(day => day.performanceStatus === 'fair').length;
-      const poorDays = dailyData.filter(day => day.performanceStatus === 'poor').length;
+      const totalDays = dailyDataArray.length;
+      const avgHoursPerDay = dailyDataArray.reduce((sum, day) => sum + day.actualWorkHours, 0) / totalDays;
+      const goodDays = dailyDataArray.filter(day => day.performanceStatus === 'good').length;
+      const fairDays = dailyDataArray.filter(day => day.performanceStatus === 'fair').length;
+      const poorDays = dailyDataArray.filter(day => day.performanceStatus === 'poor').length;
 
       const productivityData = {
-        dailyData,
+        dailyData: dailyDataArray,
         weeklyData,
         summary: {
           totalDays,
