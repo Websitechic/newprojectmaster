@@ -170,11 +170,26 @@ export default function KPIReportPage() {
 
   const selectedStaffMember = staffMembers.find(s => s.id.toString() === selectedStaff);
 
+  // Track expanded rows
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
   // Sort daily data by date descending
   const sortedDailyData = useMemo(() => {
     if (!productivityData?.dailyData) return [];
     return [...productivityData.dailyData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [productivityData?.dailyData]);
+
+  const toggleRowExpansion = (index: number) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
 
   return (
     <div className="flex h-screen w-full">
@@ -421,8 +436,8 @@ export default function KPIReportPage() {
                       </TableHeader>
                       <TableBody>
                         {sortedDailyData.map((day, index) => {
-                          const [expanded, setExpanded] = useState(false);
-                          const displayedTasks = expanded ? day.tasks : day.tasks.slice(0, 3);
+                          const isExpanded = expandedRows.has(index);
+                          const displayedTasks = isExpanded ? day.tasks : day.tasks.slice(0, 3);
 
                           return (
                             <TableRow key={index}>
@@ -446,8 +461,8 @@ export default function KPIReportPage() {
                                       ))}
                                     </div>
                                     {day.tasks.length > 3 && (
-                                      <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setExpanded(!expanded)}>
-                                        {expanded ? 'Show Less' : `Show More (${day.tasks.length - 3} more)`}
+                                      <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => toggleRowExpansion(index)}>
+                                        {isExpanded ? 'Show Less' : `Show More (${day.tasks.length - 3} more)`}
                                       </Button>
                                     )}
                                   </>
