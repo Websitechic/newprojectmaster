@@ -1614,27 +1614,30 @@ export function registerRoutes(app: Express): Server {
       if (format === 'csv' || format === 'excel') {
         const rows = [];
         
-        // Header section
-        rows.push(['Employee Name', staffName || '']);
-        rows.push(['Department', department || '']);
-        rows.push(['Report Period', `Last ${dateRange} days`]);
-        rows.push(['Generated On', new Date().toLocaleDateString()]);
+        // Sheet 1: Summary
+        rows.push(['PERFORMANCE SUMMARY REPORT']);
+        rows.push([]);
+        rows.push(['Employee Name:', staffName || '']);
+        rows.push(['Department:', department || '']);
+        rows.push(['Report Period:', `Last ${dateRange} days`]);
+        rows.push(['Generated On:', new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })]);
+        rows.push([]);
         rows.push([]);
         
-        // Performance Summary
-        rows.push(['PERFORMANCE SUMMARY']);
-        rows.push([]);
+        // Summary Metrics in 2-column format
+        rows.push(['SUMMARY METRICS', '']);
         rows.push(['Total Working Days', productivityData.summary.totalDays]);
-        rows.push(['Average Hours Per Day', productivityData.summary.avgHoursPerDay.toFixed(2)]);
+        rows.push(['Average Hours Per Day', productivityData.summary.avgHoursPerDay.toFixed(2) + ' hours']);
         rows.push(['Good Performance Days', productivityData.summary.goodDays]);
         rows.push(['Fair Performance Days', productivityData.summary.fairDays]);
         rows.push(['Poor Performance Days', productivityData.summary.poorDays]);
+        rows.push([]);
         rows.push([]);
         
         // Daily Productivity Details
         rows.push(['DAILY PRODUCTIVITY DETAILS']);
         rows.push([]);
-        rows.push(['Date', 'Total Time Span (hours)', 'Actual Work (hours)', 'Tasks Completed', 'Status']);
+        rows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks', 'Status']);
         
         productivityData.dailyData.forEach((day: any) => {
           rows.push([
@@ -1647,10 +1650,31 @@ export function registerRoutes(app: Express): Server {
         });
         
         rows.push([]);
+        rows.push([]);
         rows.push(['STATUS LEGEND']);
+        rows.push(['Status', 'Criteria']);
         rows.push(['Good', '4+ hours of actual work']);
         rows.push(['Fair', '2-4 hours of actual work']);
         rows.push(['Poor', 'Less than 2 hours of actual work']);
+        
+        rows.push([]);
+        rows.push([]);
+        
+        // Productivity Score Section
+        rows.push(['PRODUCTIVITY SCORE']);
+        rows.push([]);
+        rows.push(['Task', 'Assigned Time (min)', 'Actual Time (min)', 'Completion Status']);
+        
+        productivityData.taskDetails.forEach((task: any) => {
+          const status = task.actualMinutes <= task.assignedMinutes ? 'On Time' : 
+                        task.actualMinutes <= task.assignedMinutes * 1.1 ? 'Slightly Late' : 'Late';
+          rows.push([
+            task.title,
+            task.assignedMinutes,
+            task.actualMinutes,
+            status
+          ]);
+        });
 
         if (format === 'csv') {
           const csvContent = rows.map(row => 
@@ -1783,20 +1807,23 @@ export function registerRoutes(app: Express): Server {
       if (format === 'csv' || format === 'excel') {
         const rows = [];
         
-        // Department Overview Tab Header
-        rows.push(['DEPARTMENT:', department.toUpperCase().replace(/_/g, ' ')]);
+        // Department Overview - matching the Google Sheets format exactly
+        rows.push([`${department.toUpperCase().replace(/_/g, ' ')} DEPARTMENT - PERFORMANCE REPORT`]);
+        rows.push([]);
         rows.push(['Report Period:', `Last ${dateRange} days`]);
-        rows.push(['Generated On:', new Date().toLocaleDateString()]);
+        rows.push(['Generated On:', new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })]);
         rows.push(['Total Employees:', staffMembers.length]);
         rows.push([]);
+        rows.push([]);
         
-        // Summary for all employees
+        // Summary Table
         rows.push(['DEPARTMENT SUMMARY']);
         rows.push([]);
-        rows.push(['Employee Name', 'Total Days', 'Avg Hours/Day', 'Good Days', 'Fair Days', 'Poor Days']);
+        rows.push(['S/N', 'Employee Name', 'Total Days', 'Avg Hours/Day', 'Good Days', 'Fair Days', 'Poor Days']);
         
-        allStaffData.forEach(staffData => {
+        allStaffData.forEach((staffData, index) => {
           rows.push([
+            index + 1,
             staffData.staffName,
             staffData.summary.totalDays,
             staffData.summary.avgHoursPerDay.toFixed(2),
@@ -1808,26 +1835,29 @@ export function registerRoutes(app: Express): Server {
         
         rows.push([]);
         rows.push([]);
-        rows.push(['========================================']);
-        rows.push(['INDIVIDUAL EMPLOYEE DETAILS']);
-        rows.push(['========================================']);
+        rows.push([]);
+        rows.push(['═══════════════════════════════════════════════════════']);
+        rows.push(['INDIVIDUAL EMPLOYEE BREAKDOWN']);
+        rows.push(['═══════════════════════════════════════════════════════']);
         rows.push([]);
 
-        // Individual employee sections
+        // Individual employee sections - one per employee
         allStaffData.forEach((staffData, index) => {
-          rows.push([`${staffData.staffName.toUpperCase()}`]);
+          rows.push([]);
+          rows.push([`EMPLOYEE ${index + 1}: ${staffData.staffName.toUpperCase()}`]);
           rows.push([]);
           
-          rows.push(['Performance Summary']);
-          rows.push(['Total Working Days', staffData.summary.totalDays]);
-          rows.push(['Average Hours Per Day', staffData.summary.avgHoursPerDay.toFixed(2)]);
-          rows.push(['Good Performance Days', staffData.summary.goodDays]);
-          rows.push(['Fair Performance Days', staffData.summary.fairDays]);
-          rows.push(['Poor Performance Days', staffData.summary.poorDays]);
+          // Summary metrics in 2-column layout
+          rows.push(['Performance Summary', '']);
+          rows.push(['Total Working Days:', staffData.summary.totalDays]);
+          rows.push(['Average Hours Per Day:', staffData.summary.avgHoursPerDay.toFixed(2) + ' hours']);
+          rows.push(['Good Performance Days:', staffData.summary.goodDays]);
+          rows.push(['Fair Performance Days:', staffData.summary.fairDays]);
+          rows.push(['Poor Performance Days:', staffData.summary.poorDays]);
           rows.push([]);
           
-          rows.push(['Daily Productivity']);
-          rows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks', 'Status']);
+          rows.push(['Daily Breakdown']);
+          rows.push(['Date', 'Total Span (hrs)', 'Actual Work (hrs)', 'Tasks', 'Status']);
           
           staffData.dailyData.forEach((day: any) => {
             rows.push([
@@ -1840,10 +1870,13 @@ export function registerRoutes(app: Express): Server {
           });
           
           rows.push([]);
+          rows.push(['─────────────────────────────────────────────────']);
           rows.push([]);
         });
         
+        rows.push([]);
         rows.push(['STATUS LEGEND']);
+        rows.push(['Status', 'Definition']);
         rows.push(['Good', '4+ hours of actual work']);
         rows.push(['Fair', '2-4 hours of actual work']);
         rows.push(['Poor', 'Less than 2 hours of actual work']);
