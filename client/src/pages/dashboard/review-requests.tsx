@@ -23,10 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { useUser } from "@/hooks/use-user";
-import { useState } from "react";
-import { Plus, ExternalLink, CheckCircle, Clock, Eye, Trash2 } from "lucide-react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +40,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/hooks/use-user";
+import { useState } from "react";
+import { Plus, ExternalLink, CheckCircle, Clock, Eye, Trash2, MessageSquare } from "lucide-react";
 
 export default function ReviewRequests() {
   const [location] = useLocation();
@@ -45,6 +51,10 @@ export default function ReviewRequests() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState("");
+  const [reviewComments, setReviewComments] = useState("");
 
   const isProjectManager = user?.role === "project_manager";
   const isTeamLead = user?.role === "team_lead";
@@ -104,6 +114,10 @@ export default function ReviewRequests() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/review-requests"] });
+      setIsReviewDialogOpen(false);
+      setSelectedRequest(null);
+      setReviewStatus("");
+      setReviewComments("");
       toast({
         title: "Success",
         description: "Review status updated successfully",
@@ -154,6 +168,23 @@ export default function ReviewRequests() {
     });
   };
 
+  const handleOpenReviewDialog = (request: any) => {
+    setSelectedRequest(request);
+    setReviewStatus(request.status);
+    setReviewComments(request.reviewNotes || "");
+    setIsReviewDialogOpen(true);
+  };
+
+  const handleUpdateStatus = () => {
+    if (!selectedRequest) return;
+    
+    updateRequestMutation.mutate({
+      id: selectedRequest.id,
+      status: reviewStatus,
+      reviewNotes: reviewComments,
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
@@ -168,6 +199,104 @@ export default function ReviewRequests() {
         return <Badge>{status}</Badge>;
     }
   };
+
+  const filterRequestsByStatus = (status: string) => {
+    return requests?.filter((req: any) => req.status === status) || [];
+  };
+
+  const renderRequestCard = (request: any) => (
+    <Card key={request.id}>
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <CardTitle className="text-lg">{request.title}</CardTitle>
+            {request.description && (
+              <p className="text-sm text-muted-foreground mt-1">{request.description}</p>
+            )}
+          </div>
+          {getStatusBadge(request.status)}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Link:</span>
+            <a
+              href={request.reviewLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            >
+              {request.reviewLink}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+          {isProjectManager && request.teamLeadName && (
+            <div className="text-sm">
+              <span className="font-medium">Team Lead:</span> {request.teamLeadName}
+            </div>
+          )}
+          {isTeamLead && request.projectManagerName && (
+            <div className="text-sm">
+              <span className="font-medium">Project Manager:</span> {request.projectManagerName}
+            </div>
+          )}
+          <div className="text-sm text-muted-foreground">
+            Created: {new Date(request.createdAt).toLocaleDateString()}
+          </div>
+          {request.completedAt && (
+            <div className="text-sm text-muted-foreground">
+              Completed: {new Date(request.completedAt).toLocaleDateString()}
+            </div>
+          )}
+          {request.reviewNotes && (
+            <div className="mt-2 p-3 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-1">Review Notes:</p>
+              <p className="text-sm text-muted-foreground">{request.reviewNotes}</p>
+            </div>
+          )}
+          <div className="flex gap-2 mt-4">
+            {isTeamLead && (
+              <Button
+                size="sm"
+                onClick={() => handleOpenReviewDialog(request)}
+              >
+                <MessageSquare className="h-4 w-4 mr-1" />
+                Update Status
+              </Button>
+            )}
+            {isProjectManager && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Review Request?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete this review request.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteRequestMutation.mutate(request.id)}
+                      disabled={deleteRequestMutation.isPending}
+                    >
+                      {deleteRequestMutation.isPending ? "Deleting..." : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   if (!isProjectManager && !isTeamLead) {
     return (
@@ -254,145 +383,118 @@ export default function ReviewRequests() {
             <div className="flex items-center justify-center py-12">
               <div className="text-muted-foreground">Loading...</div>
             </div>
-          ) : requests && requests.length > 0 ? (
-            <div className="grid gap-4">
-              {requests.map((request: any) => (
-                <Card key={request.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{request.title}</CardTitle>
-                        {request.description && (
-                          <p className="text-sm text-muted-foreground mt-1">{request.description}</p>
-                        )}
-                      </div>
-                      {getStatusBadge(request.status)}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Link:</span>
-                        <a
-                          href={request.reviewLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:underline flex items-center gap-1"
-                        >
-                          {request.reviewLink}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </div>
-                      {isProjectManager && request.teamLeadName && (
-                        <div className="text-sm">
-                          <span className="font-medium">Team Lead:</span> {request.teamLeadName}
-                        </div>
-                      )}
-                      {isTeamLead && request.projectManagerName && (
-                        <div className="text-sm">
-                          <span className="font-medium">Project Manager:</span> {request.projectManagerName}
-                        </div>
-                      )}
-                      <div className="text-sm text-muted-foreground">
-                        Created: {new Date(request.createdAt).toLocaleDateString()}
-                      </div>
-                      {request.completedAt && (
-                        <div className="text-sm text-muted-foreground">
-                          Completed: {new Date(request.completedAt).toLocaleDateString()}
-                        </div>
-                      )}
-                      {request.reviewNotes && (
-                        <div className="mt-2 p-3 bg-muted rounded-lg">
-                          <p className="text-sm font-medium mb-1">Review Notes:</p>
-                          <p className="text-sm text-muted-foreground">{request.reviewNotes}</p>
-                        </div>
-                      )}
-                      <div className="flex gap-2 mt-4">
-                        {isTeamLead && (
-                          <>
-                            {request.status === "pending" && (
-                              <Button
-                                size="sm"
-                                onClick={() => updateRequestMutation.mutate({ 
-                                  id: request.id, 
-                                  status: "in_review",
-                                  reviewNotes: request.reviewNotes 
-                                })}
-                                disabled={updateRequestMutation.isPending}
-                              >
-                                Move to In Review
-                              </Button>
-                            )}
-                            {request.status === "in_review" && (
-                              <Button
-                                size="sm"
-                                onClick={() => updateRequestMutation.mutate({ 
-                                  id: request.id, 
-                                  status: "resolved",
-                                  reviewNotes: request.reviewNotes 
-                                })}
-                                disabled={updateRequestMutation.isPending}
-                              >
-                                Move to Resolved
-                              </Button>
-                            )}
-                            {request.status === "resolved" && (
-                              <Button
-                                size="sm"
-                                onClick={() => updateRequestMutation.mutate({ 
-                                  id: request.id, 
-                                  status: "closed",
-                                  reviewNotes: request.reviewNotes 
-                                })}
-                                disabled={updateRequestMutation.isPending}
-                              >
-                                Move to Closed
-                              </Button>
-                            )}
-                          </>
-                        )}
-                        {isProjectManager && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="outline">
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Review Request?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete this review request.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteRequestMutation.mutate(request.id)}
-                                  disabled={deleteRequestMutation.isPending}
-                                >
-                                  {deleteRequestMutation.isPending ? "Deleting..." : "Delete"}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                {isProjectManager ? "No review requests sent yet" : "No review requests assigned to you"}
-              </p>
-            </div>
+            <Tabs defaultValue="pending" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="pending">
+                  Pending ({filterRequestsByStatus("pending").length})
+                </TabsTrigger>
+                <TabsTrigger value="in_review">
+                  In Review ({filterRequestsByStatus("in_review").length})
+                </TabsTrigger>
+                <TabsTrigger value="resolved">
+                  Resolved ({filterRequestsByStatus("resolved").length})
+                </TabsTrigger>
+                <TabsTrigger value="closed">
+                  Closed ({filterRequestsByStatus("closed").length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="pending" className="space-y-4 mt-4">
+                {filterRequestsByStatus("pending").length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">No pending requests</p>
+                  </div>
+                ) : (
+                  filterRequestsByStatus("pending").map(renderRequestCard)
+                )}
+              </TabsContent>
+
+              <TabsContent value="in_review" className="space-y-4 mt-4">
+                {filterRequestsByStatus("in_review").length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">No requests in review</p>
+                  </div>
+                ) : (
+                  filterRequestsByStatus("in_review").map(renderRequestCard)
+                )}
+              </TabsContent>
+
+              <TabsContent value="resolved" className="space-y-4 mt-4">
+                {filterRequestsByStatus("resolved").length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">No resolved requests</p>
+                  </div>
+                ) : (
+                  filterRequestsByStatus("resolved").map(renderRequestCard)
+                )}
+              </TabsContent>
+
+              <TabsContent value="closed" className="space-y-4 mt-4">
+                {filterRequestsByStatus("closed").length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">No closed requests</p>
+                  </div>
+                ) : (
+                  filterRequestsByStatus("closed").map(renderRequestCard)
+                )}
+              </TabsContent>
+            </Tabs>
           )}
 
-          
+          {/* Review Dialog */}
+          <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Update Review Status</DialogTitle>
+              </DialogHeader>
+              {selectedRequest && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-medium mb-2">{selectedRequest.title}</h3>
+                    {selectedRequest.description && (
+                      <p className="text-sm text-muted-foreground">{selectedRequest.description}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={reviewStatus} onValueChange={setReviewStatus}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="in_review">In Review</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="comments">Review Comments</Label>
+                    <Textarea
+                      id="comments"
+                      value={reviewComments}
+                      onChange={(e) => setReviewComments(e.target.value)}
+                      placeholder="Add your review comments..."
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleUpdateStatus} disabled={updateRequestMutation.isPending}>
+                      {updateRequestMutation.isPending ? "Updating..." : "Update Status"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
