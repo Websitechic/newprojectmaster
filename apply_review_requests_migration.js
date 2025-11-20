@@ -1,6 +1,6 @@
 
-import { neon } from '@neondatabase/serverless';
-import * as fs from 'fs';
+const { neon } = require('@neondatabase/serverless');
+const fs = require('fs');
 
 const sql = neon(process.env.DATABASE_URL);
 
