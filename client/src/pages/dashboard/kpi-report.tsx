@@ -424,62 +424,105 @@ export default function KPIReportPage() {
                       <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Total Span</TableHead>
-                          <TableHead>Actual Work</TableHead>
-                          <TableHead>Tasks</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sortedDailyData.map((day, index) => {
-                          const isExpanded = expandedRows.has(index);
-                          const displayedTasks = isExpanded ? day.tasks : day.tasks.slice(0, 3);
+                    <>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Total Span</TableHead>
+                            <TableHead>Actual Work</TableHead>
+                            <TableHead>Tasks</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sortedDailyData.map((day, index) => {
+                            const isExpanded = expandedRows.has(index);
+                            const displayedTasks = isExpanded ? day.tasks : day.tasks.slice(0, 3);
 
-                          return (
-                            <TableRow key={index}>
-                              <TableCell className="font-medium">
-                                {format(new Date(day.date), "MMM dd, yyyy")}
-                              </TableCell>
-                              <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
-                              <TableCell className="font-medium">
-                                {formatTime(day.actualWorkHours)}
-                              </TableCell>
-                              <TableCell className="whitespace-normal break-words">
-                                {day.tasks.length > 0 ? (
-                                  <>
-                                    <div className="flex flex-col gap-1">
-                                      {displayedTasks.map((task, taskIndex) => (
-                                        <div key={taskIndex} className="text-sm text-gray-600">
-                                          {task.split(' ').map((word, wordIndex) => (
-                                            <span key={wordIndex} className="inline-block">{word}<br /></span>
-                                          ))}
-                                        </div>
-                                      ))}
-                                    </div>
-                                    {day.tasks.length > 3 && (
-                                      <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => toggleRowExpansion(index)}>
-                                        {isExpanded ? 'Show Less' : `Show More (${day.tasks.length - 3} more)`}
-                                      </Button>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-sm text-gray-500">No tasks recorded</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={getStatusColor(day.performanceStatus)}>
-                                  {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                            // Calculate status based on Total Span hours
+                            const totalSpanHours = day.totalSpanHours || 0;
+                            let status = 'poor';
+                            let statusColor = 'bg-red-100 text-red-800';
+
+                            if (totalSpanHours >= 4) {
+                              status = 'good';
+                              statusColor = 'bg-green-100 text-green-800';
+                            } else if (totalSpanHours >= 2) {
+                              status = 'fair';
+                              statusColor = 'bg-yellow-100 text-yellow-800';
+                            }
+
+                            return (
+                              <TableRow key={index}>
+                                <TableCell className="font-medium">
+                                  {format(new Date(day.date), "MMM dd, yyyy")}
+                                </TableCell>
+                                <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
+                                <TableCell className="font-medium">
+                                  {formatTime(day.actualWorkHours)}
+                                </TableCell>
+                                <TableCell className="whitespace-normal break-words">
+                                  {day.tasks.length > 0 ? (
+                                    <>
+                                      <div className="flex flex-col gap-1">
+                                        {displayedTasks.map((task, taskIndex) => (
+                                          <div key={taskIndex} className="text-sm text-gray-600">
+                                            {task.split(' ').map((word, wordIndex) => (
+                                              <span key={wordIndex} className="inline-block">{word}<br /></span>
+                                            ))}
+                                          </div>
+                                        ))}
+                                      </div>
+                                      {day.tasks.length > 3 && (
+                                        <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => toggleRowExpansion(index)}>
+                                          {isExpanded ? 'Show Less' : `Show More (${day.tasks.length - 3} more)`}
+                                        </Button>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-sm text-gray-500">No tasks recorded</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={statusColor}>
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+
+                      {/* Status Legend */}
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Daily Performance Status Legend</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                            <div className="text-sm">
+                              <div className="font-medium text-red-700">Poor</div>
+                              <div className="text-gray-600">Less than 2 hours worked</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                            <div className="text-sm">
+                              <div className="font-medium text-yellow-700">Fair</div>
+                              <div className="text-gray-600">2 to 4 hours worked</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                            <div className="text-sm">
+                              <div className="font-medium text-green-700">Good</div>
+                              <div className="text-gray-600">4 hours or more worked</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
