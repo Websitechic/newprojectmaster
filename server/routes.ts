@@ -42,6 +42,7 @@ import {
   sops,
   sopSegments,
   issueReports,
+  reviewRequests,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
@@ -4908,6 +4909,220 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating issue report:", error);
       res.status(500).json({ error: "Failed to update issue report" });
+    }
+  });
+
+  // Review Requests API Routes
+  app.get("/api/review-requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const isProjectManager = user.role === "project_manager";
+    const isTeamLead = user.role === "team_lead";
+
+    if (!isProjectManager && !isTeamLead) {
+      return res.status(403).json({ error: "Only project managers and team leads can access review requests" });
+    }
+
+    try {
+      let requests;
+      
+      if (isProjectManager) {
+        // Project managers see requests they created
+        requests = await db
+          .select({
+            id: reviewRequests.id,
+            title: reviewRequests.title,
+            description: reviewRequests.description,
+            reviewLink: reviewRequests.reviewLink,
+            projectManagerId: reviewRequests.projectManagerId,
+            teamLeadId: reviewRequests.teamLeadId,
+            status: reviewRequests.status,
+            completedAt: reviewRequests.completedAt,
+            reviewNotes: reviewRequests.reviewNotes,
+            createdAt: reviewRequests.createdAt,
+            updatedAt: reviewRequests.updatedAt,
+            teamLeadName: users.name,
+          })
+          .from(reviewRequests)
+          .leftJoin(users, eq(reviewRequests.teamLeadId, users.id))
+          .where(eq(reviewRequests.projectManagerId, user.id))
+          .orderBy(desc(reviewRequests.createdAt));
+      } else {
+        // Team leads see requests assigned to them
+        requests = await db
+          .select({
+            id: reviewRequests.id,
+            title: reviewRequests.title,
+            description: reviewRequests.description,
+            reviewLink: reviewRequests.reviewLink,
+            projectManagerId: reviewRequests.projectManagerId,
+            teamLeadId: reviewRequests.teamLeadId,
+            status: reviewRequests.status,
+            completedAt: reviewRequests.completedAt,
+            reviewNotes: reviewRequests.reviewNotes,
+            createdAt: reviewRequests.createdAt,
+            updatedAt: reviewRequests.updatedAt,
+            projectManagerName: users.name,
+          })
+          .from(reviewRequests)
+          .leftJoin(users, eq(reviewRequests.projectManagerId, users.id))
+          .where(eq(reviewRequests.teamLeadId, user.id))
+          .orderBy(desc(reviewRequests.createdAt));
+      }
+
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching review requests:", error);
+      res.status(500).json({ error: "Failed to fetch review requests" });
+    }
+  });
+
+  app.post("/api/review-requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager") {
+      return res.status(403).json({ error: "Only project managers can create review requests" });
+    }
+
+    try {
+      const { title, description, reviewLink, teamLeadId } = req.body;
+
+      if (!title || !reviewLink || !teamLeadId) {
+        return res.status(400).json({ error: "Title, review link, and team lead are required" });
+      }
+
+      const [newRequest] = await db
+        .insert(reviewRequests)
+        .values({
+          title: title.trim(),
+          description: description?.trim() || null,
+          reviewLink: reviewLink.trim(),
+          projectManagerId: user.id,
+          teamLeadId: parseInt(teamLeadId),
+          status: "pending",
+        })
+        .returning();
+
+      // Create notification for team lead
+      await createNotification(
+        parseInt(teamLeadId),
+        "task_assigned",
+        `New review request from ${user.name}: ${title}`,
+        newRequest.id,
+        "project"
+      );
+
+      res.json({ success: true, requestId: newRequest.id });
+    } catch (error) {
+      console.error("Error creating review request:", error);
+      res.status(500).json({ error: "Failed to create review request" });
+    }
+  });
+
+  app.put("/api/review-requests/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const requestId = parseInt(req.params.id);
+    const { status, reviewNotes } = req.body;
+
+    try {
+      // Check if request exists
+      const [existingRequest] = await db
+        .select()
+        .from(reviewRequests)
+        .where(eq(reviewRequests.id, requestId))
+        .limit(1);
+
+      if (!existingRequest) {
+        return res.status(404).json({ error: "Review request not found" });
+      }
+
+      // Team leads can update status, project managers can only view
+      if (user.role === "team_lead" && existingRequest.teamLeadId !== user.id) {
+        return res.status(403).json({ error: "You can only update requests assigned to you" });
+      }
+
+      if (user.role !== "team_lead") {
+        return res.status(403).json({ error: "Only team leads can update review requests" });
+      }
+
+      const updateData: any = {
+        updatedAt: new Date(),
+      };
+
+      if (status) {
+        updateData.status = status;
+        if (status === "completed") {
+          updateData.completedAt = new Date();
+        }
+      }
+
+      if (reviewNotes !== undefined) {
+        updateData.reviewNotes = reviewNotes?.trim() || null;
+      }
+
+      const [updatedRequest] = await db
+        .update(reviewRequests)
+        .set(updateData)
+        .where(eq(reviewRequests.id, requestId))
+        .returning();
+
+      // Notify project manager if status changed to completed
+      if (status === "completed") {
+        await createNotification(
+          existingRequest.projectManagerId,
+          "task_completed",
+          `Review completed by team lead: ${existingRequest.title}`,
+          requestId,
+          "project"
+        );
+      }
+
+      res.json({ success: true, request: updatedRequest });
+    } catch (error) {
+      console.error("Error updating review request:", error);
+      res.status(500).json({ error: "Failed to update review request" });
+    }
+  });
+
+  app.delete("/api/review-requests/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const requestId = parseInt(req.params.id);
+
+    try {
+      const [existingRequest] = await db
+        .select()
+        .from(reviewRequests)
+        .where(eq(reviewRequests.id, requestId))
+        .limit(1);
+
+      if (!existingRequest) {
+        return res.status(404).json({ error: "Review request not found" });
+      }
+
+      if (user.role !== "project_manager" || existingRequest.projectManagerId !== user.id) {
+        return res.status(403).json({ error: "Only the creator can delete this request" });
+      }
+
+      await db.delete(reviewRequests).where(eq(reviewRequests.id, requestId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting review request:", error);
+      res.status(500).json({ error: "Failed to delete review request" });
     }
   });
 

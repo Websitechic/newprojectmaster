@@ -888,6 +888,38 @@ export type IssueReport = typeof issueReports.$inferSelect;
 export const insertIssueReportSchema = createInsertSchema(issueReports);
 export const selectIssueReportSchema = createSelectSchema(issueReports);
 
+// Review Requests table
+export const reviewRequests = pgTable("review_requests", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  reviewLink: text("review_link").notNull(),
+  projectManagerId: integer("project_manager_id").references(() => users.id).notNull(),
+  teamLeadId: integer("team_lead_id").references(() => users.id).notNull(),
+  status: text("status", {
+    enum: ["pending", "in_review", "completed"]
+  }).default("pending"),
+  completedAt: timestamp("completed_at"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const reviewRequestsRelations = relations(reviewRequests, ({ one }) => ({
+  projectManager: one(users, {
+    fields: [reviewRequests.projectManagerId],
+    references: [users.id],
+  }),
+  teamLead: one(users, {
+    fields: [reviewRequests.teamLeadId],
+    references: [users.id],
+  }),
+}));
+
+export type ReviewRequest = typeof reviewRequests.$inferSelect;
+export const insertReviewRequestSchema = createInsertSchema(reviewRequests);
+export const selectReviewRequestSchema = createSelectSchema(reviewRequests);
+
 // Removed duplicate notes declaration - keeping the earlier definition
 
 export type Note = typeof notes.$inferSelect;

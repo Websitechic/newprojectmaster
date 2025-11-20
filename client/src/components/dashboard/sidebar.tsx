@@ -32,6 +32,7 @@ import {
   Menu,
   X,
   Bug,
+  FileCheck,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -688,6 +689,35 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     ...extensionMenuItems,
     ...operationsManagerMenuItems,
     ...teamLeadMenuItems,
+    {(user.role === "operations_manager" || user.specialization === "operations_manager") && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={currentPath === "/dashboard/sop"}
+                onClick={() => setLocation("/dashboard/sop")}
+              >
+                <a className="flex items-center gap-3 cursor-pointer">
+                  <BookOpen className="h-4 w-4" />
+                  <span>SOPs</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+
+          {(user.role === "project_manager" || user.role === "team_lead") && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={currentPath === "/dashboard/review-requests"}
+                onClick={() => setLocation("/dashboard/review-requests")}
+              >
+                <a className="flex items-center gap-3 cursor-pointer">
+                  <FileCheck className="h-4 w-4" />
+                  <span>Review Requests</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
     ...(user?.role !== "operations_manager" && user?.specialization !== "operations_manager" && user?.role !== "team_lead" ? [{
       icon: <FileText size={20} />,
       label: "Memos",
