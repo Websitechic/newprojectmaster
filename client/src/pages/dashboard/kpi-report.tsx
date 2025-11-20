@@ -167,13 +167,48 @@ export default function KPIReportPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `kpi-report-${staffMember?.name}-${format === 'excel' ? 'xlsx' : format}`;
+      const extension = format === 'excel' ? 'xls' : format;
+      a.download = `kpi-report-${staffMember?.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.${extension}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
       console.error('Export error:', error);
+    }
+  };
+
+  const handleBulkExport = async (format: 'pdf' | 'excel' | 'csv') => {
+    if (!selectedDepartment) return;
+
+    try {
+      const response = await fetch('/api/kpi-report/export-bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          format,
+          department: selectedDepartment,
+          dateRange,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Bulk export failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const deptLabel = departments.find(d => d.value === selectedDepartment)?.label || selectedDepartment;
+      const extension = format === 'excel' ? 'xls' : format;
+      a.download = `kpi-report-all-${deptLabel.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Bulk export error:', error);
     }
   };
 
@@ -213,37 +248,52 @@ export default function KPIReportPage() {
                 <h1 className="text-3xl font-bold text-gray-900">KPI Report</h1>
                 <p className="text-gray-600 mt-1">Employee performance and productivity tracking</p>
               </div>
-              {selectedStaff && productivityData && (
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleExport('csv')}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <FileSpreadsheet className="h-4 w-4" />
-                    CSV
-                  </Button>
-                  <Button
-                    onClick={() => handleExport('excel')}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Excel
-                  </Button>
-                  <Button
-                    onClick={() => handleExport('pdf')}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <FileText className="h-4 w-4" />
-                    PDF
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-2">
+                {selectedStaff && productivityData && (
+                  <>
+                    <Button
+                      onClick={() => handleExport('csv')}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <FileSpreadsheet className="h-4 w-4" />
+                      Export CSV
+                    </Button>
+                    <Button
+                      onClick={() => handleExport('excel')}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <FileSpreadsheet className="h-4 w-4" />
+                      Export Excel
+                    </Button>
+                  </>
+                )}
+                {selectedDepartment && (
+                  <>
+                    <Button
+                      onClick={() => handleBulkExport('csv')}
+                      variant="default"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export All (CSV)
+                    </Button>
+                    <Button
+                      onClick={() => handleBulkExport('excel')}
+                      variant="default"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export All (Excel)
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Filters */}
