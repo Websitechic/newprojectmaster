@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Download, FileText, FileSpreadsheet, FileDown, Calendar, User, Building2, TrendingUp } from "lucide-react";
 import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
@@ -83,6 +84,7 @@ export default function KPIReportPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("");
   const [selectedStaff, setSelectedStaff] = useState<string>("");
   const [dateRange, setDateRange] = useState<number>(30); // Last 30 days
+  const [activeTab, setActiveTab] = useState<string>("productivity-score");
 
   // Check if user is operations manager or team lead
   if (user?.role !== "operations_manager" && user?.role !== "team_lead" && user?.specialization !== "operations_manager") {
@@ -409,121 +411,222 @@ export default function KPIReportPage() {
               </Card>
             )}
 
-            {/* Daily Productivity Table */}
-            {productivityData?.dailyData && (
+            {/* Tabs for Productivity Score and Daily Details */}
+            {productivityData && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Daily Productivity Details</CardTitle>
-                  <CardDescription>
-                    Detailed breakdown of daily work performance
-                  </CardDescription>
+                  <CardTitle>Performance Analysis</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {isLoadingProductivity ? (
-                    <div className="flex items-center justify-center p-8">
-                      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-                    </div>
-                  ) : (
-                    <>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Total Span</TableHead>
-                            <TableHead>Actual Work</TableHead>
-                            <TableHead>Tasks</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {sortedDailyData.map((day, index) => {
-                            const isExpanded = expandedRows.has(index);
-                            const displayedTasks = isExpanded ? day.tasks : day.tasks.slice(0, 3);
+                  <Tabs value={activeTab} onValueChange={setActiveTab}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="productivity-score">Productivity Score</TabsTrigger>
+                      <TabsTrigger value="daily-details">Daily Productivity Details</TabsTrigger>
+                    </TabsList>
 
-                            // Calculate status based on Total Span hours
-                            const totalSpanHours = day.totalSpanHours || 0;
-                            let status = 'poor';
-                            let statusColor = 'bg-red-100 text-red-800';
+                    {/* Tab 1: Productivity Score */}
+                    <TabsContent value="productivity-score" className="mt-6">
+                      {isLoadingProductivity ? (
+                        <div className="flex items-center justify-center p-8">
+                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                        </div>
+                      ) : (
+                        <>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Task Name</TableHead>
+                                <TableHead>Assigned Time (min)</TableHead>
+                                <TableHead>Actual Time (min)</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {sortedDailyData.flatMap((day) => 
+                                day.tasks.map((taskName, idx) => {
+                                  // Find task data from the original productivity data
+                                  const taskData = productivityData.dailyData
+                                    .find(d => d.date === day.date)?.tasks[idx];
+                                  
+                                  // Calculate assigned time from totalSpanHours (distributed evenly across tasks)
+                                  const tasksCount = day.tasks.length || 1;
+                                  const assignedMinutes = Math.round((day.totalSpanHours * 60) / tasksCount);
+                                  const actualMinutes = Math.round((day.actualWorkHours * 60) / tasksCount);
 
-                            if (totalSpanHours >= 4) {
-                              status = 'good';
-                              statusColor = 'bg-green-100 text-green-800';
-                            } else if (totalSpanHours >= 2) {
-                              status = 'fair';
-                              statusColor = 'bg-yellow-100 text-yellow-800';
-                            }
-
-                            return (
-                              <TableRow key={index}>
-                                <TableCell className="font-medium">
-                                  {format(new Date(day.date), "MMM dd, yyyy")}
-                                </TableCell>
-                                <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
-                                <TableCell className="font-medium">
-                                  {formatTime(day.actualWorkHours)}
-                                </TableCell>
-                                <TableCell className="whitespace-normal break-words">
-                                  {day.tasks.length > 0 ? (
-                                    <>
-                                      <div className="flex flex-col gap-1">
-                                        {displayedTasks.map((task, taskIndex) => (
-                                          <div key={taskIndex} className="text-sm text-gray-600">
-                                            {task.split(' ').map((word, wordIndex) => (
-                                              <span key={wordIndex} className="inline-block">{word}<br /></span>
-                                            ))}
-                                          </div>
-                                        ))}
-                                      </div>
-                                      {day.tasks.length > 3 && (
-                                        <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => toggleRowExpansion(index)}>
-                                          {isExpanded ? 'Show Less' : `Show More (${day.tasks.length - 3} more)`}
-                                        </Button>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <span className="text-sm text-gray-500">No tasks recorded</span>
-                                  )}
+                                  return (
+                                    <TableRow key={`${day.date}-${idx}`}>
+                                      <TableCell className="font-medium">{taskName}</TableCell>
+                                      <TableCell>
+                                        {assignedMinutes} ({Math.floor(assignedMinutes / 60)}h{assignedMinutes % 60 > 0 ? ` ${assignedMinutes % 60}m` : ''})
+                                      </TableCell>
+                                      <TableCell>
+                                        {actualMinutes} ({Math.floor(actualMinutes / 60)}h{actualMinutes % 60 > 0 ? ` ${actualMinutes % 60}m` : ''})
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })
+                              )}
+                              <TableRow className="font-bold bg-gray-50">
+                                <TableCell>Total</TableCell>
+                                <TableCell>
+                                  {Math.round(sortedDailyData.reduce((sum, day) => sum + day.totalSpanHours * 60, 0))}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge className={statusColor}>
-                                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                                  </Badge>
+                                  {Math.round(sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours * 60, 0))}
                                 </TableCell>
                               </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                            </TableBody>
+                          </Table>
 
-                      {/* Status Legend */}
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-900 mb-3">Daily Performance Status Legend</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                            <div className="text-sm">
-                              <div className="font-medium text-red-700">Poor</div>
-                              <div className="text-gray-600">Less than 2 hours worked</div>
+                          {/* Productivity Calculation */}
+                          <div className="mt-6 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="text-center space-y-4">
+                              <div className="text-lg font-semibold text-gray-700">
+                                Productivity % = (
+                                <span className="text-blue-600">
+                                  {Math.round(sortedDailyData.reduce((sum, day) => sum + day.totalSpanHours * 60, 0))}
+                                </span>
+                                {" / "}
+                                <span className="text-blue-600">
+                                  {Math.round(sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours * 60, 0))}
+                                </span>
+                                ) × 100 = 
+                                <span className="text-2xl font-bold text-blue-700 ml-2">
+                                  {sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours, 0) > 0
+                                    ? Math.round((sortedDailyData.reduce((sum, day) => sum + day.totalSpanHours, 0) / 
+                                        sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours, 0)) * 100)
+                                    : 0}%
+                                </span>
+                              </div>
+                              
+                              <div className="flex items-center justify-center gap-2 text-sm">
+                                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                <span className="font-medium">
+                                  This means the worker was{" "}
+                                  <span className="font-bold text-blue-700">
+                                    {sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours, 0) > 0 &&
+                                    (sortedDailyData.reduce((sum, day) => sum + day.totalSpanHours, 0) / 
+                                      sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours, 0)) > 1
+                                      ? "more efficient"
+                                      : "less efficient"}
+                                  </span>
+                                  {" "}than expected.
+                                </span>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                            <div className="text-sm">
-                              <div className="font-medium text-yellow-700">Fair</div>
-                              <div className="text-gray-600">2 to 4 hours worked</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                            <div className="text-sm">
-                              <div className="font-medium text-green-700">Good</div>
-                              <div className="text-gray-600">4 hours or more worked</div>
-                            </div>
-                          </div>
+                        </>
+                      )}
+                    </TabsContent>
+
+                    {/* Tab 2: Daily Productivity Details */}
+                    <TabsContent value="daily-details" className="mt-6">
+                      {isLoadingProductivity ? (
+                        <div className="flex items-center justify-center p-8">
+                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
                         </div>
-                      </div>
-                    </>
-                  )}
+                      ) : (
+                        <>
+                          {/* Status Legend - Moved to top */}
+                          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                            <h4 className="text-sm font-medium text-gray-900 mb-3">Daily Performance Status Legend</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                                <div className="text-sm">
+                                  <div className="font-medium text-red-700">Poor</div>
+                                  <div className="text-gray-600">Less than 2 hours worked</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                                <div className="text-sm">
+                                  <div className="font-medium text-yellow-700">Fair</div>
+                                  <div className="text-gray-600">2 to 4 hours worked</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                                <div className="text-sm">
+                                  <div className="font-medium text-green-700">Good</div>
+                                  <div className="text-gray-600">4 hours or more worked</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Total Span</TableHead>
+                                <TableHead>Actual Work</TableHead>
+                                <TableHead>Tasks</TableHead>
+                                <TableHead>Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {sortedDailyData.map((day, index) => {
+                                const isExpanded = expandedRows.has(index);
+                                const displayedTasks = isExpanded ? day.tasks : day.tasks.slice(0, 3);
+
+                                // Calculate status based on Total Span hours
+                                const totalSpanHours = day.totalSpanHours || 0;
+                                let status = 'poor';
+                                let statusColor = 'bg-red-100 text-red-800';
+
+                                if (totalSpanHours >= 4) {
+                                  status = 'good';
+                                  statusColor = 'bg-green-100 text-green-800';
+                                } else if (totalSpanHours >= 2) {
+                                  status = 'fair';
+                                  statusColor = 'bg-yellow-100 text-yellow-800';
+                                }
+
+                                return (
+                                  <TableRow key={index}>
+                                    <TableCell className="font-medium">
+                                      {format(new Date(day.date), "MMM dd, yyyy")}
+                                    </TableCell>
+                                    <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
+                                    <TableCell className="font-medium">
+                                      {formatTime(day.actualWorkHours)}
+                                    </TableCell>
+                                    <TableCell className="whitespace-normal break-words">
+                                      {day.tasks.length > 0 ? (
+                                        <>
+                                          <div className="flex flex-col gap-1">
+                                            {displayedTasks.map((task, taskIndex) => (
+                                              <div key={taskIndex} className="text-sm text-gray-600">
+                                                {task.split(' ').map((word, wordIndex) => (
+                                                  <span key={wordIndex} className="inline-block">{word}<br /></span>
+                                                ))}
+                                              </div>
+                                            ))}
+                                          </div>
+                                          {day.tasks.length > 3 && (
+                                            <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => toggleRowExpansion(index)}>
+                                              {isExpanded ? 'Show Less' : `Show More (${day.tasks.length - 3} more)`}
+                                            </Button>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <span className="text-sm text-gray-500">No tasks recorded</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge className={statusColor}>
+                                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </>
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             )}
