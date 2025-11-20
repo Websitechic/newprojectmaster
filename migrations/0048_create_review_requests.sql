@@ -1,5 +1,5 @@
 
--- Create review requests table
+-- Create review_requests table
 CREATE TABLE IF NOT EXISTS review_requests (
   id SERIAL PRIMARY KEY,
   title TEXT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS review_requests (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Create index for faster queries
-CREATE INDEX idx_review_requests_pm ON review_requests(project_manager_id);
-CREATE INDEX idx_review_requests_tl ON review_requests(team_lead_id);
-CREATE INDEX idx_review_requests_status ON review_requests(status);
+-- Create indexes for faster queries
+CREATE INDEX IF NOT EXISTS idx_review_requests_pm ON review_requests(project_manager_id);
+CREATE INDEX IF NOT EXISTS idx_review_requests_tl ON review_requests(team_lead_id);
+CREATE INDEX IF NOT EXISTS idx_review_requests_status ON review_requests(status);
