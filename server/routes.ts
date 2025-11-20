@@ -1676,26 +1676,24 @@ export function registerRoutes(app: Express): Server {
           ]);
         });
 
-        if (format === 'csv') {
-          const csvContent = rows.map(row => 
-            row.map(field => {
-              const value = String(field || '');
-              if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-                return `"${value.replace(/"/g, '""')}"`;
-              }
-              return value;
-            }).join(',')
-          ).join('\n');
+        const csvContent = rows.map(row => 
+          row.map(field => {
+            const value = String(field || '');
+            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
+        ).join('\n');
 
+        if (format === 'csv') {
           res.setHeader('Content-Type', 'text/csv; charset=utf-8');
           res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
           res.send('\uFEFF' + csvContent);
         } else {
-          const excelContent = rows.map(row => row.join('\t')).join('\n');
-
-          res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
-          res.setHeader('Content-Disposition', `attachment; filename="${filename}.xls"`);
-          res.send('\uFEFF' + excelContent);
+          res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
+          res.send('\uFEFF' + csvContent);
         }
       } else {
         return res.status(400).json({ error: "Invalid export format" });
@@ -1881,26 +1879,24 @@ export function registerRoutes(app: Express): Server {
         rows.push(['Fair', '2-4 hours of actual work']);
         rows.push(['Poor', 'Less than 2 hours of actual work']);
 
-        if (format === 'csv') {
-          const csvContent = rows.map(row =>
-            row.map(field => {
-              const value = String(field || '');
-              if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-                return `"${value.replace(/"/g, '""')}"`;
-              }
-              return value;
-            }).join(',')
-          ).join('\n');
+        const csvContent = rows.map(row =>
+          row.map(field => {
+            const value = String(field || '');
+            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
+        ).join('\n');
 
+        if (format === 'csv') {
           res.setHeader('Content-Type', 'text/csv; charset=utf-8');
           res.setHeader('Content-Disposition', `attachment; filename="kpi-report-all-${department}-${Date.now()}.csv"`);
           res.send('\uFEFF' + csvContent);
         } else {
-          const excelContent = rows.map(row => row.join('\t')).join('\n');
-
-          res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
-          res.setHeader('Content-Disposition', `attachment; filename="kpi-report-all-${department}-${Date.now()}.xls"`);
-          res.send('\uFEFF' + excelContent);
+          res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="kpi-report-all-${department}-${Date.now()}.xlsx"`);
+          res.send('\uFEFF' + csvContent);
         }
       } else {
         return res.status(400).json({ error: "Invalid export format" });
