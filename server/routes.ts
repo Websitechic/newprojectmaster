@@ -1311,19 +1311,42 @@ export function registerRoutes(app: Express): Server {
       const poorDays = dailyDataArray.filter(day => day.performanceStatus === 'poor').length;
 
       // Get task details for productivity score calculation
-      const taskDetails = tasksInRange.map(task => {
-        // Get assigned time from workingHours and workingMinutes
-        const assignedMinutes = ((task.workingHours || 0) * 60) + (task.workingMinutes || 0);
-        
-        // Get actual time spent from timeSpent (in seconds)
-        const actualMinutes = Math.round((task.timeSpent || 0) / 60);
-        
-        return {
-          title: task.title,
-          assignedMinutes,
-          actualMinutes
-        };
-      });
+      const taskDetails = allUserTasks
+        .filter(task => {
+          // Only include tasks that were worked on during the date range
+          if (!task.timeSpent || task.timeSpent === 0) return false;
+          
+          // Check if task has sessions during our date range
+          if (task.timerSessions && Array.isArray(task.timerSessions)) {
+            const hasSessions = task.timerSessions.some((session: any) => {
+              if (!session.startTime) return false;
+              const sessionStart = new Date(session.startTime);
+              return sessionStart >= start && sessionStart <= end;
+            });
+            if (hasSessions) return true;
+          }
+          
+          // Check if timer is currently running and started in range
+          if (task.isTimerRunning && task.timerStartTime) {
+            const timerStart = new Date(task.timerStartTime);
+            return timerStart >= start && timerStart <= end;
+          }
+          
+          return false;
+        })
+        .map(task => {
+          // Get assigned time from workingHours and workingMinutes
+          const assignedMinutes = ((task.workingHours || 0) * 60) + (task.workingMinutes || 0);
+          
+          // Get actual time spent from timeSpent (in seconds)
+          const actualMinutes = Math.round((task.timeSpent || 0) / 60);
+          
+          return {
+            title: task.title,
+            assignedMinutes,
+            actualMinutes
+          };
+        });
 
       const productivityData = {
         dailyData: dailyDataArray,
