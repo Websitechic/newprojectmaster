@@ -897,7 +897,7 @@ export const reviewRequests = pgTable("review_requests", {
   projectManagerId: integer("project_manager_id").references(() => users.id).notNull(),
   teamLeadId: integer("team_lead_id").references(() => users.id).notNull(),
   status: text("status", {
-    enum: ["pending", "in_review", "completed"]
+    enum: ["pending", "in_review", "resolved", "closed"]
   }).default("pending"),
   completedAt: timestamp("completed_at"),
   reviewNotes: text("review_notes"),

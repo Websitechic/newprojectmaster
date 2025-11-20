@@ -45,8 +45,6 @@ export default function ReviewRequests() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
-  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
 
   const isProjectManager = user?.role === "project_manager";
   const isTeamLead = user?.role === "team_lead";
@@ -95,19 +93,17 @@ export default function ReviewRequests() {
 
   // Update request mutation
   const updateRequestMutation = useMutation({
-    mutationFn: async ({ id, data }: any) => {
+    mutationFn: async ({ id, status, reviewNotes }: any) => {
       const response = await fetch(`/api/review-requests/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ status, reviewNotes }),
       });
       if (!response.ok) throw new Error("Failed to update review request");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/review-requests"] });
-      setIsReviewDialogOpen(false);
-      setSelectedRequest(null);
       toast({
         title: "Success",
         description: "Review status updated successfully",
@@ -158,22 +154,16 @@ export default function ReviewRequests() {
     });
   };
 
-  const handleUpdateStatus = (status: string, reviewNotes?: string) => {
-    if (!selectedRequest) return;
-    updateRequestMutation.mutate({
-      id: selectedRequest.id,
-      data: { status, reviewNotes },
-    });
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
         return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
       case "in_review":
         return <Badge className="bg-blue-500"><Eye className="h-3 w-3 mr-1" />In Review</Badge>;
-      case "completed":
-        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>;
+      case "resolved":
+        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Resolved</Badge>;
+      case "closed":
+        return <Badge className="bg-slate-500"><CheckCircle className="h-3 w-3 mr-1" />Closed</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -211,12 +201,12 @@ export default function ReviewRequests() {
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
-                    New Review Request
+                    Send for Review
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Create Review Request</DialogTitle>
+                    <DialogTitle>Send for Review</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleCreateRequest} className="space-y-4">
                     <div className="space-y-2">
@@ -318,28 +308,45 @@ export default function ReviewRequests() {
                         </div>
                       )}
                       <div className="flex gap-2 mt-4">
-                        {isTeamLead && request.status !== "completed" && (
+                        {isTeamLead && (
                           <>
                             {request.status === "pending" && (
                               <Button
                                 size="sm"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setIsReviewDialogOpen(true);
-                                }}
+                                onClick={() => updateRequestMutation.mutate({ 
+                                  id: request.id, 
+                                  status: "in_review",
+                                  reviewNotes: request.reviewNotes 
+                                })}
+                                disabled={updateRequestMutation.isPending}
                               >
-                                Start Review
+                                Move to In Review
                               </Button>
                             )}
                             {request.status === "in_review" && (
                               <Button
                                 size="sm"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setIsReviewDialogOpen(true);
-                                }}
+                                onClick={() => updateRequestMutation.mutate({ 
+                                  id: request.id, 
+                                  status: "resolved",
+                                  reviewNotes: request.reviewNotes 
+                                })}
+                                disabled={updateRequestMutation.isPending}
                               >
-                                Mark as Completed
+                                Move to Resolved
+                              </Button>
+                            )}
+                            {request.status === "resolved" && (
+                              <Button
+                                size="sm"
+                                onClick={() => updateRequestMutation.mutate({ 
+                                  id: request.id, 
+                                  status: "closed",
+                                  reviewNotes: request.reviewNotes 
+                                })}
+                                disabled={updateRequestMutation.isPending}
+                              >
+                                Move to Closed
                               </Button>
                             )}
                           </>
@@ -385,46 +392,7 @@ export default function ReviewRequests() {
             </div>
           )}
 
-          {/* Review Dialog for Team Leads */}
-          <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Update Review Status</DialogTitle>
-              </DialogHeader>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const status = selectedRequest?.status === "pending" ? "in_review" : "completed";
-                  handleUpdateStatus(status, formData.get("reviewNotes") as string);
-                }}
-                className="space-y-4"
-              >
-                <div className="space-y-2">
-                  <Label htmlFor="reviewNotes">Review Notes (Optional)</Label>
-                  <Textarea
-                    id="reviewNotes"
-                    name="reviewNotes"
-                    rows={4}
-                    placeholder="Add any comments or feedback..."
-                    defaultValue={selectedRequest?.reviewNotes || ""}
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={updateRequestMutation.isPending}>
-                    {updateRequestMutation.isPending
-                      ? "Updating..."
-                      : selectedRequest?.status === "pending"
-                      ? "Start Review"
-                      : "Mark as Completed"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          
         </div>
       </div>
     </div>
