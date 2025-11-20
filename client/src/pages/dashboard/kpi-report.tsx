@@ -39,9 +39,16 @@ interface WeeklyData {
   performanceColor: string;
 }
 
+interface TaskDetail {
+  title: string;
+  assignedMinutes: number;
+  actualMinutes: number;
+}
+
 interface ProductivityData {
   dailyData: DailyProductivity[];
   weeklyData: WeeklyData[];
+  taskDetails: TaskDetail[];
   summary: {
     totalDays: number;
     avgHoursPerDay: number;
@@ -430,70 +437,25 @@ export default function KPIReportPage() {
                         <div className="flex items-center justify-center p-8">
                           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
                         </div>
-                      ) : (
+                      ) : productivityData?.taskDetails ? (
                         <>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Task Name</TableHead>
-                                <TableHead>Assigned Time (min)</TableHead>
-                                <TableHead>Actual Time (min)</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {sortedDailyData.flatMap((day) => 
-                                day.tasks.map((taskName, idx) => {
-                                  // Find task data from the original productivity data
-                                  const taskData = productivityData.dailyData
-                                    .find(d => d.date === day.date)?.tasks[idx];
-                                  
-                                  // Calculate assigned time from totalSpanHours (distributed evenly across tasks)
-                                  const tasksCount = day.tasks.length || 1;
-                                  const assignedMinutes = Math.round((day.totalSpanHours * 60) / tasksCount);
-                                  const actualMinutes = Math.round((day.actualWorkHours * 60) / tasksCount);
-
-                                  return (
-                                    <TableRow key={`${day.date}-${idx}`}>
-                                      <TableCell className="font-medium">{taskName}</TableCell>
-                                      <TableCell>
-                                        {assignedMinutes} ({Math.floor(assignedMinutes / 60)}h{assignedMinutes % 60 > 0 ? ` ${assignedMinutes % 60}m` : ''})
-                                      </TableCell>
-                                      <TableCell>
-                                        {actualMinutes} ({Math.floor(actualMinutes / 60)}h{actualMinutes % 60 > 0 ? ` ${actualMinutes % 60}m` : ''})
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })
-                              )}
-                              <TableRow className="font-bold bg-gray-50">
-                                <TableCell>Total</TableCell>
-                                <TableCell>
-                                  {Math.round(sortedDailyData.reduce((sum, day) => sum + day.totalSpanHours * 60, 0))}
-                                </TableCell>
-                                <TableCell>
-                                  {Math.round(sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours * 60, 0))}
-                                </TableCell>
-                              </TableRow>
-                            </TableBody>
-                          </Table>
-
-                          {/* Productivity Calculation */}
-                          <div className="mt-6 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                          {/* Productivity Calculation - Moved to top */}
+                          <div className="mb-6 p-6 bg-blue-50 rounded-lg border border-blue-200">
                             <div className="text-center space-y-4">
                               <div className="text-lg font-semibold text-gray-700">
                                 Productivity % = (
                                 <span className="text-blue-600">
-                                  {Math.round(sortedDailyData.reduce((sum, day) => sum + day.totalSpanHours * 60, 0))}
+                                  {Math.round(productivityData.taskDetails.reduce((sum, task) => sum + (task.assignedMinutes || 0), 0))}
                                 </span>
                                 {" / "}
                                 <span className="text-blue-600">
-                                  {Math.round(sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours * 60, 0))}
+                                  {Math.round(productivityData.taskDetails.reduce((sum, task) => sum + (task.actualMinutes || 0), 0))}
                                 </span>
                                 ) × 100 = 
                                 <span className="text-2xl font-bold text-blue-700 ml-2">
-                                  {sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours, 0) > 0
-                                    ? Math.round((sortedDailyData.reduce((sum, day) => sum + day.totalSpanHours, 0) / 
-                                        sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours, 0)) * 100)
+                                  {productivityData.taskDetails.reduce((sum, task) => sum + (task.actualMinutes || 0), 0) > 0
+                                    ? Math.round((productivityData.taskDetails.reduce((sum, task) => sum + (task.assignedMinutes || 0), 0) / 
+                                        productivityData.taskDetails.reduce((sum, task) => sum + (task.actualMinutes || 0), 0)) * 100)
                                     : 0}%
                                 </span>
                               </div>
@@ -503,9 +465,9 @@ export default function KPIReportPage() {
                                 <span className="font-medium">
                                   This means the worker was{" "}
                                   <span className="font-bold text-blue-700">
-                                    {sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours, 0) > 0 &&
-                                    (sortedDailyData.reduce((sum, day) => sum + day.totalSpanHours, 0) / 
-                                      sortedDailyData.reduce((sum, day) => sum + day.actualWorkHours, 0)) > 1
+                                    {productivityData.taskDetails.reduce((sum, task) => sum + (task.actualMinutes || 0), 0) > 0 &&
+                                    (productivityData.taskDetails.reduce((sum, task) => sum + (task.assignedMinutes || 0), 0) / 
+                                      productivityData.taskDetails.reduce((sum, task) => sum + (task.actualMinutes || 0), 0)) > 1
                                       ? "more efficient"
                                       : "less efficient"}
                                   </span>
@@ -514,7 +476,67 @@ export default function KPIReportPage() {
                               </div>
                             </div>
                           </div>
+
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Task Name</TableHead>
+                                <TableHead>Assigned Time (min)</TableHead>
+                                <TableHead>Actual Time Spent (min)</TableHead>
+                                <TableHead>Completion Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {productivityData.taskDetails.map((task, idx) => {
+                                const assignedMinutes = task.assignedMinutes || 0;
+                                const actualMinutes = task.actualMinutes || 0;
+                                
+                                // Determine completion status
+                                let completionStatus = 'On Time';
+                                let statusColor = 'bg-green-100 text-green-800';
+                                
+                                if (actualMinutes < assignedMinutes) {
+                                  completionStatus = 'Early';
+                                  statusColor = 'bg-blue-100 text-blue-800';
+                                } else if (actualMinutes > assignedMinutes) {
+                                  completionStatus = 'Late';
+                                  statusColor = 'bg-red-100 text-red-800';
+                                }
+
+                                return (
+                                  <TableRow key={idx}>
+                                    <TableCell className="font-medium">{task.title}</TableCell>
+                                    <TableCell>
+                                      {assignedMinutes} ({Math.floor(assignedMinutes / 60)}h{assignedMinutes % 60 > 0 ? ` ${assignedMinutes % 60}m` : ''})
+                                    </TableCell>
+                                    <TableCell>
+                                      {actualMinutes} ({Math.floor(actualMinutes / 60)}h{actualMinutes % 60 > 0 ? ` ${actualMinutes % 60}m` : ''})
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge className={statusColor}>
+                                        {completionStatus}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                              <TableRow className="font-bold bg-gray-50">
+                                <TableCell>Total</TableCell>
+                                <TableCell>
+                                  {Math.round(productivityData.taskDetails.reduce((sum, task) => sum + (task.assignedMinutes || 0), 0))}
+                                </TableCell>
+                                <TableCell>
+                                  {Math.round(productivityData.taskDetails.reduce((sum, task) => sum + (task.actualMinutes || 0), 0))}
+                                </TableCell>
+                                <TableCell></TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
                         </>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          No task data available for the selected period.
+                        </div>
                       )}
                     </TabsContent>
 

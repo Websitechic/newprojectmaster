@@ -1310,9 +1310,25 @@ export function registerRoutes(app: Express): Server {
       const fairDays = dailyDataArray.filter(day => day.performanceStatus === 'fair').length;
       const poorDays = dailyDataArray.filter(day => day.performanceStatus === 'poor').length;
 
+      // Get task details for productivity score calculation
+      const taskDetails = tasksInRange.map(task => {
+        // Get assigned time from workingHours and workingMinutes
+        const assignedMinutes = ((task.workingHours || 0) * 60) + (task.workingMinutes || 0);
+        
+        // Get actual time spent from timeSpent (in seconds)
+        const actualMinutes = Math.round((task.timeSpent || 0) / 60);
+        
+        return {
+          title: task.title,
+          assignedMinutes,
+          actualMinutes
+        };
+      });
+
       const productivityData = {
         dailyData: dailyDataArray,
         weeklyData,
+        taskDetails,
         summary: {
           totalDays,
           avgHoursPerDay,
