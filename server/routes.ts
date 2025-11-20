@@ -1612,76 +1612,100 @@ export function registerRoutes(app: Express): Server {
       const filename = `kpi-report-${staffName || 'staff'}-${Date.now()}`;
 
       if (format === 'csv') {
-        // Create CSV content with proper escaping and formatting
-        const csvRows = [
-          ['Staff Name', staffName],
-          ['Department', department],
-          ['Date Range (days)', dateRange],
-          ['Generated At', new Date().toLocaleString()],
-          [''],
-          ['SUMMARY'],
-          ['Total Days', productivityData.summary.totalDays],
-          ['Average Hours/Day', productivityData.summary.avgHoursPerDay.toFixed(2)],
-          ['Good Days', productivityData.summary.goodDays],
-          ['Fair Days', productivityData.summary.fairDays],
-          ['Poor Days', productivityData.summary.poorDays],
-          [''],
-          ['DAILY PRODUCTIVITY DETAILS'],
-          ['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks Completed', 'Performance Status'],
-          ...productivityData.dailyData.map((day: any) => [
+        // CSV format - proper column structure
+        const csvRows = [];
+        
+        // Header information
+        csvRows.push(['KPI REPORT']);
+        csvRows.push(['']);
+        csvRows.push(['Staff Name', staffName]);
+        csvRows.push(['Department', department]);
+        csvRows.push(['Date Range', `Last ${dateRange} days`]);
+        csvRows.push(['Generated At', new Date().toLocaleString()]);
+        csvRows.push(['']);
+        
+        // Summary section
+        csvRows.push(['SUMMARY']);
+        csvRows.push(['Metric', 'Value']);
+        csvRows.push(['Total Days', productivityData.summary.totalDays]);
+        csvRows.push(['Average Hours/Day', productivityData.summary.avgHoursPerDay.toFixed(2)]);
+        csvRows.push(['Good Days', productivityData.summary.goodDays]);
+        csvRows.push(['Fair Days', productivityData.summary.fairDays]);
+        csvRows.push(['Poor Days', productivityData.summary.poorDays]);
+        csvRows.push(['']);
+        
+        // Daily productivity details
+        csvRows.push(['DAILY PRODUCTIVITY DETAILS']);
+        csvRows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks Completed', 'Performance Status']);
+        
+        productivityData.dailyData.forEach((day: any) => {
+          csvRows.push([
             day.date,
             day.totalSpanHours.toFixed(2),
             day.actualWorkHours.toFixed(2),
             day.taskCount,
             day.performanceStatus.toUpperCase()
-          ])
-        ];
+          ]);
+        });
 
-        const csvContent = csvRows.map(row =>
-          row.map(field =>
-            typeof field === 'string' && (field.includes(',') || field.includes('\n'))
-              ? `"${field.replace(/"/g, '""')}"`
-              : field
-          ).join(',')
+        // Convert to CSV string with proper escaping
+        const csvContent = csvRows.map(row => 
+          row.map(field => {
+            const value = String(field);
+            // Escape fields that contain commas, quotes, or newlines
+            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
         ).join('\n');
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
-        res.send('\uFEFF' + csvContent); // Add BOM for Excel compatibility
+        res.send('\uFEFF' + csvContent);
       } else if (format === 'excel') {
-        // Create Excel-compatible format with proper structure
-        const excelRows = [
-          ['KPI REPORT'],
-          [''],
-          ['Staff Name:', staffName],
-          ['Department:', department],
-          ['Date Range:', `Last ${dateRange} days`],
-          ['Generated At:', new Date().toLocaleString()],
-          [''],
-          ['SUMMARY'],
-          ['Metric', 'Value'],
-          ['Total Days', productivityData.summary.totalDays],
-          ['Average Hours/Day', productivityData.summary.avgHoursPerDay.toFixed(2)],
-          ['Good Days', productivityData.summary.goodDays],
-          ['Fair Days', productivityData.summary.fairDays],
-          ['Poor Days', productivityData.summary.poorDays],
-          [''],
-          ['DAILY PRODUCTIVITY DETAILS'],
-          ['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks Completed', 'Performance Status'],
-          ...productivityData.dailyData.map((day: any) => [
+        // Excel format - tab-delimited
+        const excelRows = [];
+        
+        // Header information
+        excelRows.push(['KPI REPORT']);
+        excelRows.push(['']);
+        excelRows.push(['Staff Name', staffName]);
+        excelRows.push(['Department', department]);
+        excelRows.push(['Date Range', `Last ${dateRange} days`]);
+        excelRows.push(['Generated At', new Date().toLocaleString()]);
+        excelRows.push(['']);
+        
+        // Summary section
+        excelRows.push(['SUMMARY']);
+        excelRows.push(['Metric', 'Value']);
+        excelRows.push(['Total Days', productivityData.summary.totalDays]);
+        excelRows.push(['Average Hours/Day', productivityData.summary.avgHoursPerDay.toFixed(2)]);
+        excelRows.push(['Good Days', productivityData.summary.goodDays]);
+        excelRows.push(['Fair Days', productivityData.summary.fairDays]);
+        excelRows.push(['Poor Days', productivityData.summary.poorDays]);
+        excelRows.push(['']);
+        
+        // Daily productivity details
+        excelRows.push(['DAILY PRODUCTIVITY DETAILS']);
+        excelRows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks Completed', 'Performance Status']);
+        
+        productivityData.dailyData.forEach((day: any) => {
+          excelRows.push([
             day.date,
             day.totalSpanHours.toFixed(2),
             day.actualWorkHours.toFixed(2),
             day.taskCount,
             day.performanceStatus.toUpperCase()
-          ])
-        ];
+          ]);
+        });
 
+        // Convert to tab-delimited string for Excel
         const excelContent = excelRows.map(row => row.join('\t')).join('\n');
 
         res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}.xls"`);
-        res.send('\uFEFF' + excelContent); // Add BOM for Excel compatibility
+        res.send('\uFEFF' + excelContent);
       } else {
         return res.status(400).json({ error: "Invalid export format" });
       }
@@ -1740,12 +1764,12 @@ export function registerRoutes(app: Express): Server {
 
         // Calculate daily productivity
         const dailyMap = new Map();
-        const dateRange = [];
+        const dateRangeArray = [];
         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          dateRange.push(new Date(d));
+          dateRangeArray.push(new Date(d));
         }
 
-        dateRange.forEach(date => {
+        dateRangeArray.forEach(date => {
           const dateKey = date.toISOString().split('T')[0];
           dailyMap.set(dateKey, {
             date: dateKey,
@@ -1793,24 +1817,32 @@ export function registerRoutes(app: Express): Server {
       }
 
       if (format === 'csv') {
-        const csvRows = [
-          ['BULK KPI REPORT - ' + department.toUpperCase()],
-          ['Generated At:', new Date().toLocaleString()],
-          ['Date Range:', `Last ${dateRange} days`],
-          ['Total Staff:', staffMembers.length],
-          ['']
-        ];
+        const csvRows = [];
+        
+        // Header
+        csvRows.push(['BULK KPI REPORT - ' + department.toUpperCase()]);
+        csvRows.push(['']);
+        csvRows.push(['Generated At', new Date().toLocaleString()]);
+        csvRows.push(['Date Range', `Last ${dateRange} days`]);
+        csvRows.push(['Total Staff', staffMembers.length]);
+        csvRows.push(['']);
 
+        // Data for each staff member
         allStaffData.forEach(staffData => {
           csvRows.push(['']);
-          csvRows.push(['STAFF:', staffData.staffName]);
+          csvRows.push(['STAFF', staffData.staffName]);
+          csvRows.push(['']);
+          csvRows.push(['SUMMARY']);
+          csvRows.push(['Metric', 'Value']);
           csvRows.push(['Total Days', staffData.summary.totalDays]);
           csvRows.push(['Avg Hours/Day', staffData.summary.avgHoursPerDay.toFixed(2)]);
           csvRows.push(['Good Days', staffData.summary.goodDays]);
           csvRows.push(['Fair Days', staffData.summary.fairDays]);
           csvRows.push(['Poor Days', staffData.summary.poorDays]);
           csvRows.push(['']);
+          csvRows.push(['DAILY DETAILS']);
           csvRows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks', 'Status']);
+          
           staffData.dailyData.forEach((day: any) => {
             csvRows.push([
               day.date,
@@ -1822,30 +1854,37 @@ export function registerRoutes(app: Express): Server {
           });
         });
 
+        // Convert to CSV with proper escaping
         const csvContent = csvRows.map(row =>
-          row.map(field =>
-            typeof field === 'string' && (field.includes(',') || field.includes('\n'))
-              ? `"${field.replace(/"/g, '""')}"`
-              : field
-          ).join(',')
+          row.map(field => {
+            const value = String(field);
+            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
         ).join('\n');
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="kpi-report-bulk-${department}-${Date.now()}.csv"`);
         res.send('\uFEFF' + csvContent);
       } else if (format === 'excel') {
-        const excelRows = [
-          ['BULK KPI REPORT - ' + department.toUpperCase()],
-          [''],
-          ['Generated At:', new Date().toLocaleString()],
-          ['Date Range:', `Last ${dateRange} days`],
-          ['Total Staff:', staffMembers.length],
-          ['']
-        ];
+        const excelRows = [];
+        
+        // Header
+        excelRows.push(['BULK KPI REPORT - ' + department.toUpperCase()]);
+        excelRows.push(['']);
+        excelRows.push(['Generated At', new Date().toLocaleString()]);
+        excelRows.push(['Date Range', `Last ${dateRange} days`]);
+        excelRows.push(['Total Staff', staffMembers.length]);
+        excelRows.push(['']);
 
+        // Data for each staff member
         allStaffData.forEach(staffData => {
           excelRows.push(['']);
-          excelRows.push(['STAFF:', staffData.staffName]);
+          excelRows.push(['STAFF', staffData.staffName]);
+          excelRows.push(['']);
+          excelRows.push(['SUMMARY']);
           excelRows.push(['Metric', 'Value']);
           excelRows.push(['Total Days', staffData.summary.totalDays]);
           excelRows.push(['Avg Hours/Day', staffData.summary.avgHoursPerDay.toFixed(2)]);
@@ -1853,7 +1892,9 @@ export function registerRoutes(app: Express): Server {
           excelRows.push(['Fair Days', staffData.summary.fairDays]);
           excelRows.push(['Poor Days', staffData.summary.poorDays]);
           excelRows.push(['']);
+          excelRows.push(['DAILY DETAILS']);
           excelRows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks', 'Status']);
+          
           staffData.dailyData.forEach((day: any) => {
             excelRows.push([
               day.date,
@@ -1865,6 +1906,7 @@ export function registerRoutes(app: Express): Server {
           });
         });
 
+        // Convert to tab-delimited for Excel
         const excelContent = excelRows.map(row => row.join('\t')).join('\n');
 
         res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
