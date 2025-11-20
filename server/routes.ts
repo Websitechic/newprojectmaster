@@ -1611,101 +1611,81 @@ export function registerRoutes(app: Express): Server {
 
       const filename = `kpi-report-${staffName || 'staff'}-${Date.now()}`;
 
-      if (format === 'csv') {
-        // CSV format - proper column structure
-        const csvRows = [];
+      if (format === 'csv' || format === 'excel') {
+        const rows = [];
         
-        // Header information
-        csvRows.push(['KPI REPORT']);
-        csvRows.push(['']);
-        csvRows.push(['Staff Name', staffName]);
-        csvRows.push(['Department', department]);
-        csvRows.push(['Date Range', `Last ${dateRange} days`]);
-        csvRows.push(['Generated At', new Date().toLocaleString()]);
-        csvRows.push(['']);
+        // Header section
+        rows.push(['EMPLOYEE PRODUCTIVITY REPORT']);
+        rows.push(['']);
+        rows.push(['Employee Name:', staffName || '']);
+        rows.push(['Department:', department || '']);
+        rows.push(['Report Period:', `Last ${dateRange} days`]);
+        rows.push(['Generated On:', new Date().toLocaleDateString()]);
+        rows.push(['']);
+        rows.push(['']);
         
-        // Summary section
-        csvRows.push(['SUMMARY']);
-        csvRows.push(['Metric', 'Value']);
-        csvRows.push(['Total Days', productivityData.summary.totalDays]);
-        csvRows.push(['Average Hours/Day', productivityData.summary.avgHoursPerDay.toFixed(2)]);
-        csvRows.push(['Good Days', productivityData.summary.goodDays]);
-        csvRows.push(['Fair Days', productivityData.summary.fairDays]);
-        csvRows.push(['Poor Days', productivityData.summary.poorDays]);
-        csvRows.push(['']);
+        // Performance Summary section
+        rows.push(['PERFORMANCE SUMMARY']);
+        rows.push(['']);
+        rows.push(['Metric', 'Value']);
+        rows.push(['Total Working Days', productivityData.summary.totalDays]);
+        rows.push(['Average Hours Per Day', productivityData.summary.avgHoursPerDay.toFixed(2) + ' hours']);
+        rows.push(['Good Performance Days', productivityData.summary.goodDays]);
+        rows.push(['Fair Performance Days', productivityData.summary.fairDays]);
+        rows.push(['Poor Performance Days', productivityData.summary.poorDays]);
+        rows.push(['']);
+        rows.push(['']);
         
-        // Daily productivity details
-        csvRows.push(['DAILY PRODUCTIVITY DETAILS']);
-        csvRows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks Completed', 'Performance Status']);
-        
-        productivityData.dailyData.forEach((day: any) => {
-          csvRows.push([
-            day.date,
-            day.totalSpanHours.toFixed(2),
-            day.actualWorkHours.toFixed(2),
-            day.taskCount,
-            day.performanceStatus.toUpperCase()
-          ]);
-        });
-
-        // Convert to CSV string with proper escaping
-        const csvContent = csvRows.map(row => 
-          row.map(field => {
-            const value = String(field);
-            // Escape fields that contain commas, quotes, or newlines
-            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-              return `"${value.replace(/"/g, '""')}"`;
-            }
-            return value;
-          }).join(',')
-        ).join('\n');
-
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
-        res.send('\uFEFF' + csvContent);
-      } else if (format === 'excel') {
-        // Excel format - tab-delimited
-        const excelRows = [];
-        
-        // Header information
-        excelRows.push(['KPI REPORT']);
-        excelRows.push(['']);
-        excelRows.push(['Staff Name', staffName]);
-        excelRows.push(['Department', department]);
-        excelRows.push(['Date Range', `Last ${dateRange} days`]);
-        excelRows.push(['Generated At', new Date().toLocaleString()]);
-        excelRows.push(['']);
-        
-        // Summary section
-        excelRows.push(['SUMMARY']);
-        excelRows.push(['Metric', 'Value']);
-        excelRows.push(['Total Days', productivityData.summary.totalDays]);
-        excelRows.push(['Average Hours/Day', productivityData.summary.avgHoursPerDay.toFixed(2)]);
-        excelRows.push(['Good Days', productivityData.summary.goodDays]);
-        excelRows.push(['Fair Days', productivityData.summary.fairDays]);
-        excelRows.push(['Poor Days', productivityData.summary.poorDays]);
-        excelRows.push(['']);
-        
-        // Daily productivity details
-        excelRows.push(['DAILY PRODUCTIVITY DETAILS']);
-        excelRows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks Completed', 'Performance Status']);
+        // Daily Productivity Details section
+        rows.push(['DAILY PRODUCTIVITY DETAILS']);
+        rows.push(['']);
+        rows.push(['Date', 'Total Time Span', 'Actual Work Hours', 'Tasks Completed', 'Performance Status']);
         
         productivityData.dailyData.forEach((day: any) => {
-          excelRows.push([
-            day.date,
-            day.totalSpanHours.toFixed(2),
-            day.actualWorkHours.toFixed(2),
+          const totalSpanHours = Math.floor(day.totalSpanHours);
+          const totalSpanMins = Math.round((day.totalSpanHours - totalSpanHours) * 60);
+          const actualHours = Math.floor(day.actualWorkHours);
+          const actualMins = Math.round((day.actualWorkHours - actualHours) * 60);
+          
+          rows.push([
+            new Date(day.date).toLocaleDateString(),
+            `${totalSpanHours}h ${totalSpanMins}m`,
+            `${actualHours}h ${actualMins}m`,
             day.taskCount,
-            day.performanceStatus.toUpperCase()
+            day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)
           ]);
         });
+        
+        rows.push(['']);
+        rows.push(['']);
+        rows.push(['Status Legend:']);
+        rows.push(['Good', '4+ hours of actual work']);
+        rows.push(['Fair', '2-4 hours of actual work']);
+        rows.push(['Poor', 'Less than 2 hours of actual work']);
 
-        // Convert to tab-delimited string for Excel
-        const excelContent = excelRows.map(row => row.join('\t')).join('\n');
+        if (format === 'csv') {
+          // Convert to CSV string with proper escaping
+          const csvContent = rows.map(row => 
+            row.map(field => {
+              const value = String(field);
+              if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                return `"${value.replace(/"/g, '""')}"`;
+              }
+              return value;
+            }).join(',')
+          ).join('\n');
 
-        res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}.xls"`);
-        res.send('\uFEFF' + excelContent);
+          res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+          res.send('\uFEFF' + csvContent);
+        } else {
+          // Excel format - tab-delimited
+          const excelContent = rows.map(row => row.join('\t')).join('\n');
+
+          res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="${filename}.xls"`);
+          res.send('\uFEFF' + excelContent);
+        }
       } else {
         return res.status(400).json({ error: "Invalid export format" });
       }
@@ -1816,102 +1796,91 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      if (format === 'csv') {
-        const csvRows = [];
+      if (format === 'csv' || format === 'excel') {
+        const rows = [];
         
         // Header
-        csvRows.push(['BULK KPI REPORT - ' + department.toUpperCase()]);
-        csvRows.push(['']);
-        csvRows.push(['Generated At', new Date().toLocaleString()]);
-        csvRows.push(['Date Range', `Last ${dateRange} days`]);
-        csvRows.push(['Total Staff', staffMembers.length]);
-        csvRows.push(['']);
+        rows.push(['DEPARTMENT PRODUCTIVITY REPORT']);
+        rows.push(['']);
+        rows.push(['Department:', department.toUpperCase().replace(/_/g, ' ')]);
+        rows.push(['Report Period:', `Last ${dateRange} days`]);
+        rows.push(['Generated On:', new Date().toLocaleDateString()]);
+        rows.push(['Total Employees:', staffMembers.length]);
+        rows.push(['']);
+        rows.push(['']);
 
         // Data for each staff member
-        allStaffData.forEach(staffData => {
-          csvRows.push(['']);
-          csvRows.push(['STAFF', staffData.staffName]);
-          csvRows.push(['']);
-          csvRows.push(['SUMMARY']);
-          csvRows.push(['Metric', 'Value']);
-          csvRows.push(['Total Days', staffData.summary.totalDays]);
-          csvRows.push(['Avg Hours/Day', staffData.summary.avgHoursPerDay.toFixed(2)]);
-          csvRows.push(['Good Days', staffData.summary.goodDays]);
-          csvRows.push(['Fair Days', staffData.summary.fairDays]);
-          csvRows.push(['Poor Days', staffData.summary.poorDays]);
-          csvRows.push(['']);
-          csvRows.push(['DAILY DETAILS']);
-          csvRows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks', 'Status']);
+        allStaffData.forEach((staffData, index) => {
+          // Employee header
+          rows.push([`EMPLOYEE ${index + 1}: ${staffData.staffName.toUpperCase()}`]);
+          rows.push(['']);
+          
+          // Performance Summary
+          rows.push(['PERFORMANCE SUMMARY']);
+          rows.push(['']);
+          rows.push(['Metric', 'Value']);
+          rows.push(['Total Working Days', staffData.summary.totalDays]);
+          rows.push(['Average Hours Per Day', staffData.summary.avgHoursPerDay.toFixed(2) + ' hours']);
+          rows.push(['Good Performance Days', staffData.summary.goodDays]);
+          rows.push(['Fair Performance Days', staffData.summary.fairDays]);
+          rows.push(['Poor Performance Days', staffData.summary.poorDays]);
+          rows.push(['']);
+          rows.push(['']);
+          
+          // Daily Details
+          rows.push(['DAILY PRODUCTIVITY DETAILS']);
+          rows.push(['']);
+          rows.push(['Date', 'Total Time Span', 'Actual Work Hours', 'Tasks Completed', 'Performance Status']);
           
           staffData.dailyData.forEach((day: any) => {
-            csvRows.push([
-              day.date,
-              day.totalSpanHours.toFixed(2),
-              day.actualWorkHours.toFixed(2),
+            const totalSpanHours = Math.floor(day.totalSpanHours);
+            const totalSpanMins = Math.round((day.totalSpanHours - totalSpanHours) * 60);
+            const actualHours = Math.floor(day.actualWorkHours);
+            const actualMins = Math.round((day.actualWorkHours - actualHours) * 60);
+            
+            rows.push([
+              new Date(day.date).toLocaleDateString(),
+              `${totalSpanHours}h ${totalSpanMins}m`,
+              `${actualHours}h ${actualMins}m`,
               day.taskCount,
-              day.performanceStatus.toUpperCase()
+              day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)
             ]);
           });
+          
+          rows.push(['']);
+          rows.push(['']);
+          rows.push(['']);
         });
-
-        // Convert to CSV with proper escaping
-        const csvContent = csvRows.map(row =>
-          row.map(field => {
-            const value = String(field);
-            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-              return `"${value.replace(/"/g, '""')}"`;
-            }
-            return value;
-          }).join(',')
-        ).join('\n');
-
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="kpi-report-bulk-${department}-${Date.now()}.csv"`);
-        res.send('\uFEFF' + csvContent);
-      } else if (format === 'excel') {
-        const excelRows = [];
         
-        // Header
-        excelRows.push(['BULK KPI REPORT - ' + department.toUpperCase()]);
-        excelRows.push(['']);
-        excelRows.push(['Generated At', new Date().toLocaleString()]);
-        excelRows.push(['Date Range', `Last ${dateRange} days`]);
-        excelRows.push(['Total Staff', staffMembers.length]);
-        excelRows.push(['']);
+        // Legend at the end
+        rows.push(['STATUS LEGEND']);
+        rows.push(['Good', '4+ hours of actual work']);
+        rows.push(['Fair', '2-4 hours of actual work']);
+        rows.push(['Poor', 'Less than 2 hours of actual work']);
 
-        // Data for each staff member
-        allStaffData.forEach(staffData => {
-          excelRows.push(['']);
-          excelRows.push(['STAFF', staffData.staffName]);
-          excelRows.push(['']);
-          excelRows.push(['SUMMARY']);
-          excelRows.push(['Metric', 'Value']);
-          excelRows.push(['Total Days', staffData.summary.totalDays]);
-          excelRows.push(['Avg Hours/Day', staffData.summary.avgHoursPerDay.toFixed(2)]);
-          excelRows.push(['Good Days', staffData.summary.goodDays]);
-          excelRows.push(['Fair Days', staffData.summary.fairDays]);
-          excelRows.push(['Poor Days', staffData.summary.poorDays]);
-          excelRows.push(['']);
-          excelRows.push(['DAILY DETAILS']);
-          excelRows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks', 'Status']);
-          
-          staffData.dailyData.forEach((day: any) => {
-            excelRows.push([
-              day.date,
-              day.totalSpanHours.toFixed(2),
-              day.actualWorkHours.toFixed(2),
-              day.taskCount,
-              day.performanceStatus.toUpperCase()
-            ]);
-          });
-        });
+        if (format === 'csv') {
+          // Convert to CSV with proper escaping
+          const csvContent = rows.map(row =>
+            row.map(field => {
+              const value = String(field);
+              if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                return `"${value.replace(/"/g, '""')}"`;
+              }
+              return value;
+            }).join(',')
+          ).join('\n');
 
-        // Convert to tab-delimited for Excel
-        const excelContent = excelRows.map(row => row.join('\t')).join('\n');
+          res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="kpi-report-bulk-${department}-${Date.now()}.csv"`);
+          res.send('\uFEFF' + csvContent);
+        } else {
+          // Excel format - tab-delimited
+          const excelContent = rows.map(row => row.join('\t')).join('\n');
 
-        res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="kpi-report-bulk-${department}-${Date.now()}.xls"`);
-        res.send('\uFEFF' + excelContent);
+          res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="kpi-report-bulk-${department}-${Date.now()}.xls"`);
+          res.send('\uFEFF' + excelContent);
+        }
       } else {
         return res.status(400).json({ error: "Invalid export format" });
       }
