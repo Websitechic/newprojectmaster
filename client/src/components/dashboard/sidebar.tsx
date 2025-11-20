@@ -689,35 +689,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     ...extensionMenuItems,
     ...operationsManagerMenuItems,
     ...teamLeadMenuItems,
-    {(user.role === "operations_manager" || user.specialization === "operations_manager") && (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={currentPath === "/dashboard/sop"}
-                onClick={() => setLocation("/dashboard/sop")}
-              >
-                <a className="flex items-center gap-3 cursor-pointer">
-                  <BookOpen className="h-4 w-4" />
-                  <span>SOPs</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-
-          {(user.role === "project_manager" || user.role === "team_lead") && (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={currentPath === "/dashboard/review-requests"}
-                onClick={() => setLocation("/dashboard/review-requests")}
-              >
-                <a className="flex items-center gap-3 cursor-pointer">
-                  <FileCheck className="h-4 w-4" />
-                  <span>Review Requests</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
     ...(user?.role !== "operations_manager" && user?.specialization !== "operations_manager" && user?.role !== "team_lead" ? [{
       icon: <FileText size={20} />,
       label: "Memos",
@@ -798,6 +769,28 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
               />
             );
           })}
+
+          {/* SOP - Operations Manager only */}
+          {(user?.role === "operations_manager" || user?.specialization === "operations_manager") && user?.role !== "team_lead" && (
+            <SidebarItem
+              icon={<BookOpen size={20} />}
+              label="SOPs"
+              href="/dashboard/sop"
+              onClick={() => handleMenuItemClick("/dashboard/sop")}
+              active={currentPath === "/dashboard/sop"}
+            />
+          )}
+
+          {/* Review Requests - Project Manager and Team Lead */}
+          {(user?.role === "project_manager" || user?.role === "team_lead") && (
+            <SidebarItem
+              icon={<FileCheck size={20} />}
+              label="Review Requests"
+              href="/dashboard/review-requests"
+              onClick={() => handleMenuItemClick("/dashboard/review-requests")}
+              active={currentPath === "/dashboard/review-requests"}
+            />
+          )}
 
           {/* Report Issues - Available to all users */}
           <SidebarItem
