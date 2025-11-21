@@ -5055,18 +5055,13 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ error: "Only team leads can update review requests" });
       }
 
-      const validStatuses = ["pending", "in_review", "resolved", "closed"];
-      if (status && !validStatuses.includes(status)) {
-        return res.status(400).json({ error: "Invalid status value" });
-      }
-
       const updateData: any = {
         updatedAt: new Date(),
       };
 
       if (status) {
         updateData.status = status;
-        if (status === "resolved" || status === "closed") {
+        if (status === "completed") {
           updateData.completedAt = new Date();
         }
       }
@@ -5081,20 +5076,12 @@ export function registerRoutes(app: Express): Server {
         .where(eq(reviewRequests.id, requestId))
         .returning();
 
-      // Notify project manager if status changed to resolved or closed
-      if (status === "resolved") {
+      // Notify project manager if status changed to completed
+      if (status === "completed") {
         await createNotification(
           existingRequest.projectManagerId,
           "task_completed",
-          `Review resolved by team lead: ${existingRequest.title}`,
-          requestId,
-          "project"
-        );
-      } else if (status === "closed") {
-        await createNotification(
-          existingRequest.projectManagerId,
-          "task_completed",
-          `Review closed by team lead: ${existingRequest.title}`,
+          `Review completed by team lead: ${existingRequest.title}`,
           requestId,
           "project"
         );
