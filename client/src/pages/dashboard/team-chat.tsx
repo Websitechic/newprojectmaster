@@ -255,14 +255,11 @@ export default function TeamChat() {
       // Only process messages for this project
       if (messageData.projectId === projectId) {
         console.log("Message is for current project, refreshing immediately");
-        
+
         // Invalidate queries to refresh the UI immediately
         // Note: Notifications and sounds are handled globally in App.tsx
         queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
-        });
-        queryClient.invalidateQueries({ 
-          queryKey: ["/api/projects/unread-counts"] 
         });
         queryClient.invalidateQueries({ 
           queryKey: ["/api/mentions/unread-count"] 
@@ -301,7 +298,7 @@ export default function TeamChat() {
           credentials: "include",
           body: JSON.stringify({ messageIds: messageIdsToMarkRead }),
         });
-        
+
         // Invalidate all unread-related queries to update the header dropdown
         queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
         queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
