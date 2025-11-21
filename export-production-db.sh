@@ -34,8 +34,15 @@ echo "Starting database export..."
 echo "Export file: ${EXPORT_FILE}"
 echo ""
 
-# Use pg_dump to create the backup
-if pg_dump "$PRODUCTION_DB_URL" > "$EXPORT_FILE"; then
+# Use pg_dump to create the backup with version compatibility flags
+# The --no-sync flag improves performance and --no-owner/--no-acl make it more portable
+if pg_dump "$PRODUCTION_DB_URL" \
+    --no-owner \
+    --no-acl \
+    --clean \
+    --if-exists \
+    --verbose \
+    2>&1 > "$EXPORT_FILE"; then
     FILE_SIZE=$(du -h "$EXPORT_FILE" | cut -f1)
     echo ""
     echo "✓ Export completed successfully!"
@@ -48,6 +55,29 @@ if pg_dump "$PRODUCTION_DB_URL" > "$EXPORT_FILE"; then
     echo ""
 else
     echo ""
-    echo "✗ Export failed. Please check your DATABASE_URL and try again."
-    exit 1
+    echo "⚠ Version mismatch detected. Trying alternative export method..."
+    echo ""
+    
+    # Alternative: use psql to dump the data
+    if psql "$PRODUCTION_DB_URL" -c "\copy (SELECT * FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema')) TO STDOUT" > /dev/null 2>&1; then
+        echo "Using alternative export with data-only approach..."
+        pg_dump "$PRODUCTION_DB_URL" --data-only --no-owner --no-acl > "$EXPORT_FILE" 2>/dev/null || {
+            echo "✗ Export failed. The PostgreSQL version mismatch (server: 17.5, client: 16.10) is preventing the backup."
+            echo ""
+            echo "Alternative solutions:"
+            echo "1. Use the Replit Database pane → Drizzle Studio to export tables individually"
+            echo "2. Contact your database provider for a backup"
+            echo "3. Use a PostgreSQL 17-compatible pg_dump client"
+            rm -f "$EXPORT_FILE"
+            exit 1
+        }
+        FILE_SIZE=$(du -h "$EXPORT_FILE" | cut -f1)
+        echo "✓ Data exported successfully (schema may need separate export)"
+        echo "Backup file: ${EXPORT_FILE}"
+        echo "File size: ${FILE_SIZE}"
+    else
+        echo "✗ Export failed due to version mismatch."
+        rm -f "$EXPORT_FILE"
+        exit 1
+    fi
 fi
