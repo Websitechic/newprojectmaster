@@ -95,6 +95,8 @@ export function Header() {
   // Get mention counts from the hook
   const { mentionCounts } = useUnreadMessages();
 
+  const [location] = useLocation();
+
   // Combine unread messages
   useEffect(() => {
     const combined: UnreadMessage[] = [];
@@ -165,7 +167,7 @@ export function Header() {
     }
 
     setUnreadMessages(combined);
-  }, [teamChatUnreads, mentionCounts, directMessagesData, projects]);
+  }, [teamChatUnreads, mentionCounts, directMessagesData, projects, location]);
 
   const handleLogout = async () => {
     try {

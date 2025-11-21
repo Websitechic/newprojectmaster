@@ -302,9 +302,11 @@ export default function TeamChat() {
           body: JSON.stringify({ messageIds: messageIdsToMarkRead }),
         });
         
-        // Invalidate unread counts to update the notification dropdown
+        // Invalidate all unread-related queries to update the header dropdown
         queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
         queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       } catch (error) {
         console.error("Error marking messages as read:", error);
       }
