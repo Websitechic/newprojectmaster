@@ -4745,7 +4745,7 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/general-channel/messages", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     try {
@@ -4790,10 +4790,10 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      res.json(messageWithSender);
+      return res.json(messageWithSender);
     } catch (error) {
       console.error("Error sending general channel message:", error);
-      res.status(500).json({ error: "Failed to send message" });
+      return res.status(500).json({ error: "Failed to send message" });
     }
   });
 
