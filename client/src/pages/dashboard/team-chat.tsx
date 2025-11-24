@@ -292,24 +292,36 @@ export default function TeamChat() {
       if (messageIdsToMarkRead.length === 0) return;
 
       try {
-        await fetch(`/api/projects/${projectId}/team-messages/mark-read`, {
+        const response = await fetch(`/api/projects/${projectId}/team-messages/mark-read`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ messageIds: messageIdsToMarkRead }),
         });
 
-        // Invalidate all unread-related queries to update the header dropdown
-        queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+        if (response.ok) {
+          // Invalidate all unread-related queries to update the header dropdown immediately
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] }),
+            queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] }),
+            queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] }),
+            queryClient.invalidateQueries({ queryKey: ["/api/projects"] }),
+          ]);
+
+          // Force refetch to ensure header updates immediately
+          await queryClient.refetchQueries({ queryKey: ["/api/projects/unread-counts"] });
+        }
       } catch (error) {
         console.error("Error marking messages as read:", error);
       }
     };
 
-    markMessagesAsRead().catch(console.error);
+    // Add a small delay to ensure messages are fully loaded before marking as read
+    const timeoutId = setTimeout(() => {
+      markMessagesAsRead().catch(console.error);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
   }, [messages, user?.id, projectId, queryClient]);
 
   const handleEditMessage = async (messageId: number) => {

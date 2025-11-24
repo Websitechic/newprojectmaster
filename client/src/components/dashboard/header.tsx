@@ -54,7 +54,8 @@ export function Header() {
       return await response.json();
     },
     enabled: !!user,
-    refetchInterval: 10000,
+    refetchInterval: 5000, // Refresh every 5 seconds instead of 10
+    staleTime: 1000, // Consider data stale after 1 second
   });
 
   // Fetch direct messages unread count
@@ -80,7 +81,7 @@ export function Header() {
     enabled: !!user,
   });
 
-  // Fetch notifications to check for mentions
+  // Fetch notifications to check for מעntions
   const { data: notifications = [] } = useQuery({
     queryKey: ["/api/notifications"],
     queryFn: async () => {
@@ -306,7 +307,7 @@ export function Header() {
               onClick={handleLogout}
             >
               Logout
-            </DropdownMenuItem>
+            </DropdownMenuitem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
