@@ -301,15 +301,16 @@ export default function TeamChat() {
 
         if (response.ok) {
           // Invalidate all unread-related queries to update the header dropdown immediately
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] }),
-            queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] }),
-            queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] }),
-            queryClient.invalidateQueries({ queryKey: ["/api/projects"] }),
-          ]);
+          await queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
 
-          // Force refetch to ensure header updates immediately
-          await queryClient.refetchQueries({ queryKey: ["/api/projects/unread-counts"] });
+          // Force immediate refetch to ensure header updates
+          await queryClient.refetchQueries({ 
+            queryKey: ["/api/projects/unread-counts"],
+            type: 'active'
+          });
         }
       } catch (error) {
         console.error("Error marking messages as read:", error);

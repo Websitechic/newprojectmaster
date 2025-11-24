@@ -55,7 +55,7 @@ export function Header() {
     },
     enabled: !!user,
     refetchInterval: 5000, // Refresh every 5 seconds instead of 10
-    staleTime: 1000, // Consider data stale after 1 second
+    staleTime: 0, // Always fetch fresh data when invalidated
   });
 
   // Fetch direct messages unread count
