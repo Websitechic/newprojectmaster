@@ -1,7 +1,7 @@
 
-import { db } from './db/index.js';
-import { sql } from 'drizzle-orm';
-import fs from 'fs';
+const { db } = require('./db');
+const { sql } = require('drizzle-orm');
+const fs = require('fs');
 
 async function applyMigration() {
   try {
