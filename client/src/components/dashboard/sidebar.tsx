@@ -295,6 +295,13 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "dashboard",
     },
     {
+      icon: <MessageSquare size={20} />,
+      label: "General Channel",
+      href: "/dashboard/general-channel",
+      badge: generalChannelUnread,
+      key: "general-channel",
+    },
+    {
       icon: <FileText size={20} />,
       label: "Projects",
       href: "/dashboard/projects",
@@ -310,13 +317,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "direct-messages",
     },
     {
-      icon: <MessageSquare size={20} />,
-      label: "General Channel",
-      href: "/dashboard/general-channel",
-      badge: generalChannelUnread,
-      key: "general-channel",
-    },
-    {
       icon: <PlayCircle size={20} />,
       label: "Guide Videos",
       href: "/dashboard/guide-videos",
@@ -330,18 +330,18 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "dashboard",
     },
     {
-      icon: <FileText size={20} />,
-      label: "Projects",
-      href: "/dashboard/projects",
-      badge: totalUnreadProjectMessages,
-      key: "projects",
-    },
-    {
       icon: <MessageSquare size={20} />,
       label: "General Channel",
       href: "/dashboard/general-channel",
       badge: generalChannelUnread,
       key: "general-channel",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Projects",
+      href: "/dashboard/projects",
+      badge: totalUnreadProjectMessages,
+      key: "projects",
     },
     {
       icon: <PlayCircle size={20} />,
