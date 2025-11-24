@@ -359,6 +359,12 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "staff-report",
     },
     {
+      icon: <FileText size={20} />,
+      label: "Project Briefing",
+      href: "/dashboard/project-briefing",
+      key: "project-briefing",
+    },
+    {
       icon: <Building2 size={20} />,
       label: "Client Accounts",
       href: "/dashboard/client-accounts",
@@ -428,6 +434,12 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "leave-application",
     },
     {
+      icon: <FileText size={20} />,
+      label: "Project Briefing",
+      href: "/dashboard/project-briefing",
+      key: "customer-support-project-briefing",
+    },
+    {
       icon: <Users size={20} />,
       label: "Client Management",
       href: "/dashboard/client-management",
@@ -492,6 +504,12 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "Staff Report",
       href: "/dashboard/staff-report",
       key: "operations-staff-report",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Project Briefing",
+      href: "/dashboard/project-briefing",
+      key: "operations-project-briefing",
     },
     {
       icon: <BarChart3 size={20} />,
@@ -592,6 +610,12 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "team-lead-staff-report",
     },
     {
+      icon: <FileText size={20} />,
+      label: "Project Briefing",
+      href: "/dashboard/project-briefing",
+      key: "team-lead-project-briefing",
+    },
+    {
       icon: <BarChart3 size={20} />,
       label: "KPI Report",
       href: "/dashboard/kpi-report",
@@ -602,6 +626,12 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "Client Accounts",
       href: "/dashboard/client-accounts",
       key: "team-lead-client-accounts",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Project Briefing",
+      href: "/dashboard/project-briefing",
+      key: "customer-support-project-briefing",
     },
     {
       icon: <FileText size={20} />,

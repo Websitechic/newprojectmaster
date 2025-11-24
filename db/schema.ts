@@ -967,3 +967,34 @@ export const selectGeneralMessageSchema = createSelectSchema(generalMessages);
 export type Note = typeof notes.$inferSelect;
 export const insertNoteSchema = createInsertSchema(notes);
 export const selectNoteSchema = createSelectSchema(notes);
+
+// Project Briefings table
+export const projectBriefings = pgTable("project_briefings", {
+  id: serial("id").primaryKey(),
+  projectName: text("project_name").notNull(),
+  clientName: text("client_name").notNull(),
+  projectType: text("project_type").notNull(),
+  description: text("description").notNull(),
+  objectives: text("objectives").notNull().default(""),
+  scope: text("scope").notNull().default(""),
+  timeline: text("timeline").notNull().default(""),
+  budget: text("budget"),
+  deliverables: text("deliverables").notNull().default(""),
+  technicalRequirements: text("technical_requirements"),
+  referenceLinks: text("reference_links"),
+  additionalNotes: text("additional_notes"),
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const projectBriefingsRelations = relations(projectBriefings, ({ one }) => ({
+  creator: one(users, {
+    fields: [projectBriefings.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export type ProjectBriefing = typeof projectBriefings.$inferSelect;
+export const insertProjectBriefingSchema = createInsertSchema(projectBriefings);
+export const selectProjectBriefingSchema = createSelectSchema(projectBriefings);

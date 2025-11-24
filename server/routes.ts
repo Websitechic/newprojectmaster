@@ -45,6 +45,7 @@ import {
   reviewRequests,
   generalMessages,
   generalMessageReadReceipts,
+  projectBriefings,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
@@ -1594,6 +1595,208 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch productivity data" });
     }
   });
+  // Project Briefings API Routes
+  app.get("/api/project-briefings", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const hasAccess = user.role === "project_manager" || 
+                      user.role === "operations_manager" || 
+                      user.specialization === "operations_manager" ||
+                      user.role === "customer_support_officer" ||
+                      user.role === "team_lead";
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const { search } = req.query;
+      
+      const briefingsQuery = db
+        .select({
+          briefing: projectBriefings,
+          createdByUser: users,
+        })
+        .from(projectBriefings)
+        .leftJoin(users, eq(projectBriefings.createdBy, users.id))
+        .orderBy(desc(projectBriefings.createdAt));
+
+      const results = await briefingsQuery;
+
+      let briefingsList = results.map(r => ({
+        ...r.briefing,
+        createdByName: r.createdByUser?.name || "Unknown"
+      }));
+
+      if (search) {
+        const searchTerm = (search as string).toLowerCase();
+        briefingsList = briefingsList.filter(b => 
+          b.projectName.toLowerCase().includes(searchTerm) ||
+          b.clientName.toLowerCase().includes(searchTerm)
+        );
+      }
+
+      res.json(briefingsList);
+    } catch (error) {
+      console.error("Error fetching project briefings:", error);
+      res.status(500).json({ error: "Failed to fetch project briefings" });
+    }
+  });
+
+  app.post("/api/project-briefings", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const hasAccess = user.role === "project_manager" || 
+                      user.role === "operations_manager" || 
+                      user.specialization === "operations_manager" ||
+                      user.role === "customer_support_officer" ||
+                      user.role === "team_lead";
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const { 
+        projectName, 
+        clientName, 
+        projectType, 
+        description,
+        objectives,
+        scope,
+        timeline,
+        budget,
+        deliverables,
+        technicalRequirements,
+        referenceLinks,
+        additionalNotes
+      } = req.body;
+
+      if (!projectName || !clientName || !projectType || !description) {
+        return res.status(400).json({ error: "Project name, client name, project type, and description are required" });
+      }
+
+      const [newBriefing] = await db
+        .insert(projectBriefings)
+        .values({
+          projectName,
+          clientName,
+          projectType,
+          description,
+          objectives: objectives || "",
+          scope: scope || "",
+          timeline: timeline || "",
+          budget: budget || null,
+          deliverables: deliverables || "",
+          technicalRequirements: technicalRequirements || null,
+          referenceLinks: referenceLinks || null,
+          additionalNotes: additionalNotes || null,
+          createdBy: user.id,
+        })
+        .returning();
+
+      res.json({ success: true, briefingId: newBriefing.id });
+    } catch (error) {
+      console.error("Error creating project briefing:", error);
+      res.status(500).json({ error: "Failed to create project briefing" });
+    }
+  });
+
+  app.put("/api/project-briefings/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const hasAccess = user.role === "project_manager" || 
+                      user.role === "operations_manager" || 
+                      user.specialization === "operations_manager" ||
+                      user.role === "customer_support_officer" ||
+                      user.role === "team_lead";
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const briefingId = parseInt(req.params.id);
+      const { 
+        projectName, 
+        clientName, 
+        projectType, 
+        description,
+        objectives,
+        scope,
+        timeline,
+        budget,
+        deliverables,
+        technicalRequirements,
+        referenceLinks,
+        additionalNotes
+      } = req.body;
+
+      if (!projectName || !clientName || !projectType || !description) {
+        return res.status(400).json({ error: "Project name, client name, project type, and description are required" });
+      }
+
+      await db
+        .update(projectBriefings)
+        .set({
+          projectName,
+          clientName,
+          projectType,
+          description,
+          objectives: objectives || "",
+          scope: scope || "",
+          timeline: timeline || "",
+          budget: budget || null,
+          deliverables: deliverables || "",
+          technicalRequirements: technicalRequirements || null,
+          referenceLinks: referenceLinks || null,
+          additionalNotes: additionalNotes || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(projectBriefings.id, briefingId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating project briefing:", error);
+      res.status(500).json({ error: "Failed to update project briefing" });
+    }
+  });
+
+  app.delete("/api/project-briefings/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const hasAccess = user.role === "project_manager" || 
+                      user.role === "operations_manager" || 
+                      user.specialization === "operations_manager" ||
+                      user.role === "customer_support_officer" ||
+                      user.role === "team_lead";
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const briefingId = parseInt(req.params.id);
+      await db.delete(projectBriefings).where(eq(projectBriefings.id, briefingId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting project briefing:", error);
+      res.status(500).json({ error: "Failed to delete project briefing" });
+    }
+  });
+
   // Export KPI report (Operations Manager and Team Lead only)
   app.post("/api/kpi-report/export", async (req, res) => {
     if (!req.isAuthenticated()) {
