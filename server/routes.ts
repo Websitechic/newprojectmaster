@@ -1667,15 +1667,7 @@ export function registerRoutes(app: Express): Server {
         projectName, 
         clientName, 
         projectType, 
-        description,
-        objectives,
-        scope,
-        timeline,
-        budget,
-        deliverables,
-        technicalRequirements,
-        referenceLinks,
-        additionalNotes
+        description
       } = req.body;
 
       if (!projectName || !clientName || !projectType || !description) {
