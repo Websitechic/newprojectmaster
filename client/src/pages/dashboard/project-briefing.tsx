@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Plus, 
@@ -26,7 +28,12 @@ import {
   Briefcase,
   AlertCircle,
   Link,
-  Eye
+  Eye,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered
 } from "lucide-react";
 
 interface ProjectBriefing {
@@ -67,15 +74,7 @@ export default function ProjectBriefingPage() {
     projectName: "",
     clientName: "",
     projectType: "",
-    description: "",
-    objectives: "",
-    scope: "",
-    timeline: "",
-    budget: "",
-    deliverables: "",
-    technicalRequirements: "",
-    referenceLinks: "",
-    additionalNotes: ""
+    description: ""
   });
 
   // Check if user has access
@@ -220,15 +219,7 @@ export default function ProjectBriefingPage() {
       projectName: "",
       clientName: "",
       projectType: "",
-      description: "",
-      objectives: "",
-      scope: "",
-      timeline: "",
-      budget: "",
-      deliverables: "",
-      technicalRequirements: "",
-      referenceLinks: "",
-      additionalNotes: ""
+      description: ""
     });
   };
 
@@ -267,15 +258,7 @@ export default function ProjectBriefingPage() {
       projectName: briefing.projectName,
       clientName: briefing.clientName,
       projectType: briefing.projectType,
-      description: briefing.description,
-      objectives: briefing.objectives,
-      scope: briefing.scope,
-      timeline: briefing.timeline,
-      budget: briefing.budget || "",
-      deliverables: briefing.deliverables,
-      technicalRequirements: briefing.technicalRequirements || "",
-      referenceLinks: briefing.referenceLinks || "",
-      additionalNotes: briefing.additionalNotes || ""
+      description: briefing.description
     });
     setShowEditForm(true);
   };
@@ -285,147 +268,165 @@ export default function ProjectBriefingPage() {
     briefing.clientName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Rich Text Editor Component
+  const RichTextEditor = ({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder?: string }) => {
+    const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+    const applyFormatting = useCallback((format: string) => {
+      if (!textareaRef.current) return;
+
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = value.substring(start, end);
+
+      let formattedText = "";
+      let newCursorPos = end;
+
+      switch (format) {
+        case "bold":
+          formattedText = `**${selectedText}**`;
+          newCursorPos = selectedText ? end + 4 : start + 4;
+          break;
+        case "italic":
+          formattedText = `*${selectedText}*`;
+          newCursorPos = selectedText ? end + 2 : start + 2;
+          break;
+        case "underline":
+          formattedText = `<u>${selectedText}</u>`;
+          newCursorPos = selectedText ? end + 7 : start + 7;
+          break;
+        case "bullet":
+          const bulletText = selectedText || "List item";
+          formattedText = `• ${bulletText}`;
+          newCursorPos = start + formattedText.length;
+          break;
+        case "numbered":
+          const numberedText = selectedText || "List item";
+          formattedText = `1. ${numberedText}`;
+          newCursorPos = start + formattedText.length;
+          break;
+        default:
+          return;
+      }
+
+      const newValue = value.substring(0, start) + formattedText + value.substring(end);
+      onChange(newValue);
+
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    }, [value, onChange]);
+
+    return (
+      <div className="space-y-2">
+        <div className="flex gap-1 p-2 border rounded-t-md bg-gray-50">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => applyFormatting("bold")}
+            className="h-8 w-8 p-0"
+          >
+            <Bold className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => applyFormatting("italic")}
+            className="h-8 w-8 p-0"
+          >
+            <Italic className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => applyFormatting("underline")}
+            className="h-8 w-8 p-0"
+          >
+            <Underline className="h-4 w-4" />
+          </Button>
+          <Separator orientation="vertical" className="h-6 my-1" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => applyFormatting("bullet")}
+            className="h-8 w-8 p-0"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => applyFormatting("numbered")}
+            className="h-8 w-8 p-0"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </Button>
+        </div>
+        <Textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="min-h-[300px] rounded-t-none border-t-0 font-mono text-sm"
+        />
+      </div>
+    );
+  };
+
   const BriefingForm = ({ isEdit = false }: { isEdit?: boolean }) => (
     <div className="space-y-6">
-      {/* Basic Info */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Project Name *
-          </label>
-          <Input
-            value={formData.projectName}
-            onChange={(e) => setFormData(prev => ({ ...prev, projectName: e.target.value }))}
-            placeholder="Enter project name"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Client Name *
-          </label>
-          <Input
-            value={formData.clientName}
-            onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
-            placeholder="Enter client name"
-          />
-        </div>
-      </div>
-
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Project Type *
-        </label>
+        <Label htmlFor="projectName">Project Name *</Label>
         <Input
-          value={formData.projectType}
-          onChange={(e) => setFormData(prev => ({ ...prev, projectType: e.target.value }))}
-          placeholder="e.g., Website Development, Mobile App, etc."
+          id="projectName"
+          value={formData.projectName}
+          onChange={(e) => setFormData(prev => ({ ...prev, projectName: e.target.value }))}
+          placeholder="Enter project name"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Project Description *
-        </label>
-        <Textarea
+        <Label htmlFor="clientName">Client Name *</Label>
+        <Input
+          id="clientName"
+          value={formData.clientName}
+          onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
+          placeholder="Enter client name"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="projectType">Project Category *</Label>
+        <Select 
+          value={formData.projectType} 
+          onValueChange={(value) => setFormData(prev => ({ ...prev, projectType: value }))}
+        >
+          <SelectTrigger id="projectType">
+            <SelectValue placeholder="Select project category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Website Development">Website Development</SelectItem>
+            <SelectItem value="DPL Outright">DPL Outright</SelectItem>
+            <SelectItem value="DPL Partnership">DPL Partnership</SelectItem>
+            <SelectItem value="Direct Marketing">Direct Marketing</SelectItem>
+            <SelectItem value="Support & Maintenance">Support & Maintenance</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label htmlFor="description">Project Details *</Label>
+        <RichTextEditor
           value={formData.description}
-          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-          placeholder="Detailed description of the project"
-          rows={4}
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Project Objectives
-        </label>
-        <Textarea
-          value={formData.objectives}
-          onChange={(e) => setFormData(prev => ({ ...prev, objectives: e.target.value }))}
-          placeholder="What are the main objectives of this project?"
-          rows={3}
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Project Scope
-        </label>
-        <Textarea
-          value={formData.scope}
-          onChange={(e) => setFormData(prev => ({ ...prev, scope: e.target.value }))}
-          placeholder="Define what is included and excluded from the project"
-          rows={3}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Timeline
-          </label>
-          <Input
-            value={formData.timeline}
-            onChange={(e) => setFormData(prev => ({ ...prev, timeline: e.target.value }))}
-            placeholder="e.g., 3 months, Q1 2024"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Budget (Optional)
-          </label>
-          <Input
-            value={formData.budget}
-            onChange={(e) => setFormData(prev => ({ ...prev, budget: e.target.value }))}
-            placeholder="e.g., $10,000 - $15,000"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Deliverables
-        </label>
-        <Textarea
-          value={formData.deliverables}
-          onChange={(e) => setFormData(prev => ({ ...prev, deliverables: e.target.value }))}
-          placeholder="List the expected deliverables"
-          rows={3}
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Technical Requirements (Optional)
-        </label>
-        <Textarea
-          value={formData.technicalRequirements}
-          onChange={(e) => setFormData(prev => ({ ...prev, technicalRequirements: e.target.value }))}
-          placeholder="Any specific technical requirements or constraints"
-          rows={3}
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Reference Links (Optional)
-        </label>
-        <Textarea
-          value={formData.referenceLinks}
-          onChange={(e) => setFormData(prev => ({ ...prev, referenceLinks: e.target.value }))}
-          placeholder="Paste any reference links (one per line)"
-          rows={3}
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Additional Notes (Optional)
-        </label>
-        <Textarea
-          value={formData.additionalNotes}
-          onChange={(e) => setFormData(prev => ({ ...prev, additionalNotes: e.target.value }))}
-          placeholder="Any other important information"
-          rows={3}
+          onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
+          placeholder="Enter detailed project information... Use the toolbar above for formatting."
         />
       </div>
 
