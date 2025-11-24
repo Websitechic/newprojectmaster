@@ -920,6 +920,48 @@ export type ReviewRequest = typeof reviewRequests.$inferSelect;
 export const insertReviewRequestSchema = createInsertSchema(reviewRequests);
 export const selectReviewRequestSchema = createSelectSchema(reviewRequests);
 
+// General Channel Messages
+export const generalMessages = pgTable("general_messages", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  isEdited: boolean("is_edited").default(false),
+});
+
+export const generalMessageReadReceipts = pgTable("general_message_read_receipts", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").references(() => generalMessages.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  readAt: timestamp("read_at").defaultNow(),
+}, (table) => ({
+  uniqueMessageUser: unique().on(table.messageId, table.userId),
+}));
+
+export const generalMessagesRelations = relations(generalMessages, ({ one, many }) => ({
+  sender: one(users, {
+    fields: [generalMessages.senderId],
+    references: [users.id],
+  }),
+  readReceipts: many(generalMessageReadReceipts),
+}));
+
+export const generalMessageReadReceiptsRelations = relations(generalMessageReadReceipts, ({ one }) => ({
+  message: one(generalMessages, {
+    fields: [generalMessageReadReceipts.messageId],
+    references: [generalMessages.id],
+  }),
+  user: one(users, {
+    fields: [generalMessageReadReceipts.userId],
+    references: [users.id],
+  }),
+}));
+
+export type GeneralMessage = typeof generalMessages.$inferSelect;
+export const insertGeneralMessageSchema = createInsertSchema(generalMessages);
+export const selectGeneralMessageSchema = createSelectSchema(generalMessages);
+
 // Removed duplicate notes declaration - keeping the earlier definition
 
 export type Note = typeof notes.$inferSelect;

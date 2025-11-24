@@ -20,6 +20,7 @@ import ClientChat from "./pages/dashboard/client-chat";
 import LeaveApplication from "@/pages/dashboard/leave-application";
 import LeaveManagement from "@/pages/dashboard/leave-management";
 import DirectMessages from "@/pages/dashboard/direct-messages";
+import GeneralChannel from "@/pages/dashboard/general-channel";
 import Bookings from "@/pages/dashboard/bookings";
 import Productivity from "@/pages/dashboard/productivity";
 import TechnicalSupport from "@/pages/technical-support";
@@ -287,7 +288,7 @@ function GlobalNotificationListener() {
               // Only play sound and show notification if message is from another user
               if (data.data.senderId !== user.id) {
                 console.log('🔊 TRIGGER: Playing sound for incoming team message', {
-                  from: data.data.senderId,
+                  senderId: data.data.senderId,
                   project: data.data.projectId,
                   currentUser: user.id,
                   timestamp: new Date().toISOString()
@@ -340,6 +341,19 @@ function GlobalNotificationListener() {
               // Invalidate queries to refresh data
               queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
               queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
+            } else if (data.type === 'general_channel_message') {
+              console.log('📢 General channel message received via SSE:', data);
+
+              // Dispatch custom event for general channel messages
+              const gcEvent = new CustomEvent('general-channel-message-received', {
+                detail: data.data
+              });
+              window.dispatchEvent(gcEvent);
+
+              // Play notification sound if message is from another user
+              if (data.data.senderId !== user.id) {
+                playNotificationSound();
+              }
             }
           } catch (error) {
             console.error("Error parsing global SSE message:", error);
@@ -453,9 +467,9 @@ function Router() {
           <Route path="/dashboard/productivity">
             <Productivity />
           </Route>
-          <Route path="/dashboard/direct-messages">
-            <DirectMessages />
-          </Route>
+          <Route path="/dashboard/direct-messages" component={DirectMessages} />
+          <Route path="/dashboard/general-channel" component={GeneralChannel} />
+          <Route path="/dashboard/guide-videos" component={GuideVideos} />
           <Route path="/dashboard/technical-support">
             <TechnicalSupport />
           </Route>
@@ -468,9 +482,6 @@ function Router() {
           </Route>
           <Route path="/dashboard/client-management">
             <ClientManagement />
-          </Route>
-          <Route path="/dashboard/guide-videos">
-            <GuideVideos />
           </Route>
           <Route path="/dashboard/register-dissatisfaction">
             <RegisterDissatisfaction />

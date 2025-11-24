@@ -264,6 +264,29 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
 
   // Menu items configuration
   const isClientWithSpecialAccess = user?.role === "client" && user?.clientType === "support_maintenance_client";
+  const [generalChannelUnread, setGeneralChannelUnread] = useState(0);
+
+  // Fetch general channel unread count
+  useEffect(() => {
+    const fetchGeneralChannelUnread = async () => {
+      try {
+        const response = await fetch("/api/general-channel/unread-count");
+        if (response.ok) {
+          const data = await response.json();
+          setGeneralChannelUnread(data.count || 0);
+        }
+      } catch (error) {
+        console.error("Error fetching general channel unread count:", error);
+      }
+    };
+
+    if (user?.id) {
+      fetchGeneralChannelUnread();
+      const interval = setInterval(fetchGeneralChannelUnread, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.id]);
+
   const baseMenuItems = (user?.role !== "client" || isClientWithSpecialAccess) ? [
     {
       icon: <LayoutDashboard size={20} />,
@@ -287,6 +310,13 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "direct-messages",
     },
     {
+      icon: <MessageSquare size={20} />,
+      label: "General Channel",
+      href: "/dashboard/general-channel",
+      badge: generalChannelUnread,
+      key: "general-channel",
+    },
+    {
       icon: <PlayCircle size={20} />,
       label: "Guide Videos",
       href: "/dashboard/guide-videos",
@@ -305,6 +335,13 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/projects",
       badge: totalUnreadProjectMessages,
       key: "projects",
+    },
+    {
+      icon: <MessageSquare size={20} />,
+      label: "General Channel",
+      href: "/dashboard/general-channel",
+      badge: generalChannelUnread,
+      key: "general-channel",
     },
     {
       icon: <PlayCircle size={20} />,
