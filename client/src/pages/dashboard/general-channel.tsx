@@ -391,8 +391,39 @@ export default function GeneralChannel() {
                                 <div>
                                   {msg.content.split('\n\n').map((part, idx) => {
                                     if (idx === 0) {
+                                      // Extract the quoted content to find the original message
+                                      const replyLines = part.split('\n');
+                                      const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
+
+                                      // Find the original message by matching content
+                                      const originalMsg = messages.find(m => 
+                                        m.content === quotedContent || 
+                                        m.content.includes(quotedContent) ||
+                                        (m.content.startsWith('> Replying to') && m.content.split('\n\n').slice(1).join('\n\n') === quotedContent)
+                                      );
+
                                       return (
-                                        <div key={idx} className="border-l-4 border-primary pl-3 mb-2 text-muted-foreground italic">
+                                        <div 
+                                          key={idx} 
+                                          className="border-l-4 border-primary pl-3 mb-2 text-muted-foreground italic cursor-pointer hover:bg-muted/50 transition-colors rounded"
+                                          onClick={() => {
+                                            if (originalMsg) {
+                                              const originalMessageElement = document.getElementById(`message-${originalMsg.id}`);
+                                              if (originalMessageElement) {
+                                                // Add highlight effect
+                                                originalMessageElement.classList.add('highlight-flash');
+
+                                                // Scroll to message
+                                                originalMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                                                // Remove highlight after animation
+                                                setTimeout(() => {
+                                                  originalMessageElement.classList.remove('highlight-flash');
+                                                }, 2000);
+                                              }
+                                            }
+                                          }}
+                                        >
                                           {part.split('\n').map((line, lineIdx) => (
                                             <div key={lineIdx}>{line.replace(/^> /, '')}</div>
                                           ))}
