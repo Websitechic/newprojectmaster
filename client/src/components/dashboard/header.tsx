@@ -307,7 +307,7 @@ export function Header() {
               onClick={handleLogout}
             >
               Logout
-            </DropdownMenuitem>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
