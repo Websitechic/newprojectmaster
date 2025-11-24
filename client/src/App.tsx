@@ -39,6 +39,7 @@ import ComplaintsManagement from "@/pages/dashboard/complaints-management";
 import ClientAccounts from "@/pages/dashboard/client-accounts";
 import ClientSentiment from "@/pages/dashboard/client-sentiment";
 import ClientSentimentTracker from "@/pages/dashboard/client-sentiment-tracker";
+import ProjectBriefingPage from "@/pages/dashboard/project-briefing";
 
 import Memos from "@/pages/dashboard/memos";
 import SendComplaint from "@/pages/send-complaint";
@@ -524,6 +525,9 @@ function Router() {
           </Route>
           <Route path="/dashboard/sop">
             <SOPPage />
+          </Route>
+          <Route path="/dashboard/project-briefing">
+            <ProjectBriefingPage />
           </Route>
           <Route path="/dashboard/communication-tracker">
             <CommunicationTrackerPage />
