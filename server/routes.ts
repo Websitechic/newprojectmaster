@@ -5201,7 +5201,7 @@ End of Report
         return res.status(404).json({ error: "Request not found" });
       }
 
-      await db
+      awaitdb
         .update(technicalSupportRequests)
         .set({
           assignedToId: user.id,
@@ -5477,7 +5477,7 @@ End of Report
           .insert(notifications)
           .values({
             userId: project.managerId,
-            type: "task_updated",
+            type: "task_updated", // Using existing type
             content: `${user.name} has requested a deadline extension for task: ${taskDetails?.title || 'Unknown Task'}`,
             referenceId: newRequest.id,
             referenceType: "project",
@@ -6316,17 +6316,16 @@ End of Report
 
       const members = await db
         .select({
-          id: projectMembers.id,
-          projectId: projectMembers.projectId,
-          userId: projectMembers.userId,
-          role: projectMembers.role,
-          invitationStatus: projectMembers.invitationStatus,
-          userName: users.name,
-          userEmail: users.email,
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          specialization: users.specialization,
         })
         .from(projectMembers)
-        .leftJoin(users, eq(projectMembers.userId, users.id))
-        .where(eq(projectMembers.projectId, projectId));
+        .innerJoin(users, eq(projectMembers.userId, users.id))
+        .where(eq(projectMembers.projectId, projectId))
+        .orderBy(asc(users.name));
 
       res.json(members);
     } catch (error) {
