@@ -2374,8 +2374,6 @@ End of Report
                   taskId: updatedTask.id,
                   projectId: updatedTask.projectId,
                   status: updatedTask.status,
-                  isTimerRunning: updatedTask.isTimerRunning,
-                  timeSpent: updatedTask.timeSpent,
                   updatedBy: user.id,
                   updatedAt: now.toISOString()
                 }
@@ -2646,7 +2644,7 @@ End of Report
       }
 
       const fileUrl = `/uploads/leave-proof/${req.file.filename}`;
-      
+
       res.json({ 
         success: true, 
         fileUrl,
@@ -4358,16 +4356,6 @@ End of Report
         replyToSenderName: replyToSenderName || null,
       };
 
-      // Add sender object for consistency with other message types
-      messageWithSender.sender = {
-        id: user.id,
-        name: user.name,
-        email: user.email, // Assuming email is available and relevant
-        role: user.role,
-        specialization: user.specialization,
-      };
-
-
       // Check if this is a reply and send notification to the original message sender
       if (replyToMessageId && replyToSenderName) {
         // Find the user being replied to (assuming replyToSenderName uniquely identifies the user for this purpose)
@@ -5922,15 +5910,15 @@ End of Report
 
   // Leave Applications API Routes
 
-  // Submit leave application (Staff, Interns, Customer Support Officers, and Team Leads)
+  // Submit leave application (Staff, Interns, Customer Support Officers, Project Managers, and Team Leads)
   app.post("/api/leave-applications", upload.single('proofImage'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    if (user.role !== "staff" && user.role !== "intern" && user.role !== "customer_support_officer" && user.role !== "team_lead") {
-      return res.status(403).send("Only staff members, interns, customer support officers, and team leads can submit leave applications");
+    if (user.role !== "staff" && user.role !== "intern" && user.role !== "customer_support_officer" && user.role !== "team_lead" && user.role !== "project_manager") {
+      return res.status(403).send("Access denied");
     }
 
     try {
@@ -5968,7 +5956,7 @@ End of Report
         // Get approved leave of absence applications for current year
         const existingApplications = await db
           .select()
-          .from(leaveApplications)
+           .from(leaveApplications)
           .where(and(
             eq(leaveApplications.userId, user.id),
             eq(leaveApplications.leaveType, "leave_of_absence"),
