@@ -156,10 +156,19 @@ export default function GeneralChannel() {
     }
 
     try {
+      const originalMessage = messages.find(m => m.id === messageId);
+      let contentToSave = editingContent.trim();
+
+      // If the original message was a reply, preserve the quote part
+      if (originalMessage?.content.startsWith('> Replying to')) {
+        const quotePart = originalMessage.content.split('\n\n')[0];
+        contentToSave = `${quotePart}\n\n${editingContent.trim()}`;
+      }
+
       const response = await fetch(`/api/general-channel/messages/${messageId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: editingContent }),
+        body: JSON.stringify({ content: contentToSave }),
       });
 
       if (response.ok) {
@@ -308,7 +317,9 @@ export default function GeneralChannel() {
   };
 
   const filteredMentionUsers = allUsers.filter((u: any) => 
-    u.name && u.name.toLowerCase().includes(mentionSearchQuery.toLowerCase())
+    u.name && 
+    u.role !== 'client' && 
+    u.name.toLowerCase().includes(mentionSearchQuery.toLowerCase())
   ).slice(0, 5);
 
   const formatMessageTime = (timestamp: string | Date) => {
@@ -540,7 +551,16 @@ export default function GeneralChannel() {
                                   </DropdownMenuItem>
                                   {msg.senderId === user?.id && (
                                     <>
-                                      <DropdownMenuItem onClick={() => { setEditingMessageId(msg.id); setEditingContent(msg.content); }}>
+                                      <DropdownMenuItem onClick={() => { 
+                                        setEditingMessageId(msg.id); 
+                                        // Extract only the actual message content, not the quoted part
+                                        if (msg.content.startsWith('> Replying to')) {
+                                          const parts = msg.content.split('\n\n');
+                                          setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : '');
+                                        } else {
+                                          setEditingContent(msg.content);
+                                        }
+                                      }}>
                                         <Edit2 className="h-4 w-4 mr-2" />
                                         Edit
                                       </DropdownMenuItem>
