@@ -886,25 +886,6 @@ export const generalChannelReadReceipts = pgTable("general_channel_read_receipts
   readAt: timestamp("read_at").defaultNow().notNull(),
 });
 
-export const generalChannelMessagesRelations = relations(generalChannelMessages, ({ one, many }) => ({
-  sender: one(users, {
-    fields: [generalChannelMessages.senderId],
-    references: [users.id],
-  }),
-  readReceipts: many(generalChannelReadReceipts),
-}));
-
-export const generalChannelReadReceiptsRelations = relations(generalChannelReadReceipts, ({ one }) => ({
-  message: one(generalChannelMessages, {
-    fields: [generalChannelReadReceipts.messageId],
-    references: [generalChannelMessages.id],
-  }),
-  user: one(users, {
-    fields: [generalChannelReadReceipts.userId],
-    references: [users.id],
-  }),
-}));
-
 export const issueReportsRelations = relations(issueReports, ({ one }) => ({
   submitter: one(users, {
     fields: [issueReports.submitterId],
@@ -925,3 +906,10 @@ export const selectIssueReportSchema = createSelectSchema(issueReports);
 export type Note = typeof notes.$inferSelect;
 export const insertNoteSchema = createInsertSchema(notes);
 export const selectNoteSchema = createSelectSchema(notes);
+
+export type GeneralChannelMessage = typeof generalChannelMessages.$inferSelect;
+export type GeneralChannelReadReceipt = typeof generalChannelReadReceipts.$inferSelect;
+export const insertGeneralChannelMessageSchema = createInsertSchema(generalChannelMessages);
+export const selectGeneralChannelMessageSchema = createSelectSchema(generalChannelMessages);
+export const insertGeneralChannelReadReceiptSchema = createInsertSchema(generalChannelReadReceipts);
+export const selectGeneralChannelReadReceiptSchema = createSelectSchema(generalChannelReadReceipts);
