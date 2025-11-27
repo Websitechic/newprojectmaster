@@ -1289,9 +1289,21 @@ export default function Dashboard() {
               )}
 
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-foreground">
-                  {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
-                </h2>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-foreground">
+                    {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Search tasks..."
+                      className="w-64"
+                      value={taskSearchQuery}
+                      onChange={(e) => setTaskSearchQuery(e.target.value)}
+                    />
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
 
                 {tasksLoading ? (
                   <div className="text-center text-muted-foreground mt-8">
