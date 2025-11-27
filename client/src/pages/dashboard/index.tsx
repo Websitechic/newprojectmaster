@@ -23,7 +23,7 @@ import {
   AlertCircle,
   CheckCircle,
   HelpCircle,
-  Search,
+  Search, // Added Search icon import
   CheckSquare,
 } from "lucide-react";
 import {
@@ -614,9 +614,21 @@ export default function Dashboard() {
 
               {/* Full Task List */}
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-foreground">
-                  {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
-                </h2>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-foreground">
+                    {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Search tasks..."
+                      className="w-64"
+                      value={taskSearchQuery}
+                      onChange={(e) => setTaskSearchQuery(e.target.value)}
+                    />
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
 
                 {staffTasks && staffTasks.length > 0 ? (
                   <StaffTaskList tasks={filteredTasks || staffTasks} projectId={undefined} />
