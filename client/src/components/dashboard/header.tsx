@@ -16,6 +16,7 @@ import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useUnreadMessages } from "@/hooks/use-unread-messages";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface UnreadMessage {
   type: "team_chat" | "direct_message" | "general_channel";
@@ -259,35 +260,38 @@ export function Header() {
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-72">
-            <div className="px-2 py-1.5 text-sm font-semibold">
+          <DropdownMenuContent align="end" className="w-72 p-0">
+            <div className="px-2 py-1.5 text-sm font-semibold border-b">
               Unread Messages
             </div>
-            <DropdownMenuSeparator />
             {unreadMessages.length === 0 ? (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                 No unread messages
               </div>
             ) : (
-              unreadMessages.map((message) => (
-                <DropdownMenuItem
-                  key={`${message.type}-${message.id}`}
-                  onClick={() => handleMessageClick(message)}
-                  className="cursor-pointer"
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">{message.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {message.type === "team_chat" ? "Team Chat" : message.type === "direct_message" ? "Direct Message" : "General Channel"}
-                      </span>
-                    </div>
-                    <Badge variant="destructive" className="ml-2">
-                      {message.unreadCount}
-                    </Badge>
-                  </div>
-                </DropdownMenuItem>
-              ))
+              <ScrollArea className="h-96">
+                <div className="p-1">
+                  {unreadMessages.map((message) => (
+                    <DropdownMenuItem
+                      key={`${message.type}-${message.id}`}
+                      onClick={() => handleMessageClick(message)}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium">{message.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {message.type === "team_chat" ? "Team Chat" : message.type === "direct_message" ? "Direct Message" : "General Channel"}
+                          </span>
+                        </div>
+                        <Badge variant="destructive" className="ml-2">
+                          {message.unreadCount}
+                        </Badge>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              </ScrollArea>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
