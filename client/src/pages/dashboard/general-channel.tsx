@@ -319,8 +319,9 @@ export default function GeneralChannel() {
   const filteredMentionUsers = allUsers.filter((u: any) => 
     u.name && 
     u.role !== 'client' && 
+    u.id !== user?.id &&
     u.name.toLowerCase().includes(mentionSearchQuery.toLowerCase())
-  ).slice(0, 5);
+  );
 
   const formatMessageTime = (timestamp: string | Date) => {
     const date = new Date(timestamp);
@@ -634,7 +635,7 @@ export default function GeneralChannel() {
                 )}
 
                 {showMentionSuggestions && filteredMentionUsers.length > 0 && (
-                  <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-800 border rounded-lg shadow-lg max-h-[200px] overflow-y-auto z-50">
+                  <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-800 border rounded-lg shadow-lg max-h-[300px] overflow-y-auto z-50">
                     {filteredMentionUsers.map((u: any) => (
                       <div
                         key={u.id}
