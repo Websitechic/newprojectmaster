@@ -28,6 +28,20 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+// Add CSS for highlight animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes highlight-flash {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(59, 130, 246, 0.3); }
+  }
+  
+  .highlight-flash {
+    animation: highlight-flash 2s ease-in-out;
+  }
+`;
+document.head.appendChild(style);
+
 interface GeneralChannelMessage {
   id: number;
   content: string;
@@ -50,6 +64,9 @@ export default function GeneralChannel() {
   const [forwardingMessage, setForwardingMessage] = useState<GeneralChannelMessage | null>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionSearchQuery, setMentionSearchQuery] = useState("");
+  const [mentionCursorPosition, setMentionCursorPosition] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -241,6 +258,59 @@ export default function GeneralChannel() {
     sendMessageMutation.mutate(messageToSend);
   };
 
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    
+    setMessage(value);
+    setMentionCursorPosition(cursorPos);
+
+    // Check for @ mention
+    const textBeforeCursor = value.substring(0, cursorPos);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+    
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+      // Check if there's a space after @ (which would end the mention)
+      if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
+        setMentionSearchQuery(textAfterAt);
+        setShowMentionSuggestions(true);
+        return;
+      }
+    }
+    
+    setShowMentionSuggestions(false);
+  };
+
+  const handleMentionSelect = (userName: string) => {
+    const textBeforeCursor = message.substring(0, mentionCursorPosition);
+    const textAfterCursor = message.substring(mentionCursorPosition);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+    
+    if (lastAtIndex !== -1) {
+      const newMessage = 
+        message.substring(0, lastAtIndex) + 
+        `@${userName} ` + 
+        textAfterCursor;
+      
+      setMessage(newMessage);
+      setShowMentionSuggestions(false);
+      
+      // Focus back on input
+      setTimeout(() => {
+        if (inputRef.current) {
+          const newCursorPos = lastAtIndex + userName.length + 2;
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      }, 0);
+    }
+  };
+
+  const filteredMentionUsers = allUsers.filter((u: any) => 
+    u.name && u.name.toLowerCase().includes(mentionSearchQuery.toLowerCase())
+  ).slice(0, 5);
+
   const formatMessageTime = (timestamp: string | Date) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -258,9 +328,12 @@ export default function GeneralChannel() {
   };
 
   const renderMessageContent = (content: string) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return content.split(urlRegex).map((part, index) => {
-      if (urlRegex.test(part)) {
+    // Combined regex for URLs and mentions
+    const combinedRegex = /(https?:\/\/[^\s]+)|(@[a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
+    
+    return content.split(combinedRegex).filter(Boolean).map((part, index) => {
+      // Check if it's a URL
+      if (/^https?:\/\/[^\s]+$/.test(part)) {
         return (
           <a 
             key={`url-${index}`}
@@ -274,8 +347,73 @@ export default function GeneralChannel() {
           </a>
         );
       }
+      
+      // Check if it's a mention
+      if (/^@[a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*$/.test(part)) {
+        const mentionedName = part.substring(1).trim();
+        
+        // Find the mentioned user
+        const mentionedUser = allUsers.find((u: any) => 
+          u.name && (
+            u.name.toLowerCase() === mentionedName.toLowerCase() ||
+            u.name.toLowerCase().startsWith(mentionedName.toLowerCase())
+          )
+        );
+        
+        if (mentionedUser) {
+          const isSelfMention = mentionedUser.id === user?.id;
+          
+          return (
+            <span 
+              key={`mention-${index}`}
+              className={`${
+                isSelfMention 
+                  ? 'bg-blue-700 text-white font-bold px-1.5 py-0.5 rounded mx-0.5' 
+                  : 'bg-blue-500 text-white font-medium px-1.5 py-0.5 rounded mx-0.5'
+              }`}
+            >
+              {part}
+            </span>
+          );
+        }
+      }
+      
       return <span key={`text-${index}`}>{part}</span>;
     });
+  };
+
+  const handleClickRepliedMessage = (quotedContent: string) => {
+    // Find the original message by matching content
+    const originalMsg = messages.find(m => {
+      // Check if message content matches exactly
+      if (m.content === quotedContent) return true;
+      
+      // Check if it's in a reply chain
+      if (m.content.startsWith('> Replying to')) {
+        const parts = m.content.split('\n\n');
+        const actualContent = parts.slice(1).join('\n\n');
+        return actualContent === quotedContent;
+      }
+      
+      // Partial match for truncated content
+      return m.content.includes(quotedContent);
+    });
+
+    if (originalMsg) {
+      const originalMessageElement = document.getElementById(`gc-message-${originalMsg.id}`);
+      if (originalMessageElement) {
+        // Add highlight effect
+        originalMessageElement.classList.add('highlight-flash');
+
+        // Scroll to message
+        originalMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Remove highlight after animation
+        setTimeout(() => {
+          originalMessageElement.classList.remove('highlight-flash');
+        }, 2000);
+      }
+    }
   };
 
   return (
@@ -319,7 +457,7 @@ export default function GeneralChannel() {
                   </div>
                 ) : (
                   messages.map((msg) => (
-                    <div key={msg.id} id={`message-${msg.id}`} className="flex gap-3 group transition-all duration-300">
+                    <div key={msg.id} id={`gc-message-${msg.id}`} className="flex gap-3 group transition-all duration-300">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">
                           {getUserInitials(msg.senderName || "Unknown")}
@@ -356,8 +494,16 @@ export default function GeneralChannel() {
                                 <div>
                                   {msg.content.split('\n\n').map((part, idx) => {
                                     if (idx === 0) {
+                                      // Extract quoted content for navigation
+                                      const replyLines = part.split('\n');
+                                      const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
+                                      
                                       return (
-                                        <div key={idx} className="border-l-4 border-primary pl-3 mb-2 text-muted-foreground italic">
+                                        <div 
+                                          key={idx} 
+                                          className="border-l-4 border-primary pl-3 mb-2 text-muted-foreground italic cursor-pointer hover:bg-muted/50 transition-colors rounded"
+                                          onClick={() => handleClickRepliedMessage(quotedContent)}
+                                        >
                                           {part.split('\n').map((line, lineIdx) => (
                                             <div key={lineIdx}>{line.replace(/^> /, '')}</div>
                                           ))}
@@ -467,18 +613,46 @@ export default function GeneralChannel() {
                   </div>
                 )}
 
+                {showMentionSuggestions && filteredMentionUsers.length > 0 && (
+                  <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-800 border rounded-lg shadow-lg max-h-[200px] overflow-y-auto z-50">
+                    {filteredMentionUsers.map((u: any) => (
+                      <div
+                        key={u.id}
+                        onClick={() => handleMentionSelect(u.name)}
+                        className="flex items-center gap-2 p-2 hover:bg-muted cursor-pointer"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-xs">
+                            {getUserInitials(u.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-sm">{u.name}</p>
+                          <p className="text-xs text-muted-foreground">{u.role}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
                   <Textarea
                     ref={inputRef}
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type your message... (Shift+Enter for new line, Enter to send)"
+                    onChange={handleMessageChange}
+                    placeholder="Type your message... (Use @ to mention someone, Shift+Enter for new line, Enter to send)"
                     className="flex-1 min-h-[60px] max-h-[200px] resize-y"
                     disabled={sendMessageMutation.isPending}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (e.key === 'Enter' && !e.shiftKey && !showMentionSuggestions) {
                         e.preventDefault();
                         handleSendMessage(e);
+                      } else if (e.key === 'Escape' && showMentionSuggestions) {
+                        setShowMentionSuggestions(false);
+                      } else if (e.key === 'ArrowDown' && showMentionSuggestions) {
+                        e.preventDefault();
+                      } else if (e.key === 'ArrowUp' && showMentionSuggestions) {
+                        e.preventDefault();
                       }
                     }}
                   />
