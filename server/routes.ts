@@ -6026,7 +6026,7 @@ End of Report
     }
   });
 
-  // Get leave applications (Staff and Interns see their own, Managers see all)
+  // Get leave applications (All users see only their own applications)
   app.get("/api/leave-applications", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -6035,40 +6035,12 @@ End of Report
     const user = req.user!;
 
     try {
-      let applications;
-
-      if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
-        // Project managers, operations managers, and team leads see all applications with user details
-        applications = await db
-          .select({
-            id: leaveApplications.id,
-            userId: leaveApplications.userId,
-            leaveType: leaveApplications.leaveType,
-            reason: leaveApplications.reason,
-            startDate: leaveApplications.startDate,
-            endDate: leaveApplications.endDate,
-            totalDays: leaveApplications.totalDays,
-            proofImageUrl: leaveApplications.proofImageUrl,
-            status: leaveApplications.status,
-            appliedAt: leaveApplications.appliedAt,
-            reviewedAt: leaveApplications.reviewedAt,
-            reviewComments: leaveApplications.reviewComments,
-            userName: users.name,
-            userEmail: users.email,
-          })
-          .from(leaveApplications)
-          .innerJoin(users, eq(leaveApplications.userId, users.id))
-          .orderBy(desc(leaveApplications.appliedAt));
-      } else if (user.role === "staff" || user.role === "intern" || user.role === "customer_support_officer") {
-        // Staff, interns, and customer support officers see only their own applications
-        applications = await db
-          .select()
-          .from(leaveApplications)
-          .where(eq(leaveApplications.userId, user.id))
-          .orderBy(desc(leaveApplications.appliedAt));
-      } else {
-        return res.status(403).send("Access denied");
-      }
+      // All users (staff, interns, customer support officers, team leads, and project managers) see only their own applications
+      const applications = await db
+        .select()
+        .from(leaveApplications)
+        .where(eq(leaveApplications.userId, user.id))
+        .orderBy(desc(leaveApplications.appliedAt));
 
       res.json(applications);
     } catch (error) {
