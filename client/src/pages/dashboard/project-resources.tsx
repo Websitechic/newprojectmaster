@@ -736,19 +736,19 @@ export default function ProjectResources() {
                           {categoryResources.map((resource) => (
                             <Card key={resource.id} className="hover:shadow-md transition-shadow">
                               <CardHeader className="pb-3">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-2xl">{getFileIcon(resource)}</span>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                                    <span className="text-2xl shrink-0">{getFileIcon(resource)}</span>
                                     <div className="min-w-0 flex-1">
-                                      <CardTitle className="text-sm font-medium truncate" title={resource.name}>
+                                      <CardTitle className="text-sm font-medium break-words hyphens-auto leading-tight" title={resource.name}>
                                         {resource.name}
                                       </CardTitle>
-                                      <p className="text-xs text-muted-foreground">
+                                      <p className="text-xs text-muted-foreground mt-1">
                                         {resource.type === 'link' || resource.link ? 'External Link' : formatFileSize(resource.size || 0)}
                                       </p>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1 shrink-0">
                                     {resource.type === 'link' || resource.link ? (
                                       <Button 
                                         variant="ghost" 
