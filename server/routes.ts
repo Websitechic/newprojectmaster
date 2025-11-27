@@ -42,6 +42,8 @@ import {
   sops,
   sopSegments,
   issueReports,
+  generalChannelMessages,
+  generalChannelReadReceipts,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
@@ -2723,6 +2725,281 @@ End of Report
     } catch (error) {
       console.error("Error creating test staff query:", error);
       res.status(500).json({ error: "Failed to create test staff query", details: error.message });
+    }
+  });
+
+  // General Channel API Routes - accessible to all authenticated users
+  
+  // Get all general channel messages
+  app.get("/api/general-channel/messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const messages = await db
+        .select({
+          id: generalChannelMessages.id,
+          content: generalChannelMessages.content,
+          senderId: generalChannelMessages.senderId,
+          createdAt: generalChannelMessages.createdAt,
+          updatedAt: generalChannelMessages.updatedAt,
+          isEdited: generalChannelMessages.isEdited,
+          senderName: users.name,
+          senderEmail: users.email,
+        })
+        .from(generalChannelMessages)
+        .leftJoin(users, eq(generalChannelMessages.senderId, users.id))
+        .orderBy(asc(generalChannelMessages.createdAt));
+
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching general channel messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // Send a message to general channel
+  app.post("/api/general-channel/messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: "Message content is required" });
+    }
+
+    try {
+      const [newMessage] = await db
+        .insert(generalChannelMessages)
+        .values({
+          content: content.trim(),
+          senderId: user.id,
+        })
+        .returning();
+
+      // Get sender info
+      const [sender] = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.id, user.id))
+        .limit(1);
+
+      const messageWithSender = {
+        ...newMessage,
+        senderName: sender.name,
+        senderEmail: sender.email,
+      };
+
+      // Broadcast to all connected clients via SSE
+      if (global.sseClients) {
+        global.sseClients.forEach((client, userId) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'general_channel_message',
+                data: messageWithSender
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error broadcasting to user ${userId}:`, error);
+            }
+          }
+        });
+      }
+
+      res.json(messageWithSender);
+    } catch (error) {
+      console.error("Error sending general channel message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Edit a general channel message
+  app.put("/api/general-channel/messages/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const messageId = parseInt(req.params.id);
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: "Message content is required" });
+    }
+
+    try {
+      // Check if message exists and belongs to user
+      const [message] = await db
+        .select()
+        .from(generalChannelMessages)
+        .where(eq(generalChannelMessages.id, messageId))
+        .limit(1);
+
+      if (!message) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      if (message.senderId !== user.id) {
+        return res.status(403).json({ error: "You can only edit your own messages" });
+      }
+
+      // Update message
+      const [updatedMessage] = await db
+        .update(generalChannelMessages)
+        .set({
+          content: content.trim(),
+          updatedAt: new Date(),
+          isEdited: true,
+        })
+        .where(eq(generalChannelMessages.id, messageId))
+        .returning();
+
+      // Broadcast update via SSE
+      if (global.sseClients) {
+        global.sseClients.forEach((client, userId) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'general_channel_message_updated',
+                data: updatedMessage
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error broadcasting to user ${userId}:`, error);
+            }
+          }
+        });
+      }
+
+      res.json(updatedMessage);
+    } catch (error) {
+      console.error("Error editing general channel message:", error);
+      res.status(500).json({ error: "Failed to edit message" });
+    }
+  });
+
+  // Delete a general channel message
+  app.delete("/api/general-channel/messages/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const messageId = parseInt(req.params.id);
+
+    try {
+      // Check if message exists and belongs to user
+      const [message] = await db
+        .select()
+        .from(generalChannelMessages)
+        .where(eq(generalChannelMessages.id, messageId))
+        .limit(1);
+
+      if (!message) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      if (message.senderId !== user.id) {
+        return res.status(403).json({ error: "You can only delete your own messages" });
+      }
+
+      // Delete message
+      await db
+        .delete(generalChannelMessages)
+        .where(eq(generalChannelMessages.id, messageId));
+
+      // Broadcast deletion via SSE
+      if (global.sseClients) {
+        global.sseClients.forEach((client, userId) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'general_channel_message_deleted',
+                data: { id: messageId }
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error broadcasting to user ${userId}:`, error);
+            }
+          }
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting general channel message:", error);
+      res.status(500).json({ error: "Failed to delete message" });
+    }
+  });
+
+  // Mark messages as read
+  app.post("/api/general-channel/mark-read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const { messageIds } = req.body;
+
+    if (!messageIds || !Array.isArray(messageIds)) {
+      return res.status(400).json({ error: "Message IDs array is required" });
+    }
+
+    try {
+      // Insert read receipts for messages
+      const receipts = messageIds.map(messageId => ({
+        messageId,
+        userId: user.id,
+      }));
+
+      await db
+        .insert(generalChannelReadReceipts)
+        .values(receipts)
+        .onConflictDoNothing();
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
+  // Get unread count for general channel
+  app.get("/api/general-channel/unread-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const unreadCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(generalChannelMessages)
+        .leftJoin(
+          generalChannelReadReceipts,
+          and(
+            eq(generalChannelReadReceipts.messageId, generalChannelMessages.id),
+            eq(generalChannelReadReceipts.userId, user.id)
+          )
+        )
+        .where(
+          and(
+            ne(generalChannelMessages.senderId, user.id),
+            isNull(generalChannelReadReceipts.id)
+          )
+        );
+
+      res.json({ count: unreadCount[0]?.count || 0 });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
     }
   });
 

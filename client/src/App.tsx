@@ -52,6 +52,7 @@ import ReportIssues from "@/pages/report-issues";
 import ReportManagement from "@/pages/dashboard/report-management";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useBrowserNotification } from "@/hooks/use-browser-notification";
+import GeneralChannelPage from "@/pages/dashboard/general-channel";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -98,12 +99,12 @@ function GlobalNotificationListener() {
         console.log('⏭️ Audio already unlocked, skipping');
         return;
       }
-      
+
       console.log('🔓 Unlocking audio context on user interaction...');
-      
+
       // Dispatch init-audio event to unlock
       window.dispatchEvent(new Event('init-audio'));
-      
+
       // Mark as unlocked and persist to sessionStorage
       audioUnlockedRef.current = true;
       sessionStorage.setItem('audioUnlocked', 'true');
@@ -156,19 +157,19 @@ function GlobalNotificationListener() {
             // Handle notification events
             if (data.type === 'notification' && data.notification) {
               console.log('🔔 Global notification received:', data.notification);
-              
+
               // Invalidate notifications query to update UI
               queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-              
+
               // Check if should play sound
-              const isDirectMessage = 
-                data.notification.type === 'message' && 
+              const isDirectMessage =
+                data.notification.type === 'message' &&
                 data.notification.referenceType === 'direct_message';
-              
-              const isTaskAssignment = 
+
+              const isTaskAssignment =
                 data.notification.type === 'task_assigned' ||
                 data.notification.type === 'task_assignment';
-              
+
               if (isDirectMessage || isTaskAssignment) {
                 console.log('🔊 Playing notification sound globally for notification');
                 playNotificationSound().catch(err => {
@@ -191,14 +192,14 @@ function GlobalNotificationListener() {
                 console.warn('⚠️ User not authenticated, skipping message processing');
                 return;
               }
-              
+
               // Dispatch custom event FIRST for immediate UI update - this is critical!
               console.log('🚀 Dispatching direct-message-received event');
               window.dispatchEvent(new CustomEvent('direct-message-received', { detail: data.data }));
-              
+
               // Play sound for any message not sent by current user
               const isIncomingMessage = data.data.senderId !== user.id;
-              
+
               if (isIncomingMessage) {
                 console.log('🔊 TRIGGER: Playing sound for incoming direct message', {
                   senderId: data.data.senderId,
@@ -207,7 +208,7 @@ function GlobalNotificationListener() {
                   audioUnlocked: audioUnlockedRef.current,
                   timestamp: new Date().toISOString()
                 });
-                
+
                 // Ensure audio is unlocked before playing
                 if (!audioUnlockedRef.current) {
                   console.log('⚠️ Audio not unlocked yet, attempting unlock...');
@@ -217,7 +218,7 @@ function GlobalNotificationListener() {
                     audioUnlockedRef.current = true;
                   }, 50);
                 }
-                
+
                 // Play sound with retry logic and proper error handling
                 const playSoundWithRetry = async (retries = 5) => {
                   for (let i = 0; i < retries; i++) {
@@ -226,7 +227,7 @@ function GlobalNotificationListener() {
                       if (i === 0) {
                         await new Promise(resolve => setTimeout(resolve, 100));
                       }
-                      
+
                       await playNotificationSound();
                       console.log('✅ Direct message sound played successfully on attempt', i + 1);
                       return;
@@ -235,22 +236,22 @@ function GlobalNotificationListener() {
                         error: err,
                         message: err instanceof Error ? err.message : 'Unknown error'
                       });
-                      
+
                       // If this isn't the last attempt, wait before retrying
                       if (i < retries - 1) {
                         await new Promise(resolve => setTimeout(resolve, 150));
-                        
+
                         // Try to unlock again before retry
                         window.dispatchEvent(new Event('init-audio'));
                       }
                     }
                   }
-                  
+
                   console.error('❌ All direct message sound playback attempts failed');
                 };
-                
+
                 playSoundWithRetry();
-                
+
                 // Show browser notification only if message is TO current user
                 if (data.data.receiverId === user.id) {
                   const senderName = data.data.senderName || 'Someone';
@@ -262,7 +263,7 @@ function GlobalNotificationListener() {
                   });
                 }
               }
-              
+
               // Invalidate queries AFTER dispatching event
               queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
               queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
@@ -276,29 +277,29 @@ function GlobalNotificationListener() {
                 currentUserId: user?.id,
                 senderName: data.data.senderName
               });
-              
+
               // Validate user is authenticated
               if (!user || !user.id) {
                 console.warn('⚠️ User not authenticated, skipping sound playback');
                 return;
               }
-              
+
               // Only play sound and show notification if message is from another user
               if (data.data.senderId !== user.id) {
                 console.log('🔊 TRIGGER: Playing sound for incoming team message', {
-                  from: data.data.senderId,
+                  senderId: data.data.senderId,
                   project: data.data.projectId,
                   currentUser: user.id,
                   timestamp: new Date().toISOString()
                 });
-                
+
                 // Ensure audio is unlocked before playing
                 if (!audioUnlockedRef.current) {
                   console.log('⚠️ Audio not unlocked yet, attempting unlock...');
                   window.dispatchEvent(new Event('init-audio'));
                   audioUnlockedRef.current = true;
                 }
-                
+
                 // Play sound with retry logic
                 const playSoundWithRetry = async (retries = 3) => {
                   for (let i = 0; i < retries; i++) {
@@ -314,9 +315,9 @@ function GlobalNotificationListener() {
                     }
                   }
                 };
-                
+
                 playSoundWithRetry();
-                
+
                 // Show browser notification
                 const senderName = data.data.senderName || 'Team member';
                 const messagePreview = data.data.content?.substring(0, 100) || 'New message';
@@ -332,13 +333,56 @@ function GlobalNotificationListener() {
                   currentUserId: user.id
                 });
               }
-              
+
               // Dispatch custom event for team chat components to update UI immediately
               window.dispatchEvent(new CustomEvent('team-message-received', { detail: data.data }));
-              
+
               // Invalidate queries to refresh data
               queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
               queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
+            }
+            // Add SSE listener for general channel messages
+            else if (data.type === 'general_channel_message') {
+              console.log('💬 General channel message received:', data);
+
+              // Don't play sound for own messages
+              if (data.data?.senderId !== user?.id) {
+                playNotificationSound();
+
+                showNotification(
+                  'General Channel',
+                  `${data.data?.senderName}: ${data.data?.content?.substring(0, 50)}...`,
+                  '/dashboard/general-channel'
+                );
+              }
+
+              // Dispatch custom event for general channel
+              window.dispatchEvent(new CustomEvent('general-channel-message', { detail: data.data }));
+
+              // Invalidate queries
+              queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/general-channel/unread-count"] });
+            } else if (data.type === 'general_channel_message_updated' || data.type === 'general_channel_message_deleted') {
+              console.log('🔄 General channel message update:', data);
+              queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
+            }
+            // Existing team mention logic
+            else if (data.type === 'team_mention') {
+              console.log('📌 Team mention notification received:', data);
+
+              // Play notification sound for mentions
+              playNotificationSound();
+
+              // Show browser notification
+              showNotification(
+                'You were mentioned',
+                data.notification?.content || 'Someone mentioned you in a team chat',
+                '/dashboard/projects'
+              );
+
+              // Invalidate relevant queries
+              queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
             }
           } catch (error) {
             console.error("Error parsing global SSE message:", error);
@@ -382,7 +426,7 @@ function GlobalNotificationListener() {
       }
       setIsConnecting(false);
     };
-  }, [user?.id, queryClient, playNotificationSound, showNotification]);
+  }, [user?.id, queryClient, playNotificationSound, showNotification, showNotification]);
 
   return null; // This component doesn't render anything
 }
@@ -452,9 +496,9 @@ function Router() {
           <Route path="/dashboard/productivity">
             <Productivity />
           </Route>
-          <Route path="/dashboard/direct-messages">
-            <DirectMessages />
-          </Route>
+          <Route path="/dashboard/direct-messages" component={DirectMessages} />
+          <Route path="/dashboard/general-channel" component={GeneralChannelPage} />
+          <Route path="/dashboard/guide-videos" component={GuideVideos} />
           <Route path="/dashboard/technical-support">
             <TechnicalSupport />
           </Route>
@@ -467,9 +511,6 @@ function Router() {
           </Route>
           <Route path="/dashboard/client-management">
             <ClientManagement />
-          </Route>
-          <Route path="/dashboard/guide-videos">
-            <GuideVideos />
           </Route>
           <Route path="/dashboard/register-dissatisfaction">
             <RegisterDissatisfaction />
