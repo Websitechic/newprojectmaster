@@ -54,8 +54,7 @@ export function Header() {
       return await response.json();
     },
     enabled: !!user,
-    refetchInterval: 5000, // Refresh every 5 seconds instead of 10
-    staleTime: 0, // Always fetch fresh data when invalidated
+    refetchInterval: 10000,
   });
 
   // Fetch direct messages unread count
@@ -81,7 +80,7 @@ export function Header() {
     enabled: !!user,
   });
 
-  // Fetch notifications to check for מעntions
+  // Fetch notifications to check for mentions
   const { data: notifications = [] } = useQuery({
     queryKey: ["/api/notifications"],
     queryFn: async () => {
@@ -95,8 +94,6 @@ export function Header() {
 
   // Get mention counts from the hook
   const { mentionCounts } = useUnreadMessages();
-
-  const [location] = useLocation();
 
   // Combine unread messages
   useEffect(() => {
@@ -168,14 +165,14 @@ export function Header() {
     }
 
     setUnreadMessages(combined);
-  }, [teamChatUnreads, mentionCounts, directMessagesData, projects, location]);
+  }, [teamChatUnreads, mentionCounts, directMessagesData, projects]);
 
   const handleLogout = async () => {
     try {
       // Clear audio unlock state completely
       sessionStorage.removeItem('audioUnlocked');
       setShowUnlockButton(false);
-
+      
       await logout();
       window.location.href = "/auth";
     } catch (error) {
@@ -273,7 +270,7 @@ export function Header() {
         {/* Notifications */}
         <NotificationsDropdown />
 
-
+        
 
         {/* Profile Dropdown */}
         <DropdownMenu>

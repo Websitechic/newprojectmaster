@@ -511,16 +511,11 @@ export default function LeaveManagement() {
                 {selectedApplication.proofImageUrl && (
                   <div>
                     <h4 className="font-medium mb-2">Supporting Document</h4>
-                    <div className="border rounded-md p-2 bg-gray-50">
+                    <div className="border rounded-md p-2">
                       <img
                         src={selectedApplication.proofImageUrl}
                         alt="Leave proof document"
                         className="max-w-full h-auto max-h-64 sm:max-h-96 object-contain rounded"
-                        loading="lazy"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999"%3EImage not available%3C/text%3E%3C/svg%3E';
-                        }}
                       />
                     </div>
                   </div>
@@ -624,11 +619,6 @@ export default function LeaveManagement() {
                         src={selectedApplication.proofImageUrl}
                         alt="Leave proof"
                         className="mt-1 max-w-xs h-32 object-cover rounded border"
-                        loading="lazy"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
                       />
                     </div>
                   )}

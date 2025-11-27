@@ -89,7 +89,6 @@ export default function ProjectResources() {
   const [fileName, setFileName] = useState("");
   const [fileCategory, setFileCategory] = useState("");
   const [isUploadingFile, setIsUploadingFile] = useState(false);
-  const [expandedNames, setExpandedNames] = useState<Set<number>>(new Set());
 
   // State for edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -115,11 +114,9 @@ export default function ProjectResources() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('category', fileCategory.trim());
-      // Add custom file name if provided, preserving the original extension
+      // Add custom file name if provided
       if (fileName.trim()) {
-        const originalExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.'));
-        const customNameWithoutExt = fileName.trim().replace(/\.[^/.]+$/, ""); // Remove any extension user might have added
-        formData.append('customFileName', customNameWithoutExt + originalExtension);
+        formData.append('customFileName', fileName.trim());
       }
 
       const response = await fetch(`/api/projects/${projectId}/resources/upload`, {
@@ -518,12 +515,12 @@ export default function ProjectResources() {
                         <Input
                           id="fileName"
                           type="text"
-                          placeholder="Enter custom file name (extension will be preserved)"
+                          placeholder="Enter custom file name or leave blank to use original"
                           value={fileName}
                           onChange={(e) => setFileName(e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                          {selectedFile ? `Extension: ${selectedFile.name.substring(selectedFile.name.lastIndexOf('.'))} will be preserved` : 'If left blank, the original file name will be used'}
+                          If left blank, the original file name will be used
                         </p>
                       </div>
                       <div>
@@ -739,42 +736,19 @@ export default function ProjectResources() {
                           {categoryResources.map((resource) => (
                             <Card key={resource.id} className="hover:shadow-md transition-shadow">
                               <CardHeader className="pb-3">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                                    <span className="text-2xl shrink-0">{getFileIcon(resource)}</span>
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-2xl">{getFileIcon(resource)}</span>
                                     <div className="min-w-0 flex-1">
-                                      <CardTitle className="text-sm font-medium break-words" title={resource.name}>
-                                        {expandedNames.has(resource.id) ? (
-                                          resource.name
-                                        ) : (
-                                          resource.name.length > 40 ? resource.name.substring(0, 40) + '...' : resource.name
-                                        )}
+                                      <CardTitle className="text-sm font-medium truncate" title={resource.name}>
+                                        {resource.name}
                                       </CardTitle>
-                                      {resource.name.length > 40 && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setExpandedNames(prev => {
-                                              const newSet = new Set(prev);
-                                              if (newSet.has(resource.id)) {
-                                                newSet.delete(resource.id);
-                                              } else {
-                                                newSet.add(resource.id);
-                                              }
-                                              return newSet;
-                                            });
-                                          }}
-                                          className="text-xs text-primary hover:underline mt-1"
-                                        >
-                                          {expandedNames.has(resource.id) ? 'Show Less' : 'Read More'}
-                                        </button>
-                                      )}
-                                      <p className="text-xs text-muted-foreground mt-1">
+                                      <p className="text-xs text-muted-foreground">
                                         {resource.type === 'link' || resource.link ? 'External Link' : formatFileSize(resource.size || 0)}
                                       </p>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-1 shrink-0">
+                                  <div className="flex items-center gap-1">
                                     {resource.type === 'link' || resource.link ? (
                                       <Button 
                                         variant="ghost" 

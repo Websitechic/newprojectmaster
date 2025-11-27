@@ -116,8 +116,8 @@ export default function LeaveApplication() {
     },
   });
 
-  // Check if user is staff, intern, customer support officer, team lead, or project manager
-  if (!user || (user.role !== "staff" && user.role !== "intern" && user.role !== "customer_support_officer" && user.role !== "team_lead" && user.role !== "project_manager")) {
+  // Check if user is staff, intern, customer support officer, or team lead
+  if (!user || (user.role !== "staff" && user.role !== "intern" && user.role !== "customer_support_officer" && user.role !== "team_lead")) {
     return (
       <div className="flex h-screen">
         <Sidebar currentPath="/dashboard/leave-application" />
@@ -125,15 +125,15 @@ export default function LeaveApplication() {
           <Header />
           <div className="flex flex-col items-center justify-center min-h-[400px]">
             <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-            <p className="text-sm text-destructive">Only staff members, interns, customer support officers, team leads, and project managers can access leave applications</p>
+            <p className="text-sm text-destructive">Only staff members, interns, customer support officers, and team leads can access leave applications</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // All these roles have same permissions to apply for leave
-  const isStaffOrIntern = user.role === "staff" || user.role === "intern" || user.role === "project_manager";
+  // Interns have same permissions as staff
+  const isStaffOrIntern = user.role === "staff" || user.role === "intern";
 
   // Fetch existing leave applications
   const { data: leaveApplications, isLoading } = useQuery<LeaveApplication[]>({

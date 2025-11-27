@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -97,16 +97,6 @@ interface StaffMember {
     breakOvertime: boolean;
   } | null;
   absentDaysRemaining: number | null;
-  isInMeeting: boolean;
-  currentMeeting?: {
-    id: number;
-    title: string;
-    type: string;
-    startTime: string;
-    endTime: string;
-    meetingLink: string | null;
-    participantCount: number;
-  } | null;
 }
 
 interface Task {
@@ -155,13 +145,6 @@ const absenceReasonLabels: Record<string, string> = {
   not_applicable: "N/A"
 };
 
-const meetingTypeLabels: Record<string, string> = {
-  one_on_one: "One-on-One",
-  team_booking: "Team Meeting",
-  marketing_meeting: "Marketing Call",
-  general_booking: "General Meeting"
-};
-
 const workStatusColors: Record<string, string> = {
   active: "bg-green-100 text-green-800 border-green-300",
   on_break: "bg-amber-100 text-amber-800 border-amber-300",
@@ -172,27 +155,12 @@ export default function StaffReport() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [location] = useLocation();
-  const queryClient = useQueryClient();
 
   // Check authentication and authorization FIRST
   const hasAccess = user?.role === "project_manager" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.specialization === "operations_manager" || user?.specialization === "replit_development" || user?.specialization === "Replit Development";
 
   const [filterSpecialization, setFilterSpecialization] = useState<string | null>(null);
   const [taskView, setTaskView] = useState<'active' | 'all'>('active');
-
-  // Listen for WebSocket meeting updates and refresh data
-  useEffect(() => {
-    const handleMeetingUpdate = () => {
-      // Invalidate and refetch staff report when meetings change
-      queryClient.invalidateQueries({ queryKey: ["/api/staff-report"] });
-    };
-
-    window.addEventListener('websocket:meeting_update', handleMeetingUpdate);
-
-    return () => {
-      window.removeEventListener('websocket:meeting_update', handleMeetingUpdate);
-    };
-  }, []);
 
   const { data: staffReport, isLoading, error } = useQuery<StaffMember[], Error>({
     queryKey: ["/api/staff-report"],
@@ -226,8 +194,8 @@ export default function StaffReport() {
       }
       return failureCount < 3;
     },
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000, // Refresh every 10 seconds for real-time meeting updates
+    refetchOnWindowFocus: false,
+    refetchInterval: 30000, // Refresh every 30 seconds
     onError: (error) => {
       console.error("Staff report query error:", error);
       toast({
@@ -381,16 +349,13 @@ export default function StaffReport() {
 
   const absentStaff = filteredStaff?.filter(staff => staff.workStatus === 'absent') || [];
 
-  // Available staff: those not absent, not on break, not in meetings, and not currently engaged with running timers
+  // Available staff: those not absent, not on break, and not currently engaged with running timers
   const availableStaff = filteredStaff?.filter(staff => {
     // Exclude absent staff
     if (staff.workStatus === 'absent') return false;
 
     // Exclude staff on break
     if (staff.workStatus === 'on_break') return false;
-
-    // Exclude staff in meetings
-    if (staff.isInMeeting) return false;
 
     // Exclude currently engaged staff (those with running timers)
     if (staff.isCurrentlyEngaged) return false;
@@ -454,7 +419,7 @@ export default function StaffReport() {
             <CardHeader className="pb-2">
               <CardTitle className="text-md">Staff Status Overview</CardTitle>
               <CardDescription>
-                {engagedStaff.length} currently engaged | {filteredStaff?.filter(s => s.isInMeeting).length || 0} in meetings | {onBreakStaff.length} on scheduled break | {absentStaff.length} absent | {availableStaff.length} available
+                {engagedStaff.length} currently engaged | {onBreakStaff.length} on scheduled break | {absentStaff.length} absent | {availableStaff.length} available
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -466,7 +431,7 @@ export default function StaffReport() {
               </div>
             </CardContent>
             <CardContent>
-              <div className="grid grid-cols-5 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div className="rounded-md border border-green-300 bg-green-50 p-3">
                   <div className="flex items-center gap-2">
                     <Play className="h-4 w-4 text-green-700" />
@@ -474,17 +439,6 @@ export default function StaffReport() {
                   </div>
                   <p className="mt-1 text-2xl font-bold text-green-800">{engagedStaff.length}</p>
                   <p className="text-xs text-green-700">Staff with active task timers</p>
-                </div>
-
-                <div className="rounded-md border border-purple-300 bg-purple-50 p-3">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-purple-700" />
-                    <h3 className="text-sm font-medium text-purple-800">In Meetings</h3>
-                  </div>
-                  <p className="mt-1 text-2xl font-bold text-purple-800">{filteredStaff?.filter(s => s.isInMeeting).length || 0}</p>
-                  <p className="text-xs text-purple-700">
-                    Currently in booked meetings
-                  </p>
                 </div>
 
                 <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
@@ -627,109 +581,6 @@ export default function StaffReport() {
                   <h3 className="text-md font-medium mb-1">No Currently Engaged Staff</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
                     There are currently no staff members with active task timers running.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* In Meetings Section */}
-          <Card className="border-purple-200">
-            <CardHeader className="pb-2 border-b border-purple-100">
-              <div className="flex items-center">
-                <div className="bg-purple-100 p-1.5 rounded-full mr-2">
-                  <CalendarDays className="h-5 w-5 text-purple-700" />
-                </div>
-                <div>
-                  <CardTitle className="text-md">Staff In Meetings</CardTitle>
-                  <CardDescription>
-                    {filteredStaff?.filter(s => s.isInMeeting).length || 0} staff members currently in booked meetings
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4">
-              {filteredStaff?.filter(s => s.isInMeeting).length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Staff Member</TableHead>
-                      <TableHead>Meeting Title</TableHead>
-                      <TableHead className="text-center">Type</TableHead>
-                      <TableHead className="text-center">Scheduled By</TableHead>
-                      <TableHead className="text-center">Participants</TableHead>
-                      <TableHead className="text-center">Started</TableHead>
-                      <TableHead className="text-right">Ends At</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStaff?.filter(s => s.isInMeeting).map((staff) => (
-                      <TableRow key={staff.id}>
-                        <TableCell>
-                          <div className="font-medium">{staff.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {staff.specialization ? specializationLabels[staff.specialization] : 'No specialization'}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {staff.currentMeeting ? (
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-                              <span className="font-medium text-purple-900">{staff.currentMeeting.title}</span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">No meeting</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {staff.currentMeeting ? (
-                            <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
-                              {meetingTypeLabels[staff.currentMeeting.type] || staff.currentMeeting.type}
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">N/A</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {staff.currentMeeting ? (
-                            <div className="text-sm">
-                              <span className="font-medium">{staff.currentMeeting.schedulerName || "Unknown"}</span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">N/A</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="bg-gray-50 border-gray-200">
-                            {staff.currentMeeting?.participantCount || 0}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {staff.currentMeeting?.startTime ? (
-                            <span className="text-sm">{formatDate(staff.currentMeeting.startTime, "h:mm a")}</span>
-                          ) : (
-                            "N/A"
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          {staff.currentMeeting?.endTime ? (
-                            <span className="font-medium">{formatDate(staff.currentMeeting.endTime, "h:mm a")}</span>
-                          ) : (
-                            "N/A"
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="bg-purple-50 p-3 rounded-full mb-3">
-                    <CalendarDays className="h-6 w-6 text-purple-500" />
-                  </div>
-                  <h3 className="text-md font-medium mb-1">No Staff In Meetings</h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    There are currently no staff members in scheduled meetings.
                   </p>
                 </div>
               )}

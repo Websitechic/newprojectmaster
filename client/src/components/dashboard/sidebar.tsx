@@ -32,7 +32,6 @@ import {
   Menu,
   X,
   Bug,
-  FileCheck,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -264,42 +263,12 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
 
   // Menu items configuration
   const isClientWithSpecialAccess = user?.role === "client" && user?.clientType === "support_maintenance_client";
-  const [generalChannelUnread, setGeneralChannelUnread] = useState(0);
-
-  // Fetch general channel unread count
-  useEffect(() => {
-    const fetchGeneralChannelUnread = async () => {
-      try {
-        const response = await fetch("/api/general-channel/unread-count");
-        if (response.ok) {
-          const data = await response.json();
-          setGeneralChannelUnread(data.count || 0);
-        }
-      } catch (error) {
-        console.error("Error fetching general channel unread count:", error);
-      }
-    };
-
-    if (user?.id) {
-      fetchGeneralChannelUnread();
-      const interval = setInterval(fetchGeneralChannelUnread, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [user?.id]);
-
   const baseMenuItems = (user?.role !== "client" || isClientWithSpecialAccess) ? [
     {
       icon: <LayoutDashboard size={20} />,
       label: "Dashboard",
       href: "/dashboard",
       key: "dashboard",
-    },
-    {
-      icon: <MessageSquare size={20} />,
-      label: "General Channel",
-      href: "/dashboard/general-channel",
-      badge: generalChannelUnread,
-      key: "general-channel",
     },
     {
       icon: <FileText size={20} />,
@@ -330,13 +299,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "dashboard",
     },
     {
-      icon: <MessageSquare size={20} />,
-      label: "General Channel",
-      href: "/dashboard/general-channel",
-      badge: generalChannelUnread,
-      key: "general-channel",
-    },
-    {
       icon: <FileText size={20} />,
       label: "Projects",
       href: "/dashboard/projects",
@@ -359,12 +321,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "staff-report",
     },
     {
-      icon: <FileText size={20} />,
-      label: "Project Briefing",
-      href: "/dashboard/project-briefing",
-      key: "project-briefing",
-    },
-    {
       icon: <Building2 size={20} />,
       label: "Client Accounts",
       href: "/dashboard/client-accounts",
@@ -375,13 +331,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "Bookings",
       href: "/dashboard/bookings",
       key: "bookings",
-    },
-    {
-      icon: <Calendar size={20} />,
-      label: "Leave Application",
-      href: "/dashboard/leave-application",
-      hasUpdate: indicators.leaveApplications,
-      key: "leave-application",
     },
     {
       icon: <Calendar size={20} />,
@@ -432,12 +381,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/leave-application",
       hasUpdate: indicators.leaveApplications,
       key: "leave-application",
-    },
-    {
-      icon: <FileText size={20} />,
-      label: "Project Briefing",
-      href: "/dashboard/project-briefing",
-      key: "customer-support-project-briefing",
     },
     {
       icon: <Users size={20} />,
@@ -504,12 +447,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "Staff Report",
       href: "/dashboard/staff-report",
       key: "operations-staff-report",
-    },
-    {
-      icon: <FileText size={20} />,
-      label: "Project Briefing",
-      href: "/dashboard/project-briefing",
-      key: "operations-project-briefing",
     },
     {
       icon: <BarChart3 size={20} />,
@@ -610,12 +547,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "team-lead-staff-report",
     },
     {
-      icon: <FileText size={20} />,
-      label: "Project Briefing",
-      href: "/dashboard/project-briefing",
-      key: "team-lead-project-briefing",
-    },
-    {
       icon: <BarChart3 size={20} />,
       label: "KPI Report",
       href: "/dashboard/kpi-report",
@@ -626,12 +557,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "Client Accounts",
       href: "/dashboard/client-accounts",
       key: "team-lead-client-accounts",
-    },
-    {
-      icon: <FileText size={20} />,
-      label: "Project Briefing",
-      href: "/dashboard/project-briefing",
-      key: "customer-support-project-briefing",
     },
     {
       icon: <FileText size={20} />,

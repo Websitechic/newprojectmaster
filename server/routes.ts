@@ -42,10 +42,6 @@ import {
   sops,
   sopSegments,
   issueReports,
-  reviewRequests,
-  generalMessages,
-  generalMessageReadReceipts,
-  projectBriefings,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
@@ -224,29 +220,19 @@ export function registerRoutes(app: Express): Server {
     next();
   });
 
-  // Static file serving AFTER API middleware with caching
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
-    maxAge: '1d', // Cache for 1 day
-    etag: true,
-    lastModified: true,
-    setHeaders: (res, filePath) => {
-      // Set cache control headers for images
-      if (filePath.match(/\.(jpg|jpeg|png|gif|pdf|xlsx|xls|doc|docx)$/i)) {
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
-      }
-    }
-  }));
+  // Static file serving AFTER API middleware
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // User endpoint for authentication
   app.get("/api/user", (req, res) => {
     try {
-      console.log('Auth check:', {
-        isAuthenticated: req.isAuthenticated(),
+      console.log('Auth check:', { 
+        isAuthenticated: req.isAuthenticated(), 
         hasUser: !!req.user,
         sessionID: req.session?.id,
-        cookie: req.session?.cookie
+        cookie: req.session?.cookie 
       });
-
+      
       if (req.isAuthenticated() && req.user) {
         res.json(req.user);
       } else {
@@ -385,57 +371,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Meeting status checker - runs every minute to broadcast meeting changes
-  setInterval(async () => {
-    try {
-      const now = new Date();
-
-      // Get all scheduled bookings
-      const allBookings = await db
-        .select({
-          id: bookings.id,
-          startTime: bookings.startTime,
-          endTime: bookings.endTime,
-          participants: bookings.participants,
-        })
-        .from(bookings)
-        .where(eq(bookings.status, "scheduled"));
-
-      // Check for meetings that just started or ended
-      allBookings.forEach(booking => {
-        const startTime = new Date(booking.startTime);
-        const endTime = new Date(booking.endTime);
-
-        // Check if meeting is currently active
-        const isActive = startTime <= now && now < endTime;
-
-        // Broadcast update if there are participants
-        if (booking.participants && booking.participants.length > 0) {
-          if (global.connectedClients) {
-            global.connectedClients.forEach((client) => {
-              if (client.readyState === 1) {
-                try {
-                  client.send(JSON.stringify({
-                    type: 'meeting_update',
-                    data: {
-                      meetingId: booking.id,
-                      status: isActive ? 'active' : 'inactive',
-                      timestamp: now.toISOString()
-                    }
-                  }));
-                } catch (error) {
-                  console.error('Error broadcasting meeting status:', error);
-                }
-              }
-            });
-          }
-        }
-      });
-    } catch (error) {
-      console.error("Error in meeting status check:", error);
-    }
-  }, 60000); // Run every minute
-
   // Enhanced deadline and notification checking - runs every hour
   setInterval(async () => {
     try {
@@ -560,23 +495,10 @@ export function registerRoutes(app: Express): Server {
       if (user.role === "client") {
         // Clients see projects they're assigned to as clientId
         projectsList = await db
-          .select({
-            project: projects,
-            manager: users,
-          })
+          .select()
           .from(projects)
-          .leftJoin(users, eq(projects.managerId, users.id))
           .where(eq(projects.clientId, user.id))
           .orderBy(desc(projects.updatedAt));
-
-        projectsList = projectsList.map(p => ({
-          ...p.project,
-          manager: p.manager ? {
-            id: p.manager.id,
-            name: p.manager.name,
-            email: p.manager.email,
-          } : null
-        }));
       } else if (user.role === "project_manager") {
         if (user.projectManagerType === "supervisor") {
           // Supervisor project managers see only DPL Outright and DPL Partnership projects
@@ -1126,14 +1048,21 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Staff ID, start date, and end date are required" });
       }
 
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
+      const start = new Date(startDate);
+      const end = new Date(endDate);
 
-      // Get ALL tasks for the staff member (not filtered by date)
-      const allUserTasks = await db
+      // Get all tasks for the staff member within the date range
+      const staffTasks = await db
         .select()
         .from(tasks)
-        .where(eq(tasks.assigneeId, parseInt(staffId as string)));
+        .where(
+          and(
+            eq(tasks.assigneeId, parseInt(staffId as string)),
+            gte(tasks.updatedAt, start),
+            eq(tasks.isTimerRunning, false) // Only completed timer sessions
+          )
+        )
+        .orderBy(desc(tasks.updatedAt));
 
       // Process daily productivity data
       const dailyMap = new Map();
@@ -1151,211 +1080,60 @@ export function registerRoutes(app: Express): Server {
           date: dateKey,
           totalSpanHours: 0,
           actualWorkHours: 0,
-          assignedHours: 0, // Add assigned hours tracking
           performanceStatus: 'poor',
           performanceColor: '#EF4444',
           taskCount: 0,
-          tasks: [],
-          workdayStart: null,
-          workdayEnd: null
+          tasks: []
         });
       });
 
-      // Process tasks - filter by actual work done (timer sessions)
-      allUserTasks.forEach(task => {
-        // Check if task has time spent and was worked on during our date range
-        if (task.timeSpent && task.timeSpent > 0) {
-          const updateDate = new Date(task.updatedAt);
-          const dateKey = updateDate.toISOString().split('T')[0];
+      // Process tasks and calculate productivity
+      staffTasks.forEach(task => {
+        if (task.timerStartTime && task.timerDuration) {
+          const taskDate = new Date(task.timerStartTime);
+          const dateKey = taskDate.toISOString().split('T')[0];
 
           if (dailyMap.has(dateKey)) {
             const dailyData = dailyMap.get(dateKey);
-            const hoursWorked = task.timeSpent / 3600; // Convert seconds to hours
-
-            // Calculate assigned time for this task
-            const assignedSeconds = ((task.workingHours || 0) * 3600) + ((task.workingMinutes || 0) * 60);
-            const assignedHours = assignedSeconds / 3600;
+            const hoursWorked = task.timerDuration / 3600; // Convert seconds to hours
 
             dailyData.actualWorkHours += hoursWorked;
-            dailyData.assignedHours += assignedHours; // Track assigned hours
             dailyData.taskCount += 1;
             dailyData.tasks.push(task.title);
-          }
-        }
 
-        // Also check for running timers started during our date range
-        if (task.isTimerRunning && task.timerStartTime) {
-          const timerDate = new Date(task.timerStartTime);
-          const dateKey = timerDate.toISOString().split('T')[0];
-
-          if (dailyMap.has(dateKey)) {
-            const dailyData = dailyMap.get(dateKey);
-            const elapsedSeconds = Math.floor((Date.now() - timerDate.getTime()) / 1000);
-            const currentTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
-            const hoursWorked = currentTimeSpent / 3600;
-
-            // Calculate assigned time for this task
-            const assignedSeconds = ((task.workingHours || 0) * 3600) + ((task.workingMinutes || 0) * 60);
-            const assignedHours = assignedSeconds / 3600;
-
-            dailyData.actualWorkHours += hoursWorked;
-            dailyData.assignedHours += assignedHours;
-            if (!dailyData.tasks.includes(task.title)) {
-              dailyData.taskCount += 1;
-              dailyData.tasks.push(task.title);
+            // Calculate performance status (standardized with productivity page)
+            if (dailyData.actualWorkHours >= 4) {
+              dailyData.performanceStatus = 'good';
+              dailyData.performanceColor = '#10B981';
+            } else if (dailyData.actualWorkHours >= 2) {
+              dailyData.performanceStatus = 'fair';
+              dailyData.performanceColor = '#F59E0B';
             }
           }
         }
       });
 
-      // Calculate workday span and performance status for each day
-      const dailyDataArray = Array.from(dailyMap.values()).map(day => {
-        // Filter tasks worked on this day
-        const dayStart = new Date(day.date);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(day.date);
-        dayEnd.setHours(23, 59, 59, 999);
-
-        // Filter tasks that have timer sessions on this specific day
-        const currentDayTasks = allUserTasks.filter(task => {
-          // Check if task has sessions on this day
-          const sessions = (task.timerSessions as any) || [];
-          const hasSessionToday = sessions.some((session: any) => {
-            const sessionStart = new Date(session.startTime);
-            return sessionStart >= dayStart && sessionStart <= dayEnd;
-          });
-
-          // Also include tasks with currently running timer started today
-          if (task.isTimerRunning && task.timerStartTime) {
-            const timerDate = new Date(task.timerStartTime);
-            if (timerDate >= dayStart && timerDate <= dayEnd) {
-              return true;
-            }
-          }
-
-          return hasSessionToday;
-        });
-
-        // Calculate workday span from timer sessions (first timer start to last timer end)
-        let workdayStart = null;
-        let workdayEnd = null;
-        let totalSpanHours = day.actualWorkHours; // Default to actual work hours
-
-        if (currentDayTasks.length > 0) {
-          const allSessionTimes: Date[] = [];
-
-          currentDayTasks.forEach(task => {
-            const sessions = (task.timerSessions as any) || [];
-            sessions.forEach((session: any) => {
-              const sessionStart = new Date(session.startTime);
-              const sessionEnd = new Date(session.endTime);
-              if (sessionStart >= dayStart && sessionStart <= dayEnd) {
-                allSessionTimes.push(sessionStart);
-                allSessionTimes.push(sessionEnd);
-              }
-            });
-
-            // Include running timer
-            if (task.isTimerRunning && task.timerStartTime) {
-              const timerDate = new Date(task.timerStartTime);
-              if (timerDate >= dayStart && timerDate <= dayEnd) {
-                allSessionTimes.push(timerDate);
-                allSessionTimes.push(new Date()); // Current time as end
-              }
-            }
-          });
-
-          if (allSessionTimes.length > 0) {
-            allSessionTimes.sort((a, b) => a.getTime() - b.getTime());
-            workdayStart = allSessionTimes[0].toISOString();
-            workdayEnd = allSessionTimes[allSessionTimes.length - 1].toISOString();
-            totalSpanHours = (allSessionTimes[allSessionTimes.length - 1].getTime() - allSessionTimes[0].getTime()) / (1000 * 60 * 60);
-          }
-        }
-
-        day.workdayStart = workdayStart;
-        day.workdayEnd = workdayEnd;
-        day.totalSpanHours = totalSpanHours;
-
-        // Calculate performance status based on actual work hours
-        if (day.actualWorkHours >= 4) {
-          day.performanceStatus = 'good';
-          day.performanceColor = '#10B981';
-        } else if (day.actualWorkHours >= 2) {
-          day.performanceStatus = 'fair';
-          day.performanceColor = '#F59E0B';
-        } else {
-          day.performanceStatus = 'poor';
-          day.performanceColor = '#EF4444';
-        }
-
-        // Filter tasks that were worked on this specific day (for task list display)
-        day.tasks = currentDayTasks.map(task => task.title);
-        day.taskCount = currentDayTasks.length;
-
-        return day;
-      });
+      const dailyData = Array.from(dailyMap.values());
 
       // Calculate weekly data for chart
-      const weeklyData = dailyDataArray.map(day => ({
+      const weeklyData = dailyData.map(day => ({
         day: new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }),
         hours: day.actualWorkHours,
-        totalSpanHours: day.totalSpanHours,
+        totalSpanHours: Math.max(day.actualWorkHours, 8), // Assume 8-hour work day
         performanceStatus: day.performanceStatus,
-        performanceColor: day.performanceColor,
-        taskCount: day.taskCount,
-        tasks: day.tasks
+        performanceColor: day.performanceColor
       }));
 
       // Calculate summary
-      const totalDays = dailyDataArray.length;
-      const avgHoursPerDay = dailyDataArray.reduce((sum, day) => sum + day.actualWorkHours, 0) / totalDays;
-      const goodDays = dailyDataArray.filter(day => day.performanceStatus === 'good').length;
-      const fairDays = dailyDataArray.filter(day => day.performanceStatus === 'fair').length;
-      const poorDays = dailyDataArray.filter(day => day.performanceStatus === 'poor').length;
-
-      // Get task details for productivity score calculation
-      const taskDetails = allUserTasks
-        .filter(task => {
-          // Only include tasks that were worked on during the date range
-          if (!task.timeSpent || task.timeSpent === 0) return false;
-          
-          // Check if task has sessions during our date range
-          if (task.timerSessions && Array.isArray(task.timerSessions)) {
-            const hasSessions = task.timerSessions.some((session: any) => {
-              if (!session.startTime) return false;
-              const sessionStart = new Date(session.startTime);
-              return sessionStart >= start && sessionStart <= end;
-            });
-            if (hasSessions) return true;
-          }
-          
-          // Check if timer is currently running and started in range
-          if (task.isTimerRunning && task.timerStartTime) {
-            const timerStart = new Date(task.timerStartTime);
-            return timerStart >= start && timerStart <= end;
-          }
-          
-          return false;
-        })
-        .map(task => {
-          // Get assigned time from workingHours and workingMinutes
-          const assignedMinutes = ((task.workingHours || 0) * 60) + (task.workingMinutes || 0);
-          
-          // Get actual time spent from timeSpent (in seconds)
-          const actualMinutes = Math.round((task.timeSpent || 0) / 60);
-          
-          return {
-            title: task.title,
-            assignedMinutes,
-            actualMinutes
-          };
-        });
+      const totalDays = dailyData.length;
+      const avgHoursPerDay = dailyData.reduce((sum, day) => sum + day.actualWorkHours, 0) / totalDays;
+      const goodDays = dailyData.filter(day => day.performanceStatus === 'good').length;
+      const fairDays = dailyData.filter(day => day.performanceStatus === 'fair').length;
+      const poorDays = dailyData.filter(day => day.performanceStatus === 'poor').length;
 
       const productivityData = {
-        dailyData: dailyDataArray,
+        dailyData,
         weeklyData,
-        taskDetails,
         summary: {
           totalDays,
           avgHoursPerDay,
@@ -1371,6 +1149,7 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch productivity data" });
     }
   });
+
   // Productivity API endpoint for individual users
   app.get("/api/productivity", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -1407,385 +1186,191 @@ export function registerRoutes(app: Express): Server {
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
 
-      // Get ALL tasks for the user
+      // Get ALL tasks for the user (not just by update date)
       const allUserTasks = await db
         .select()
         .from(tasks)
         .where(eq(tasks.assigneeId, user.id));
 
-      // Get projects for task names
-      const projectIds = [...new Set(allUserTasks.map(t => t.projectId).filter(Boolean))];
-      const projectsData = projectIds.length > 0 ? await db
+      // Filter tasks by actual work done (timer sessions or time spent) rather than update date
+      const todayTasks = allUserTasks.filter(task => {
+        // Include tasks that have time spent today or currently running timer
+        if (task.isTimerRunning && task.timerStartTime) {
+          const timerDate = new Date(task.timerStartTime);
+          return timerDate >= startOfDay && timerDate <= endOfDay;
+        }
+
+        // Include tasks that have accumulated time and were worked on today
+        if (task.timeSpent && task.timeSpent > 0) {
+          // Check if task was updated today (as proxy for work done)
+          const updateDate = new Date(task.updatedAt);
+          return updateDate >= startOfDay && updateDate <= endOfDay;
+        }
+
+        // Include tasks that were started or modified today
+        const updateDate = new Date(task.updatedAt);
+        return updateDate >= startOfDay && updateDate <= endOfDay;
+      });
+
+      const yesterdayTasks = allUserTasks.filter(task => {
+        const updateDate = new Date(task.updatedAt);
+        return updateDate >= startOfYesterday && updateDate <= endOfYesterday;
+      });
+
+      const weekTasks = allUserTasks.filter(task => {
+        const updateDate = new Date(task.updatedAt);
+        return updateDate >= weekStart && updateDate <= weekEnd;
+      });
+
+      // Get project names for tasks
+      const allTaskIds = [...todayTasks, ...yesterdayTasks, ...weekTasks].map(t => t.projectId).filter(Boolean);
+      const projectsData = allTaskIds.length > 0 ? await db
         .select()
         .from(projects)
-        .where(inArray(projects.id, projectIds)) : [];
+        .where(inArray(projects.id, allTaskIds)) : [];
 
       const projectMap = new Map(projectsData.map(p => [p.id, p.name]));
 
-      // Helper function to get sessions for a date range
-      const getSessionsForDate = (task: any, startDate: Date, endDate: Date) => {
-        if (!task.timerSessions || !Array.isArray(task.timerSessions)) {
-          return [];
-        }
+      // Process today's data with current timer sessions
+      const todayTaskBreakdown = todayTasks.map(task => {
+        let currentTimeSpent = task.timeSpent || 0;
 
-        return task.timerSessions.filter((session: any) => {
-          if (!session.startTime) return false;
-          const sessionStart = new Date(session.startTime);
-          return sessionStart >= startDate && sessionStart <= endDate;
-        });
-      };
-
-      // Helper to calculate current running timer time
-      const getCurrentTimerTime = (task: any, startDate: Date, endDate: Date) => {
-        if (!task.isTimerRunning || !task.timerStartTime) {
-          return 0;
+        // Add current session time if timer is running
+        if (task.isTimerRunning && task.timerStartTime) {
+          const sessionTime = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
+          currentTimeSpent += sessionTime;
         }
-        
-        const timerStart = new Date(task.timerStartTime);
-        // Check if timer was started during the target date
-        if (timerStart >= startDate && timerStart <= endDate) {
-          const now = new Date();
-          const elapsed = Math.floor((now.getTime() - timerStart.getTime()) / 1000);
-          return elapsed;
-        }
-        
-        return 0;
-      };
-
-      // Process today's data
-      const todayTaskBreakdown = allUserTasks.map(task => {
-        const sessions = getSessionsForDate(task, startOfDay, endOfDay);
-        const sessionTime = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
-        const runningTime = getCurrentTimerTime(task, startOfDay, endOfDay);
-        const timeSpent = sessionTime + runningTime;
 
         return {
           taskId: task.id,
           title: task.title,
-          projectName: projectMap.get(task.projectId) || 'Unknown Project',
-          timeSpent: timeSpent,
+          projectName: projectMap.get(task.projectId) || "Unknown Project",
+          timeSpent: currentTimeSpent,
           status: task.status,
           isCompleted: task.status === 'completed',
-          workingHours: task.workingHours || 0,
-          workingMinutes: task.workingMinutes || 0
+          workingHours: task.workingHours || 8,
+          isTimerRunning: task.isTimerRunning || false,
+          timerStartTime: task.timerStartTime
         };
-      }).filter(t => t.timeSpent > 0);
+      });
 
-      const totalTimeWorkedToday = todayTaskBreakdown.reduce((sum, t) => sum + t.timeSpent, 0);
+      // Calculate total time including running timers
+      const totalTimeWorked = todayTaskBreakdown.reduce((total, task) => total + task.timeSpent, 0);
+
+      const todayData = {
+        totalTasksWorkedOn: todayTasks.length,
+        totalTasksCompleted: todayTasks.filter(task => task.status === 'completed').length,
+        totalTimeWorked,
+        taskBreakdown: todayTaskBreakdown,
+        weeklyBreakdown: [] // Will be populated below
+      };
+
+      // Process yesterday's data
+      const yesterdayTaskBreakdown = yesterdayTasks.map(task => ({
+        taskId: task.id,
+        title: task.title,
+        projectName: projectMap.get(task.projectId) || "Unknown Project",
+        timeSpent: task.timeSpent || 0,
+        status: task.status,
+        isCompleted: task.status === 'completed',
+        workingHours: task.workingHours || 8
+      }));
+
+      const yesterdayData = {
+        totalTasksWorkedOn: yesterdayTasks.length,
+        totalTasksCompleted: yesterdayTasks.filter(task => task.status === 'completed').length,
+        totalTimeWorked: yesterdayTasks.reduce((total, task) => total + (task.timeSpent || 0), 0),
+        taskBreakdown: yesterdayTaskBreakdown,
+        weeklyBreakdown: []
+      };
 
       // Generate weekly breakdown (Mon-Fri)
       const weeklyBreakdown = [];
-      for (let i = 0; i < 5; i++) {
-        const dayStart = new Date(weekStart);
-        dayStart.setDate(weekStart.getDate() + i);
-        dayStart.setHours(0, 0, 0, 0);
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-        const dayEnd = new Date(dayStart);
+      for (let i = 0; i < 7; i++) {
+        const currentDay = new Date(weekStart);
+        currentDay.setDate(weekStart.getDate() + i);
+
+        const dayStart = new Date(currentDay);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(currentDay);
         dayEnd.setHours(23, 59, 59, 999);
 
-        const dayTasksData = allUserTasks.map(task => {
-          const sessions = getSessionsForDate(task, dayStart, dayEnd);
-          const sessionTime = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
-          const runningTime = getCurrentTimerTime(task, dayStart, dayEnd);
-          const timeSpent = sessionTime + runningTime;
-          return { task, timeSpent, sessions };
-        }).filter(d => d.timeSpent > 0);
+        // Get tasks for this specific day
+        const dayTasks = weekTasks.filter(task => {
+          const taskDate = new Date(task.updatedAt);
+          return taskDate >= dayStart && taskDate <= dayEnd;
+        });
 
-        const totalDayTime = dayTasksData.reduce((sum, d) => sum + d.timeSpent, 0);
-        const dayTaskTitles = dayTasksData.map(d => d.task.title);
+        const totalTime = dayTasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
+        const hours = totalTime / 3600; // Convert seconds to hours
 
-        // Calculate workday span
-        let workdayStart = null;
-        let workdayEnd = null;
-        let totalSpanHours = 0;
-
-        const allSessions = dayTasksData.flatMap(d => d.sessions)
-          .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-
-        if (allSessions.length > 0) {
-          workdayStart = allSessions[0].startTime;
-          workdayEnd = allSessions[allSessions.length - 1].endTime;
-          const spanSeconds = (new Date(workdayEnd).getTime() - new Date(workdayStart).getTime()) / 1000;
-          totalSpanHours = spanSeconds / 3600;
-        }
-
-        const hours = totalDayTime / 3600;
+        // Calculate performance status (consistent with daily data)
         let performanceStatus = 'poor';
         let performanceColor = '#EF4444';
 
         if (hours >= 4) {
           performanceStatus = 'good';
-          performanceColor = '#22C55E';
+          performanceColor = '#10B981';
         } else if (hours >= 2) {
           performanceStatus = 'fair';
-          performanceColor = '#EAB308';
+          performanceColor = '#F59E0B';
+        }
+
+        // Get first and last timer activities for workday span calculation
+        const timerTasks = dayTasks.filter(task => task.timerStartTime);
+        let workdayStart = null;
+        let workdayEnd = null;
+        let totalSpanHours = hours; // Default to actual work hours
+
+        if (timerTasks.length > 0) {
+          const timerStarts = timerTasks.map(task => new Date(task.timerStartTime)).sort((a, b) => a.getTime() - b.getTime());
+          const timerEnds = timerTasks.map(task => {
+            const start = new Date(task.timerStartTime);
+            return new Date(start.getTime() + ((task.timerDuration || 0) * 1000));
+          }).sort((a, b) => b.getTime() - a.getTime());
+
+          workdayStart = timerStarts[0].toISOString();
+          workdayEnd = timerEnds[0].toISOString();
+          totalSpanHours = Math.max(hours, (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60));
         }
 
         weeklyBreakdown.push({
-          day: dayStart.toISOString().split('T')[0],
-          dayName: dayStart.toLocaleDateString('en-US', { weekday: 'short' }),
-          timeSpent: totalDayTime,
-          hours: hours,
-          taskCount: dayTasksData.length,
-          tasks: dayTaskTitles,
-          workdayStart: workdayStart,
-          workdayEnd: workdayEnd,
-          totalSpanHours: totalSpanHours,
-          performanceStatus: performanceStatus,
-          performanceColor: performanceColor
+          day: currentDay.toISOString().split('T')[0],
+          dayName: dayNames[currentDay.getDay()],
+          timeSpent: totalTime,
+          hours,
+          taskCount: dayTasks.length,
+          tasks: dayTasks.map(task => task.title),
+          workdayStart,
+          workdayEnd,
+          totalSpanHours,
+          performanceStatus,
+          performanceColor
         });
       }
 
-      // Yesterday's data
-      const yesterdayTaskBreakdown = allUserTasks.map(task => {
-        const sessions = getSessionsForDate(task, startOfYesterday, endOfYesterday);
-        const timeSpent = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+      // Add weekly breakdown to today's data (for the chart)
+      todayData.weeklyBreakdown = weeklyBreakdown;
 
-        return {
-          taskId: task.id,
-          title: task.title,
-          projectName: projectMap.get(task.projectId) || 'Unknown Project',
-          timeSpent: timeSpent,
-          status: task.status,
-          isCompleted: task.status === 'completed',
-          workingHours: task.workingHours || 0,
-          workingMinutes: task.workingMinutes || 0
-        };
-      }).filter(t => t.timeSpent > 0);
-
-      const totalTimeWorkedYesterday = yesterdayTaskBreakdown.reduce((sum, t) => sum + t.timeSpent, 0);
-
-      // Week data
-      const weekTasksData = allUserTasks.map(task => {
-        const sessions = getSessionsForDate(task, weekStart, weekEnd);
-        const sessionTime = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
-        const runningTime = getCurrentTimerTime(task, weekStart, weekEnd);
-        const timeSpent = sessionTime + runningTime;
-        return { task, timeSpent };
-      }).filter(d => d.timeSpent > 0);
-
-      const totalWeekTime = weekTasksData.reduce((sum, d) => sum + d.timeSpent, 0);
-      const weekCompletedTasks = weekTasksData.filter(d => d.task.status === 'completed').length;
-
-      const productivityStats = {
-        today: {
-          totalTasksWorkedOn: todayTaskBreakdown.length,
-          totalTasksCompleted: todayTaskBreakdown.filter(t => t.isCompleted).length,
-          totalTimeWorked: totalTimeWorkedToday,
-          taskBreakdown: todayTaskBreakdown,
-          weeklyBreakdown: weeklyBreakdown
-        },
-        yesterday: {
-          totalTasksWorkedOn: yesterdayTaskBreakdown.length,
-          totalTasksCompleted: yesterdayTaskBreakdown.filter(t => t.isCompleted).length,
-          totalTimeWorked: totalTimeWorkedYesterday,
-          taskBreakdown: yesterdayTaskBreakdown,
-          weeklyBreakdown: []
-        },
-        thisWeek: {
-          totalTasks: weekTasksData.length,
-          completedTasks: weekCompletedTasks,
-          totalTime: totalWeekTime
-        }
+      // Calculate week summary
+      const weekData = {
+        totalTasks: weekTasks.length,
+        completedTasks: weekTasks.filter(task => task.status === 'completed').length,
+        totalTime: weekTasks.reduce((total, task) => total + (task.timeSpent || 0), 0)
       };
 
-      res.json(productivityStats);
+      const response = {
+        today: todayData,
+        yesterday: yesterdayData,
+        thisWeek: weekData
+      };
+
+      res.json(response);
     } catch (error) {
       console.error("Error fetching productivity data:", error);
       res.status(500).json({ error: "Failed to fetch productivity data" });
-    }
-  });
-  // Project Briefings API Routes
-  app.get("/api/project-briefings", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const user = req.user!;
-    const hasAccess = user.role === "project_manager" || 
-                      user.role === "operations_manager" || 
-                      user.specialization === "operations_manager" ||
-                      user.role === "customer_support_officer" ||
-                      user.role === "team_lead";
-
-    if (!hasAccess) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    try {
-      const { search } = req.query;
-      
-      const briefingsQuery = db
-        .select({
-          briefing: projectBriefings,
-          createdByUser: users,
-        })
-        .from(projectBriefings)
-        .leftJoin(users, eq(projectBriefings.createdBy, users.id))
-        .orderBy(desc(projectBriefings.createdAt));
-
-      const results = await briefingsQuery;
-
-      let briefingsList = results.map(r => ({
-        ...r.briefing,
-        createdByName: r.createdByUser?.name || "Unknown"
-      }));
-
-      if (search) {
-        const searchTerm = (search as string).toLowerCase();
-        briefingsList = briefingsList.filter(b => 
-          b.projectName.toLowerCase().includes(searchTerm) ||
-          b.clientName.toLowerCase().includes(searchTerm)
-        );
-      }
-
-      res.json(briefingsList);
-    } catch (error) {
-      console.error("Error fetching project briefings:", error);
-      res.status(500).json({ error: "Failed to fetch project briefings" });
-    }
-  });
-
-  app.post("/api/project-briefings", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const user = req.user!;
-    const hasAccess = user.role === "project_manager" || 
-                      user.role === "operations_manager" || 
-                      user.specialization === "operations_manager" ||
-                      user.role === "customer_support_officer" ||
-                      user.role === "team_lead";
-
-    if (!hasAccess) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    try {
-      const { 
-        projectName, 
-        clientName, 
-        projectType, 
-        description
-      } = req.body;
-
-      if (!projectName || !clientName || !projectType || !description) {
-        return res.status(400).json({ error: "Project name, client name, project type, and description are required" });
-      }
-
-      const [newBriefing] = await db
-        .insert(projectBriefings)
-        .values({
-          projectName,
-          clientName,
-          projectType,
-          description,
-          objectives: objectives || "",
-          scope: scope || "",
-          timeline: timeline || "",
-          budget: budget || null,
-          deliverables: deliverables || "",
-          technicalRequirements: technicalRequirements || null,
-          referenceLinks: referenceLinks || null,
-          additionalNotes: additionalNotes || null,
-          createdBy: user.id,
-        })
-        .returning();
-
-      res.json({ success: true, briefingId: newBriefing.id });
-    } catch (error) {
-      console.error("Error creating project briefing:", error);
-      res.status(500).json({ error: "Failed to create project briefing" });
-    }
-  });
-
-  app.put("/api/project-briefings/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const user = req.user!;
-    const hasAccess = user.role === "project_manager" || 
-                      user.role === "operations_manager" || 
-                      user.specialization === "operations_manager" ||
-                      user.role === "customer_support_officer" ||
-                      user.role === "team_lead";
-
-    if (!hasAccess) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    try {
-      const briefingId = parseInt(req.params.id);
-      const { 
-        projectName, 
-        clientName, 
-        projectType, 
-        description,
-        objectives,
-        scope,
-        timeline,
-        budget,
-        deliverables,
-        technicalRequirements,
-        referenceLinks,
-        additionalNotes
-      } = req.body;
-
-      if (!projectName || !clientName || !projectType || !description) {
-        return res.status(400).json({ error: "Project name, client name, project type, and description are required" });
-      }
-
-      await db
-        .update(projectBriefings)
-        .set({
-          projectName,
-          clientName,
-          projectType,
-          description,
-          objectives: objectives || "",
-          scope: scope || "",
-          timeline: timeline || "",
-          budget: budget || null,
-          deliverables: deliverables || "",
-          technicalRequirements: technicalRequirements || null,
-          referenceLinks: referenceLinks || null,
-          additionalNotes: additionalNotes || null,
-          updatedAt: new Date(),
-        })
-        .where(eq(projectBriefings.id, briefingId));
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error updating project briefing:", error);
-      res.status(500).json({ error: "Failed to update project briefing" });
-    }
-  });
-
-  app.delete("/api/project-briefings/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const user = req.user!;
-    const hasAccess = user.role === "project_manager" || 
-                      user.role === "operations_manager" || 
-                      user.specialization === "operations_manager" ||
-                      user.role === "customer_support_officer" ||
-                      user.role === "team_lead";
-
-    if (!hasAccess) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    try {
-      const briefingId = parseInt(req.params.id);
-      await db.delete(projectBriefings).where(eq(projectBriefings.id, briefingId));
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting project briefing:", error);
-      res.status(500).json({ error: "Failed to delete project briefing" });
     }
   });
 
@@ -1809,90 +1394,98 @@ export function registerRoutes(app: Express): Server {
 
       const filename = `kpi-report-${staffName || 'staff'}-${Date.now()}`;
 
-      if (format === 'csv' || format === 'excel') {
-        const rows = [];
-        
-        // Sheet 1: Summary
-        rows.push(['PERFORMANCE SUMMARY REPORT']);
-        rows.push([]);
-        rows.push(['Employee Name:', staffName || '']);
-        rows.push(['Department:', department || '']);
-        rows.push(['Report Period:', `Last ${dateRange} days`]);
-        rows.push(['Generated On:', new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })]);
-        rows.push([]);
-        rows.push([]);
-        
-        // Summary Metrics in 2-column format
-        rows.push(['SUMMARY METRICS', '']);
-        rows.push(['Total Working Days', productivityData.summary.totalDays]);
-        rows.push(['Average Hours Per Day', productivityData.summary.avgHoursPerDay.toFixed(2) + ' hours']);
-        rows.push(['Good Performance Days', productivityData.summary.goodDays]);
-        rows.push(['Fair Performance Days', productivityData.summary.fairDays]);
-        rows.push(['Poor Performance Days', productivityData.summary.poorDays]);
-        rows.push([]);
-        rows.push([]);
-        
-        // Daily Productivity Details
-        rows.push(['DAILY PRODUCTIVITY DETAILS']);
-        rows.push([]);
-        rows.push(['Date', 'Total Span (hours)', 'Actual Work (hours)', 'Tasks', 'Status']);
-        
-        productivityData.dailyData.forEach((day: any) => {
-          rows.push([
-            new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      if (format === 'csv') {
+        // Create CSV content with proper escaping
+        const csvRows = [
+          ['Date', 'Total Span Hours', 'Actual Work Hours', 'Tasks', 'Status'],
+          ...productivityData.dailyData.map((day: any) => [
+            day.date,
             day.totalSpanHours.toFixed(2),
             day.actualWorkHours.toFixed(2),
             day.taskCount,
-            day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)
-          ]);
-        });
-        
-        rows.push([]);
-        rows.push([]);
-        rows.push(['STATUS LEGEND']);
-        rows.push(['Status', 'Criteria']);
-        rows.push(['Good', '4+ hours of actual work']);
-        rows.push(['Fair', '2-4 hours of actual work']);
-        rows.push(['Poor', 'Less than 2 hours of actual work']);
-        
-        rows.push([]);
-        rows.push([]);
-        
-        // Productivity Score Section
-        rows.push(['PRODUCTIVITY SCORE']);
-        rows.push([]);
-        rows.push(['Task', 'Assigned Time (min)', 'Actual Time (min)', 'Completion Status']);
-        
-        productivityData.taskDetails.forEach((task: any) => {
-          const status = task.actualMinutes <= task.assignedMinutes ? 'On Time' : 
-                        task.actualMinutes <= task.assignedMinutes * 1.1 ? 'Slightly Late' : 'Late';
-          rows.push([
-            task.title,
-            task.assignedMinutes,
-            task.actualMinutes,
-            status
-          ]);
-        });
+            day.performanceStatus
+          ])
+        ];
 
-        const csvContent = rows.map(row => 
-          row.map(field => {
-            const value = String(field || '');
-            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-              return `"${value.replace(/"/g, '""')}"`;
-            }
-            return value;
-          }).join(',')
+        const csvContent = csvRows.map(row => 
+          row.map(field => 
+            typeof field === 'string' && field.includes(',') 
+              ? `"${field.replace(/"/g, '""')}"` 
+              : field
+          ).join(',')
         ).join('\n');
 
-        if (format === 'csv') {
-          res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-          res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
-          res.send('\uFEFF' + csvContent);
-        } else {
-          res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=utf-8');
-          res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
-          res.send('\uFEFF' + csvContent);
-        }
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+        res.send(csvContent);
+      } else if (format === 'excel') {
+        // Create a simple Excel-compatible CSV format with tab separators
+        const excelRows = [
+          ['Staff Name', staffName],
+          ['Department', department],
+          ['Date Range', `${dateRange} days`],
+          ['Generated At', new Date().toISOString()],
+          [''],
+          ['Summary'],
+          ['Total Days', productivityData.summary.totalDays],
+          ['Average Hours per Day', productivityData.summary.avgHoursPerDay.toFixed(2)],
+          ['Good Days', productivityData.summary.goodDays],
+          ['Fair Days', productivityData.summary.fairDays],
+          ['Poor Days', productivityData.summary.poorDays],
+          [''],
+          ['Daily Data'],
+          ['Date', 'Total Span Hours', 'Actual Work Hours', 'Tasks', 'Status'],
+          ...productivityData.dailyData.map((day: any) => [
+            day.date,
+            day.totalSpanHours.toFixed(2),
+            day.actualWorkHours.toFixed(2),
+            day.taskCount,
+            day.performanceStatus
+          ])
+        ];
+
+        const excelContent = excelRows.map(row => row.join('\t')).join('\n');
+
+        res.setHeader('Content-Type', 'application/vnd.ms-excel');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.xls"`);
+        res.send(excelContent);
+      } else if (format === 'pdf') {
+        // Create a simple text-based report that can be viewed as PDF content
+        const pdfContent = `KPI REPORT - ${staffName}
+==================================================
+
+Staff Information:
+- Name: ${staffName}
+- Department: ${department}
+- Report Period: Last ${dateRange} days
+- Generated: ${new Date().toLocaleString()}
+
+SUMMARY
+-------
+Total Days: ${productivityData.summary.totalDays}
+Average Hours per Day: ${productivityData.summary.avgHoursPerDay.toFixed(2)} hours
+Good Performance Days: ${productivityData.summary.goodDays}
+Fair Performance Days: ${productivityData.summary.fairDays}
+Poor Performance Days: ${productivityData.summary.poorDays}
+
+DAILY BREAKDOWN
+---------------
+${productivityData.dailyData.map((day: any) => 
+  `${day.date} | ${day.totalSpanHours.toFixed(2)}h span | ${day.actualWorkHours.toFixed(2)}h work | ${day.taskCount} tasks | ${day.performanceStatus.toUpperCase()}`
+).join('\n')}
+
+WEEKLY OVERVIEW
+---------------
+${productivityData.weeklyData ? productivityData.weeklyData.map((week: any) => 
+  `${week.day}: ${week.hours.toFixed(2)} hours (${week.performanceStatus})`
+).join('\n') : 'No weekly data available'}
+
+End of Report
+==================================================`;
+
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.txt"`);
+        res.send(pdfContent);
       } else {
         return res.status(400).json({ error: "Invalid export format" });
       }
@@ -1900,209 +1493,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error exporting KPI report:", error);
       res.status(500).json({ error: "Failed to export report" });
-    }
-  });
-
-  // Bulk export KPI reports for all staff in a department
-  app.post("/api/kpi-report/export-bulk", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const user = req.user!;
-    if (user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
-      return res.status(403).json({ error: "Only operations managers and team leads can export KPI reports" });
-    }
-
-    try {
-      const { format, department, dateRange } = req.body;
-
-      if (!format || !department || !dateRange) {
-        return res.status(400).json({ error: "Format, department, and date range are required" });
-      }
-
-      const staffMembers = await db
-        .select()
-        .from(users)
-        .where(
-          and(
-            or(eq(users.role, "staff"), eq(users.role, "intern")),
-            eq(users.specialization, department)
-          )
-        )
-        .orderBy(asc(users.name));
-
-      if (staffMembers.length === 0) {
-        return res.status(404).json({ error: "No staff members found in this department" });
-      }
-
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - parseInt(dateRange));
-
-      const allStaffData = [];
-      for (const staff of staffMembers) {
-        const staffTasks = await db
-          .select()
-          .from(tasks)
-          .where(eq(tasks.assigneeId, staff.id));
-
-        const dailyMap = new Map();
-        const dateRangeArray = [];
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          dateRangeArray.push(new Date(d));
-        }
-
-        dateRangeArray.forEach(date => {
-          const dateKey = date.toISOString().split('T')[0];
-          dailyMap.set(dateKey, {
-            date: dateKey,
-            totalSpanHours: 0,
-            actualWorkHours: 0,
-            performanceStatus: 'poor',
-            taskCount: 0,
-          });
-        });
-
-        staffTasks.forEach(task => {
-          if (task.timeSpent && task.timeSpent > 0) {
-            const updateDate = new Date(task.updatedAt);
-            const dateKey = updateDate.toISOString().split('T')[0];
-            if (dailyMap.has(dateKey)) {
-              const dailyData = dailyMap.get(dateKey);
-              const hoursWorked = task.timeSpent / 3600;
-              dailyData.actualWorkHours += hoursWorked;
-              dailyData.taskCount += 1;
-            }
-          }
-        });
-
-        const dailyDataArray = Array.from(dailyMap.values()).map(day => {
-          if (day.actualWorkHours >= 4) {
-            day.performanceStatus = 'good';
-          } else if (day.actualWorkHours >= 2) {
-            day.performanceStatus = 'fair';
-          }
-          day.totalSpanHours = day.actualWorkHours;
-          return day;
-        });
-
-        const totalDays = dailyDataArray.length;
-        const avgHoursPerDay = dailyDataArray.reduce((sum, day) => sum + day.actualWorkHours, 0) / totalDays;
-        const goodDays = dailyDataArray.filter(day => day.performanceStatus === 'good').length;
-        const fairDays = dailyDataArray.filter(day => day.performanceStatus === 'fair').length;
-        const poorDays = dailyDataArray.filter(day => day.performanceStatus === 'poor').length;
-
-        allStaffData.push({
-          staffName: staff.name,
-          dailyData: dailyDataArray,
-          summary: { totalDays, avgHoursPerDay, goodDays, fairDays, poorDays }
-        });
-      }
-
-      if (format === 'csv' || format === 'excel') {
-        const rows = [];
-        
-        // Department Overview - matching the Google Sheets format exactly
-        rows.push([`${department.toUpperCase().replace(/_/g, ' ')} DEPARTMENT - PERFORMANCE REPORT`]);
-        rows.push([]);
-        rows.push(['Report Period:', `Last ${dateRange} days`]);
-        rows.push(['Generated On:', new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })]);
-        rows.push(['Total Employees:', staffMembers.length]);
-        rows.push([]);
-        rows.push([]);
-        
-        // Summary Table
-        rows.push(['DEPARTMENT SUMMARY']);
-        rows.push([]);
-        rows.push(['S/N', 'Employee Name', 'Total Days', 'Avg Hours/Day', 'Good Days', 'Fair Days', 'Poor Days']);
-        
-        allStaffData.forEach((staffData, index) => {
-          rows.push([
-            index + 1,
-            staffData.staffName,
-            staffData.summary.totalDays,
-            staffData.summary.avgHoursPerDay.toFixed(2),
-            staffData.summary.goodDays,
-            staffData.summary.fairDays,
-            staffData.summary.poorDays
-          ]);
-        });
-        
-        rows.push([]);
-        rows.push([]);
-        rows.push([]);
-        rows.push(['═══════════════════════════════════════════════════════']);
-        rows.push(['INDIVIDUAL EMPLOYEE BREAKDOWN']);
-        rows.push(['═══════════════════════════════════════════════════════']);
-        rows.push([]);
-
-        // Individual employee sections - one per employee
-        allStaffData.forEach((staffData, index) => {
-          rows.push([]);
-          rows.push([`EMPLOYEE ${index + 1}: ${staffData.staffName.toUpperCase()}`]);
-          rows.push([]);
-          
-          // Summary metrics in 2-column layout
-          rows.push(['Performance Summary', '']);
-          rows.push(['Total Working Days:', staffData.summary.totalDays]);
-          rows.push(['Average Hours Per Day:', staffData.summary.avgHoursPerDay.toFixed(2) + ' hours']);
-          rows.push(['Good Performance Days:', staffData.summary.goodDays]);
-          rows.push(['Fair Performance Days:', staffData.summary.fairDays]);
-          rows.push(['Poor Performance Days:', staffData.summary.poorDays]);
-          rows.push([]);
-          
-          rows.push(['Daily Breakdown']);
-          rows.push(['Date', 'Total Span (hrs)', 'Actual Work (hrs)', 'Tasks', 'Status']);
-          
-          staffData.dailyData.forEach((day: any) => {
-            rows.push([
-              new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-              day.totalSpanHours.toFixed(2),
-              day.actualWorkHours.toFixed(2),
-              day.taskCount,
-              day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)
-            ]);
-          });
-          
-          rows.push([]);
-          rows.push(['─────────────────────────────────────────────────']);
-          rows.push([]);
-        });
-        
-        rows.push([]);
-        rows.push(['STATUS LEGEND']);
-        rows.push(['Status', 'Definition']);
-        rows.push(['Good', '4+ hours of actual work']);
-        rows.push(['Fair', '2-4 hours of actual work']);
-        rows.push(['Poor', 'Less than 2 hours of actual work']);
-
-        const csvContent = rows.map(row =>
-          row.map(field => {
-            const value = String(field || '');
-            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-              return `"${value.replace(/"/g, '""')}"`;
-            }
-            return value;
-          }).join(',')
-        ).join('\n');
-
-        if (format === 'csv') {
-          res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-          res.setHeader('Content-Disposition', `attachment; filename="kpi-report-all-${department}-${Date.now()}.csv"`);
-          res.send('\uFEFF' + csvContent);
-        } else {
-          res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=utf-8');
-          res.setHeader('Content-Disposition', `attachment; filename="kpi-report-all-${department}-${Date.now()}.xlsx"`);
-          res.send('\uFEFF' + csvContent);
-        }
-      } else {
-        return res.status(400).json({ error: "Invalid export format" });
-      }
-
-    } catch (error) {
-      console.error("Error bulk exporting KPI reports:", error);
-      res.status(500).json({ error: "Failed to bulk export reports" });
     }
   });
 
@@ -2242,76 +1632,7 @@ export function registerRoutes(app: Express): Server {
         };
       });
 
-      // Get current meetings for staff members
-      const now = new Date();
-      const nowISO = now.toISOString();
-      console.log('🕐 Current server time for meeting detection:', nowISO);
-
-      const currentBookings = await db
-        .select({
-          id: bookings.id,
-          title: bookings.title,
-          type: bookings.type,
-          participants: bookings.participants,
-          startTime: bookings.startTime,
-          endTime: bookings.endTime,
-          meetingLink: bookings.meetingLink,
-          scheduledBy: bookings.scheduledBy,
-          schedulerName: users.name,
-        })
-        .from(bookings)
-        .leftJoin(users, eq(bookings.scheduledBy, users.id))
-        .where(eq(bookings.status, "scheduled"));
-
-      // Filter bookings that are currently active (start <= now < end)
-      const activeBookings = currentBookings.filter(booking => {
-        const startTime = new Date(booking.startTime);
-        const endTime = new Date(booking.endTime);
-        const isActive = startTime <= now && now < endTime;
-
-        if (isActive) {
-          console.log(`✅ Active booking #${booking.id}: "${booking.title}"`, {
-            start: startTime.toISOString(),
-            end: endTime.toISOString(),
-            now: nowISO,
-            participants: booking.participants?.length || 0
-          });
-        }
-
-        return isActive;
-      });
-
-      console.log('📅 Found active bookings:', activeBookings.length, 'out of', currentBookings.length, 'scheduled');
-
-      // Add meeting info to staff report
-      const staffReportWithMeetings = staffReport.map(staff => {
-        const staffMeetings = activeBookings.filter(booking =>
-          booking.participants && booking.participants.includes(staff.id)
-        );
-
-        const currentMeeting = staffMeetings.length > 0 ? {
-          id: staffMeetings[0].id,
-          title: staffMeetings[0].title,
-          type: staffMeetings[0].type,
-          startTime: staffMeetings[0].startTime,
-          endTime: staffMeetings[0].endTime,
-          meetingLink: staffMeetings[0].meetingLink,
-          participantCount: staffMeetings[0].participants.length,
-          schedulerName: staffMeetings[0].schedulerName || "Unknown",
-        } : null;
-
-        if (currentMeeting) {
-          console.log(`👤 Staff #${staff.id} (${staff.name}) is in meeting: "${currentMeeting.title}" scheduled by ${currentMeeting.schedulerName}`);
-        }
-
-        return {
-          ...staff,
-          isInMeeting: !!currentMeeting,
-          currentMeeting,
-        };
-      });
-
-      res.json(staffReportWithMeetings);
+      res.json(staffReport);
     } catch (error) {
       console.error("Error fetching staff report:", error);
       res.status(500).json({ error: "Failed to fetch staff report" });
@@ -2488,7 +1809,7 @@ export function registerRoutes(app: Express): Server {
           .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
           .orderBy(desc(sops.updatedAt));
       } catch (dbError) {
-        // If reference_link column doesn't exist, select basic fields
+        // If reference_link column doesn't exist, select without it
         console.log("reference_link column may not exist, selecting basic fields");
         sopList = await db
           .select({
@@ -2546,7 +1867,7 @@ export function registerRoutes(app: Express): Server {
       const departmentList = [
         "Technical support",
         "Design",
-        "Development",
+        "Development", 
         "Media buying",
         "Copywriting",
         "Automation",
@@ -2685,64 +2006,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get individual project details
-  app.get("/api/projects/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    const user = req.user!;
-    const projectId = parseInt(req.params.id);
-
-    try {
-      const [projectData] = await db
-        .select({
-          project: projects,
-          manager: users,
-          client: users,
-        })
-        .from(projects)
-        .leftJoin(users, eq(projects.managerId, users.id))
-        .where(eq(projects.id, projectId))
-        .limit(1);
-
-      if (!projectData || !projectData.project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
-      const project = {
-        ...projectData.project,
-        manager: projectData.manager ? {
-          id: projectData.manager.id,
-          name: projectData.manager.name,
-          email: projectData.manager.email,
-        } : null,
-      };
-
-      // Get client info separately if clientId exists
-      if (project.clientId) {
-        const [clientData] = await db
-          .select({
-            id: users.id,
-            name: users.name,
-            email: users.email,
-          })
-          .from(users)
-          .where(eq(users.id, project.clientId))
-          .limit(1);
-
-        if (clientData) {
-          project.client = clientData;
-        }
-      }
-
-      res.json(project);
-    } catch (error) {
-      console.error("Error fetching project:", error);
-      res.status(500).json({ error: "Failed to fetch project" });
-    }
-  });
-
   // Get individual task details
   app.get("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -2786,8 +2049,8 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Check if user has access to this task's project
-      const hasAccess =
-        user.role === "operations_manager" ||
+      const hasAccess = 
+        user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -2985,19 +2248,8 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Calculate elapsed time
-      const startTime = new Date(task.timerStartTime!);
-      const endTime = new Date();
-      const elapsedSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
+      const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime!).getTime()) / 1000);
       const newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
-
-      // Store this timer session
-      const timerSessions = (task.timerSessions as any) || [];
-      const newSession = {
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        duration: elapsedSeconds
-      };
-      timerSessions.push(newSession);
 
       // Clear the timer interval
       if (global.timerIntervals && global.timerIntervals.has(taskId)) {
@@ -3012,7 +2264,6 @@ export function registerRoutes(app: Express): Server {
         .set({
           isTimerRunning: false,
           timeSpent: newTimeSpent,
-          timerSessions: timerSessions,
           timerStartTime: null,
           status: "pending",
           updatedAt: now
@@ -3083,23 +2334,11 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Task not found or not assigned to you" });
       }
 
-      // If timer is running, stop it first and store the session
+      // If timer is running, stop it first
       let newTimeSpent = task.timeSpent || 0;
-      let timerSessions = (task.timerSessions as any) || [];
-
       if (task.isTimerRunning && task.timerStartTime) {
-        const startTime = new Date(task.timerStartTime);
-        const endTime = new Date();
-        const elapsedSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
+        const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
         newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
-
-        // Store this final session
-        const newSession = {
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-          duration: elapsedSeconds
-        };
-        timerSessions.push(newSession);
 
         // Clear the timer interval
         if (global.timerIntervals && global.timerIntervals.has(taskId)) {
@@ -3116,7 +2355,6 @@ export function registerRoutes(app: Express): Server {
           status: "review",
           isTimerRunning: false,
           timeSpent: newTimeSpent,
-          timerSessions: timerSessions,
           timerStartTime: null,
           updatedAt: now
         })
@@ -3134,6 +2372,8 @@ export function registerRoutes(app: Express): Server {
                   taskId: updatedTask.id,
                   projectId: updatedTask.projectId,
                   status: updatedTask.status,
+                  isTimerRunning: updatedTask.isTimerRunning,
+                  timeSpent: updatedTask.timeSpent,
                   updatedBy: user.id,
                   updatedAt: now.toISOString()
                 }
@@ -3317,7 +2557,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Project not found for this task" });
       }
 
-      // Check permissions
+      // Check permissions - ensure project.id exists
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
       const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
       const isProductOwner = user.role === "product_owner";
@@ -3388,10 +2628,10 @@ export function registerRoutes(app: Express): Server {
       const fileUrl = `/uploads/leave-proof/${req.file.filename}`;
       const fileName = req.file.originalname;
 
-      res.json({
-        success: true,
+      res.json({ 
+        success: true, 
         fileUrl,
-        fileName
+        fileName 
       });
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -3423,8 +2663,8 @@ export function registerRoutes(app: Express): Server {
 
       console.log("Test notification created:", newNotification);
 
-      res.json({
-        success: true,
+      res.json({ 
+        success: true, 
         message: "Test notification created successfully",
         notificationId: newNotification.id,
         notification: newNotification
@@ -3474,8 +2714,8 @@ export function registerRoutes(app: Express): Server {
         .values(testQueryData)
         .returning();
 
-      res.json({
-        success: true,
+      res.json({ 
+        success: true, 
         message: "Test staff query created successfully",
         queryId: newQuery.id,
         testData: testQueryData
@@ -3793,7 +3033,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Client complaint updates (for clients who sent complaints)
+  // Check for client complaint updates (for clients who sent complaints)
   app.get("/api/complaints/my-complaints/has-updates", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -3939,6 +3179,10 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Additional validation
+      if (!staffName.trim()) {
+        return res.status(400).json({ error: "Staff name cannot be empty" });
+      }
+
       if (!whyQuery.trim()) {
         return res.status(400).json({ error: "Query explanation cannot be empty" });
       }
@@ -4159,7 +3403,7 @@ export function registerRoutes(app: Express): Server {
   // Update staff complaint status (Operations Manager only)
   app.put("/api/staff-complaints/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
@@ -4189,15 +3433,11 @@ export function registerRoutes(app: Express): Server {
       const [existingComplaint] = await db
         .select()
         .from(staffComplaints)
-        .where(eq(existingComplaint.id, complaintId)) // Typo: Use complaintId, not existingComplaint.id
+        .where(eq(existingComplaint.id, complaintId))
         .limit(1);
 
       if (!existingComplaint) {
         return res.status(404).json({ error: "Staff complaint not found" });
-      }
-
-      if (existingComplaint.status !== "pending") {
-        return res.status(400).json({ error: "Complaint has already been processed" });
       }
 
       // Update the complaint
@@ -4221,7 +3461,7 @@ export function registerRoutes(app: Express): Server {
             "task_updated",
             `Your staff complaint has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
             complaintId,
-            "project" // Reference type might need adjustment depending on context
+            "project"
           );
         } catch (notificationError) {
           console.error("Error creating notification for staff complaint update:", notificationError);
@@ -4386,7 +3626,7 @@ export function registerRoutes(app: Express): Server {
       userMemos.push(...departmentMemos);
 
       // Remove duplicates and add read status
-      const uniqueMemos = userMemos.filter((memo, index, self) =>
+      const uniqueMemos = userMemos.filter((memo, index, self) => 
         index === self.findIndex(m => m.id === memo.id)
       );
 
@@ -4533,7 +3773,7 @@ export function registerRoutes(app: Express): Server {
       // Get conversations where user is either sender or receiver
       const conversations = await db
         .select({
-          userId: sql<number>`CASE
+          userId: sql<number>`CASE 
             WHEN ${directMessages.senderId} = ${user.id} THEN ${directMessages.receiverId}
             ELSE ${directMessages.senderId}
           END`,
@@ -4738,7 +3978,7 @@ export function registerRoutes(app: Express): Server {
       // Update the message
       const [updatedMessage] = await db
         .update(directMessages)
-        .set({
+        .set({ 
           content: content.trim(),
           updatedAt: new Date()
         })
@@ -4904,229 +4144,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error sending direct message:", error);
       res.status(500).json({ error: "Failed to send direct message" });
-    }
-  });
-
-  // General Channel API Routes
-  app.get("/api/general-channel/messages", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    try {
-      const messages = await db
-        .select({
-          id: generalMessages.id,
-          content: generalMessages.content,
-          createdAt: generalMessages.createdAt,
-          updatedAt: generalMessages.updatedAt,
-          isEdited: generalMessages.isEdited,
-          senderId: generalMessages.senderId,
-          sender: {
-            id: users.id,
-            name: users.name,
-            email: users.email,
-          },
-        })
-        .from(generalMessages)
-        .leftJoin(users, eq(generalMessages.senderId, users.id))
-        .orderBy(asc(generalMessages.createdAt))
-        .limit(100);
-
-      res.json(messages);
-    } catch (error) {
-      console.error("Error fetching general channel messages:", error);
-      res.status(500).json({ error: "Failed to fetch messages" });
-    }
-  });
-
-  app.post("/api/general-channel/messages", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    try {
-      const { content } = req.body;
-      const userId = req.user!.id;
-
-      if (!content || !content.trim()) {
-        return res.status(400).json({ error: "Message content is required" });
-      }
-
-      const [newMessage] = await db
-        .insert(generalMessages)
-        .values({
-          senderId: userId,
-          content: content.trim(),
-        })
-        .returning();
-
-      const messageWithSender = {
-        ...newMessage,
-        sender: {
-          id: req.user!.id,
-          name: req.user!.name,
-          email: req.user!.email,
-        },
-      };
-
-      // Broadcast to all connected clients via SSE
-      if (global.sseClients) {
-        global.sseClients.forEach((client, clientUserId) => {
-          if (client && !client.writableEnded) {
-            try {
-              client.write(`data: ${JSON.stringify({
-                type: 'general_channel_message',
-                data: messageWithSender
-              })}\n\n`);
-            } catch (error) {
-              console.error(`Error broadcasting to user ${clientUserId}:`, error);
-              global.sseClients.delete(clientUserId);
-            }
-          }
-        });
-      }
-
-      return res.json(messageWithSender);
-    } catch (error) {
-      console.error("Error sending general channel message:", error);
-      return res.status(500).json({ error: "Failed to send message" });
-    }
-  });
-
-  app.put("/api/general-channel/messages/:messageId", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    try {
-      const messageId = parseInt(req.params.messageId);
-      const { content } = req.body;
-      const userId = req.user!.id;
-
-      if (!content || !content.trim()) {
-        return res.status(400).json({ error: "Message content is required" });
-      }
-
-      const [message] = await db
-        .select()
-        .from(generalMessages)
-        .where(eq(generalMessages.id, messageId))
-        .limit(1);
-
-      if (!message) {
-        return res.status(404).json({ error: "Message not found" });
-      }
-
-      if (message.senderId !== userId) {
-        return res.status(403).json({ error: "You can only edit your own messages" });
-      }
-
-      const [updatedMessage] = await db
-        .update(generalMessages)
-        .set({
-          content: content.trim(),
-          updatedAt: new Date(),
-          isEdited: true,
-        })
-        .where(eq(generalMessages.id, messageId))
-        .returning();
-
-      res.json(updatedMessage);
-    } catch (error) {
-      console.error("Error editing general channel message:", error);
-      res.status(500).json({ error: "Failed to edit message" });
-    }
-  });
-
-  app.delete("/api/general-channel/messages/:messageId", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    try {
-      const messageId = parseInt(req.params.messageId);
-      const userId = req.user!.id;
-
-      const [message] = await db
-        .select()
-        .from(generalMessages)
-        .where(eq(generalMessages.id, messageId))
-        .limit(1);
-
-      if (!message) {
-        return res.status(404).json({ error: "Message not found" });
-      }
-
-      if (message.senderId !== userId) {
-        return res.status(403).json({ error: "You can only delete your own messages" });
-      }
-
-      await db
-        .delete(generalMessages)
-        .where(eq(generalMessages.id, messageId));
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting general channel message:", error);
-      res.status(500).json({ error: "Failed to delete message" });
-    }
-  });
-
-  app.post("/api/general-channel/messages/mark-read", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    try {
-      const userId = req.user!.id;
-      const { messageIds } = req.body;
-
-      if (!Array.isArray(messageIds) || messageIds.length === 0) {
-        return res.status(400).json({ error: "Message IDs are required" });
-      }
-
-      for (const messageId of messageIds) {
-        await db
-          .insert(generalMessageReadReceipts)
-          .values({
-            messageId,
-            userId,
-          })
-          .onConflictDoNothing();
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error marking general channel messages as read:", error);
-      res.status(500).json({ error: "Failed to mark messages as read" });
-    }
-  });
-
-  app.get("/api/general-channel/unread-count", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    try {
-      const userId = req.user!.id;
-
-      const allMessages = await db
-        .select({ id: generalMessages.id, senderId: generalMessages.senderId })
-        .from(generalMessages);
-
-      const readMessageIds = await db
-        .select({ messageId: generalMessageReadReceipts.messageId })
-        .from(generalMessageReadReceipts)
-        .where(eq(generalMessageReadReceipts.userId, userId));
-
-      const readIds = new Set(readMessageIds.map(r => r.messageId));
-      const unreadCount = allMessages.filter(msg => msg.senderId !== userId && !readIds.has(msg.id)).length;
-
-      res.json({ count: unreadCount });
-    } catch (error) {
-      console.error("Error fetching general channel unread count:", error);
-      res.status(500).json({ error: "Failed to fetch unread count" });
     }
   });
 
@@ -5329,220 +4346,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating issue report:", error);
       res.status(500).json({ error: "Failed to update issue report" });
-    }
-  });
-
-  // Review Requests API Routes
-  app.get("/api/review-requests", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const user = req.user!;
-    const isProjectManager = user.role === "project_manager";
-    const isTeamLead = user.role === "team_lead";
-
-    if (!isProjectManager && !isTeamLead) {
-      return res.status(403).json({ error: "Only project managers and team leads can access review requests" });
-    }
-
-    try {
-      let requests;
-      
-      if (isProjectManager) {
-        // Project managers see requests they created
-        requests = await db
-          .select({
-            id: reviewRequests.id,
-            title: reviewRequests.title,
-            description: reviewRequests.description,
-            reviewLink: reviewRequests.reviewLink,
-            projectManagerId: reviewRequests.projectManagerId,
-            teamLeadId: reviewRequests.teamLeadId,
-            status: reviewRequests.status,
-            completedAt: reviewRequests.completedAt,
-            reviewNotes: reviewRequests.reviewNotes,
-            createdAt: reviewRequests.createdAt,
-            updatedAt: reviewRequests.updatedAt,
-            teamLeadName: users.name,
-          })
-          .from(reviewRequests)
-          .leftJoin(users, eq(reviewRequests.teamLeadId, users.id))
-          .where(eq(reviewRequests.projectManagerId, user.id))
-          .orderBy(desc(reviewRequests.createdAt));
-      } else {
-        // Team leads see requests assigned to them
-        requests = await db
-          .select({
-            id: reviewRequests.id,
-            title: reviewRequests.title,
-            description: reviewRequests.description,
-            reviewLink: reviewRequests.reviewLink,
-            projectManagerId: reviewRequests.projectManagerId,
-            teamLeadId: reviewRequests.teamLeadId,
-            status: reviewRequests.status,
-            completedAt: reviewRequests.completedAt,
-            reviewNotes: reviewRequests.reviewNotes,
-            createdAt: reviewRequests.createdAt,
-            updatedAt: reviewRequests.updatedAt,
-            projectManagerName: users.name,
-          })
-          .from(reviewRequests)
-          .leftJoin(users, eq(reviewRequests.projectManagerId, users.id))
-          .where(eq(reviewRequests.teamLeadId, user.id))
-          .orderBy(desc(reviewRequests.createdAt));
-      }
-
-      res.json(requests);
-    } catch (error) {
-      console.error("Error fetching review requests:", error);
-      res.status(500).json({ error: "Failed to fetch review requests" });
-    }
-  });
-
-  app.post("/api/review-requests", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const user = req.user!;
-    if (user.role !== "project_manager") {
-      return res.status(403).json({ error: "Only project managers can create review requests" });
-    }
-
-    try {
-      const { title, description, reviewLink, teamLeadId } = req.body;
-
-      if (!title || !reviewLink || !teamLeadId) {
-        return res.status(400).json({ error: "Title, review link, and team lead are required" });
-      }
-
-      const [newRequest] = await db
-        .insert(reviewRequests)
-        .values({
-          title: title.trim(),
-          description: description?.trim() || null,
-          reviewLink: reviewLink.trim(),
-          projectManagerId: user.id,
-          teamLeadId: parseInt(teamLeadId),
-          status: "pending",
-        })
-        .returning();
-
-      // Create notification for team lead
-      await createNotification(
-        parseInt(teamLeadId),
-        "task_assigned",
-        `New review request from ${user.name}: ${title}`,
-        newRequest.id,
-        "project"
-      );
-
-      res.json({ success: true, requestId: newRequest.id });
-    } catch (error) {
-      console.error("Error creating review request:", error);
-      res.status(500).json({ error: "Failed to create review request" });
-    }
-  });
-
-  app.put("/api/review-requests/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const user = req.user!;
-    const requestId = parseInt(req.params.id);
-    const { status, reviewNotes } = req.body;
-
-    try {
-      // Check if request exists
-      const [existingRequest] = await db
-        .select()
-        .from(reviewRequests)
-        .where(eq(reviewRequests.id, requestId))
-        .limit(1);
-
-      if (!existingRequest) {
-        return res.status(404).json({ error: "Review request not found" });
-      }
-
-      // Team leads can update status, project managers can only view
-      if (user.role === "team_lead" && existingRequest.teamLeadId !== user.id) {
-        return res.status(403).json({ error: "You can only update requests assigned to you" });
-      }
-
-      if (user.role !== "team_lead") {
-        return res.status(403).json({ error: "Only team leads can update review requests" });
-      }
-
-      const updateData: any = {
-        updatedAt: new Date(),
-      };
-
-      if (status) {
-        updateData.status = status;
-        if (status === "completed") {
-          updateData.completedAt = new Date();
-        }
-      }
-
-      if (reviewNotes !== undefined) {
-        updateData.reviewNotes = reviewNotes?.trim() || null;
-      }
-
-      const [updatedRequest] = await db
-        .update(reviewRequests)
-        .set(updateData)
-        .where(eq(reviewRequests.id, requestId))
-        .returning();
-
-      // Notify project manager if status changed to completed
-      if (status === "completed") {
-        await createNotification(
-          existingRequest.projectManagerId,
-          "task_completed",
-          `Review completed by team lead: ${existingRequest.title}`,
-          requestId,
-          "project"
-        );
-      }
-
-      res.json({ success: true, request: updatedRequest });
-    } catch (error) {
-      console.error("Error updating review request:", error);
-      res.status(500).json({ error: "Failed to update review request" });
-    }
-  });
-
-  app.delete("/api/review-requests/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const user = req.user!;
-    const requestId = parseInt(req.params.id);
-
-    try {
-      const [existingRequest] = await db
-        .select()
-        .from(reviewRequests)
-        .where(eq(reviewRequests.id, requestId))
-        .limit(1);
-
-      if (!existingRequest) {
-        return res.status(404).json({ error: "Review request not found" });
-      }
-
-      if (user.role !== "project_manager" || existingRequest.projectManagerId !== user.id) {
-        return res.status(403).json({ error: "Only the creator can delete this request" });
-      }
-
-      await db.delete(reviewRequests).where(eq(reviewRequests.id, requestId));
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting review request:", error);
-      res.status(500).json({ error: "Failed to delete review request" });
     }
   });
 
@@ -5863,7 +4666,7 @@ export function registerRoutes(app: Express): Server {
       // Update the booking status
       await db
         .update(bookings)
-        .set({
+        .set({ 
           status,
           updatedAt: new Date()
         })
@@ -5972,7 +4775,7 @@ export function registerRoutes(app: Express): Server {
           name: request.requesterName,
           email: request.requesterEmail,
         },
-        assignedTo: request.assignedToId ?
+        assignedTo: request.assignedToId ? 
           assignedUsers.find(u => u.id === request.assignedToId) || null : null,
         task: request.taskId ? {
           id: request.taskId,
@@ -6436,7 +5239,7 @@ export function registerRoutes(app: Express): Server {
       const [existingRequest] = await db
         .select()
         .from(deadlineExtensionRequests)
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .limit(1);
 
       if (!existingRequest) {
@@ -6461,7 +5264,7 @@ export function registerRoutes(app: Express): Server {
           decidedBy: user.id,
           decidedAt: new Date(),
         })
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .returning();
 
       // If approved, update the task
@@ -6577,7 +5380,7 @@ export function registerRoutes(app: Express): Server {
         // Get Monday of target week
         const dayOfWeek = targetDate.getDay();
         const diff = targetDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-        const monday = new Date(targetDate.setDate(diff));
+        const monday =      new Date(targetDate.setDate(diff));
         monday.setHours(0, 0, 0, 0);
 
         const mondayStr = monday.toISOString().split('T')[0];
@@ -6631,7 +5434,7 @@ export function registerRoutes(app: Express): Server {
       // Get current week dates
       const now = new Date();
       const dayOfWeek = now.getDay();
-      const diff = now.getDate() -dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
       const monday = new Date(now.setDate(diff));
       monday.setHours(0, 0, 0, 0);
 
@@ -6777,7 +5580,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const userComplaints = await db
         .select()
-                .from(complaints)
+        .from(complaints)
         .where(eq(complaints.submitterId, user.id))
         .orderBy(desc(complaints.createdAt));
 
@@ -6826,15 +5629,15 @@ export function registerRoutes(app: Express): Server {
 
   // Leave Applications API Routes
 
-  // Submit leave application (Staff, Interns, Customer Support Officers, Team Leads, and Project Managers)
+  // Submit leave application (Staff, Interns, Customer Support Officers, and Team Leads)
   app.post("/api/leave-applications", upload.single('proofImage'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
-    if (user.role !== "staff" && user.role !== "intern" && user.role !== "customer_support_officer" && user.role !== "team_lead" && user.role !== "project_manager") {
-      return res.status(403).send("Only staff members, interns, customer support officers, team leads, and project managers can submit leave applications");
+    if (user.role !== "staff" && user.role !== "intern" && user.role !== "customer_support_officer" && user.role !== "team_lead") {
+      return res.status(403).send("Only staff members, interns, customer support officers, and team leads can submit leave applications");
     }
 
     try {
@@ -6927,7 +5730,7 @@ export function registerRoutes(app: Express): Server {
               type: "task_assigned", // Using existing type
               content: `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
               referenceId: newApplication.id,
-              referenceType: "leave_application", // Using a more specific type
+              referenceType: "project", // Using existing type
             });
         } catch (notificationError) {
           console.error("Error creating notification:", notificationError);
@@ -6942,7 +5745,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get leave applications (Staff, Interns, Project Managers see their own; Managers see all)
+  // Get leave applications (Staff and Interns see their own, Managers see all)
   app.get("/api/leave-applications", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -6953,8 +5756,8 @@ export function registerRoutes(app: Express): Server {
     try {
       let applications;
 
-      if (user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
-        // Operations managers and team leads see all applications with user details
+      if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
+        // Project managers, operations managers, and team leads see all applications with user details
         applications = await db
           .select({
             id: leaveApplications.id,
@@ -6975,8 +5778,8 @@ export function registerRoutes(app: Express): Server {
           .from(leaveApplications)
           .innerJoin(users, eq(leaveApplications.userId, users.id))
           .orderBy(desc(leaveApplications.appliedAt));
-      } else if (user.role === "staff" || user.role === "intern" || user.role === "customer_support_officer" || user.role === "project_manager") {
-        // Staff, interns, customer support officers, and project managers see only their own applications
+      } else if (user.role === "staff" || user.role === "intern" || user.role === "customer_support_officer") {
+        // Staff, interns, and customer support officers see only their own applications
         applications = await db
           .select()
           .from(leaveApplications)
@@ -7082,18 +5885,20 @@ export function registerRoutes(app: Express): Server {
           reviewedBy: user.id,
           updatedAt: new Date(),
         })
-        .where(eq(leaveApplications.id, applicationId))
+        .where(eq(existingApplication.id, applicationId))
         .returning();
 
       // Create notification for the applicant
       try {
-        await createNotification(
-          updatedApplication.userId,
-          "task_updated",
-          `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
-          updatedApplication.id,
-          "leave_application"
-        );
+        await db
+          .insert(notifications)
+          .values({
+            userId: updatedApplication.userId,
+            type: "task_updated", // Using existing type
+            content: `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
+            referenceId: updatedApplication.id,
+            referenceType: "leave_application", // Using a more specific type
+          });
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
         // Continue execution even if notification fails
@@ -7149,8 +5954,8 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Check if user has access to this project
-      let hasAccess =
-        user.role === "operations_manager" ||
+      let hasAccess = 
+        user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7212,8 +6017,8 @@ export function registerRoutes(app: Express): Server {
         )
         .limit(1);
 
-      const hasAccess =
-        user.role === "operations_manager" ||
+      const hasAccess = 
+        user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7263,12 +6068,11 @@ export function registerRoutes(app: Express): Server {
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      const hasAccess =
-        user.role === "operations_manager" ||
+      const hasAccess = 
+        user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
-        user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
         (user.role === "staff" && await db
@@ -7314,8 +6118,8 @@ export function registerRoutes(app: Express): Server {
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      const hasAccess =
-        user.role === "operations_manager" ||
+      const hasAccess = 
+        user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7384,7 +6188,7 @@ export function registerRoutes(app: Express): Server {
 
       // Check if project exists
       const [project] = await db
-                .select()
+        .select()
         .from(projects)
         .where(eq(projects.id, projectId))
         .limit(1);
@@ -7410,8 +6214,8 @@ export function registerRoutes(app: Express): Server {
       const filePath = `/uploads/leave-proof/${req.file.filename}`;
 
       // Use custom file name if provided, otherwise use original file name
-      const displayName = customFileName && customFileName.trim()
-        ? customFileName.trim()
+      const displayName = customFileName && customFileName.trim() 
+        ? customFileName.trim() 
         : req.file.originalname;
 
       // Insert the new resource
@@ -7430,8 +6234,8 @@ export function registerRoutes(app: Express): Server {
       res.json({ success: true, resourceId: newResource.id });
     } catch (error) {
       console.error("Error uploading file:", error);
-      res.status(500).json({
-        error: "Failed to upload file",
+      res.status(500).json({ 
+        error: "Failed to upload file", 
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -7485,12 +6289,12 @@ export function registerRoutes(app: Express): Server {
 
       const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isCustomerSupportOfficer || isClient;
 
-      console.log("Access check:", {
+      console.log("Access check:", { 
         isOperationsManager,
         isTeamLead,
-        isProjectManager,
-        isCustomerSupportOfficer,
-        isClient,
+        isProjectManager, 
+        isCustomerSupportOfficer, 
+        isClient, 
         hasAccess,
         userRole: user.role,
         userSpecialization: user.specialization,
@@ -7520,8 +6324,8 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error adding resource link:", error);
       console.error("Error stack:", error.stack);
-      res.status(500).json({
-        error: "Failed to add resource link",
+      res.status(500).json({ 
+        error: "Failed to add resource link", 
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -7674,8 +6478,8 @@ export function registerRoutes(app: Express): Server {
         )
         .limit(1);
 
-      const hasAccess =
-        user.role === "operations_manager" ||
+      const hasAccess = 
+        user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7686,7 +6490,7 @@ export function registerRoutes(app: Express): Server {
         !!membership;
 
       if (!hasAccess) {
-        console.log(`Access denied for user ${user.id} to project ${projectId} members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
+        console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
         return res.status(403).send("Access denied - You must be a project member to view membersst");
       }
 
@@ -7727,9 +6531,7 @@ export function registerRoutes(app: Express): Server {
     try {
        // Check project access
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-      if (!project) return res.status(404).json({ error: "Project not found" });
-
-      // Check if user is a member of the project (for all roles including customer support)
+      if (!project) return res.status(404).json({ error: "Project not found" });      // Check if user is a member of the project (for all roles including customer support)
       const [membership] = await db
         .select()
         .from(projectMembers)
@@ -7741,8 +6543,8 @@ export function registerRoutes(app: Express): Server {
         )
         .limit(1);
 
-      const hasAccess =
-        user.role === "operations_manager" ||
+      const hasAccess = 
+        user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7831,8 +6633,8 @@ export function registerRoutes(app: Express): Server {
         )
         .limit(1);
 
-      const hasAccess =
-        user.role === "operations_manager" ||
+      const hasAccess = 
+        user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7897,7 +6699,7 @@ export function registerRoutes(app: Express): Server {
           const mentionedName = match[1].trim();
 
           // Find user by exact or partial name match
-          const mentionedUser = allMembers.find(member =>
+          const mentionedUser = allMembers.find(member => 
             member.name && (
               member.name.toLowerCase() === mentionedName.toLowerCase() ||
               member.name.toLowerCase().startsWith(mentionedName.toLowerCase())
@@ -8160,8 +6962,8 @@ export function registerRoutes(app: Express): Server {
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      const hasAccess =
-        user.role === "operations_manager" ||
+      const hasAccess = 
+        user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -8179,7 +6981,7 @@ export function registerRoutes(app: Express): Server {
             )
           )
           .limit(1)
-          .then.then(members => members.length > 0) // This line has a double .then, needs fixing
+          .then.then(members => members.length > 0)
         );
 
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
@@ -8221,8 +7023,8 @@ export function registerRoutes(app: Express): Server {
       const [project] = await db.select().from(projects).where(eq(projects.id, plan.projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      const hasAccess =
-        user.role === "operations_manager" ||
+      const hasAccess = 
+        user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -8343,10 +7145,10 @@ export function registerRoutes(app: Express): Server {
     const user = req.user!;
 
     // Check if user has permission to create projects
-    const canCreateProjects =
-      user.role === "project_manager" ||
+    const canCreateProjects = 
+      user.role === "project_manager" || 
       user.role === "customer_support_officer" ||
-      user.role === "operations_manager" ||
+      user.role === "operations_manager" || 
       user.role === "team_lead" ||
       user.specialization === "operations_manager";
 
@@ -8811,7 +7613,7 @@ export function registerRoutes(app: Express): Server {
       res.json({ success: true, planId: newPlan.id });
     } catch (error) {
       console.error("Error creating project plan:", error);
-      res.status(500).json({
+      res.status(500).json({ 
         error: "Failed to create project plan",
         details: error instanceof Error ? error.message : String(error)
       });
@@ -9210,8 +8012,8 @@ export function registerRoutes(app: Express): Server {
         );
 
       if (runningTasks.length > 0 && !runningTasks.some(t => t.id === taskId)) {
-        return res.status(400).json({
-          error: "You already have a timer running on another task. Please pause it first."
+        return res.status(400).json({ 
+          error: "You already have a timer running on another task. Please pause it first." 
         });
       }
 
@@ -9323,7 +8125,6 @@ export function registerRoutes(app: Express): Server {
         .set({
           isTimerRunning: false,
           timeSpent: newTimeSpent,
-          timerSessions: task.timerSessions ? [...task.timerSessions, { startTime: task.timerStartTime, endTime: now.toISOString(), duration: sessionDuration }] : [{ startTime: task.timerStartTime, endTime: now.toISOString(), duration: sessionDuration }],
           timerStartTime: null,
           status: "pending",
           updatedAt: now
@@ -9402,19 +8203,12 @@ export function registerRoutes(app: Express): Server {
       const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
       const newTimeSpent = (task.timeSpent || 0) + sessionDuration;
 
-      // Clear the timer interval
-      if (global.timerIntervals && global.timerIntervals.has(taskId)) {
-        clearInterval(global.timerIntervals.get(taskId));
-        global.timerIntervals.delete(taskId);
-      }
-
       // Update task with accumulated time and pause timer
       const [updatedTask] = await db
         .update(tasks)
         .set({
           isTimerRunning: false,
           timeSpent: newTimeSpent,
-          timerSessions: task.timerSessions ? [...task.timerSessions, { startTime: task.timerStartTime, endTime: new Date().toISOString(), duration: sessionDuration }] : [{ startTime: task.timerStartTime, endTime: new Date().toISOString(), duration: sessionDuration }],
           timerStartTime: null,
         })
         .where(eq(tasks.id, taskId))

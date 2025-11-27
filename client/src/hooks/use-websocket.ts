@@ -110,9 +110,6 @@ export function useWebSocket(userId: number | undefined) {
           } else if (message.type === 'notification') {
             // Trigger notification updates
             window.dispatchEvent(new CustomEvent('websocket:notification', { detail: message.data }));
-          } else if (message.type === 'meeting_update') {
-            // Trigger meeting status updates
-            window.dispatchEvent(new CustomEvent('websocket:meeting_update', { detail: message.data }));
           }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);

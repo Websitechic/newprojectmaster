@@ -3,7 +3,6 @@ import type { Session } from "express-session";
 import type { Message } from "@db/schema";
 import { db } from "@db";
 import { messages } from "@db/schema";
-import type { Server } from 'http';
 
 interface ExtendedWebSocket extends WebSocket {
   userId?: number;
@@ -19,16 +18,11 @@ interface ExtendedRequest extends Request {
   };
 }
 
-// Export WebSocket server instance for broadcasting
-let websocketServer: WebSocketServer | null = null;
-
-export function setupWebSocket(server: Server) {
-  const wss = new WebSocketServer({
-    noServer: true,
-    path: '/ws'
-  });
-
-  websocketServer = wss;
+export function setupWebSocket(wss: WebSocketServer) {
+  // Initialize global connected clients map
+  if (!global.connectedClients) {
+    global.connectedClients = new Map();
+  }
 
   // Set up ping interval to keep connections alive (increased to 60 seconds to reduce aggressive pinging)
   const interval = setInterval(() => {
@@ -119,11 +113,11 @@ export function setupWebSocket(server: Server) {
           try {
             const message = JSON.parse(data.toString());
             console.log('Received WebSocket message for unauthenticated connection:', message);
-
+            
             if (message.type === 'auth' && message.userId) {
               userId = message.userId;
               extWs.userId = userId;
-
+              
               if (!global.connectedClients) {
                 global.connectedClients = new Map();
               }
@@ -211,26 +205,10 @@ export function setupWebSocket(server: Server) {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ type: 'pong' }));
             }
-          } else if (message.type === 'meeting_update') {
-            // Broadcast meeting status changes to all clients
-            if (websocketServer && websocketServer.clients) {
-              websocketServer.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                  try {
-                    client.send(JSON.stringify({
-                      type: 'meeting_update',
-                      data: message.data // Assuming message.data contains the relevant meeting info
-                    }));
-                  } catch (sendError) {
-                    console.error('Error broadcasting meeting update:', sendError);
-                  }
-                }
-              });
-            }
           } else {
             // Handle other message types here
             console.log('Received message:', message);
-
+            
             // Handle project messages
             if (message.type === 'project_message' && message.projectId && message.content && userId) {
               const projectId = message.projectId;
@@ -256,7 +234,7 @@ export function setupWebSocket(server: Server) {
                 });
               }
             }
-
+            
             // Handle direct messages
             if (message.type === 'direct_message' && message.receiverId && message.content && userId) {
               const receiverId = message.receiverId;
@@ -277,7 +255,7 @@ export function setupWebSocket(server: Server) {
                 }
               }
             }
-
+            
             // Handle task status updates
             if (message.type === 'task_update' && message.taskId && userId) {
               if (global.connectedClients) {

@@ -453,23 +453,6 @@
   }
 }
 
-/* Highlight flash animation for replied messages */
-@keyframes highlight-flash {
-  0% {
-    background-color: rgba(59, 130, 246, 0.3);
-  }
-  50% {
-    background-color: rgba(59, 130, 246, 0.5);
-  }
-  100% {
-    background-color: transparent;
-  }
-}
-
-.highlight-flash {
-  animation: highlight-flash 2s ease-in-out;
-}
-
 @keyframes highlight-flash {
   0% {
     background-color: hsl(var(--primary) / 0.2);

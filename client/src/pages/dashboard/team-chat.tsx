@@ -255,11 +255,14 @@ export default function TeamChat() {
       // Only process messages for this project
       if (messageData.projectId === projectId) {
         console.log("Message is for current project, refreshing immediately");
-
+        
         // Invalidate queries to refresh the UI immediately
         // Note: Notifications and sounds are handled globally in App.tsx
         queryClient.invalidateQueries({ 
           queryKey: [`/api/projects/${projectId}/team-messages`] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/projects/unread-counts"] 
         });
         queryClient.invalidateQueries({ 
           queryKey: ["/api/mentions/unread-count"] 
@@ -292,38 +295,19 @@ export default function TeamChat() {
       if (messageIdsToMarkRead.length === 0) return;
 
       try {
-        const response = await fetch(`/api/projects/${projectId}/team-messages/mark-read`, {
+        await fetch(`/api/projects/${projectId}/team-messages/mark-read`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ messageIds: messageIdsToMarkRead }),
         });
-
-        if (response.ok) {
-          // Invalidate all unread-related queries to update the header dropdown immediately
-          await queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
-          await queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
-          await queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
-          await queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-
-          // Force immediate refetch to ensure header updates
-          await queryClient.refetchQueries({ 
-            queryKey: ["/api/projects/unread-counts"],
-            type: 'active'
-          });
-        }
       } catch (error) {
         console.error("Error marking messages as read:", error);
       }
     };
 
-    // Add a small delay to ensure messages are fully loaded before marking as read
-    const timeoutId = setTimeout(() => {
-      markMessagesAsRead().catch(console.error);
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [messages, user?.id, projectId, queryClient]);
+    markMessagesAsRead().catch(console.error);
+  }, [messages, user?.id, projectId]);
 
   const handleEditMessage = async (messageId: number) => {
     if (!editingContent.trim()) {

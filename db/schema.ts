@@ -168,8 +168,7 @@ export const tasks = pgTable("tasks", {
   deadline: timestamp("deadline"),
   workingHours: integer('working_hours').default(0),
   workingMinutes: integer('working_minutes').default(0),
-  timeSpent: integer("time_spent").default(0), // in seconds - total accumulated time
-  timerSessions: jsonb("timer_sessions").$type<Array<{startTime: string; endTime: string; duration: number}>>().default([]),
+  timeSpent: integer("time_spent").default(0), // in seconds
   isTimerRunning: boolean("is_timer_running").default(false),
   timerStartTime: timestamp("timer_start_time"),
   hasBeenStarted: boolean("has_been_started").default(false),
@@ -888,105 +887,8 @@ export type IssueReport = typeof issueReports.$inferSelect;
 export const insertIssueReportSchema = createInsertSchema(issueReports);
 export const selectIssueReportSchema = createSelectSchema(issueReports);
 
-// Review Requests table
-export const reviewRequests = pgTable("review_requests", {
-  id: serial("id").primaryKey(),
-  title: text("title").notNull(),
-  description: text("description"),
-  reviewLink: text("review_link").notNull(),
-  projectManagerId: integer("project_manager_id").references(() => users.id).notNull(),
-  teamLeadId: integer("team_lead_id").references(() => users.id).notNull(),
-  status: text("status", {
-    enum: ["pending", "in_review", "completed"]
-  }).default("pending"),
-  completedAt: timestamp("completed_at"),
-  reviewNotes: text("review_notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const reviewRequestsRelations = relations(reviewRequests, ({ one }) => ({
-  projectManager: one(users, {
-    fields: [reviewRequests.projectManagerId],
-    references: [users.id],
-  }),
-  teamLead: one(users, {
-    fields: [reviewRequests.teamLeadId],
-    references: [users.id],
-  }),
-}));
-
-export type ReviewRequest = typeof reviewRequests.$inferSelect;
-export const insertReviewRequestSchema = createInsertSchema(reviewRequests);
-export const selectReviewRequestSchema = createSelectSchema(reviewRequests);
-
-// General Channel Messages
-export const generalMessages = pgTable("general_messages", {
-  id: serial("id").primaryKey(),
-  senderId: integer("sender_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  isEdited: boolean("is_edited").default(false),
-});
-
-export const generalMessageReadReceipts = pgTable("general_message_read_receipts", {
-  id: serial("id").primaryKey(),
-  messageId: integer("message_id").references(() => generalMessages.id, { onDelete: "cascade" }).notNull(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  readAt: timestamp("read_at").defaultNow(),
-}, (table) => ({
-  uniqueMessageUser: unique().on(table.messageId, table.userId),
-}));
-
-export const generalMessagesRelations = relations(generalMessages, ({ one, many }) => ({
-  sender: one(users, {
-    fields: [generalMessages.senderId],
-    references: [users.id],
-  }),
-  readReceipts: many(generalMessageReadReceipts),
-}));
-
-export const generalMessageReadReceiptsRelations = relations(generalMessageReadReceipts, ({ one }) => ({
-  message: one(generalMessages, {
-    fields: [generalMessageReadReceipts.messageId],
-    references: [generalMessages.id],
-  }),
-  user: one(users, {
-    fields: [generalMessageReadReceipts.userId],
-    references: [users.id],
-  }),
-}));
-
-export type GeneralMessage = typeof generalMessages.$inferSelect;
-export const insertGeneralMessageSchema = createInsertSchema(generalMessages);
-export const selectGeneralMessageSchema = createSelectSchema(generalMessages);
-
 // Removed duplicate notes declaration - keeping the earlier definition
 
 export type Note = typeof notes.$inferSelect;
 export const insertNoteSchema = createInsertSchema(notes);
 export const selectNoteSchema = createSelectSchema(notes);
-
-// Project Briefings table
-export const projectBriefings = pgTable("project_briefings", {
-  id: serial("id").primaryKey(),
-  projectName: text("project_name").notNull(),
-  clientName: text("client_name").notNull(),
-  projectType: text("project_type").notNull(),
-  description: text("description").notNull(),
-  createdBy: integer("created_by").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const projectBriefingsRelations = relations(projectBriefings, ({ one }) => ({
-  creator: one(users, {
-    fields: [projectBriefings.createdBy],
-    references: [users.id],
-  }),
-}));
-
-export type ProjectBriefing = typeof projectBriefings.$inferSelect;
-export const insertProjectBriefingSchema = createInsertSchema(projectBriefings);
-export const selectProjectBriefingSchema = createSelectSchema(projectBriefings);
