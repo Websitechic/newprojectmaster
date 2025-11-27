@@ -100,6 +100,9 @@ export default function ProjectResources() {
 
   // State for delete dialog
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  // State for expanded file names
+  const [expandedFileNames, setExpandedFileNames] = useState<Set<number>>(new Set());
   const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -114,9 +117,14 @@ export default function ProjectResources() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('category', fileCategory.trim());
-      // Add custom file name if provided
+      // Add custom file name if provided, but preserve the original extension
       if (fileName.trim()) {
-        formData.append('customFileName', fileName.trim());
+        const originalExtension = selectedFile.name.split('.').pop();
+        const customName = fileName.trim();
+        // Only add extension if the custom name doesn't already have it
+        const hasExtension = customName.toLowerCase().endsWith(`.${originalExtension?.toLowerCase()}`);
+        const finalFileName = hasExtension ? customName : `${customName}.${originalExtension}`;
+        formData.append('customFileName', finalFileName);
       }
 
       const response = await fetch(`/api/projects/${projectId}/resources/upload`, {
@@ -346,6 +354,18 @@ export default function ProjectResources() {
     acc[category].push(resource);
     return acc;
   }, {} as Record<string, typeof filteredResources>);
+
+  const toggleFileName = (resourceId: number) => {
+    setExpandedFileNames(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(resourceId)) {
+        newSet.delete(resourceId);
+      } else {
+        newSet.add(resourceId);
+      }
+      return newSet;
+    });
+  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -740,8 +760,20 @@ export default function ProjectResources() {
                                   <div className="flex items-start gap-3 min-w-0 flex-1">
                                     <span className="text-2xl shrink-0">{getFileIcon(resource)}</span>
                                     <div className="min-w-0 flex-1">
-                                      <CardTitle className="text-sm font-medium break-words hyphens-auto leading-tight" title={resource.name}>
-                                        {resource.name}
+                                      <CardTitle className="text-sm font-medium leading-tight" title={resource.name}>
+                                        <div className={expandedFileNames.has(resource.id) ? "break-words" : "line-clamp-2 break-words"}>
+                                          {resource.name}
+                                        </div>
+                                        {resource.name.length > 50 && (
+                                          <Button
+                                            variant="link"
+                                            size="sm"
+                                            onClick={() => toggleFileName(resource.id)}
+                                            className="h-auto p-0 text-xs text-primary hover:no-underline mt-1"
+                                          >
+                                            {expandedFileNames.has(resource.id) ? "Show Less" : "Read More"}
+                                          </Button>
+                                        )}
                                       </CardTitle>
                                       <p className="text-xs text-muted-foreground mt-1">
                                         {resource.type === 'link' || resource.link ? 'External Link' : formatFileSize(resource.size || 0)}

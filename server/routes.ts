@@ -234,7 +234,7 @@ export function registerRoutes(app: Express): Server {
         sessionID: req.session?.id,
         cookie: req.session?.cookie 
       });
-      
+
       if (req.isAuthenticated() && req.user) {
         res.json(req.user);
       } else {
@@ -2627,9 +2627,26 @@ End of Report
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      const fileUrl = `/uploads/leave-proof/${req.file.filename}`;
-      const fileName = req.file.originalname;
+      const file = req.file; // Access the file object from the request
+      const { customFileName } = req.body; // Get custom file name from body
 
+      // Preserve the original file extension
+      const originalExtension = path.extname(file.originalname);
+      let fileName = file.originalname;
+
+      if (customFileName) {
+        // Check if custom name already has the correct extension
+        const customExtension = path.extname(customFileName);
+        if (customExtension.toLowerCase() === originalExtension.toLowerCase()) {
+          fileName = customFileName;
+        } else {
+          // Add the original extension to the custom name
+          fileName = customFileName + originalExtension;
+        }
+      }
+
+      const fileUrl = `/uploads/leave-proof/${req.file.filename}`;
+      
       res.json({ 
         success: true, 
         fileUrl,
@@ -2729,7 +2746,7 @@ End of Report
   });
 
   // General Channel API Routes - accessible to all authenticated users
-  
+
   // Get all general channel messages
   app.get("/api/general-channel/messages", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -5776,8 +5793,7 @@ End of Report
       // Parse valuable things if it's a string
       let parsedValuableThings = [];
       if (valuableThings) {
-        try {
-          parsedValuableThings = typeof valuableThings === 'string' ? JSON.parse(valuableThings) : valuableThings;
+        try {          parsedValuableThings = typeof valuableThings === 'string' ? JSON.parse(valuableThings) : valuableThings;
           if (!Array.isArray(parsedValuableThings)) {
             parsedValuableThings = [];
           }
@@ -6007,7 +6023,7 @@ End of Report
               type: "task_assigned", // Using existing type
               content: `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
               referenceId: newApplication.id,
-              referenceType: "project", // Using existing type
+              referenceType: "leave_application", // Using a more specific type
             });
         } catch (notificationError) {
           console.error("Error creating notification:", notificationError);
