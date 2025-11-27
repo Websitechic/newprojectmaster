@@ -18,7 +18,7 @@ import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useUnreadMessages } from "@/hooks/use-unread-messages";
 
 interface UnreadMessage {
-  type: "team_chat" | "direct_message";
+  type: "team_chat" | "direct_message" | "general_channel";
   id: number;
   name: string;
   unreadCount: number;
@@ -69,6 +69,19 @@ export function Header() {
     refetchInterval: 10000,
   });
 
+  // Fetch general channel unread count
+  const { data: generalChannelUnread = 0 } = useQuery({
+    queryKey: ["/api/general-channel/unread-count"],
+    queryFn: async () => {
+      const response = await fetch("/api/general-channel/unread-count");
+      if (!response.ok) return 0;
+      const data = await response.json();
+      return data.count || 0;
+    },
+    enabled: !!user,
+    refetchInterval: 10000,
+  });
+
   // Fetch project details for team chats
   const { data: projects = [] } = useQuery({
     queryKey: ["/api/projects"],
@@ -98,6 +111,16 @@ export function Header() {
   // Combine unread messages
   useEffect(() => {
     const combined: UnreadMessage[] = [];
+
+    // Add general channel if there are unread messages
+    if (generalChannelUnread > 0) {
+      combined.push({
+        type: "general_channel" as any,
+        id: 0,
+        name: "General Channel",
+        unreadCount: generalChannelUnread,
+      });
+    }
 
     // Create a map to track projects with messages/mentions
     const projectMap = new Map<number, { name: string; count: number; hasMention: boolean }>();
@@ -165,7 +188,7 @@ export function Header() {
     }
 
     setUnreadMessages(combined);
-  }, [teamChatUnreads, mentionCounts, directMessagesData, projects]);
+  }, [teamChatUnreads, mentionCounts, directMessagesData, projects, generalChannelUnread]);
 
   const handleLogout = async () => {
     try {
@@ -189,6 +212,8 @@ export function Header() {
       setLocation(`/dashboard/projects/${message.projectId}/team-chat`);
     } else if (message.type === "direct_message") {
       setLocation("/dashboard/direct-messages");
+    } else if (message.type === "general_channel") {
+      setLocation("/dashboard/general-channel");
     }
   };
 
@@ -254,7 +279,7 @@ export function Header() {
                     <div className="flex flex-col gap-1">
                       <span className="font-medium">{message.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {message.type === "team_chat" ? "Team Chat" : "Direct Message"}
+                        {message.type === "team_chat" ? "Team Chat" : message.type === "direct_message" ? "Direct Message" : "General Channel"}
                       </span>
                     </div>
                     <Badge variant="destructive" className="ml-2">
