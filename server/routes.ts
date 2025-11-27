@@ -2733,7 +2733,7 @@ End of Report
   // Get all general channel messages
   app.get("/api/general-channel/messages", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     try {

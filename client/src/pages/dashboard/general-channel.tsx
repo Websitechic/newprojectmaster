@@ -56,10 +56,12 @@ export default function GeneralChannel() {
   const { data: messages = [], isLoading: messagesLoading } = useQuery<GeneralChannelMessage[]>({
     queryKey: ["/api/general-channel/messages"],
     refetchInterval: 2000,
+    enabled: !!user,
   });
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users"],
+    enabled: !!user,
   });
 
   const sendMessageMutation = useMutation({
