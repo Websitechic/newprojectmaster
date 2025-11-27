@@ -886,13 +886,36 @@ export const generalChannelReadReceipts = pgTable("general_channel_read_receipts
   readAt: timestamp("read_at").defaultNow().notNull(),
 });
 
-export const issueReportsRelations = relations(issueReports, ({ one }) => ({
-  submitter: one(users, {
-    fields: [issueReports.submitterId],
+export const generalChannelMessagesRelations = relations(generalChannelMessages, ({ one, many }) => ({
+  sender: one(users, {
+    fields: [generalChannelMessages.senderId],
     references: [users.id],
   }),
-  reviewer: one(users, {
-    fields: [issueReports.reviewedBy],
+  readReceipts: many(generalChannelReadReceipts),
+}));
+
+export const generalChannelReadReceiptsRelations = relations(generalChannelReadReceipts, ({ one }) => ({
+  message: one(generalChannelMessages, {
+    fields: [generalChannelReadReceipts.messageId],
+    references: [generalChannelMessages.id],
+  }),
+  user: one(users, {
+    fields: [generalChannelReadReceipts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const issueReportsRelations = relations(issueReports, ({ one }) => ({
+  reporter: one(users, {
+    fields: [issueReports.reporterId],
+    references: [users.id],
+  }),
+  assignedToUser: one(users, {
+    fields: [issueReports.assignedTo],
+    references: [users.id],
+  }),
+  resolvedByUser: one(users, {
+    fields: [issueReports.resolvedBy],
     references: [users.id],
   }),
 }));
