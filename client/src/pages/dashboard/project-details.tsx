@@ -78,6 +78,19 @@ export default function ProjectDetails() {
     },
   });
 
+  // Fetch project manager (creator) information
+  const { data: projectManager } = useQuery({
+    queryKey: [`/api/users/${project?.managerId}`],
+    queryFn: async () => {
+      const response = await fetch(`/api/users/${project?.managerId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch project manager');
+      }
+      return response.json();
+    },
+    enabled: !!project?.managerId,
+  });
+
   const { data: projectPlans, isLoading: plansLoading } = useQuery({
     queryKey: [`/api/projects/${id}/plans`],
     queryFn: async () => {
@@ -406,6 +419,16 @@ export default function ProjectDetails() {
                           <div>
                             <p className="font-medium">Client</p>
                             <p className="text-sm text-muted-foreground">{project.client.name}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {projectManager && (
+                        <div className="flex items-center gap-3">
+                          <User className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">Created By</p>
+                            <p className="text-sm text-muted-foreground">{projectManager.name}</p>
                           </div>
                         </div>
                       )}
