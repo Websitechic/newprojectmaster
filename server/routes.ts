@@ -1162,11 +1162,15 @@ export function registerRoutes(app: Express): Server {
       const end = new Date(endDate as string);
       const staffIdNum = parseInt(staffId as string);
 
-      // Get ALL tasks for the staff member
-      const allUserTasks = await db
+      // Get tasks assigned to the staff member within the date range
+      const tasksInRange = await db
         .select()
         .from(tasks)
-        .where(eq(tasks.assigneeId, staffIdNum));
+        .where(and(
+          eq(tasks.assigneeId, staffIdNum),
+          gte(tasks.createdAt, start),
+          sql`${tasks.createdAt} <= ${end}`
+        ));
 
       // Process daily productivity data
       const dailyMap = new Map();
@@ -1204,48 +1208,17 @@ export function registerRoutes(app: Express): Server {
           sql`${taskSessions.startTime} <= ${end}`
         ));
 
-      // Create a map to track total time spent per task across all sessions
-      const taskTimeMap = new Map();
-
-      // Process each session and accumulate time per task
-      allSessions.forEach(session => {
-        if (!session.startTime || !session.taskId) return;
-
-        const sessionDate = new Date(session.startTime);
-        const dateKey = sessionDate.toISOString().split('T')[0];
-
-        if (!dailyMap.has(dateKey)) return;
-
-        // Calculate session duration
-        let sessionDuration = 0;
-        if (session.duration) {
-          sessionDuration = session.duration;
-        } else if (session.endTime === null) {
-          const now = new Date();
-          sessionDuration = Math.floor((now.getTime() - new Date(session.startTime).getTime()) / 1000);
-        }
-
-        if (sessionDuration > 0) {
-          // Add to task time map
-          const currentTime = taskTimeMap.get(session.taskId) || 0;
-          taskTimeMap.set(session.taskId, currentTime + sessionDuration);
-        }
-      });
-
-      // Now build taskDetails from the accumulated task times
+      // Build taskDetails from tasks in range using task.timeSpent
       const taskDetailsMap = new Map();
       
-      taskTimeMap.forEach((totalSeconds, taskId) => {
-        const task = allUserTasks.find(t => t.id === taskId);
-        if (task) {
-          taskDetailsMap.set(taskId, {
-            id: task.id,
-            title: task.title,
-            workingHours: task.workingHours || 0,
-            workingMinutes: task.workingMinutes || 0,
-            timeSpent: totalSeconds // Total time in seconds
-          });
-        }
+      tasksInRange.forEach(task => {
+        taskDetailsMap.set(task.id, {
+          id: task.id,
+          title: task.title,
+          workingHours: task.workingHours || 0,
+          workingMinutes: task.workingMinutes || 0,
+          timeSpent: task.timeSpent || 0 // Use task's timeSpent field directly
+        });
       });
 
       // Group sessions by date for daily breakdown
@@ -1258,7 +1231,7 @@ export function registerRoutes(app: Express): Server {
         if (!dailyMap.has(dateKey)) return;
 
         const dailyData = dailyMap.get(dateKey);
-        const task = allUserTasks.find(t => t.id === session.taskId);
+        const task = tasksInRange.find(t => t.id === session.taskId);
         
         if (task) {
           if (!dailyData.tasks.includes(task.title)) {
@@ -1292,8 +1265,8 @@ export function registerRoutes(app: Express): Server {
         }
       });
 
-      // Calculate allocated time from tasks created/updated in date range
-      allUserTasks.forEach(task => {
+      // Calculate allocated time from tasks in date range
+      tasksInRange.forEach(task => {
         const taskDate = new Date(task.createdAt);
         const dateKey = taskDate.toISOString().split('T')[0];
 
@@ -1335,40 +1308,24 @@ export function registerRoutes(app: Express): Server {
         workdayEnd: day.workdayEnd
       }));
 
-      // Calculate weekly data - only for days within the selected range
-      const weeklyMap = new Map();
-      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-      dailyData.forEach(day => {
-        const date = new Date(day.date);
-        const dayName = dayNames[date.getDay()];
-
-        if (!weeklyMap.has(dayName)) {
-          weeklyMap.set(dayName, {
-            day: dayName,
-            hours: 0,
-            totalSpanHours: 0,
-            performanceStatus: 'poor',
-            performanceColor: '#EF4444',
-            taskCount: 0
+      // Calculate weekly data based on actual dates in range (not just day names)
+      const weeklyDataArray = [];
+      dateRange.forEach(date => {
+        const dateKey = date.toISOString().split('T')[0];
+        const dayData = dailyMap.get(dateKey);
+        
+        if (dayData) {
+          weeklyDataArray.push({
+            day: dateKey,
+            dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()],
+            hours: dayData.actualWorkHours,
+            totalSpanHours: dayData.totalSpanHours,
+            performanceStatus: dayData.performanceStatus,
+            performanceColor: dayData.performanceColor,
+            taskCount: dayData.taskCount
           });
         }
-
-        const weekData = weeklyMap.get(dayName);
-        weekData.hours += day.actualWorkHours;
-        weekData.totalSpanHours += day.totalSpanHours;
-        weekData.taskCount += day.taskCount;
-
-        if (weekData.hours >= 4) {
-          weekData.performanceStatus = 'good';
-          weekData.performanceColor = '#10B981';
-        } else if (weekData.hours >= 2) {
-          weekData.performanceStatus = 'fair';
-          weekData.performanceColor = '#F59E0B';
-        }
       });
-
-      const weeklyData = Array.from(weeklyMap.values());
 
       // Calculate summary
       const totalDays = dailyData.length;
@@ -1379,7 +1336,7 @@ export function registerRoutes(app: Express): Server {
 
       const productivityData = {
         dailyData,
-        weeklyData,
+        weeklyData: weeklyDataArray,
         summary: {
           totalDays,
           avgHoursPerDay,
