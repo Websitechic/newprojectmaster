@@ -707,7 +707,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
 
   const reviewLinksMenuItem = (user?.role === "project_manager" || user?.role === "team_lead") ? [{
     icon: <ExternalLink size={20} />,
-    label: "Review Links",
+    label: user?.role === "team_lead" ? "Assigned Reviews" : "Send for Review",
     href: "/dashboard/review-links",
     key: "review-links",
   }] : [];
