@@ -377,9 +377,11 @@ export function registerRoutes(app: Express): Server {
   setInterval(async () => {
     try {
       const now = new Date();
-      
+      const nowTime = now.getTime();
+      console.log(`Checking for active meetings at ${now.toISOString()} (timestamp: ${nowTime})`);
+
       // Get all active meetings (started but not ended)
-      const activeBookings = await db
+      const allBookings = await db
         .select({
           id: bookings.id,
           title: bookings.title,
@@ -388,15 +390,29 @@ export function registerRoutes(app: Express): Server {
           startTime: bookings.startTime,
           endTime: bookings.endTime,
           status: bookings.status,
+          schedulerName: users.name,
         })
         .from(bookings)
-        .where(
-          and(
-            eq(bookings.status, "scheduled"),
-            sql`${bookings.startTime} <= ${now}`,
-            sql`${bookings.endTime} >= ${now}`
-          )
-        );
+        .leftJoin(users, eq(bookings.scheduledBy, users.id))
+        .where(eq(bookings.status, "scheduled"));
+
+      console.log(`Found ${allBookings.length} total scheduled bookings`);
+
+      // Filter active meetings in JavaScript for better timezone handling
+      const activeBookings = allBookings.filter(booking => {
+        // Parse times and get timestamps for accurate comparison
+        const startTime = new Date(booking.startTime).getTime();
+        const endTime = new Date(booking.endTime).getTime();
+        const isActive = startTime <= nowTime && endTime >= nowTime;
+
+        console.log(`Checking booking "${booking.title}": start=${new Date(startTime).toISOString()}, end=${new Date(endTime).toISOString()}, now=${now.toISOString()}, isActive=${isActive}`);
+
+        if (isActive) {
+          console.log(`✓ Active meeting found: ${booking.title}`);
+        }
+
+        return isActive;
+      });
 
       // Get meetings that just ended
       const oneMinuteAgo = new Date(now.getTime() - 60000);
@@ -1634,8 +1650,9 @@ End of Report
 
       // Get all bookings to check for current meetings - use current timestamp for real-time accuracy
       const now = new Date();
-      console.log(`Checking for active meetings at ${now.toISOString()}`);
-      
+      const nowTime = now.getTime();
+      console.log(`Checking for active meetings at ${now.toISOString()} (timestamp: ${nowTime})`);
+
       const allBookings = await db
         .select({
           id: bookings.id,
@@ -1651,20 +1668,23 @@ End of Report
         .leftJoin(users, eq(bookings.scheduledBy, users.id))
         .where(eq(bookings.status, "scheduled"));
 
+      console.log(`Found ${allBookings.length} total scheduled bookings`);
+
       // Filter active meetings in JavaScript for better timezone handling
       const activeBookings = allBookings.filter(booking => {
-        const startTime = new Date(booking.startTime);
-        const endTime = new Date(booking.endTime);
-        const isActive = startTime <= now && endTime >= now;
-        
+        // Parse times and get timestamps for accurate comparison
+        const startTime = new Date(booking.startTime).getTime();
+        const endTime = new Date(booking.endTime).getTime();
+        const isActive = startTime <= nowTime && endTime >= nowTime;
+
+        console.log(`Checking booking "${booking.title}": start=${new Date(startTime).toISOString()}, end=${new Date(endTime).toISOString()}, now=${now.toISOString()}, isActive=${isActive}`);
+
         if (isActive) {
-          console.log(`Active meeting found: ${booking.title} (${startTime.toISOString()} - ${endTime.toISOString()})`);
+          console.log(`✓ Active meeting found: ${booking.title}`);
         }
-        
+
         return isActive;
       });
-
-      console.log(`Found ${activeBookings.length} active meetings out of ${allBookings.length} total scheduled meetings`);
 
       // Process staff data
       const staffReport = staffMembers.map(staff => {
@@ -5045,8 +5065,7 @@ End of Report
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const user = req.user!;
-    const bookingId = parseInt(req.params.id);
+    const user = req.user!;    const bookingId = parseInt(req.params.id);
 
     try {
       // Check if booking exists
@@ -5403,7 +5422,7 @@ End of Report
         return res.status(404).json({ error: "Request not found" });
       }
 
-      awaitdb
+      await db
         .update(technicalSupportRequests)
         .set({
           assignedToId: user.id,
@@ -5723,7 +5742,7 @@ End of Report
       const [existingRequest] = await db
         .select()
         .from(deadlineExtensionRequests)
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .limit(1);
 
       if (!existingRequest) {
@@ -5748,7 +5767,7 @@ End of Report
           decidedBy: user.id,
           decidedAt: new Date(),
         })
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .returning();
 
       // If approved, update the task
@@ -6319,7 +6338,7 @@ End of Report
       const [existingApplication] = await db
         .select()
         .from(leaveApplications)
-        .where(eq(leaveApplications.id, applicationId))
+        .where(eq(existingApplication.id, applicationId))
         .limit(1);
 
       if (!existingApplication) {
@@ -6944,7 +6963,7 @@ End of Report
         !!membership;
 
       if (!hasAccess) {
-        console.log(`Access denied for user ${user.id} (${user.role}) to project ${projectId} members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
+        console.log(`Access denied for user ${user.id} to project ${projectId} members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
         return res.status(403).send("Access denied - You must be a project member to view membersst");
       }
 
