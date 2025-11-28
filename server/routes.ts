@@ -1162,7 +1162,7 @@ export function registerRoutes(app: Express): Server {
       const end = new Date(endDate as string);
       const staffIdNum = parseInt(staffId as string);
 
-      // Get ALL tasks for the staff member (not filtered by update date)
+      // Get ALL tasks for the staff member
       const allUserTasks = await db
         .select()
         .from(tasks)
@@ -1182,13 +1182,13 @@ export function registerRoutes(app: Express): Server {
         const dateKey = date.toISOString().split('T')[0];
         dailyMap.set(dateKey, {
           date: dateKey,
-          totalSpanHours: 0, // Allocated/estimated time
-          actualWorkHours: 0, // Actual tracked time
+          totalSpanHours: 0,
+          actualWorkHours: 0,
           performanceStatus: 'poor',
           performanceColor: '#EF4444',
           taskCount: 0,
           tasks: [],
-          taskDetails: [], // Initialize taskDetails for breakdown
+          taskDetails: [],
           workdayStart: null,
           workdayEnd: null
         });
@@ -1204,7 +1204,71 @@ export function registerRoutes(app: Express): Server {
           sql`${taskSessions.startTime} <= ${end}`
         ));
 
-      // Process each session and group by day
+      // Create a map to track total time spent per task across all sessions
+      const taskTimeMap = new Map();
+
+      // Process each session and accumulate time per task
+      allSessions.forEach(session => {
+        if (!session.startTime || !session.taskId) return;
+
+        const sessionDate = new Date(session.startTime);
+        const dateKey = sessionDate.toISOString().split('T')[0];
+
+        if (!dailyMap.has(dateKey)) return;
+
+        // Calculate session duration
+        let sessionDuration = 0;
+        if (session.duration) {
+          sessionDuration = session.duration;
+        } else if (session.endTime === null) {
+          const now = new Date();
+          sessionDuration = Math.floor((now.getTime() - new Date(session.startTime).getTime()) / 1000);
+        }
+
+        if (sessionDuration > 0) {
+          // Add to task time map
+          const currentTime = taskTimeMap.get(session.taskId) || 0;
+          taskTimeMap.set(session.taskId, currentTime + sessionDuration);
+        }
+      });
+
+      // Now build taskDetails from the accumulated task times
+      const taskDetailsMap = new Map();
+      
+      taskTimeMap.forEach((totalSeconds, taskId) => {
+        const task = allUserTasks.find(t => t.id === taskId);
+        if (task) {
+          taskDetailsMap.set(taskId, {
+            id: task.id,
+            title: task.title,
+            workingHours: task.workingHours || 0,
+            workingMinutes: task.workingMinutes || 0,
+            timeSpent: totalSeconds // Total time in seconds
+          });
+        }
+      });
+
+      // Group sessions by date for daily breakdown
+      allSessions.forEach(session => {
+        if (!session.startTime || !session.taskId) return;
+
+        const sessionDate = new Date(session.startTime);
+        const dateKey = sessionDate.toISOString().split('T')[0];
+
+        if (!dailyMap.has(dateKey)) return;
+
+        const dailyData = dailyMap.get(dateKey);
+        const task = allUserTasks.find(t => t.id === session.taskId);
+        
+        if (task) {
+          if (!dailyData.tasks.includes(task.title)) {
+            dailyData.tasks.push(task.title);
+            dailyData.taskCount += 1;
+          }
+        }
+      });
+
+      // Calculate total actual work hours per day from sessions
       allSessions.forEach(session => {
         if (!session.startTime) return;
 
@@ -1215,126 +1279,63 @@ export function registerRoutes(app: Express): Server {
 
         const dailyData = dailyMap.get(dateKey);
 
-        // Calculate session duration
         let sessionDuration = 0;
         if (session.duration) {
-          // Completed session
           sessionDuration = session.duration;
         } else if (session.endTime === null) {
-          // Currently running session
           const now = new Date();
           sessionDuration = Math.floor((now.getTime() - new Date(session.startTime).getTime()) / 1000);
         }
 
         if (sessionDuration > 0) {
-          const sessionHours = sessionDuration / 3600;
-          dailyData.actualWorkHours += sessionHours;
+          dailyData.actualWorkHours += sessionDuration / 3600;
+        }
+      });
 
-          // Find the task for this session to get its title and details
-          const task = allUserTasks.find(t => t.id === session.taskId);
-          if (task) {
-            // Check if task title is already added to avoid duplicates in the task list
-            if (!dailyData.tasks.includes(task.title)) {
-              dailyData.tasks.push(task.title);
-              dailyData.taskCount += 1;
-            }
+      // Calculate allocated time from tasks created/updated in date range
+      allUserTasks.forEach(task => {
+        const taskDate = new Date(task.createdAt);
+        const dateKey = taskDate.toISOString().split('T')[0];
 
-            // Add task details for breakdown (ensure unique entries per task)
-            const existingTaskDetailIndex = dailyData.taskDetails.findIndex((detail: any) => detail.id === task.id);
-            if (existingTaskDetailIndex === -1) {
-              dailyData.taskDetails.push({
-                id: task.id,
-                title: task.title,
-                workingHours: task.workingHours || 0,
-                workingMinutes: task.workingMinutes || 0,
-                timeSpent: sessionHours // Add current session hours
-              });
-            } else {
-              // Update existing task detail with additional time spent
-              dailyData.taskDetails[existingTaskDetailIndex].timeSpent += sessionHours;
-            }
+        if (dailyMap.has(dateKey)) {
+          const dailyData = dailyMap.get(dateKey);
+          const allocatedHours = (task.workingHours || 0) + ((task.workingMinutes || 0) / 60);
+          if (allocatedHours > 0) {
+            dailyData.totalSpanHours += allocatedHours;
           }
         }
       });
 
-      // Calculate allocated time (Total Span) from task working hours
-      allUserTasks.forEach(task => {
-        const updateDate = new Date(task.updatedAt);
-        const dateKey = updateDate.toISOString().split('T')[0];
-
-        if (!dailyMap.has(dateKey)) return;
-
-        const dailyData = dailyMap.get(dateKey);
-        const allocatedHours = (task.workingHours || 0) + ((task.workingMinutes || 0) / 60);
-        if (allocatedHours > 0) {
-          dailyData.totalSpanHours += allocatedHours;
-        }
-
-        // Update workday start/end times
-        const taskStartDate = new Date(task.startDate || task.createdAt);
-        if (!dailyData.workdayStart || taskStartDate < new Date(dailyData.workdayStart)) {
-          dailyData.workdayStart = taskStartDate.toISOString();
-        }
-        const taskEndDate = new Date(task.endDate || task.updatedAt);
-        if (!dailyData.workdayEnd || taskEndDate > new Date(dailyData.workdayEnd)) {
-          dailyData.workdayEnd = taskEndDate.toISOString();
-        }
-      });
-
-      // Calculate performance status based on actual work hours
-      dailyMap.forEach((dailyData, dateKey) => {
-        // If no allocated time was set, use actual work hours as minimum span
+      // Calculate performance status
+      dailyMap.forEach((dailyData) => {
         if (dailyData.totalSpanHours === 0 && dailyData.actualWorkHours > 0) {
           dailyData.totalSpanHours = dailyData.actualWorkHours;
         }
 
-        // Calculate performance status (same as productivity page)
         if (dailyData.actualWorkHours >= 4) {
           dailyData.performanceStatus = 'good';
           dailyData.performanceColor = '#10B981';
         } else if (dailyData.actualWorkHours >= 2) {
           dailyData.performanceStatus = 'fair';
           dailyData.performanceColor = '#F59E0B';
-        } else {
-          dailyData.performanceStatus = 'poor';
-          dailyData.performanceColor = '#EF4444';
         }
       });
 
-      // Convert map to array and include taskBreakdown
-      const dailyData = Array.from(dailyMap.values()).map(day => {
-        // Recalculate actualWorkHours based on processed taskDetails to ensure accuracy
-        const totalActualWorkHours = day.taskDetails.reduce((sum, detail: any) => sum + detail.timeSpent, 0);
+      // Convert to array with taskBreakdown
+      const dailyData = Array.from(dailyMap.values()).map(day => ({
+        date: day.date,
+        totalSpanHours: day.totalSpanHours,
+        actualWorkHours: day.actualWorkHours,
+        performanceStatus: day.performanceStatus,
+        performanceColor: day.performanceColor,
+        taskCount: day.taskCount,
+        tasks: day.tasks,
+        taskBreakdown: Array.from(taskDetailsMap.values()),
+        workdayStart: day.workdayStart,
+        workdayEnd: day.workdayEnd
+      }));
 
-        let performanceStatus: 'poor' | 'fair' | 'good' = 'poor';
-        let performanceColor = '#EF4444';
-
-        if (totalActualWorkHours >= 4) {
-          performanceStatus = 'good';
-          performanceColor = '#10B981';
-        } else if (totalActualWorkHours >= 2) {
-          performanceStatus = 'fair';
-          performanceColor = '#F59E0B';
-        }
-
-        return {
-          date: day.date,
-          totalSpanHours: day.totalSpanHours, // Use calculated totalSpanHours
-          actualWorkHours: totalActualWorkHours, // Use recalculated actualWorkHours
-          performanceStatus,
-          performanceColor,
-          taskCount: day.taskCount,
-          tasks: day.tasks,
-          taskBreakdown: day.taskDetails.map((detail: any) => ({
-            ...detail,
-            timeSpent: detail.timeSpent // Ensure timeSpent is included
-          })),
-          workdayStart: day.workdayStart,
-          workdayEnd: day.workdayEnd
-        };
-      });
-
-      // Calculate weekly data for chart (group by day of week)
+      // Calculate weekly data - only for days within the selected range
       const weeklyMap = new Map();
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -1345,8 +1346,8 @@ export function registerRoutes(app: Express): Server {
         if (!weeklyMap.has(dayName)) {
           weeklyMap.set(dayName, {
             day: dayName,
-            hours: 0, // Actual work hours
-            totalSpanHours: 0, // Allocated hours
+            hours: 0,
+            totalSpanHours: 0,
             performanceStatus: 'poor',
             performanceColor: '#EF4444',
             taskCount: 0
@@ -1354,11 +1355,10 @@ export function registerRoutes(app: Express): Server {
         }
 
         const weekData = weeklyMap.get(dayName);
-        weekData.hours += day.actualWorkHours; // Sum actual work
-        weekData.totalSpanHours += day.totalSpanHours; // Sum allocated time
+        weekData.hours += day.actualWorkHours;
+        weekData.totalSpanHours += day.totalSpanHours;
         weekData.taskCount += day.taskCount;
 
-        // Update performance based on actual work hours
         if (weekData.hours >= 4) {
           weekData.performanceStatus = 'good';
           weekData.performanceColor = '#10B981';
