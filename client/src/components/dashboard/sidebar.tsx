@@ -32,7 +32,7 @@ import {
   Menu,
   X,
   Bug,
-  ExternalLink, // Import ExternalLink icon
+  ExternalLink,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -705,6 +705,13 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     }] : []),
   ] : [];
 
+  const reviewLinksMenuItem = (user?.role === "project_manager" || user?.role === "team_lead") ? [{
+    icon: <ExternalLink size={20} />,
+    label: "Review Links",
+    href: "/dashboard/review-links",
+    key: "review-links",
+  }] : [];
+
   const menuItems = user?.role === "client" ? [
     {
       icon: <LayoutDashboard size={20} />,
@@ -721,16 +728,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     ...extensionMenuItems,
     ...operationsManagerMenuItems,
     ...teamLeadMenuItems,
-    {(user.role === "project_manager" || user.role === "team_lead") && (
-      <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={currentPath === "/dashboard/review-links"}>
-          <Link href="/dashboard/review-links">
-            <ExternalLink className="h-4 w-4" />
-            <span>Review Links</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    )},
+    ...reviewLinksMenuItem,
     ...(user?.role !== "operations_manager" && user?.specialization !== "operations_manager" && user?.role !== "team_lead" ? [{
       icon: <FileText size={20} />,
       label: "Memos",
@@ -801,10 +799,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       <nav className="flex-1 px-2 sm:px-4 py-4 sm:py-6 overflow-y-auto">
         <div className="space-y-1">
           {menuItems.map((item) => {
-            // Check if item is a SidebarMenuItem object before destructuring
-            if (React.isValidElement(item)) {
-              return item;
-            }
             const { key, ...itemProps } = item;
             return (
               <SidebarItem
