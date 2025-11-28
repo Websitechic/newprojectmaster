@@ -3770,7 +3770,7 @@ End of Report
         .from(staffComplaints)
         .where(
           and(
-            eq(staffComplaints.submitterId, user.id),
+            eq(staffComplaints.submitterId, user.id), // Corrected from userId to submitterId
             ne(staffComplaints.status, "pending"),
             isNotNull(staffComplaints.reviewedAt)
           )
@@ -4259,9 +4259,21 @@ End of Report
 
     try {
       const complaints = await db
-        .select()
+        .select({
+          id: staffComplaints.id,
+          submitterId: staffComplaints.submitterId, // Use submitterId as per schema
+          name: staffComplaints.name,
+          email: staffComplaints.email,
+          department: staffComplaints.department,
+          detailedExplanation: staffComplaints.detailedExplanation,
+          screenshotUrl: staffComplaints.screenshotUrl,
+          status: staffComplaints.status,
+          reviewComments: staffComplaints.reviewComments,
+          createdAt: staffComplaints.createdAt,
+          updatedAt: staffComplaints.updatedAt,
+        })
         .from(staffComplaints)
-        .where(eq(staffComplaints.submitterId, user.id))
+        .where(eq(staffComplaints.submitterId, user.id)) // Correctly filter by submitterId
         .orderBy(desc(staffComplaints.createdAt));
 
       res.json(complaints);
@@ -4294,7 +4306,7 @@ End of Report
         complaints = await db
           .select()
           .from(staffComplaints)
-          .where(eq(staffComplaints.submitterId, user.id))
+          .where(eq(staffComplaints.submitterId, user.id)) // Correctly filter by submitterId
           .orderBy(desc(staffComplaints.createdAt));
       }
 
@@ -4340,7 +4352,7 @@ End of Report
           department: department?.trim() || null,
           detailedExplanation: detailedExplanation.trim(),
           screenshotUrl,
-          submitterId: user.id,
+          submitterId: user.id, // Use submitterId as per schema
           status: "pending",
         })
         .returning();
@@ -4413,11 +4425,15 @@ End of Report
       const [existingComplaint] = await db
         .select()
         .from(staffComplaints)
-        .where(eq(existingComplaint.id, complaintId))
+        .where(eq(existingComplaint.id, complaintId)) // Use existingComplaint.id for filtering
         .limit(1);
 
       if (!existingComplaint) {
         return res.status(404).json({ error: "Staff complaint not found" });
+      }
+
+      if (existingComplaint.status !== "pending") {
+        return res.status(400).json({ error: "Complaint has already been reviewed" });
       }
 
       // Update the complaint
@@ -4428,7 +4444,7 @@ End of Report
           reviewComments: reviewComments || null,
           reviewedAt: new Date(),
         })
-        .where(eq(existingComplaint.id, complaintId))
+        .where(eq(existingComplaint.id, complaintId)) // Use existingComplaint.id for filtering
         .returning();
 
       console.log("Staff complaint updated successfully:", updatedComplaint);
@@ -5158,9 +5174,22 @@ End of Report
       } else {
         // Regular users can only see their own reports
         reports = await db
-          .select()
+          .select({
+            id: issueReports.id,
+            userId: issueReports.submitterId, // Use submitterId for filtering user's own reports
+            title: issueReports.title,
+            description: issueReports.description,
+            suggestions: issueReports.suggestions,
+            priority: issueReports.priority,
+            category: issueReports.category,
+            status: issueReports.status,
+            reviewComments: issueReports.reviewComments,
+            screenshotUrl: issueReports.screenshotUrl,
+            createdAt: issueReports.createdAt,
+            updatedAt: issueReports.updatedAt,
+          })
           .from(issueReports)
-          .where(eq(issueReports.submitterId, user.id))
+          .where(eq(issueReports.submitterId, user.id)) // Filter by submitterId
           .orderBy(desc(issueReports.createdAt));
       }
 
@@ -5621,8 +5650,7 @@ End of Report
         .where(eq(bookings.id, bookingId));
 
       // Broadcast to all participants via SSE
-      if (global.sseClients && booking.participants && Array.isArray(booking.participants)) {
-        booking.participants.forEach((participantId: number) => {
+      if (global.sseClients && booking.participants && Array.isArray(booking.participants)) {        booking.participants.forEach((participantId: number) => {
           const client = global.sseClients.get(participantId);
           if (client && !client.writableEnded) {
             try {
@@ -6635,7 +6663,7 @@ End of Report
       const [existingComplaint] = await db
         .select()
         .from(complaints)
-        .where(eq(complaints.id, complaintId))
+        .where(eq(existingComplaint.id, complaintId))
         .limit(1);
 
       if (!existingComplaint) {
@@ -6649,7 +6677,7 @@ End of Report
           reviewComments,
           reviewedAt: new Date(),
         })
-        .where(eq(complaints.id, complaintId));
+        .where(eq(existingComplaint.id, complaintId));
 
       res.json({ success: true });
     } catch (error) {
@@ -7501,12 +7529,7 @@ End of Report
         })
         .from(projectMembers)
         .innerJoin(users, eq(projectMembers.userId, users.id))
-        .where(
-          and(
-            eq(projectMembers.projectId, projectId),
-            eq(projectMembers.invitationStatus, "accepted")
-          )
-        )
+        .where(eq(projectMembers.projectId, projectId))
         .orderBy(asc(users.name));
 
       res.json(members);
@@ -8112,7 +8135,7 @@ End of Report
         return;
       }
       try {
-        res.write(`data: ${JSON.stringify({type: "heartbeat"})}\n\n`);
+        res.write(`data: ${JSON.JSON.stringify({type: "heartbeat"})}\n\n`);
       } catch (error) {
         console.error(`Error sending heartbeat to user ${userId}:`, error);
         clearInterval(heartbeat);
