@@ -3277,10 +3277,10 @@ End of Report
       const [newBriefing] = await db
         .insert(projectBriefings)
         .values({
-          projectName: projectName,
-          clientName: clientName,
-          category: category,
-          projectDetails: projectDetails,
+          projectName,
+          clientName,
+          category,
+          projectDetails,
           createdBy: user.id,
         })
         .returning();
