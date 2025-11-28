@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -52,9 +51,19 @@ export default function ReviewLinks() {
 
   const isProjectManager = user?.role === "project_manager";
   const isTeamLead = user?.role === "team_lead";
+  const isOperationsManager = user?.role === "operations_manager";
+  const isCustomerSupportOfficer = user?.role === "customer_support_officer";
+
+  const allowedRolesForNewProjectBriefing = [
+    "project_manager",
+    "operations_manager",
+    "customer_support_officer",
+    "team_lead",
+  ];
+  const canAccessNewProjectBriefing = allowedRolesForNewProjectBriefing.includes(user?.role);
 
   // Fetch review links
-  const { data: reviewLinks = [], isLoading } = useQuery({
+  const { data: reviewLinks = [], isLoading, error } = useQuery({
     queryKey: ["/api/review-links"],
     queryFn: async () => {
       const response = await fetch("/api/review-links");
@@ -204,7 +213,9 @@ export default function ReviewLinks() {
           <div className="mb-6">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Review Links</h1>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {isProjectManager ? "Assigned Reviews" : "Send for Review"}
+                </h1>
                 <p className="text-gray-600 mt-1">
                   {isProjectManager
                     ? "Send links to Team Leads for review"
@@ -330,9 +341,10 @@ export default function ReviewLinks() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {/* Content */}
+              {error ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                  <p className="text-red-500">Error loading review links: {error.message}</p>
                 </div>
               ) : reviewLinks.length === 0 ? (
                 <div className="text-center py-8">

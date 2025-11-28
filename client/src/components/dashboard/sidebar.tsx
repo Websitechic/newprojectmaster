@@ -712,6 +712,13 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     key: "review-links",
   }] : [];
 
+  const projectBriefingMenuItem = (user?.role === "project_manager" || user?.role === "operations_manager" || user?.role === "team_lead" || user?.role === "customer_support_officer" || user?.specialization === "operations_manager") ? [{
+    icon: <FileText size={20} />,
+    label: "New Project Briefing",
+    href: "/dashboard/project-briefing",
+    key: "project-briefing",
+  }] : [];
+
   const menuItems = user?.role === "client" ? [
     {
       icon: <LayoutDashboard size={20} />,
@@ -729,6 +736,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     ...operationsManagerMenuItems,
     ...teamLeadMenuItems,
     ...reviewLinksMenuItem,
+    ...projectBriefingMenuItem,
     ...(user?.role !== "operations_manager" && user?.specialization !== "operations_manager" && user?.role !== "team_lead" ? [{
       icon: <FileText size={20} />,
       label: "Memos",

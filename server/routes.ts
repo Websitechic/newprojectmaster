@@ -46,10 +46,12 @@ import {
   generalChannelMessages,
   generalChannelReadReceipts,
   reviewLinks,
+  projectBriefings, // Import the new schema
 } from "@db/schema";
-import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull, relations } from "drizzle-orm";
 import WebSocket from "ws";
 import { format } from "date-fns";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 // Helper function to create notifications
 async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
@@ -1211,7 +1213,7 @@ export function registerRoutes(app: Express): Server {
 
       // Build taskDetails from tasks in range using task.timeSpent
       const taskDetailsMap = new Map();
-      
+
       tasksInRange.forEach(task => {
         taskDetailsMap.set(task.id, {
           id: task.id,
@@ -1233,7 +1235,7 @@ export function registerRoutes(app: Express): Server {
 
         const dailyData = dailyMap.get(dateKey);
         const task = tasksInRange.find(t => t.id === session.taskId);
-        
+
         if (task) {
           if (!dailyData.tasks.includes(task.title)) {
             dailyData.tasks.push(task.title);
@@ -1314,7 +1316,7 @@ export function registerRoutes(app: Express): Server {
       dateRange.forEach(date => {
         const dateKey = date.toISOString().split('T')[0];
         const dayData = dailyMap.get(dateKey);
-        
+
         if (dayData) {
           weeklyDataArray.push({
             day: dateKey,
@@ -2331,7 +2333,6 @@ End of Report
         user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        existingTask.assigneeId === user.id ||
         (user.role === "staff" && await db
           .select()
           .from(projectMembers)
@@ -3183,7 +3184,145 @@ End of Report
     }
   });
 
-  // Mark review link as reviewed (Team Leads only)
+  // Delete a review link (Project Managers only)
+  app.delete("/api/review-links/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager") {
+      return res.status(403).json({ error: "Only project managers can delete review links" });
+    }
+
+    try {
+      const linkId = parseInt(req.params.id);
+
+      // Check if link exists and was sent by this PM
+      const [link] = await db
+        .select()
+        .from(reviewLinks)
+        .where(and(
+          eq(reviewLinks.id, linkId),
+          eq(reviewLinks.sentBy, user.id)
+        ))
+        .limit(1);
+
+      if (!link) {
+        return res.status(404).json({ error: "Review link not found or not created by you" });
+      }
+
+      await db.delete(reviewLinks).where(eq(reviewLinks.id, linkId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting review link:", error);
+      res.status(500).json({ error: "Failed to delete review link" });
+    }
+  });
+
+  // Project Briefings API Routes
+  app.get("/api/project-briefings", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const hasAccess = user.role === "project_manager" || 
+                     user.role === "operations_manager" || 
+                     user.role === "team_lead" ||
+                     user.role === "customer_support_officer" ||
+                     user.specialization === "operations_manager";
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const briefings = await db
+        .select()
+        .from(projectBriefings)
+        .orderBy(desc(projectBriefings.createdAt));
+
+      res.json(briefings);
+    } catch (error) {
+      console.error("Error fetching project briefings:", error);
+      res.status(500).json({ error: "Failed to fetch project briefings" });
+    }
+  });
+
+  app.post("/api/project-briefings", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const hasAccess = user.role === "project_manager" || 
+                     user.role === "operations_manager" || 
+                     user.role === "team_lead" ||
+                     user.role === "customer_support_officer" ||
+                     user.specialization === "operations_manager";
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const { projectName, clientName, category, projectDetails } = req.body;
+
+      if (!projectName || !clientName || !category || !projectDetails) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+
+      const [newBriefing] = await db
+        .insert(projectBriefings)
+        .values({
+          projectName,
+          clientName,
+          category,
+          projectDetails,
+          createdBy: user.id,
+        })
+        .returning();
+
+      res.json(newBriefing);
+    } catch (error) {
+      console.error("Error creating project briefing:", error);
+      res.status(500).json({ error: "Failed to create project briefing" });
+    }
+  });
+
+  app.delete("/api/project-briefings/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+    const hasAccess = user.role === "project_manager" || 
+                     user.role === "operations_manager" || 
+                     user.role === "team_lead" ||
+                     user.role === "customer_support_officer" ||
+                     user.specialization === "operations_manager";
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+      const briefingId = parseInt(req.params.id);
+
+      await db
+        .delete(projectBriefings)
+        .where(eq(projectBriefings.id, briefingId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting project briefing:", error);
+      res.status(500).json({ error: "Failed to delete project briefing" });
+    }
+  });
+
+  // Mark review link as reviewed
   app.put("/api/review-links/:id/reviewed", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -3235,43 +3374,6 @@ End of Report
     } catch (error) {
       console.error("Error marking link as reviewed:", error);
       res.status(500).json({ error: "Failed to mark link as reviewed" });
-    }
-  });
-
-  // Delete a review link (Project Managers only)
-  app.delete("/api/review-links/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    const user = req.user!;
-    if (user.role !== "project_manager") {
-      return res.status(403).json({ error: "Only project managers can delete review links" });
-    }
-
-    try {
-      const linkId = parseInt(req.params.id);
-
-      // Check if link exists and was sent by this PM
-      const [link] = await db
-        .select()
-        .from(reviewLinks)
-        .where(and(
-          eq(reviewLinks.id, linkId),
-          eq(reviewLinks.sentBy, user.id)
-        ))
-        .limit(1);
-
-      if (!link) {
-        return res.status(404).json({ error: "Review link not found or not created by you" });
-      }
-
-      await db.delete(reviewLinks).where(eq(reviewLinks.id, linkId));
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting review link:", error);
-      res.status(500).json({ error: "Failed to delete review link" });
     }
   });
 

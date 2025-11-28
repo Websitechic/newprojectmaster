@@ -54,6 +54,7 @@ import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useBrowserNotification } from "@/hooks/use-browser-notification";
 import GeneralChannelPage from "@/pages/dashboard/general-channel";
 import ReviewLinks from "@/pages/dashboard/review-links";
+import ProjectBriefing from "@/pages/dashboard/project-briefing";
 
 
 function PrivateRoute({ component: Component, ...rest }: any) {
@@ -554,6 +555,7 @@ function Router() {
           </Route>
           <Route path="/dashboard/sop" component={SOPPage} />
           <Route path="/dashboard/review-links" component={ReviewLinks} />
+        <Route path="/dashboard/project-briefing" component={ProjectBriefing} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

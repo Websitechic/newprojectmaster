@@ -991,3 +991,26 @@ export const reviewLinksRelations = relations(reviewLinks, ({ one }) => ({
 export type ReviewLink = typeof reviewLinks.$inferSelect;
 export const insertReviewLinkSchema = createInsertSchema(reviewLinks);
 export const selectReviewLinkSchema = createSelectSchema(reviewLinks);
+
+// Project Briefings table
+export const projectBriefings = pgTable("project_briefings", {
+  id: serial("id").primaryKey(),
+  projectName: text("project_name").notNull(),
+  clientName: text("client_name").notNull(),
+  category: text("category").notNull(),
+  projectDetails: text("project_details").notNull(),
+  createdBy: integer("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const projectBriefingsRelations = relations(projectBriefings, ({ one }) => ({
+  creator: one(users, {
+    fields: [projectBriefings.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export type ProjectBriefing = typeof projectBriefings.$inferSelect;
+export const insertProjectBriefingSchema = createInsertSchema(projectBriefings);
+export const selectProjectBriefingSchema = createSelectSchema(projectBriefings);
