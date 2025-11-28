@@ -466,67 +466,8 @@ export default function KPIReportPage() {
                     {/* Tab 1: Productivity Score */}
                     <TabsContent value="productivity" className="space-y-4">
                       <div className="mt-4">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Task Name</TableHead>
-                              <TableHead>Assigned Time</TableHead>
-                              <TableHead>Actual Time Spent</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {productivityData.dailyData.flatMap(day => 
-                              day.tasks.map((taskName, idx) => {
-                                const task = productivityData.dailyData
-                                  .find(d => d.date === day.date)
-                                  ?.tasks[idx];
-                                
-                                // Get assigned time from task breakdown
-                                const assignedMinutes = ((day as any).taskBreakdown?.[idx]?.workingHours || 0) * 60 + 
-                                                       ((day as any).taskBreakdown?.[idx]?.workingMinutes || 0);
-                                const actualMinutes = Math.floor(((day as any).taskBreakdown?.[idx]?.timeSpent || 0) / 60);
-                                
-                                const formatMinutes = (minutes: number) => {
-                                  const hours = Math.floor(minutes / 60);
-                                  const mins = minutes % 60;
-                                  return hours > 0 ? `${minutes} minutes (${hours}hr${mins > 0 ? ` ${mins}m` : ''})` : `${minutes} minutes`;
-                                };
-
-                                return (
-                                  <TableRow key={`${day.date}-${idx}`}>
-                                    <TableCell className="font-medium">{taskName}</TableCell>
-                                    <TableCell>{formatMinutes(assignedMinutes)}</TableCell>
-                                    <TableCell>{formatMinutes(actualMinutes)}</TableCell>
-                                  </TableRow>
-                                );
-                              })
-                            )}
-                            <TableRow className="font-bold bg-gray-50">
-                              <TableCell>Total</TableCell>
-                              <TableCell>
-                                {(() => {
-                                  const totalAssigned = productivityData.dailyData.reduce((sum, day) => {
-                                    return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
-                                      taskSum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0) || 0);
-                                  }, 0);
-                                  return totalAssigned;
-                                })()}
-                              </TableCell>
-                              <TableCell>
-                                {(() => {
-                                  const totalActual = productivityData.dailyData.reduce((sum, day) => {
-                                    return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
-                                      taskSum + Math.floor((task.timeSpent || 0) / 60), 0) || 0);
-                                  }, 0);
-                                  return totalActual;
-                                })()}
-                              </TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-
-                        {/* Productivity Calculation */}
-                        <div className="mt-6 p-6 bg-blue-50 rounded-lg">
+                        {/* Productivity Calculation - Moved to top */}
+                        <div className="mb-6 p-6 bg-blue-50 rounded-lg">
                           <div className="text-center space-y-4">
                             <div className="text-lg font-semibold text-gray-900">
                               Productivity Calculation
@@ -594,6 +535,77 @@ export default function KPIReportPage() {
                             </div>
                           </div>
                         </div>
+
+                        {/* Task Breakdown Table */}
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Task Name</TableHead>
+                              <TableHead>Assigned Time (min)</TableHead>
+                              <TableHead>Actual Time Spent (min)</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {productivityData.dailyData.flatMap(day => 
+                              (day as any).taskBreakdown?.map((task: any, idx: number) => {
+                                // Get assigned time in minutes
+                                const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
+                                // Get actual time spent in minutes (timeSpent is in seconds)
+                                const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
+                                
+                                // Determine status
+                                let status = 'On Time';
+                                let statusColor = 'bg-green-100 text-green-800';
+                                
+                                if (assignedMinutes > 0) {
+                                  if (actualMinutes < assignedMinutes) {
+                                    status = 'Early';
+                                    statusColor = 'bg-blue-100 text-blue-800';
+                                  } else if (actualMinutes > assignedMinutes) {
+                                    status = 'Late';
+                                    statusColor = 'bg-red-100 text-red-800';
+                                  }
+                                }
+
+                                return (
+                                  <TableRow key={`${day.date}-${idx}`}>
+                                    <TableCell className="font-medium">{task.title}</TableCell>
+                                    <TableCell>{assignedMinutes}</TableCell>
+                                    <TableCell>{actualMinutes}</TableCell>
+                                    <TableCell>
+                                      <Badge className={statusColor}>
+                                        {status}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              }) || []
+                            )}
+                            <TableRow className="font-bold bg-gray-50">
+                              <TableCell>Total</TableCell>
+                              <TableCell>
+                                {(() => {
+                                  const totalAssigned = productivityData.dailyData.reduce((sum, day) => {
+                                    return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
+                                      taskSum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0) || 0);
+                                  }, 0);
+                                  return totalAssigned;
+                                })()}
+                              </TableCell>
+                              <TableCell>
+                                {(() => {
+                                  const totalActual = productivityData.dailyData.reduce((sum, day) => {
+                                    return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
+                                      taskSum + Math.floor((task.timeSpent || 0) / 60), 0) || 0);
+                                  }, 0);
+                                  return totalActual;
+                                })()}
+                              </TableCell>
+                              <TableCell>-</TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
                       </div>
                     </TabsContent>
 
