@@ -55,8 +55,6 @@ import { useBrowserNotification } from "@/hooks/use-browser-notification";
 import GeneralChannelPage from "@/pages/dashboard/general-channel";
 import ReviewLinks from "@/pages/dashboard/review-links";
 import ProjectBriefing from "@/pages/dashboard/project-briefing";
-import SendComplaint from "@/pages/send-complaint";
-import ReportIssues from "@/pages/report-issues";
 
 
 function PrivateRoute({ component: Component, ...rest }: any) {
