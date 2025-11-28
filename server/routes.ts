@@ -400,12 +400,14 @@ export function registerRoutes(app: Express): Server {
 
       // Filter active meetings in JavaScript for better timezone handling
       const activeBookings = allBookings.filter(booking => {
-        // Parse times and get timestamps for accurate comparison
-        const startTime = new Date(booking.startTime).getTime();
-        const endTime = new Date(booking.endTime).getTime();
-        const isActive = startTime <= nowTime && endTime >= nowTime;
+        // Parse times as they are stored (local time) and compare
+        const startTime = new Date(booking.startTime);
+        const endTime = new Date(booking.endTime);
 
-        console.log(`Checking booking "${booking.title}": start=${new Date(startTime).toISOString()}, end=${new Date(endTime).toISOString()}, now=${now.toISOString()}, isActive=${isActive}`);
+        // Use direct time comparison without conversion
+        const isActive = startTime <= now && endTime >= now;
+
+        console.log(`Checking booking "${booking.title}": start=${startTime.toISOString()}, end=${endTime.toISOString()}, now=${now.toISOString()}, isActive=${isActive}`);
 
         if (isActive) {
           console.log(`✓ Active meeting found: ${booking.title}`);
@@ -1672,12 +1674,14 @@ End of Report
 
       // Filter active meetings in JavaScript for better timezone handling
       const activeBookings = allBookings.filter(booking => {
-        // Parse times and get timestamps for accurate comparison
-        const startTime = new Date(booking.startTime).getTime();
-        const endTime = new Date(booking.endTime).getTime();
-        const isActive = startTime <= nowTime && endTime >= nowTime;
+        // Parse times as they are stored (local time) and compare
+        const startTime = new Date(booking.startTime);
+        const endTime = new Date(booking.endTime);
 
-        console.log(`Checking booking "${booking.title}": start=${new Date(startTime).toISOString()}, end=${new Date(endTime).toISOString()}, now=${now.toISOString()}, isActive=${isActive}`);
+        // Use direct time comparison without conversion
+        const isActive = startTime <= now && endTime >= now;
+
+        console.log(`Checking booking "${booking.title}": start=${startTime.toISOString()}, end=${endTime.toISOString()}, now=${now.toISOString()}, isActive=${isActive}`);
 
         if (isActive) {
           console.log(`✓ Active meeting found: ${booking.title}`);
@@ -5883,7 +5887,7 @@ End of Report
         // Get Monday of target week
         const dayOfWeek = targetDate.getDay();
         const diff = targetDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-        const monday =      new Date(targetDate.setDate(diff));
+        const monday = new Date(targetDate.setDate(diff));
         monday.setHours(0, 0, 0, 0);
 
         const mondayStr = monday.toISOString().split('T')[0];
@@ -7198,7 +7202,7 @@ End of Report
       // Broadcast via WebSocket
       if (global.wss) {
         global.wss.clients.forEach((client: any) => {
-          if (client.readyState === 1 && client.userId) {
+          if (client.readyState === 1) { // WebSocket.OPEN
             client.send(JSON.stringify({
               type: "project_message",
               data: {
@@ -7953,47 +7957,6 @@ End of Report
       res.status(500).json({ error: "Failed to delete project" });
     }
   });
-
-  // Helper function to create notifications with proper error handling
-  async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
-    try {
-      await db
-        .insert(notifications)
-        .values({
-          userId,
-          type,
-          content,
-          referenceId: referenceId || null,
-          referenceType: referenceType || null,
-        });
-
-      // Send real-time notification via SSE
-      if (global.sseClients && global.sseClients.has(userId)) {
-        const client = global.sseClients.get(userId);
-        if (client && !client.writableEnded) {
-          try {
-            client.write(`data: ${JSON.stringify({
-              type: "notification",
-              notification: {
-                userId,
-                type,
-                content,
-                referenceId,
-                referenceType,
-                read: false,
-                createdAt: new Date().toISOString()
-              }
-            })}\n\n`);
-          } catch (error) {
-            console.error(`Error sending real-time notification to user ${userId}:`, error);
-            global.sseClients.delete(userId);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error creating notification:", error);
-    }
-  }
 
   // Create project plan
   app.post("/api/projects/:id/plans", async (req, res) => {
