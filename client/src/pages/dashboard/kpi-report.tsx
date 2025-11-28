@@ -554,6 +554,15 @@ export default function KPIReportPage() {
                                 // Get actual time spent in minutes (timeSpent is in seconds)
                                 const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
                                 
+                                // Format time display (e.g., "80 minutes (1hr 20m)")
+                                const formatTimeDisplay = (totalMinutes: number) => {
+                                  if (totalMinutes === 0) return '0 minutes';
+                                  const hours = Math.floor(totalMinutes / 60);
+                                  const minutes = totalMinutes % 60;
+                                  if (hours === 0) return `${minutes} minutes`;
+                                  return `${totalMinutes} minutes (${hours}hr ${minutes}m)`;
+                                };
+                                
                                 // Determine status
                                 let status = 'On Time';
                                 let statusColor = 'bg-green-100 text-green-800';
@@ -571,8 +580,8 @@ export default function KPIReportPage() {
                                 return (
                                   <TableRow key={`${day.date}-${idx}`}>
                                     <TableCell className="font-medium">{task.title}</TableCell>
-                                    <TableCell>{assignedMinutes}</TableCell>
-                                    <TableCell>{actualMinutes}</TableCell>
+                                    <TableCell>{formatTimeDisplay(assignedMinutes)}</TableCell>
+                                    <TableCell>{formatTimeDisplay(actualMinutes)}</TableCell>
                                     <TableCell>
                                       <Badge className={statusColor}>
                                         {status}

@@ -48,6 +48,7 @@ import {
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
+import { format } from "date-fns";
 
 // Helper function to create notifications
 async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
@@ -4049,7 +4050,7 @@ End of Report
   // Update staff complaint status (Operations Manager only)
   app.put("/api/staff-complaints/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
+      return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
@@ -5192,7 +5193,7 @@ End of Report
 
       res.json(upcomingBookings);
     } catch (error) {
-      console.error("Error fetching upcoming bookings:", error);
+      console.error("Errorfetching upcoming bookings:", error);
       res.status(500).json({ error: "Failed to fetch upcoming bookings" });
     }
   });
@@ -7091,10 +7092,9 @@ End of Report
       const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
       const isTeamLead = user.role === 'team_lead';
       const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
-      const isProductOwner = user.role === 'product_owner';
       const isClient = user.role === 'client' && project.clientId === user.id;
 
-      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isProductOwner || isClient;
+      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isClient;
 
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied - insufficient permissions" });
@@ -7221,7 +7221,7 @@ End of Report
 
       if (!hasAccess) {
         console.log(`Access denied for user ${user.id} to project ${projectId} team members. Project manager: ${project.managerId}, Client: ${project.clientId}, Membership:`, membership);
-        return res.status(403).send("Access denied - You must be a project member to view team membersst");
+        return res.status(403).send("Access denied - You must be a project member to send messages");
       }
 
       const rawMessages = await db
@@ -7310,7 +7310,7 @@ End of Report
         !!membership;
 
       if (!hasAccess) {
-        console.log(`Access denied for user ${user.id} to send team message in project ${projectId}`);
+        console.log(`Access denied for user ${user.id} to project ${projectId} team members.`);
         return res.status(403).json({ error: "Access denied - You must be a project member to send messages" });
       }
 
@@ -8742,7 +8742,7 @@ End of Report
         global.timerIntervals.delete(taskId);
       }
 
-      // Pause the timer and set status to "pending" (since timer was started before)
+      // Pause the timer and set status to "pending"
       const now = new Date();
       const [updatedTask] = await db
         .update(tasks)
