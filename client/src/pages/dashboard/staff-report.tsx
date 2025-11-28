@@ -6,28 +6,28 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Header } from "@/components/dashboard/header";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import {
   Accordion,
@@ -36,22 +36,22 @@ import {
   AccordionTrigger
 } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Loader2, 
-  Users, 
-  ClipboardList, 
-  AlertCircle, 
-  Clock, 
-  Coffee, 
+import {
+  Loader2,
+  Users,
+  ClipboardList,
+  AlertCircle,
+  Clock,
+  Coffee,
   CalendarDays,
   CheckCircle2,
   Calendar,
-  TimerOff, 
+  TimerOff,
   TimerReset,
   Play,
   UserCheck,
-  FileSpreadsheet, 
-  FileText, 
+  FileSpreadsheet,
+  FileText,
   Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,11 @@ interface StaffMember {
   taskCount: number;
   activeTasks: number;
   isCurrentlyEngaged: boolean;
+  isInMeeting?: boolean; // Added for meeting status
+  meetingInfo?: { // Added for meeting details
+    title: string;
+    scheduledBy: string;
+  } | null;
   engagedTask?: {
     staffId: number;
     taskId: number;
@@ -122,7 +127,7 @@ const statusColors = {
 
 const specializationLabels: Record<string, string> = {
   automation: "Automation",
-  copywriting: "Copy Writing", 
+  copywriting: "Copy Writing",
   design: "Design",
   media_buying: "Media Buying",
   development: "Development",
@@ -245,12 +250,12 @@ export default function StaffReport() {
       const csvRows = [];
       // CSV headers
       const headers = [
-        "ID", "Name", "Username", "Email", "Specialization", "Work Status", 
-        "Break Start Time", "Break Count", "Absence Reason", "Absence End Date", 
-        "Current Task ID", "Task Start Time", "Last Active", "Task Count", 
-        "Active Tasks", "Is Currently Engaged", "Engaged Task Title", "Engaged Project Name", 
-        "Assigned Hours", "Total Hours Spent", "Remaining Hours", "Timer Start Time", 
-        "Break Duration", "Break Overtime"
+        "ID", "Name", "Username", "Email", "Specialization", "Work Status",
+        "Break Start Time", "Break Count", "Absence Reason", "Absence End Date",
+        "Current Task ID", "Task Start Time", "Last Active", "Task Count",
+        "Active Tasks", "Is Currently Engaged", "Engaged Task Title", "Engaged Project Name",
+        "Assigned Hours", "Total Hours Spent", "Remaining Hours", "Timer Start Time",
+        "Break Duration", "Break Overtime", "In Meeting", "Meeting Title", "Scheduled By" // Added meeting info
       ];
       csvRows.push(headers.join(','));
 
@@ -281,6 +286,9 @@ export default function StaffReport() {
           staff.engagedTask?.timerStartTime ? formatDate(staff.engagedTask.timerStartTime, "yyyy-MM-dd HH:mm:ss") : "",
           staff.breakInfo?.breakDuration || "",
           staff.breakInfo?.breakOvertime || "",
+          staff.isInMeeting || false, // Added meeting status
+          staff.meetingInfo?.title || "", // Added meeting title
+          staff.meetingInfo?.scheduledBy || "", // Added scheduled by
         ];
         csvRows.push(row.join(','));
       });
@@ -349,7 +357,10 @@ export default function StaffReport() {
 
   const absentStaff = filteredStaff?.filter(staff => staff.workStatus === 'absent') || [];
 
-  // Available staff: those not absent, not on break, and not currently engaged with running timers
+  // Staff in meetings
+  const inMeetingStaff = filteredStaff?.filter(staff => staff.isInMeeting) || [];
+
+  // Available staff: those not absent, not on break, not in meeting, and not currently engaged with running timers
   const availableStaff = filteredStaff?.filter(staff => {
     // Exclude absent staff
     if (staff.workStatus === 'absent') return false;
@@ -359,6 +370,9 @@ export default function StaffReport() {
 
     // Exclude currently engaged staff (those with running timers)
     if (staff.isCurrentlyEngaged) return false;
+
+    // Exclude staff in meetings
+    if (staff.isInMeeting) return false;
 
     return true;
   }) || [];
@@ -394,16 +408,16 @@ export default function StaffReport() {
                 ))}
               </SelectContent>
             </Select>
-            <Button 
-              onClick={() => handleExport('csv')} 
+            <Button
+              onClick={() => handleExport('csv')}
               variant="outline"
               className="flex items-center"
             >
               <FileSpreadsheet className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">Export CSV</span>
             </Button>
-            <Button 
-              onClick={() => handleExport('json')} 
+            <Button
+              onClick={() => handleExport('json')}
               variant="outline"
               className="flex items-center"
             >
@@ -419,13 +433,13 @@ export default function StaffReport() {
             <CardHeader className="pb-2">
               <CardTitle className="text-md">Staff Status Overview</CardTitle>
               <CardDescription>
-                {engagedStaff.length} currently engaged | {onBreakStaff.length} on scheduled break | {absentStaff.length} absent | {availableStaff.length} available
+                {engagedStaff.length} currently engaged | {onBreakStaff.length} on scheduled break | {absentStaff.length} absent | {inMeetingStaff.length} in meeting | {availableStaff.length} available
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm text-blue-800">
-                  <strong>Automatic Break System:</strong> Staff members are automatically put on break during their scheduled break times. 
+                  <strong>Automatic Break System:</strong> Staff members are automatically put on break during their scheduled break times.
                   Running task timers are paused and will resume after the 1-hour break period.
                 </p>
               </div>
@@ -459,7 +473,7 @@ export default function StaffReport() {
                   </div>
                   <p className="mt-1 text-2xl font-bold text-red-800">{absentStaff.length}</p>
                   <p className="text-xs text-red-700">
-                    {absentStaff.filter(s => s.absenceReason === 'leave').length} on leave, 
+                    {absentStaff.filter(s => s.absenceReason === 'leave').length} on leave,
                     {absentStaff.filter(s => s.absenceReason === 'off_day').length} off day
                   </p>
                 </div>
@@ -608,7 +622,7 @@ export default function StaffReport() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Staff Member</TableHead>
-                      <TableHead>Break Started</TableHead> 
+                      <TableHead>Break Started</TableHead>
                       <TableHead className="text-center">Duration</TableHead>
                       <TableHead className="text-center">Break Type</TableHead>
                       <TableHead className="text-right">Status</TableHead>
@@ -747,6 +761,74 @@ export default function StaffReport() {
             </CardContent>
           </Card>
 
+          {/* In Meeting Staff Section */}
+          <Card className="border-purple-200">
+            <CardHeader className="pb-2 border-b border-purple-100">
+              <div className="flex items-center">
+                <div className="bg-purple-100 p-1.5 rounded-full mr-2">
+                  <CalendarDays className="h-5 w-5 text-purple-700" /> {/* Using CalendarDays as a placeholder icon */}
+                </div>
+                <div>
+                  <CardTitle className="text-md">Staff in Meeting</CardTitle>
+                  <CardDescription>
+                    {inMeetingStaff.length} staff members currently in a booked meeting
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {inMeetingStaff.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff Member</TableHead>
+                      <TableHead>Meeting Title</TableHead>
+                      <TableHead>Scheduled By</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {inMeetingStaff.map((staff) => (
+                      <TableRow key={staff.id}>
+                        <TableCell>
+                          <div className="font-medium">{staff.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {staff.specialization ? specializationLabels[staff.specialization] : 'No specialization'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-purple-50 border-purple-200 text-purple-800">
+                            {staff.meetingInfo?.title || 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-purple-50 border-purple-200 text-purple-800">
+                            {staff.meetingInfo?.scheduledBy || 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">
+                            In Meeting
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="bg-purple-50 p-3 rounded-full mb-3">
+                    <CalendarDays className="h-6 w-6 text-purple-500" />
+                  </div>
+                  <h3 className="text-md font-medium mb-1">No Staff in Meetings</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Currently, no staff members are in booked meetings.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Available Staff Section */}
           <Card className="border-blue-200">
             <CardHeader className="pb-2 border-b border-blue-100">
@@ -820,7 +902,7 @@ export default function StaffReport() {
                   </div>
                   <h3 className="text-md font-medium mb-1">No Available Staff</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
-                    All staff members are currently engaged, on break, or absent.
+                    All staff members are currently engaged, on break, absent, or in a meeting.
                   </p>
                 </div>
               )}

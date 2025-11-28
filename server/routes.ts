@@ -1544,6 +1544,29 @@ End of Report
         .leftJoin(projects, eq(tasks.projectId, projects.id))
         .where(inArray(tasks.assigneeId, staffMembers.map(s => s.id)));
 
+      // Get all bookings to check for current meetings
+      const now = new Date();
+      const allBookings = await db
+        .select({
+          id: bookings.id,
+          title: bookings.title,
+          scheduledBy: bookings.scheduledBy,
+          participants: bookings.participants,
+          startTime: bookings.startTime,
+          endTime: bookings.endTime,
+          status: bookings.status,
+          schedulerName: users.name,
+        })
+        .from(bookings)
+        .leftJoin(users, eq(bookings.scheduledBy, users.id))
+        .where(
+          and(
+            eq(bookings.status, "scheduled"),
+            sql`${bookings.startTime} <= ${now}`,
+            sql`${bookings.endTime} >= ${now}`
+          )
+        );
+
       // Process staff data
       const staffReport = staffMembers.map(staff => {
         const staffTasks = allTasks.filter(task => task.assigneeId === staff.id);
@@ -1551,6 +1574,11 @@ End of Report
 
         // Find currently engaged task (timer running)
         const engagedTask = staffTasks.find(task => task.isTimerRunning);
+
+        // Check if staff is in a meeting
+        const currentMeeting = allBookings.find(booking => 
+          Array.isArray(booking.participants) && booking.participants.includes(staff.id)
+        );
 
         // Calculate engagement info
         let engagedTaskInfo = null;
@@ -1598,6 +1626,20 @@ End of Report
           absentDaysRemaining = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
         }
 
+        // Format meeting info
+        let meetingInfo = null;
+        if (currentMeeting) {
+          meetingInfo = {
+            staffId: staff.id,
+            meetingId: currentMeeting.id,
+            meetingTitle: currentMeeting.title,
+            scheduledBy: currentMeeting.scheduledBy,
+            schedulerName: currentMeeting.schedulerName,
+            startTime: currentMeeting.startTime,
+            endTime: currentMeeting.endTime,
+          };
+        }
+
         return {
           id: staff.id,
           name: staff.name,
@@ -1631,6 +1673,8 @@ End of Report
           engagedTask: engagedTaskInfo,
           breakInfo,
           absentDaysRemaining,
+          isInMeeting: !!currentMeeting,
+          meetingInfo,
         };
       });
 
