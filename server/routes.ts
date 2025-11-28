@@ -12,6 +12,7 @@ import {
   users,
   projects,
   tasks,
+  taskSessions,
   projectMembers,
   projectPlans,
   deliverables,
@@ -1191,40 +1192,62 @@ export function registerRoutes(app: Express): Server {
         });
       });
 
-      // Process each task and calculate productivity
-      allUserTasks.forEach(task => {
-        const updateDate = new Date(task.updatedAt);
-        const dateKey = updateDate.toISOString().split('T')[0];
+      // Get all sessions for the staff member within the date range
+      const allSessions = await db
+        .select()
+        .from(taskSessions)
+        .where(and(
+          eq(taskSessions.userId, staffIdNum),
+          gte(taskSessions.startTime, start),
+          sql`${taskSessions.startTime} <= ${end}`
+        ));
 
-        // Only process tasks within the date range
+      // Process each session and group by day
+      allSessions.forEach(session => {
+        if (!session.startTime) return;
+        
+        const sessionDate = new Date(session.startTime);
+        const dateKey = sessionDate.toISOString().split('T')[0];
+
         if (!dailyMap.has(dateKey)) return;
 
         const dailyData = dailyMap.get(dateKey);
 
-        // Calculate allocated time (Total Span) from workingHours and workingMinutes
+        // Calculate session duration
+        let sessionDuration = 0;
+        if (session.duration) {
+          // Completed session
+          sessionDuration = session.duration;
+        } else if (session.endTime === null) {
+          // Currently running session
+          const now = new Date();
+          sessionDuration = Math.floor((now.getTime() - new Date(session.startTime).getTime()) / 1000);
+        }
+
+        if (sessionDuration > 0) {
+          const sessionHours = sessionDuration / 3600;
+          dailyData.actualWorkHours += sessionHours;
+          
+          // Find the task for this session to get its title
+          const task = allUserTasks.find(t => t.id === session.taskId);
+          if (task && !dailyData.tasks.includes(task.title)) {
+            dailyData.tasks.push(task.title);
+            dailyData.taskCount += 1;
+          }
+        }
+      });
+
+      // Calculate allocated time (Total Span) from task working hours
+      allUserTasks.forEach(task => {
+        const updateDate = new Date(task.updatedAt);
+        const dateKey = updateDate.toISOString().split('T')[0];
+
+        if (!dailyMap.has(dateKey)) return;
+
+        const dailyData = dailyMap.get(dateKey);
         const allocatedHours = (task.workingHours || 0) + ((task.workingMinutes || 0) / 60);
         if (allocatedHours > 0) {
           dailyData.totalSpanHours += allocatedHours;
-        }
-
-        // Calculate actual work time from timeSpent
-        let actualHours = 0;
-        if (task.isTimerRunning && task.timerStartTime) {
-          // For currently running timers, add current session time
-          const sessionTime = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
-          const currentTimeSpent = (task.timeSpent || 0) + sessionTime;
-          actualHours = currentTimeSpent / 3600;
-        } else if (task.timeSpent && task.timeSpent > 0) {
-          // For stopped timers, use the recorded timeSpent
-          actualHours = task.timeSpent / 3600;
-        }
-
-        if (actualHours > 0) {
-          dailyData.actualWorkHours += actualHours;
-          dailyData.taskCount += 1;
-          if (!dailyData.tasks.includes(task.title)) {
-            dailyData.tasks.push(task.title);
-          }
         }
       });
 
@@ -1393,21 +1416,35 @@ export function registerRoutes(app: Express): Server {
 
       const projectMap = new Map(projectsData.map(p => [p.id, p.name]));
 
-      // Process today's data with current timer sessions
+      // Get all task sessions for today
+      const todaySessions = await db
+        .select()
+        .from(taskSessions)
+        .where(and(
+          eq(taskSessions.userId, user.id),
+          gte(taskSessions.startTime, startOfDay),
+          sql`${taskSessions.startTime} <= ${endOfDay}`
+        ));
+
+      // Process today's data with session-based calculation
       const todayTaskBreakdown = todayTasks.map(task => {
-        let currentTimeSpent = task.timeSpent || 0;
+        // Get all completed sessions for this task today
+        const taskSessions = todaySessions.filter(s => s.taskId === task.id && s.duration);
+        const completedSessionTime = taskSessions.reduce((sum, s) => sum + (s.duration || 0), 0);
 
         // Add current session time if timer is running
+        let currentSessionTime = 0;
         if (task.isTimerRunning && task.timerStartTime) {
-          const sessionTime = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
-          currentTimeSpent += sessionTime;
+          currentSessionTime = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
         }
+
+        const totalTimeSpent = completedSessionTime + currentSessionTime;
 
         return {
           taskId: task.id,
           title: task.title,
           projectName: projectMap.get(task.projectId) || "Unknown Project",
-          timeSpent: currentTimeSpent,
+          timeSpent: totalTimeSpent,
           status: task.status,
           isCompleted: task.status === 'completed',
           workingHours: task.workingHours || 8,
@@ -1416,7 +1453,7 @@ export function registerRoutes(app: Express): Server {
         };
       });
 
-      // Calculate total time including running timers
+      // Calculate total time from all sessions
       const totalTimeWorked = todayTaskBreakdown.reduce((total, task) => total + task.timeSpent, 0);
 
       const todayData = {
@@ -2343,6 +2380,16 @@ End of Report
 
       // Start the timer and set status to in_progress
       const now = new Date();
+      
+      // Create a new session
+      await db
+        .insert(taskSessions)
+        .values({
+          taskId,
+          userId: user.id,
+          startTime: now,
+        });
+
       const [updatedTask] = await db
         .update(tasks)
         .set({
@@ -2465,9 +2512,41 @@ End of Report
         return res.status(404).json({ error: "Task not found, not assigned to you, or timer not running" });
       }
 
-      // Calculate elapsed time
-      const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime!).getTime()) / 1000);
-      const newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
+      const now = new Date();
+      const sessionDuration = Math.floor((now.getTime() - new Date(task.timerStartTime!).getTime()) / 1000);
+
+      // Find and close the current session
+      const [currentSession] = await db
+        .select()
+        .from(taskSessions)
+        .where(and(
+          eq(taskSessions.taskId, taskId),
+          eq(taskSessions.userId, user.id),
+          isNull(taskSessions.endTime)
+        ))
+        .orderBy(desc(taskSessions.startTime))
+        .limit(1);
+
+      if (currentSession) {
+        await db
+          .update(taskSessions)
+          .set({
+            endTime: now,
+            duration: sessionDuration,
+          })
+          .where(eq(taskSessions.id, currentSession.id));
+      }
+
+      // Calculate total time spent from all sessions
+      const allSessions = await db
+        .select()
+        .from(taskSessions)
+        .where(and(
+          eq(taskSessions.taskId, taskId),
+          isNotNull(taskSessions.duration)
+        ));
+
+      const totalTimeSpent = allSessions.reduce((sum, session) => sum + (session.duration || 0), 0);
 
       // Clear the timer interval
       if (global.timerIntervals && global.timerIntervals.has(taskId)) {
@@ -2475,13 +2554,12 @@ End of Report
         global.timerIntervals.delete(taskId);
       }
 
-      // Pause the timer and set status to "pending" (since timer was started before)
-      const now = new Date();
+      // Pause the timer and set status to "pending"
       const [updatedTask] = await db
         .update(tasks)
         .set({
           isTimerRunning: false,
-          timeSpent: newTimeSpent,
+          timeSpent: totalTimeSpent,
           timerStartTime: null,
           status: "pending",
           updatedAt: now

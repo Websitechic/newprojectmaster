@@ -168,12 +168,22 @@ export const tasks = pgTable("tasks", {
   deadline: timestamp("deadline"),
   workingHours: integer('working_hours').default(0),
   workingMinutes: integer('working_minutes').default(0),
-  timeSpent: integer("time_spent").default(0), // in seconds
+  timeSpent: integer("time_spent").default(0), // in seconds - total cumulative time
   isTimerRunning: boolean("is_timer_running").default(false),
   timerStartTime: timestamp("timer_start_time"),
   hasBeenStarted: boolean("has_been_started").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const taskSessions = pgTable("task_sessions", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  duration: integer("duration"), // in seconds - calculated when session ends
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const messages = pgTable("messages", {
@@ -242,7 +252,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   messages: many(messages),
 }));
 
-export const tasksRelations = relations(tasks, ({ one }) => ({
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
   project: one(projects, {
     fields: [tasks.projectId],
     references: [projects.id],
@@ -253,6 +263,18 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   }),
   assigner: one(users, {
     fields: [tasks.assignedBy],
+    references: [users.id],
+  }),
+  sessions: many(taskSessions),
+}));
+
+export const taskSessionsRelations = relations(taskSessions, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskSessions.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [taskSessions.userId],
     references: [users.id],
   }),
 }));
@@ -504,6 +526,7 @@ export const selectDirectMessageSchema = createSelectSchema(directMessages);
 export type User = typeof users.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type TaskSession = typeof taskSessions.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
 export type Performance = typeof performance.$inferSelect;
@@ -521,6 +544,9 @@ export const selectBookingSchema = createSelectSchema(bookings);
 
 export const insertMessageReadReceiptSchema = createInsertSchema(messageReadReceipts);
 export const selectMessageReadReceiptSchema = createSelectSchema(messageReadReceipts);
+
+export const insertTaskSessionSchema = createInsertSchema(taskSessions);
+export const selectTaskSessionSchema = createSelectSchema(taskSessions);
 
 // Resources table for file uploads and links
 export const resources = pgTable("resources", {
