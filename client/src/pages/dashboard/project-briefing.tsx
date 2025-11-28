@@ -24,7 +24,8 @@ import {
   AlertCircle,
   Plus,
   Eye,
-  Search
+  Search,
+  Edit
 } from "lucide-react";
 import {
   AlertDialog,
@@ -45,6 +46,23 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+
+// Function to render formatted text
+function renderFormattedText(text: string) {
+  if (!text) return '';
+  
+  // Replace markdown bold with <strong>
+  let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Replace markdown italic with <em>
+  formatted = formatted.replace(/(?<!\*)\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>');
+  
+  // Keep underline tags as is (already HTML)
+  // Convert line breaks
+  formatted = formatted.replace(/\n/g, '<br />');
+  
+  return formatted;
+}
 
 interface ProjectBriefing {
   id: number;
@@ -203,6 +221,7 @@ export default function ProjectBriefing() {
   const queryClient = useQueryClient();
 
   const [isCreating, setIsCreating] = useState(false);
+  const [editingBriefing, setEditingBriefing] = useState<ProjectBriefing | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     projectName: "",
@@ -291,6 +310,39 @@ export default function ProjectBriefing() {
     },
   });
 
+  // Update briefing mutation
+  const updateBriefingMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: typeof formData }) => {
+      const response = await fetch(`/api/project-briefings/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update project briefing");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/project-briefings"] });
+      setEditingBriefing(null);
+      resetForm();
+      toast({
+        title: "Success",
+        description: "Project briefing updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Delete briefing mutation
   const deleteBriefingMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -338,7 +390,12 @@ export default function ProjectBriefing() {
       });
       return;
     }
-    createBriefingMutation.mutate(formData);
+    
+    if (editingBriefing) {
+      updateBriefingMutation.mutate({ id: editingBriefing.id, data: formData });
+    } else {
+      createBriefingMutation.mutate(formData);
+    }
   };
 
   const categories = [
@@ -387,11 +444,11 @@ export default function ProjectBriefing() {
               </div>
             )}
 
-            {/* Create Form */}
-            {isCreating && (
+            {/* Create/Edit Form */}
+            {(isCreating || editingBriefing) && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Create Project Briefing</CardTitle>
+                  <CardTitle>{editingBriefing ? 'Edit' : 'Create'} Project Briefing</CardTitle>
                   <CardDescription>Fill in the project details below</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -452,14 +509,18 @@ export default function ProjectBriefing() {
                         variant="outline"
                         onClick={() => {
                           setIsCreating(false);
+                          setEditingBriefing(null);
                           resetForm();
                         }}
                       >
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={createBriefingMutation.isPending}>
+                      <Button type="submit" disabled={createBriefingMutation.isPending || updateBriefingMutation.isPending}>
                         <Save size={16} className="mr-1" />
-                        {createBriefingMutation.isPending ? "Saving..." : "Save Briefing"}
+                        {editingBriefing 
+                          ? (updateBriefingMutation.isPending ? "Updating..." : "Update Briefing")
+                          : (createBriefingMutation.isPending ? "Saving..." : "Save Briefing")
+                        }
                       </Button>
                     </div>
                   </form>
@@ -503,6 +564,23 @@ export default function ProjectBriefing() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            title="Edit Briefing"
+                            onClick={() => {
+                              setEditingBriefing(briefing);
+                              setFormData({
+                                projectName: briefing.projectName,
+                                clientName: briefing.clientName,
+                                category: briefing.category,
+                                projectDetails: briefing.projectDetails,
+                              });
+                              setIsCreating(false);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 text-green-600" />
+                          </Button>
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button variant="ghost" size="sm" title="View Details">
@@ -525,7 +603,10 @@ export default function ProjectBriefing() {
                                 <div>
                                   <h3 className="font-medium text-sm text-gray-700 mb-1">Project Details</h3>
                                   <div className="prose prose-sm max-w-none">
-                                    <p className="text-gray-700 whitespace-pre-wrap">{briefing.projectDetails}</p>
+                                    <div 
+                                      className="text-gray-700 whitespace-pre-wrap"
+                                      dangerouslySetInnerHTML={{ __html: renderFormattedText(briefing.projectDetails) }}
+                                    />
                                   </div>
                                 </div>
                                 <div>

@@ -2473,7 +2473,7 @@ End of Report
             global.connectedClients.forEach((client) => {
               if (client.readyState === 1) {
                 try {
-                  client.send(JSON.stringify({
+                  client.send(JSON.JSON.stringify({
                     type: 'task_timer_update',
                     data: {
                       taskId: currentTask.id,
@@ -3292,6 +3292,55 @@ End of Report
     }
   });
 
+// Update project briefing
+  app.put("/api/project-briefings/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user as User;
+    const hasAccess = user.role === "project_manager" || 
+                     user.role === "operations_manager" || 
+                     user.role === "team_lead" ||
+                     user.role === "customer_support_officer" ||
+                     user.specialization === "operations_manager";
+
+    if (!hasAccess) {
+      return res.status(403).send("Access denied");
+    }
+
+    const { id } = req.params;
+    const { projectName, clientName, category, projectDetails } = req.body;
+
+    if (!projectName || !clientName || !category || !projectDetails) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    try {
+      const [updatedBriefing] = await db
+        .update(projectBriefings)
+        .set({
+          projectName,
+          clientName,
+          category,
+          projectDetails,
+          updatedAt: new Date(),
+        })
+        .where(eq(projectBriefings.id, parseInt(id)))
+        .returning();
+
+      if (!updatedBriefing) {
+        return res.status(404).json({ error: "Project briefing not found" });
+      }
+
+      res.json(updatedBriefing);
+    } catch (error) {
+      console.error("Error updating project briefing:", error);
+      res.status(500).json({ error: "Failed to update project briefing" });
+    }
+  });
+
+  // Delete project briefing
   app.delete("/api/project-briefings/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -4827,8 +4876,7 @@ End of Report
 
     try {
       await db
-        .update(directMessages)
-        .set({ read: true })
+        .update(directMessages).set({ read: true })
         .where(
           and(
             eq(directMessages.senderId, otherUserId),
@@ -7009,7 +7057,7 @@ End of Report
     const projectId = parseInt(req.params.id);
 
     try {
-      // Check project access
+      // Check if project exists and user has access
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
@@ -9102,16 +9150,19 @@ End of Report
         return res.status(400).json({ error: "Timer is not running" });
       }
 
-      // Calculate session duration
-      const sessionDuration = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
-      const newTimeSpent = (task.timeSpent || 0) + sessionDuration;
+      // Calculate final time if timer is running
+      let finalTimeSpent = task.timeSpent || 0;
+      if (task.isTimerRunning && task.timerStartTime) {
+        const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
+        finalTimeSpent += elapsedSeconds;
+      }
 
       // Update task with accumulated time and pause timer
       const [updatedTask] = await db
         .update(tasks)
         .set({
           isTimerRunning: false,
-          timeSpent: newTimeSpent,
+          timeSpent: finalTimeSpent,
           timerStartTime: null,
         })
         .where(eq(tasks.id, taskId))
@@ -9209,8 +9260,8 @@ End of Report
           status: "completed",
           progress: 100,
           isTimerRunning: false,
-          timerStartTime: null,
           timeSpent: finalTimeSpent,
+          timerStartTime: null,
           updatedAt: new Date(),
         })
         .where(eq(tasks.id, taskId))
