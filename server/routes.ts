@@ -4321,6 +4321,10 @@ End of Report
         return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
       }
 
+      if (!name.trim() || !email.trim() || !detailedExplanation.trim()) {
+        return res.status(400).json({ error: "Fields cannot be empty" });
+      }
+
       // Handle screenshot if uploaded
       let screenshotUrl = null;
       if (req.file) {
@@ -4333,13 +4337,15 @@ End of Report
         .values({
           name: name.trim(),
           email: email.trim(),
-          department: department || null,
+          department: department?.trim() || null,
           detailedExplanation: detailedExplanation.trim(),
           screenshotUrl,
           submitterId: user.id,
           status: "pending",
         })
         .returning();
+
+      console.log("Staff complaint created successfully:", newComplaint.id);
 
       // Create notifications for operations managers
       try {
@@ -4352,26 +4358,25 @@ End of Report
           ));
 
         for (const manager of operationsManagers) {
-          await db
-            .insert(notifications)
-            .values({
-              userId: manager.id,
-              type: "task_assigned", // Using existing type
-              content: `New staff complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
-              referenceId: newComplaint.id,
-              referenceType: "project", // Using existing type
-            });
+          await createNotification(
+            manager.id,
+            "task_assigned",
+            `New staff complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
+            newComplaint.id,
+            "project"
+          );
         }
 
         console.log(`Notifications sent to ${operationsManagers.length} operations managers`);
       } catch (notificationError) {
         console.error("Error creating staff complaint notifications:", notificationError);
+        // Continue execution even if notification fails
       }
 
       res.json({ success: true, complaintId: newComplaint.id });
     } catch (error) {
       console.error("Error creating staff complaint:", error);
-      res.status(500).json({ error: "Failed to create staff complaint", details: error.message });
+      res.status(500).json({ error: "Failed to create staff complaint", details: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
