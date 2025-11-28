@@ -3240,7 +3240,16 @@ End of Report
 
     try {
       const briefings = await db
-        .select()
+        .select({
+          id: projectBriefings.id,
+          projectName: projectBriefings.projectName,
+          clientName: projectBriefings.clientName,
+          category: projectBriefings.category,
+          projectDetails: projectBriefings.projectDetails,
+          createdBy: projectBriefings.createdBy,
+          createdAt: projectBriefings.createdAt,
+          updatedAt: projectBriefings.updatedAt,
+        })
         .from(projectBriefings)
         .orderBy(desc(projectBriefings.createdAt));
 
@@ -3277,13 +3286,22 @@ End of Report
       const [newBriefing] = await db
         .insert(projectBriefings)
         .values({
-          projectName,
-          clientName,
-          category,
-          projectDetails,
+          projectName: projectName,
+          clientName: clientName,
+          category: category,
+          projectDetails: projectDetails,
           createdBy: user.id,
         })
-        .returning();
+        .returning({
+          id: projectBriefings.id,
+          projectName: projectBriefings.projectName,
+          clientName: projectBriefings.clientName,
+          category: projectBriefings.category,
+          projectDetails: projectBriefings.projectDetails,
+          createdBy: projectBriefings.createdBy,
+          createdAt: projectBriefings.createdAt,
+          updatedAt: projectBriefings.updatedAt,
+        });
 
       res.json(newBriefing);
     } catch (error) {

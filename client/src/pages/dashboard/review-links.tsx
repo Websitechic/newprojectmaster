@@ -214,7 +214,7 @@ export default function ReviewLinks() {
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {isProjectManager ? "Assigned Reviews" : "Send for Review"}
+                  {isProjectManager ? "Send for Review" : "Assigned Reviews"}
                 </h1>
                 <p className="text-gray-600 mt-1">
                   {isProjectManager
