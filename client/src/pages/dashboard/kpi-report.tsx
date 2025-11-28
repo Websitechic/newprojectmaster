@@ -97,7 +97,7 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
           <span className="text-sm font-medium text-gray-900 block">
             {day.taskCount} task{day.taskCount !== 1 ? 's' : ''}
           </span>
-          {day.tasks.length > 0 && (
+          {day.tasks && day.tasks.length > 0 && (
             <div className="space-y-1">
               {displayTasks.map((task, taskIndex) => (
                 <div 
@@ -480,13 +480,23 @@ export default function KPIReportPage() {
                             <div className="text-lg font-semibold text-gray-900">
                               Productivity Calculation
                             </div>
-                            <div className="flex items-center justify-center gap-2 text-2xl font-mono">
+                            <div className="flex items-center justify-center gap-2 text-xl">
                               <span>Productivity % = </span>
                               <span className="inline-flex items-center">
                                 (<span className="mx-1">
                                   {(() => {
-                                    // Get unique tasks from taskBreakdown
-                                    const uniqueTasks = productivityData.dailyData[0]?.taskBreakdown || [];
+                                    // Get all unique tasks from all days in the date range
+                                    const allTasks = new Map();
+                                    productivityData.dailyData.forEach((day: any) => {
+                                      if (day.taskBreakdown) {
+                                        day.taskBreakdown.forEach((task: any) => {
+                                          if (!allTasks.has(task.id)) {
+                                            allTasks.set(task.id, task);
+                                          }
+                                        });
+                                      }
+                                    });
+                                    const uniqueTasks = Array.from(allTasks.values());
                                     const totalAssigned = uniqueTasks.reduce((sum: number, task: any) => 
                                       sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
                                     return totalAssigned;
@@ -497,8 +507,18 @@ export default function KPIReportPage() {
                               <span className="inline-flex items-center">
                                 (<span className="mx-1">
                                   {(() => {
-                                    // Get unique tasks from taskBreakdown
-                                    const uniqueTasks = productivityData.dailyData[0]?.taskBreakdown || [];
+                                    // Get all unique tasks from all days in the date range
+                                    const allTasks = new Map();
+                                    productivityData.dailyData.forEach((day: any) => {
+                                      if (day.taskBreakdown) {
+                                        day.taskBreakdown.forEach((task: any) => {
+                                          if (!allTasks.has(task.id)) {
+                                            allTasks.set(task.id, task);
+                                          }
+                                        });
+                                      }
+                                    });
+                                    const uniqueTasks = Array.from(allTasks.values());
                                     const totalActual = uniqueTasks.reduce((sum: number, task: any) => 
                                       sum + Math.floor((task.timeSpent || 0) / 60), 0);
                                     return totalActual;
@@ -508,7 +528,17 @@ export default function KPIReportPage() {
                               <span>× 100 = </span>
                               <span className="text-blue-600 font-bold">
                                 {(() => {
-                                  const uniqueTasks = productivityData.dailyData[0]?.taskBreakdown || [];
+                                  const allTasks = new Map();
+                                  productivityData.dailyData.forEach((day: any) => {
+                                    if (day.taskBreakdown) {
+                                      day.taskBreakdown.forEach((task: any) => {
+                                        if (!allTasks.has(task.id)) {
+                                          allTasks.set(task.id, task);
+                                        }
+                                      });
+                                    }
+                                  });
+                                  const uniqueTasks = Array.from(allTasks.values());
                                   const totalAssigned = uniqueTasks.reduce((sum: number, task: any) => 
                                     sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
                                   const totalActual = uniqueTasks.reduce((sum: number, task: any) => 
@@ -523,7 +553,17 @@ export default function KPIReportPage() {
                                 ℹ️ This means the worker was
                                 <span className="font-semibold text-blue-600">
                                   {(() => {
-                                    const uniqueTasks = productivityData.dailyData[0]?.taskBreakdown || [];
+                                    const allTasks = new Map();
+                                    productivityData.dailyData.forEach((day: any) => {
+                                      if (day.taskBreakdown) {
+                                        day.taskBreakdown.forEach((task: any) => {
+                                          if (!allTasks.has(task.id)) {
+                                            allTasks.set(task.id, task);
+                                          }
+                                        });
+                                      }
+                                    });
+                                    const uniqueTasks = Array.from(allTasks.values());
                                     const totalAssigned = uniqueTasks.reduce((sum: number, task: any) => 
                                       sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
                                     const totalActual = uniqueTasks.reduce((sum: number, task: any) => 
@@ -550,8 +590,18 @@ export default function KPIReportPage() {
                           </TableHeader>
                           <TableBody>
                             {(() => {
-                              // Get unique tasks from taskBreakdown (no duplicates)
-                              const uniqueTasks = productivityData.dailyData[0]?.taskBreakdown || [];
+                              // Get all unique tasks from all days in the date range
+                              const allTasks = new Map();
+                              productivityData.dailyData.forEach((day: any) => {
+                                if (day.taskBreakdown) {
+                                  day.taskBreakdown.forEach((task: any) => {
+                                    if (!allTasks.has(task.id)) {
+                                      allTasks.set(task.id, task);
+                                    }
+                                  });
+                                }
+                              });
+                              const uniqueTasks = Array.from(allTasks.values());
                               
                               return uniqueTasks.map((task: any) => {
                                 // Get assigned time in minutes
@@ -600,7 +650,17 @@ export default function KPIReportPage() {
                               <TableCell>Total</TableCell>
                               <TableCell>
                                 {(() => {
-                                  const uniqueTasks = productivityData.dailyData[0]?.taskBreakdown || [];
+                                  const allTasks = new Map();
+                                  productivityData.dailyData.forEach((day: any) => {
+                                    if (day.taskBreakdown) {
+                                      day.taskBreakdown.forEach((task: any) => {
+                                        if (!allTasks.has(task.id)) {
+                                          allTasks.set(task.id, task);
+                                        }
+                                      });
+                                    }
+                                  });
+                                  const uniqueTasks = Array.from(allTasks.values());
                                   const totalAssigned = uniqueTasks.reduce((sum: number, task: any) => 
                                     sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
                                   return totalAssigned;
@@ -608,7 +668,17 @@ export default function KPIReportPage() {
                               </TableCell>
                               <TableCell>
                                 {(() => {
-                                  const uniqueTasks = productivityData.dailyData[0]?.taskBreakdown || [];
+                                  const allTasks = new Map();
+                                  productivityData.dailyData.forEach((day: any) => {
+                                    if (day.taskBreakdown) {
+                                      day.taskBreakdown.forEach((task: any) => {
+                                        if (!allTasks.has(task.id)) {
+                                          allTasks.set(task.id, task);
+                                        }
+                                      });
+                                    }
+                                  });
+                                  const uniqueTasks = Array.from(allTasks.values());
                                   const totalActual = uniqueTasks.reduce((sum: number, task: any) => 
                                     sum + Math.floor((task.timeSpent || 0) / 60), 0);
                                   return totalActual;
