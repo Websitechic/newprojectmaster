@@ -90,12 +90,16 @@ export function BookingAlert() {
   };
 
   const getTimeText = (startTime: string, endTime: string) => {
+    // Extract time portion directly from ISO string to avoid timezone conversion
+    const startTimeStr = startTime.slice(11, 16); // HH:MM
+    const endTimeStr = endTime.slice(11, 16);
+    
     if (isToday(startTime)) {
-      return `Today at ${format(new Date(startTime), "h:mm a")} - ${format(new Date(endTime), "h:mm a")}`;
+      return `Today at ${startTimeStr} - ${endTimeStr}`;
     } else if (isTomorrow(startTime)) {
-      return `Tomorrow at ${format(new Date(startTime), "h:mm a")} - ${format(new Date(endTime), "h:mm a")}`;
+      return `Tomorrow at ${startTimeStr} - ${endTimeStr}`;
     } else {
-      return `${format(new Date(startTime), "MMM d, yyyy 'at' h:mm a")} - ${format(new Date(endTime), "h:mm a")}`;
+      return `${format(new Date(startTime), "MMM d, yyyy")} at ${startTimeStr} - ${endTimeStr}`;
     }
   };
 

@@ -219,13 +219,7 @@ export default function Bookings() {
       return;
     }
 
-    // Create booking with exact times from datetime-local input
-    const bookingData = {
-      ...formData,
-      startTime: formData.startTime, // datetime-local already provides ISO string
-      endTime: formData.endTime
-    };
-    createBookingMutation.mutate(bookingData);
+    createBookingMutation.mutate(formData);
   };
 
   const handleParticipantToggle = (userId: number) => {
@@ -378,6 +372,7 @@ export default function Bookings() {
                     value={formData.startTime}
                     onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
                     required
+                    step="60"
                   />
                 </div>
 
@@ -389,6 +384,7 @@ export default function Bookings() {
                     value={formData.endTime}
                     onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
                     required
+                    step="60"
                   />
                 </div>
               </div>
@@ -521,7 +517,7 @@ export default function Bookings() {
                         {format(new Date(booking.startTime), "MMM d, yyyy")}
                       </p>
                       <p className="text-gray-500">
-                        {new Date(booking.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - {new Date(booking.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        {booking.startTime.slice(11, 16)} - {booking.endTime.slice(11, 16)}
                       </p>
                     </div>
                   </div>

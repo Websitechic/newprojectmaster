@@ -4991,6 +4991,9 @@ End of Report
     try {
       const { title, description, type, participants, startTime, endTime, meetingLink, notes } = req.body;
 
+      // Parse datetime-local values preserving the exact time
+      // datetime-local format: "2024-01-15T14:30" (no timezone)
+      // We treat this as the user's intended time without conversion
       const [newBooking] = await db
         .insert(bookings)
         .values({
@@ -4999,8 +5002,8 @@ End of Report
           type,
           scheduledBy: user.id,
           participants,
-          startTime: new Date(startTime),
-          endTime: new Date(endTime),
+          startTime: new Date(startTime + ':00.000Z'), // Append seconds and treat as UTC to prevent conversion
+          endTime: new Date(endTime + ':00.000Z'),
           status: "scheduled",
           meetingLink,
           notes,
