@@ -1187,6 +1187,7 @@ export function registerRoutes(app: Express): Server {
           performanceColor: '#EF4444',
           taskCount: 0,
           tasks: [],
+          taskDetails: [], // Initialize taskDetails for breakdown
           workdayStart: null,
           workdayEnd: null
         });
@@ -1205,7 +1206,7 @@ export function registerRoutes(app: Express): Server {
       // Process each session and group by day
       allSessions.forEach(session => {
         if (!session.startTime) return;
-        
+
         const sessionDate = new Date(session.startTime);
         const dateKey = sessionDate.toISOString().split('T')[0];
 
@@ -1227,12 +1228,30 @@ export function registerRoutes(app: Express): Server {
         if (sessionDuration > 0) {
           const sessionHours = sessionDuration / 3600;
           dailyData.actualWorkHours += sessionHours;
-          
-          // Find the task for this session to get its title
+
+          // Find the task for this session to get its title and details
           const task = allUserTasks.find(t => t.id === session.taskId);
-          if (task && !dailyData.tasks.includes(task.title)) {
-            dailyData.tasks.push(task.title);
-            dailyData.taskCount += 1;
+          if (task) {
+            // Check if task title is already added to avoid duplicates in the task list
+            if (!dailyData.tasks.includes(task.title)) {
+              dailyData.tasks.push(task.title);
+              dailyData.taskCount += 1;
+            }
+
+            // Add task details for breakdown (ensure unique entries per task)
+            const existingTaskDetailIndex = dailyData.taskDetails.findIndex((detail: any) => detail.id === task.id);
+            if (existingTaskDetailIndex === -1) {
+              dailyData.taskDetails.push({
+                id: task.id,
+                title: task.title,
+                workingHours: task.workingHours || 0,
+                workingMinutes: task.workingMinutes || 0,
+                timeSpent: sessionHours // Add current session hours
+              });
+            } else {
+              // Update existing task detail with additional time spent
+              dailyData.taskDetails[existingTaskDetailIndex].timeSpent += sessionHours;
+            }
           }
         }
       });
@@ -1248,6 +1267,16 @@ export function registerRoutes(app: Express): Server {
         const allocatedHours = (task.workingHours || 0) + ((task.workingMinutes || 0) / 60);
         if (allocatedHours > 0) {
           dailyData.totalSpanHours += allocatedHours;
+        }
+
+        // Update workday start/end times
+        const taskStartDate = new Date(task.startDate || task.createdAt);
+        if (!dailyData.workdayStart || taskStartDate < new Date(dailyData.workdayStart)) {
+          dailyData.workdayStart = taskStartDate.toISOString();
+        }
+        const taskEndDate = new Date(task.endDate || task.updatedAt);
+        if (!dailyData.workdayEnd || taskEndDate > new Date(dailyData.workdayEnd)) {
+          dailyData.workdayEnd = taskEndDate.toISOString();
         }
       });
 
@@ -1271,7 +1300,38 @@ export function registerRoutes(app: Express): Server {
         }
       });
 
-      const dailyData = Array.from(dailyMap.values());
+      // Convert map to array and include taskBreakdown
+      const dailyData = Array.from(dailyMap.values()).map(day => {
+        // Recalculate actualWorkHours based on processed taskDetails to ensure accuracy
+        const totalActualWorkHours = day.taskDetails.reduce((sum, detail: any) => sum + detail.timeSpent, 0);
+
+        let performanceStatus: 'poor' | 'fair' | 'good' = 'poor';
+        let performanceColor = '#EF4444';
+
+        if (totalActualWorkHours >= 4) {
+          performanceStatus = 'good';
+          performanceColor = '#10B981';
+        } else if (totalActualWorkHours >= 2) {
+          performanceStatus = 'fair';
+          performanceColor = '#F59E0B';
+        }
+
+        return {
+          date: day.date,
+          totalSpanHours: day.totalSpanHours, // Use calculated totalSpanHours
+          actualWorkHours: totalActualWorkHours, // Use recalculated actualWorkHours
+          performanceStatus,
+          performanceColor,
+          taskCount: day.taskCount,
+          tasks: day.tasks,
+          taskBreakdown: day.taskDetails.map((detail: any) => ({
+            ...detail,
+            timeSpent: detail.timeSpent // Ensure timeSpent is included
+          })),
+          workdayStart: day.workdayStart,
+          workdayEnd: day.workdayEnd
+        };
+      });
 
       // Calculate weekly data for chart (group by day of week)
       const weeklyMap = new Map();
@@ -1280,7 +1340,7 @@ export function registerRoutes(app: Express): Server {
       dailyData.forEach(day => {
         const date = new Date(day.date);
         const dayName = dayNames[date.getDay()];
-        
+
         if (!weeklyMap.has(dayName)) {
           weeklyMap.set(dayName, {
             day: dayName,
@@ -1311,7 +1371,7 @@ export function registerRoutes(app: Express): Server {
 
       // Calculate summary
       const totalDays = dailyData.length;
-      const avgHoursPerDay = dailyData.reduce((sum, day) => sum + day.actualWorkHours, 0) / totalDays;
+      const avgHoursPerDay = totalDays > 0 ? dailyData.reduce((sum, day) => sum + day.actualWorkHours, 0) / totalDays : 0;
       const goodDays = dailyData.filter(day => day.performanceStatus === 'good').length;
       const fairDays = dailyData.filter(day => day.performanceStatus === 'fair').length;
       const poorDays = dailyData.filter(day => day.performanceStatus === 'poor').length;
@@ -2380,7 +2440,7 @@ End of Report
 
       // Start the timer and set status to in_progress
       const now = new Date();
-      
+
       // Create a new session
       await db
         .insert(taskSessions)
@@ -5890,7 +5950,7 @@ End of Report
       }
 
       // Project managers can only update requests for their projects
-      if (user.role === "project_manager" && existingRequest.projectManagerId !== user.id) {
+      if (user.role === "project_manager" && existingRequest.project.managerId !== user.id) {
         return res.status(403).json({ error: "You can only update requests for your projects" });
       }
 
@@ -6571,11 +6631,8 @@ End of Report
         user.role === "product_owner" ||
         user.role === "customer_support_officer" ||
         project.managerId === user.id ||
-        project.clientId === user.id;
-
-      // If not already granted access, check project membership
-      if (!hasAccess) {
-        const membership = await db
+        project.clientId === user.id ||
+        (user.role === "staff" && await db
           .select()
           .from(projectMembers)
           .where(
@@ -6585,10 +6642,9 @@ End of Report
               eq(projectMembers.invitationStatus, "accepted")
             )
           )
-          .limit(1);
-
-        hasAccess = membership.length > 0;
-      }
+          .limit(1)
+          .then(members => members.length > 0)
+        );
 
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied" });

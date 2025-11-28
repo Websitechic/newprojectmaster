@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Download, FileText, FileSpreadsheet, FileDown, Calendar, User, Building2, TrendingUp } from "lucide-react";
 import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
@@ -442,42 +443,163 @@ export default function KPIReportPage() {
               </Card>
             )}
 
-            {/* Daily Productivity Table */}
-            {productivityData?.dailyData && (
+            {/* Tabbed Content - Productivity Score & Daily Details */}
+            {productivityData && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Daily Productivity Details</CardTitle>
-                  <CardDescription>
-                    Detailed breakdown of daily work performance
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Performance Analysis</CardTitle>
+                      <CardDescription>
+                        Detailed productivity metrics and daily breakdown
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {isLoadingProductivity ? (
-                    <div className="flex items-center justify-center p-8">
-                      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-                    </div>
-                  ) : (
-                    <>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Total Span</TableHead>
-                            <TableHead>Actual Work</TableHead>
-                            <TableHead className="w-[250px]">Tasks</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {[...productivityData.dailyData]
-                            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                            .map((day, index) => (
-                              <DailyProductivityRow key={index} day={day} />
-                            ))}
-                        </TableBody>
-                      </Table>
-                      
-                      {/* Status Legend */}
+                  <Tabs defaultValue="productivity" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="productivity">Productivity Score</TabsTrigger>
+                      <TabsTrigger value="daily">Daily Productivity Details</TabsTrigger>
+                    </TabsList>
+
+                    {/* Tab 1: Productivity Score */}
+                    <TabsContent value="productivity" className="space-y-4">
+                      <div className="mt-4">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Task Name</TableHead>
+                              <TableHead>Assigned Time</TableHead>
+                              <TableHead>Actual Time Spent</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {productivityData.dailyData.flatMap(day => 
+                              day.tasks.map((taskName, idx) => {
+                                const task = productivityData.dailyData
+                                  .find(d => d.date === day.date)
+                                  ?.tasks[idx];
+                                
+                                // Get assigned time from task breakdown
+                                const assignedMinutes = ((day as any).taskBreakdown?.[idx]?.workingHours || 0) * 60 + 
+                                                       ((day as any).taskBreakdown?.[idx]?.workingMinutes || 0);
+                                const actualMinutes = Math.floor(((day as any).taskBreakdown?.[idx]?.timeSpent || 0) / 60);
+                                
+                                const formatMinutes = (minutes: number) => {
+                                  const hours = Math.floor(minutes / 60);
+                                  const mins = minutes % 60;
+                                  return hours > 0 ? `${minutes} minutes (${hours}hr${mins > 0 ? ` ${mins}m` : ''})` : `${minutes} minutes`;
+                                };
+
+                                return (
+                                  <TableRow key={`${day.date}-${idx}`}>
+                                    <TableCell className="font-medium">{taskName}</TableCell>
+                                    <TableCell>{formatMinutes(assignedMinutes)}</TableCell>
+                                    <TableCell>{formatMinutes(actualMinutes)}</TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            )}
+                            <TableRow className="font-bold bg-gray-50">
+                              <TableCell>Total</TableCell>
+                              <TableCell>
+                                {(() => {
+                                  const totalAssigned = productivityData.dailyData.reduce((sum, day) => {
+                                    return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
+                                      taskSum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0) || 0);
+                                  }, 0);
+                                  return totalAssigned;
+                                })()}
+                              </TableCell>
+                              <TableCell>
+                                {(() => {
+                                  const totalActual = productivityData.dailyData.reduce((sum, day) => {
+                                    return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
+                                      taskSum + Math.floor((task.timeSpent || 0) / 60), 0) || 0);
+                                  }, 0);
+                                  return totalActual;
+                                })()}
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+
+                        {/* Productivity Calculation */}
+                        <div className="mt-6 p-6 bg-blue-50 rounded-lg">
+                          <div className="text-center space-y-4">
+                            <div className="text-lg font-semibold text-gray-900">
+                              Productivity Calculation
+                            </div>
+                            <div className="flex items-center justify-center gap-2 text-2xl font-mono">
+                              <span>Productivity % = </span>
+                              <span className="inline-flex items-center">
+                                (<span className="mx-1">
+                                  {(() => {
+                                    const totalAssigned = productivityData.dailyData.reduce((sum, day) => {
+                                      return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
+                                        taskSum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0) || 0);
+                                    }, 0);
+                                    return totalAssigned;
+                                  })()}
+                                </span>)
+                              </span>
+                              <span>/</span>
+                              <span className="inline-flex items-center">
+                                (<span className="mx-1">
+                                  {(() => {
+                                    const totalActual = productivityData.dailyData.reduce((sum, day) => {
+                                      return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
+                                        taskSum + Math.floor((task.timeSpent || 0) / 60), 0) || 0);
+                                    }, 0);
+                                    return totalActual;
+                                  })()}
+                                </span>)
+                              </span>
+                              <span>× 100 = </span>
+                              <span className="text-blue-600 font-bold">
+                                {(() => {
+                                  const totalAssigned = productivityData.dailyData.reduce((sum, day) => {
+                                    return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
+                                      taskSum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0) || 0);
+                                  }, 0);
+                                  const totalActual = productivityData.dailyData.reduce((sum, day) => {
+                                    return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
+                                      taskSum + Math.floor((task.timeSpent || 0) / 60), 0) || 0);
+                                  }, 0);
+                                  const productivity = totalActual > 0 ? Math.round((totalAssigned / totalActual) * 100) : 0;
+                                  return productivity;
+                                })()}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-center gap-2 text-sm text-gray-700">
+                              <span className="inline-flex items-center gap-1">
+                                ℹ️ This means the worker was
+                                <span className="font-semibold text-blue-600">
+                                  {(() => {
+                                    const totalAssigned = productivityData.dailyData.reduce((sum, day) => {
+                                      return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
+                                        taskSum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0) || 0);
+                                    }, 0);
+                                    const totalActual = productivityData.dailyData.reduce((sum, day) => {
+                                      return sum + ((day as any).taskBreakdown?.reduce((taskSum: number, task: any) => 
+                                        taskSum + Math.floor((task.timeSpent || 0) / 60), 0) || 0);
+                                    }, 0);
+                                    const productivity = totalActual > 0 ? Math.round((totalAssigned / totalActual) * 100) : 0;
+                                    return productivity >= 100 ? "more efficient" : "less efficient";
+                                  })()}
+                                </span>
+                                than expected.
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    {/* Tab 2: Daily Productivity Details */}
+                    <TabsContent value="daily" className="space-y-4">
+                      {/* Status Legend - Moved to top */}
                       <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                         <h4 className="text-sm font-medium text-gray-900 mb-3">Performance Status Legend</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -504,8 +626,33 @@ export default function KPIReportPage() {
                           </div>
                         </div>
                       </div>
-                    </>
-                  )}
+
+                      {isLoadingProductivity ? (
+                        <div className="flex items-center justify-center p-8">
+                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Total Span</TableHead>
+                              <TableHead>Actual Work</TableHead>
+                              <TableHead className="w-[250px]">Tasks</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {[...productivityData.dailyData]
+                              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                              .map((day, index) => (
+                                <DailyProductivityRow key={index} day={day} />
+                              ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             )}
