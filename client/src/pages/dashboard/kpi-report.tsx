@@ -381,7 +381,7 @@ export default function KPIReportPage() {
                         ]}
                         labelFormatter={(label) => `Day: ${label}`}
                       />
-                      <Bar dataKey="totalSpanHours" fill="#E5E7EB" name="Total Span" />
+                      <Bar dataKey="totalSpanHours" fill="#94A3B8" name="Total Span" />
                       <Bar dataKey="hours" fill="#3b82f6" name="Actual Work" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -410,38 +410,65 @@ export default function KPIReportPage() {
                           <TableHead>Date</TableHead>
                           <TableHead>Total Span</TableHead>
                           <TableHead>Actual Work</TableHead>
-                          <TableHead>Tasks</TableHead>
+                          <TableHead className="w-[250px]">Tasks</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {productivityData.dailyData.map((day, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">
-                              {format(new Date(day.date), "MMM dd, yyyy")}
-                            </TableCell>
-                            <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
-                            <TableCell className="font-medium">
-                              {formatTime(day.actualWorkHours)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-600">{day.taskCount} tasks</span>
-                                {day.tasks.length > 0 && (
-                                  <div className="text-xs text-gray-500">
-                                    {day.tasks.slice(0, 2).join(", ")}
-                                    {day.tasks.length > 2 && ` +${day.tasks.length - 2} more`}
+                        {[...productivityData.dailyData]
+                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                          .map((day, index) => {
+                            const [showAllTasks, setShowAllTasks] = useState(false);
+                            const displayTasks = showAllTasks ? day.tasks : day.tasks.slice(0, 3);
+                            
+                            return (
+                              <TableRow key={index}>
+                                <TableCell className="font-medium">
+                                  {format(new Date(day.date), "MMM dd, yyyy")}
+                                </TableCell>
+                                <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
+                                <TableCell className="font-medium">
+                                  {formatTime(day.actualWorkHours)}
+                                </TableCell>
+                                <TableCell className="w-[250px]">
+                                  <div className="space-y-1">
+                                    <span className="text-sm font-medium text-gray-900 block">
+                                      {day.taskCount} task{day.taskCount !== 1 ? 's' : ''}
+                                    </span>
+                                    {day.tasks.length > 0 && (
+                                      <div className="space-y-1">
+                                        {displayTasks.map((task, taskIndex) => (
+                                          <div 
+                                            key={taskIndex}
+                                            className="text-xs text-gray-600 break-words"
+                                            style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                                          >
+                                            • {task}
+                                          </div>
+                                        ))}
+                                        {day.tasks.length > 3 && (
+                                          <button
+                                            onClick={() => setShowAllTasks(!showAllTasks)}
+                                            className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
+                                          >
+                                            {showAllTasks 
+                                              ? '↑ Show Less' 
+                                              : `↓ Show ${day.tasks.length - 3} More`
+                                            }
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={getStatusColor(day.performanceStatus)}>
-                                {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={getStatusColor(day.performanceStatus)}>
+                                    {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                       </TableBody>
                     </Table>
                   )}
