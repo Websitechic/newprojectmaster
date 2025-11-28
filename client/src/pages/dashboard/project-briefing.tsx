@@ -22,7 +22,9 @@ import {
   List,
   ListOrdered,
   AlertCircle,
-  Plus
+  Plus,
+  Eye,
+  Search
 } from "lucide-react";
 import {
   AlertDialog,
@@ -35,6 +37,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 
 interface ProjectBriefing {
@@ -65,37 +74,54 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
     const end = textarea.selectionEnd;
     const selectedText = value.substring(start, end);
 
-    let formattedText = "";
+    let beforeText = value.substring(0, start);
+    let afterText = value.substring(end);
+    let newText = "";
     let newCursorPos = end;
 
     switch (format) {
       case "bold":
-        formattedText = `**${selectedText}**`;
-        newCursorPos = selectedText ? end + 4 : start + 4;
+        if (selectedText) {
+          newText = `**${selectedText}**`;
+          newCursorPos = end + 4;
+        } else {
+          newText = "****";
+          newCursorPos = start + 2;
+        }
         break;
       case "italic":
-        formattedText = `*${selectedText}*`;
-        newCursorPos = selectedText ? end + 2 : start + 2;
+        if (selectedText) {
+          newText = `*${selectedText}*`;
+          newCursorPos = end + 2;
+        } else {
+          newText = "**";
+          newCursorPos = start + 1;
+        }
         break;
       case "underline":
-        formattedText = `<u>${selectedText}</u>`;
-        newCursorPos = selectedText ? end + 7 : start + 7;
+        if (selectedText) {
+          newText = `<u>${selectedText}</u>`;
+          newCursorPos = end + 7;
+        } else {
+          newText = "<u></u>";
+          newCursorPos = start + 3;
+        }
         break;
       case "bullet":
         const bulletText = selectedText || "List item";
-        formattedText = `• ${bulletText}`;
-        newCursorPos = start + formattedText.length;
+        newText = `• ${bulletText}`;
+        newCursorPos = start + newText.length;
         break;
       case "numbered":
         const numberedText = selectedText || "List item";
-        formattedText = `1. ${numberedText}`;
-        newCursorPos = start + formattedText.length;
+        newText = `1. ${numberedText}`;
+        newCursorPos = start + newText.length;
         break;
       default:
         return;
     }
 
-    const newValue = value.substring(0, start) + formattedText + value.substring(end);
+    const newValue = beforeText + newText + afterText;
     onChange(newValue);
 
     setTimeout(() => {
@@ -113,6 +139,7 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
           size="sm"
           onClick={() => applyFormatting("bold")}
           className="h-8 w-8 p-0"
+          title="Bold"
         >
           <Bold className="h-4 w-4" />
         </Button>
@@ -122,6 +149,7 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
           size="sm"
           onClick={() => applyFormatting("italic")}
           className="h-8 w-8 p-0"
+          title="Italic"
         >
           <Italic className="h-4 w-4" />
         </Button>
@@ -131,6 +159,7 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
           size="sm"
           onClick={() => applyFormatting("underline")}
           className="h-8 w-8 p-0"
+          title="Underline"
         >
           <Underline className="h-4 w-4" />
         </Button>
@@ -141,6 +170,7 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
           size="sm"
           onClick={() => applyFormatting("bullet")}
           className="h-8 w-8 p-0"
+          title="Bullet List"
         >
           <List className="h-4 w-4" />
         </Button>
@@ -150,6 +180,7 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
           size="sm"
           onClick={() => applyFormatting("numbered")}
           className="h-8 w-8 p-0"
+          title="Numbered List"
         >
           <ListOrdered className="h-4 w-4" />
         </Button>
@@ -172,6 +203,7 @@ export default function ProjectBriefing() {
   const queryClient = useQueryClient();
 
   const [isCreating, setIsCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     projectName: "",
     clientName: "",
@@ -214,6 +246,16 @@ export default function ProjectBriefing() {
       }
       return response.json();
     },
+  });
+
+  // Filter briefings based on search query
+  const filteredBriefings = briefings.filter((briefing) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      briefing.projectName.toLowerCase().includes(query) ||
+      briefing.clientName.toLowerCase().includes(query) ||
+      briefing.category.toLowerCase().includes(query)
+    );
   });
 
   // Create briefing mutation
@@ -331,6 +373,20 @@ export default function ProjectBriefing() {
               </Button>
             </div>
 
+            {/* Search Bar */}
+            {!isCreating && briefings.length > 0 && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search by project name, client, or category..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            )}
+
             {/* Create Form */}
             {isCreating && (
               <Card>
@@ -413,18 +469,26 @@ export default function ProjectBriefing() {
 
             {/* Briefings List */}
             <div className="space-y-4">
-              {briefings.length === 0 ? (
+              {filteredBriefings.length === 0 ? (
                 <Card className="p-12 text-center">
                   <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Project Briefings</h3>
-                  <p className="text-gray-600 mb-4">Get started by creating your first project briefing.</p>
-                  <Button onClick={() => setIsCreating(true)}>
-                    <Plus size={16} className="mr-1" />
-                    Create First Briefing
-                  </Button>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {searchQuery ? "No matching briefings found" : "No Project Briefings"}
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    {searchQuery 
+                      ? "Try adjusting your search terms" 
+                      : "Get started by creating your first project briefing."}
+                  </p>
+                  {!searchQuery && (
+                    <Button onClick={() => setIsCreating(true)}>
+                      <Plus size={16} className="mr-1" />
+                      Create First Briefing
+                    </Button>
+                  )}
                 </Card>
               ) : (
-                briefings.map((briefing) => (
+                filteredBriefings.map((briefing) => (
                   <Card key={briefing.id} className="hover:shadow-md transition-shadow">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
@@ -438,37 +502,66 @@ export default function ProjectBriefing() {
                             <span>{new Date(briefing.createdAt).toLocaleDateString()}</span>
                           </div>
                         </div>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Project Briefing?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete this project briefing? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteBriefingMutation.mutate(briefing.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex items-center gap-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" title="View Details">
+                                <Eye className="h-4 w-4 text-blue-600" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle>{briefing.projectName}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <h3 className="font-medium text-sm text-gray-700 mb-1">Client</h3>
+                                  <p className="text-gray-900">{briefing.clientName}</p>
+                                </div>
+                                <div>
+                                  <h3 className="font-medium text-sm text-gray-700 mb-1">Category</h3>
+                                  <p className="text-gray-900">{briefing.category}</p>
+                                </div>
+                                <div>
+                                  <h3 className="font-medium text-sm text-gray-700 mb-1">Project Details</h3>
+                                  <div className="prose prose-sm max-w-none">
+                                    <p className="text-gray-700 whitespace-pre-wrap">{briefing.projectDetails}</p>
+                                  </div>
+                                </div>
+                                <div>
+                                  <h3 className="font-medium text-sm text-gray-700 mb-1">Created On</h3>
+                                  <p className="text-gray-900">{new Date(briefing.createdAt).toLocaleString()}</p>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Project Briefing?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this project briefing? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteBriefingMutation.mutate(briefing.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="prose prose-sm max-w-none">
-                        <p className="text-gray-700 whitespace-pre-wrap">{briefing.projectDetails}</p>
-                      </div>
-                    </CardContent>
                   </Card>
                 ))
               )}
