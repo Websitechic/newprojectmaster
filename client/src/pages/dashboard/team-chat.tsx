@@ -301,13 +301,17 @@ export default function TeamChat() {
           credentials: "include",
           body: JSON.stringify({ messageIds: messageIdsToMarkRead }),
         });
+        
+        // Invalidate unread counts to update the header dropdown
+        queryClient.invalidateQueries({ queryKey: ["/api/projects/unread-counts"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/mentions/unread-count"] });
       } catch (error) {
         console.error("Error marking messages as read:", error);
       }
     };
 
     markMessagesAsRead().catch(console.error);
-  }, [messages, user?.id, projectId]);
+  }, [messages, user?.id, projectId, queryClient]);
 
   const handleEditMessage = async (messageId: number) => {
     if (!editingContent.trim()) {
