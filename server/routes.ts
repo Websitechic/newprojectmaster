@@ -399,6 +399,7 @@ export function registerRoutes(app: Express): Server {
         );
 
       // Get meetings that just ended
+      const oneMinuteAgo = new Date(now.getTime() - 60000);
       const endedBookings = await db
         .select({
           id: bookings.id,
@@ -409,7 +410,7 @@ export function registerRoutes(app: Express): Server {
           and(
             eq(bookings.status, "scheduled"),
             sql`${bookings.endTime} < ${now}`,
-            sql`${bookings.endTime} >= ${sql`${now} - INTERVAL '1 minute'`}` // Just ended in last minute
+            sql`${bookings.endTime} >= ${oneMinuteAgo}` // Just ended in last minute
           )
         );
 
