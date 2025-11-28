@@ -167,7 +167,7 @@ export default function StaffReport() {
   const [filterSpecialization, setFilterSpecialization] = useState<string | null>(null);
   const [taskView, setTaskView] = useState<'active' | 'all'>('active');
 
-  const { data: staffReport, isLoading, error } = useQuery<StaffMember[], Error>({
+  const { data: staffReport, isLoading, error, refetch } = useQuery<StaffMember[], Error>({
     queryKey: ["/api/staff-report"],
     queryFn: async () => {
       const response = await fetch("/api/staff-report", {
@@ -210,6 +210,28 @@ export default function StaffReport() {
       });
     },
   });
+
+  // Listen for real-time booking events via SSE
+  useEffect(() => {
+    const handleBookingEvent = () => {
+      console.log('Booking event received, refreshing staff report');
+      refetch();
+    };
+
+    window.addEventListener('sse:booking_created', handleBookingEvent);
+    window.addEventListener('sse:booking_updated', handleBookingEvent);
+    window.addEventListener('sse:booking_deleted', handleBookingEvent);
+    window.addEventListener('sse:meeting_status_update', handleBookingEvent);
+    window.addEventListener('sse:meeting_ended', handleBookingEvent);
+
+    return () => {
+      window.removeEventListener('sse:booking_created', handleBookingEvent);
+      window.removeEventListener('sse:booking_updated', handleBookingEvent);
+      window.removeEventListener('sse:booking_deleted', handleBookingEvent);
+      window.removeEventListener('sse:meeting_status_update', handleBookingEvent);
+      window.removeEventListener('sse:meeting_ended', handleBookingEvent);
+    };
+  }, [refetch]);
 
   // Early returns for auth checks
   if (!user) {
@@ -433,7 +455,7 @@ export default function StaffReport() {
             <CardHeader className="pb-2">
               <CardTitle className="text-md">Staff Status Overview</CardTitle>
               <CardDescription>
-                {engagedStaff.length} currently engaged | {onBreakStaff.length} on scheduled break | {absentStaff.length} absent | {inMeetingStaff.length} in meeting | {availableStaff.length} available
+                {engagedStaff.length} engaged | {onBreakStaff.length} on break | {absentStaff.length} absent | {inMeetingStaff.length} in meeting | {availableStaff.length} available
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -445,7 +467,7 @@ export default function StaffReport() {
               </div>
             </CardContent>
             <CardContent>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div className="rounded-md border border-green-300 bg-green-50 p-3">
                   <div className="flex items-center gap-2">
                     <Play className="h-4 w-4 text-green-700" />
@@ -486,6 +508,17 @@ export default function StaffReport() {
                   <p className="mt-1 text-2xl font-bold text-blue-800">{availableStaff.length}</p>
                   <p className="text-xs text-blue-700">
                     Staff ready for new assignments
+                  </p>
+                </div>
+
+                <div className="rounded-md border border-purple-300 bg-purple-50 p-3">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-purple-700" />
+                    <h3 className="text-sm font-medium text-purple-800">In Meeting</h3>
+                  </div>
+                  <p className="mt-1 text-2xl font-bold text-purple-800">{inMeetingStaff.length}</p>
+                  <p className="text-xs text-purple-700">
+                    Staff currently in scheduled meetings
                   </p>
                 </div>
               </div>

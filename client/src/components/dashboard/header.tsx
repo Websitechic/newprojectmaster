@@ -196,7 +196,7 @@ export function Header() {
       // Clear audio unlock state completely
       sessionStorage.removeItem('audioUnlocked');
       setShowUnlockButton(false);
-      
+
       await logout();
       window.location.href = "/auth";
     } catch (error) {
@@ -299,7 +299,7 @@ export function Header() {
         {/* Notifications */}
         <NotificationsDropdown />
 
-        
+
 
         {/* Profile Dropdown */}
         <DropdownMenu>

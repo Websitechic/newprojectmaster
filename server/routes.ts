@@ -373,6 +373,93 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Meeting status checker - runs every 30 seconds
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      
+      // Get all active meetings (started but not ended)
+      const activeBookings = await db
+        .select({
+          id: bookings.id,
+          title: bookings.title,
+          scheduledBy: bookings.scheduledBy,
+          participants: bookings.participants,
+          startTime: bookings.startTime,
+          endTime: bookings.endTime,
+          status: bookings.status,
+        })
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.status, "scheduled"),
+            sql`${bookings.startTime} <= ${now}`,
+            sql`${bookings.endTime} >= ${now}`
+          )
+        );
+
+      // Get meetings that just ended
+      const endedBookings = await db
+        .select({
+          id: bookings.id,
+          participants: bookings.participants,
+        })
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.status, "scheduled"),
+            sql`${bookings.endTime} < ${now}`,
+            sql`${bookings.endTime} >= ${sql`${now} - INTERVAL '1 minute'`}` // Just ended in last minute
+          )
+        );
+
+      // Broadcast active meeting status to all SSE clients
+      if (global.sseClients) {
+        global.sseClients.forEach((client, userId) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'meeting_status_update',
+                activeBookings: activeBookings.filter(b => 
+                  Array.isArray(b.participants) && b.participants.includes(userId)
+                ),
+                timestamp: now.toISOString()
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error broadcasting meeting status to user ${userId}:`, error);
+              global.sseClients.delete(userId);
+            }
+          }
+        });
+      }
+
+      // Broadcast ended meetings to participants
+      if (global.sseClients && endedBookings.length > 0) {
+        endedBookings.forEach(booking => {
+          if (Array.isArray(booking.participants)) {
+            booking.participants.forEach((participantId: number) => {
+              const client = global.sseClients.get(participantId);
+              if (client && !client.writableEnded) {
+                try {
+                  client.write(`data: ${JSON.stringify({
+                    type: 'meeting_ended',
+                    bookingId: booking.id
+                  })}\n\n`);
+                } catch (error) {
+                  console.error(`Error broadcasting meeting end to participant ${participantId}:`, error);
+                  global.sseClients.delete(participantId);
+                }
+              }
+            });
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error("Error in meeting status check:", error);
+    }
+  }, 30000); // Run every 30 seconds
+
   // Enhanced deadline and notification checking - runs every hour
   setInterval(async () => {
     try {
@@ -1544,7 +1631,7 @@ End of Report
         .leftJoin(projects, eq(tasks.projectId, projects.id))
         .where(inArray(tasks.assigneeId, staffMembers.map(s => s.id)));
 
-      // Get all bookings to check for current meetings
+      // Get all bookings to check for current meetings - use current timestamp for real-time accuracy
       const now = new Date();
       const allBookings = await db
         .select({
@@ -1566,6 +1653,8 @@ End of Report
             sql`${bookings.endTime} >= ${now}`
           )
         );
+
+      console.log(`Found ${allBookings.length} active meetings at ${now.toISOString()}`);
 
       // Process staff data
       const staffReport = staffMembers.map(staff => {
@@ -4913,6 +5002,28 @@ End of Report
         })
         .returning();
 
+      // Broadcast to all participants via SSE
+      if (global.sseClients && participants && Array.isArray(participants)) {
+        participants.forEach((participantId: number) => {
+          const client = global.sseClients.get(participantId);
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'booking_created',
+                booking: {
+                  ...newBooking,
+                  schedulerName: user.name
+                }
+              })}\n\n`);
+              console.log(`📅 Booking notification sent to participant ${participantId}`);
+            } catch (error) {
+              console.error(`Error broadcasting booking to participant ${participantId}:`, error);
+              global.sseClients.delete(participantId);
+            }
+          }
+        });
+      }
+
       res.json({ success: true, bookingId: newBooking.id });
     } catch (error) {
       console.error("Error creating booking:", error);
@@ -4953,6 +5064,25 @@ End of Report
         .delete(bookings)
         .where(eq(bookings.id, bookingId));
 
+      // Broadcast to all participants via SSE
+      if (global.sseClients && booking.participants && Array.isArray(booking.participants)) {
+        booking.participants.forEach((participantId: number) => {
+          const client = global.sseClients.get(participantId);
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'booking_deleted',
+                bookingId: bookingId
+              })}\n\n`);
+              console.log(`📅 Booking deletion sent to participant ${participantId}`);
+            } catch (error) {
+              console.error(`Error broadcasting booking deletion to participant ${participantId}:`, error);
+              global.sseClients.delete(participantId);
+            }
+          }
+        });
+      }
+
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting booking:", error);
@@ -4990,13 +5120,33 @@ End of Report
       }
 
       // Update the booking status
-      await db
+      const [updatedBooking] = await db
         .update(bookings)
         .set({ 
           status,
           updatedAt: new Date()
         })
-        .where(eq(bookings.id, bookingId));
+        .where(eq(bookings.id, bookingId))
+        .returning();
+
+      // Broadcast to all participants via SSE
+      if (global.sseClients && booking.participants && Array.isArray(booking.participants)) {
+        booking.participants.forEach((participantId: number) => {
+          const client = global.sseClients.get(participantId);
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'booking_updated',
+                booking: updatedBooking
+              })}\n\n`);
+              console.log(`📅 Booking update sent to participant ${participantId}`);
+            } catch (error) {
+              console.error(`Error broadcasting booking update to participant ${participantId}:`, error);
+              global.sseClients.delete(participantId);
+            }
+          }
+        });
+      }
 
       res.json({ success: true });
     } catch (error) {
