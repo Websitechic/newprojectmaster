@@ -3240,16 +3240,7 @@ End of Report
 
     try {
       const briefings = await db
-        .select({
-          id: projectBriefings.id,
-          projectName: projectBriefings.projectName,
-          clientName: projectBriefings.clientName,
-          category: projectBriefings.category,
-          projectDetails: projectBriefings.projectDetails,
-          createdBy: projectBriefings.createdBy,
-          createdAt: projectBriefings.createdAt,
-          updatedAt: projectBriefings.updatedAt,
-        })
+        .select()
         .from(projectBriefings)
         .orderBy(desc(projectBriefings.createdAt));
 
@@ -3292,16 +3283,7 @@ End of Report
           projectDetails: projectDetails,
           createdBy: user.id,
         })
-        .returning({
-          id: projectBriefings.id,
-          projectName: projectBriefings.projectName,
-          clientName: projectBriefings.clientName,
-          category: projectBriefings.category,
-          projectDetails: projectBriefings.projectDetails,
-          createdBy: projectBriefings.createdBy,
-          createdAt: projectBriefings.createdAt,
-          updatedAt: projectBriefings.updatedAt,
-        });
+        .returning();
 
       res.json(newBriefing);
     } catch (error) {
