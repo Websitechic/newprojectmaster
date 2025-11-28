@@ -1180,8 +1180,8 @@ export function registerRoutes(app: Express): Server {
         const dateKey = date.toISOString().split('T')[0];
         dailyMap.set(dateKey, {
           date: dateKey,
-          totalSpanHours: 0,
-          actualWorkHours: 0,
+          totalSpanHours: 0, // Allocated/estimated time
+          actualWorkHours: 0, // Actual tracked time
           performanceStatus: 'poor',
           performanceColor: '#EF4444',
           taskCount: 0,
@@ -1191,64 +1191,47 @@ export function registerRoutes(app: Express): Server {
         });
       });
 
-      // Process each task and calculate productivity by actual work done (timer sessions)
+      // Process each task and calculate productivity
       allUserTasks.forEach(task => {
-        // Check for currently running timer
-        if (task.isTimerRunning && task.timerStartTime) {
-          const timerDate = new Date(task.timerStartTime);
-          const dateKey = timerDate.toISOString().split('T')[0];
-          
-          if (dailyMap.has(dateKey)) {
-            const dailyData = dailyMap.get(dateKey);
-            const sessionTime = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
-            const currentTimeSpent = (task.timeSpent || 0) + sessionTime;
-            const hoursWorked = currentTimeSpent / 3600;
+        const updateDate = new Date(task.updatedAt);
+        const dateKey = updateDate.toISOString().split('T')[0];
 
-            dailyData.actualWorkHours += hoursWorked;
-            dailyData.taskCount += 1;
-            if (!dailyData.tasks.includes(task.title)) {
-              dailyData.tasks.push(task.title);
-            }
+        // Only process tasks within the date range
+        if (!dailyMap.has(dateKey)) return;
 
-            // Update workday span
-            const timerTime = new Date(task.timerStartTime);
-            if (!dailyData.workdayStart || timerTime < new Date(dailyData.workdayStart)) {
-              dailyData.workdayStart = timerTime.toISOString();
-            }
-            const sessionEnd = new Date(Date.now());
-            if (!dailyData.workdayEnd || sessionEnd > new Date(dailyData.workdayEnd)) {
-              dailyData.workdayEnd = sessionEnd.toISOString();
-            }
-          }
+        const dailyData = dailyMap.get(dateKey);
+
+        // Calculate allocated time (Total Span) from workingHours and workingMinutes
+        const allocatedHours = (task.workingHours || 0) + ((task.workingMinutes || 0) / 60);
+        if (allocatedHours > 0) {
+          dailyData.totalSpanHours += allocatedHours;
         }
 
-        // Check for completed work (tasks with time spent and were updated on that day)
-        if (task.timeSpent && task.timeSpent > 0) {
-          const updateDate = new Date(task.updatedAt);
-          const dateKey = updateDate.toISOString().split('T')[0];
+        // Calculate actual work time from timeSpent
+        let actualHours = 0;
+        if (task.isTimerRunning && task.timerStartTime) {
+          // For currently running timers, add current session time
+          const sessionTime = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
+          const currentTimeSpent = (task.timeSpent || 0) + sessionTime;
+          actualHours = currentTimeSpent / 3600;
+        } else if (task.timeSpent && task.timeSpent > 0) {
+          // For stopped timers, use the recorded timeSpent
+          actualHours = task.timeSpent / 3600;
+        }
 
-          if (dailyMap.has(dateKey)) {
-            const dailyData = dailyMap.get(dateKey);
-            const hoursWorked = task.timeSpent / 3600;
-
-            // Only add if not already counted (avoid double-counting running timers)
-            if (!task.isTimerRunning) {
-              dailyData.actualWorkHours += hoursWorked;
-              dailyData.taskCount += 1;
-              if (!dailyData.tasks.includes(task.title)) {
-                dailyData.tasks.push(task.title);
-              }
-            }
+        if (actualHours > 0) {
+          dailyData.actualWorkHours += actualHours;
+          dailyData.taskCount += 1;
+          if (!dailyData.tasks.includes(task.title)) {
+            dailyData.tasks.push(task.title);
           }
         }
       });
 
-      // Calculate total span hours and performance status
+      // Calculate performance status based on actual work hours
       dailyMap.forEach((dailyData, dateKey) => {
-        if (dailyData.workdayStart && dailyData.workdayEnd) {
-          const spanHours = (new Date(dailyData.workdayEnd).getTime() - new Date(dailyData.workdayStart).getTime()) / (1000 * 60 * 60);
-          dailyData.totalSpanHours = Math.max(dailyData.actualWorkHours, spanHours);
-        } else {
+        // If no allocated time was set, use actual work hours as minimum span
+        if (dailyData.totalSpanHours === 0 && dailyData.actualWorkHours > 0) {
           dailyData.totalSpanHours = dailyData.actualWorkHours;
         }
 
@@ -1278,8 +1261,8 @@ export function registerRoutes(app: Express): Server {
         if (!weeklyMap.has(dayName)) {
           weeklyMap.set(dayName, {
             day: dayName,
-            hours: 0,
-            totalSpanHours: 0,
+            hours: 0, // Actual work hours
+            totalSpanHours: 0, // Allocated hours
             performanceStatus: 'poor',
             performanceColor: '#EF4444',
             taskCount: 0
@@ -1287,11 +1270,11 @@ export function registerRoutes(app: Express): Server {
         }
 
         const weekData = weeklyMap.get(dayName);
-        weekData.hours += day.actualWorkHours;
-        weekData.totalSpanHours += day.totalSpanHours;
+        weekData.hours += day.actualWorkHours; // Sum actual work
+        weekData.totalSpanHours += day.totalSpanHours; // Sum allocated time
         weekData.taskCount += day.taskCount;
 
-        // Update performance based on accumulated hours
+        // Update performance based on actual work hours
         if (weekData.hours >= 4) {
           weekData.performanceStatus = 'good';
           weekData.performanceColor = '#10B981';
