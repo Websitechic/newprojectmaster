@@ -79,6 +79,59 @@ const formatTime = (hours: number) => {
   return `${h}h ${m}m`;
 };
 
+function DailyProductivityRow({ day }: { day: DailyProductivity }) {
+  const [showAllTasks, setShowAllTasks] = useState(false);
+  const displayTasks = showAllTasks ? day.tasks : day.tasks.slice(0, 3);
+
+  return (
+    <TableRow>
+      <TableCell className="font-medium">
+        {format(new Date(day.date), "MMM dd, yyyy")}
+      </TableCell>
+      <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
+      <TableCell className="font-medium">
+        {formatTime(day.actualWorkHours)}
+      </TableCell>
+      <TableCell className="w-[250px]">
+        <div className="space-y-1">
+          <span className="text-sm font-medium text-gray-900 block">
+            {day.taskCount} task{day.taskCount !== 1 ? 's' : ''}
+          </span>
+          {day.tasks.length > 0 && (
+            <div className="space-y-1">
+              {displayTasks.map((task, taskIndex) => (
+                <div 
+                  key={taskIndex}
+                  className="text-xs text-gray-600 break-words"
+                  style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                >
+                  • {task}
+                </div>
+              ))}
+              {day.tasks.length > 3 && (
+                <button
+                  onClick={() => setShowAllTasks(!showAllTasks)}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
+                >
+                  {showAllTasks 
+                    ? '↑ Show Less' 
+                    : `↓ Show ${day.tasks.length - 3} More`
+                  }
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <Badge className={getStatusColor(day.performanceStatus)}>
+          {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)}
+        </Badge>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export default function KPIReportPage() {
   const { user } = useAuth();
   const [selectedDepartment, setSelectedDepartment] = useState<string>("");
@@ -417,58 +470,9 @@ export default function KPIReportPage() {
                       <TableBody>
                         {[...productivityData.dailyData]
                           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                          .map((day, index) => {
-                            const [showAllTasks, setShowAllTasks] = useState(false);
-                            const displayTasks = showAllTasks ? day.tasks : day.tasks.slice(0, 3);
-                            
-                            return (
-                              <TableRow key={index}>
-                                <TableCell className="font-medium">
-                                  {format(new Date(day.date), "MMM dd, yyyy")}
-                                </TableCell>
-                                <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
-                                <TableCell className="font-medium">
-                                  {formatTime(day.actualWorkHours)}
-                                </TableCell>
-                                <TableCell className="w-[250px]">
-                                  <div className="space-y-1">
-                                    <span className="text-sm font-medium text-gray-900 block">
-                                      {day.taskCount} task{day.taskCount !== 1 ? 's' : ''}
-                                    </span>
-                                    {day.tasks.length > 0 && (
-                                      <div className="space-y-1">
-                                        {displayTasks.map((task, taskIndex) => (
-                                          <div 
-                                            key={taskIndex}
-                                            className="text-xs text-gray-600 break-words"
-                                            style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                                          >
-                                            • {task}
-                                          </div>
-                                        ))}
-                                        {day.tasks.length > 3 && (
-                                          <button
-                                            onClick={() => setShowAllTasks(!showAllTasks)}
-                                            className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
-                                          >
-                                            {showAllTasks 
-                                              ? '↑ Show Less' 
-                                              : `↓ Show ${day.tasks.length - 3} More`
-                                            }
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className={getStatusColor(day.performanceStatus)}>
-                                    {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
+                          .map((day, index) => (
+                            <DailyProductivityRow key={index} day={day} />
+                          ))}
                       </TableBody>
                     </Table>
                   )}
