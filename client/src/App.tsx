@@ -556,6 +556,9 @@ function Router() {
           <Route path="/dashboard/sop" component={SOPPage} />
           <Route path="/dashboard/review-links" component={ReviewLinks} />
           <Route path="/dashboard/project-briefing" component={ProjectBriefing} />
+          <Route path="/dashboard/kpi-report" component={KPIReportPage} />
+          <Route path="/dashboard/communication-tracker" component={CommunicationTrackerPage} />
+          <Route path="/dashboard/report-management" component={ReportManagement} />
           <Route path="/send-complaint" component={SendComplaint} />
           <Route path="/report-issues" component={ReportIssues} />
           <Route component={NotFound} />
