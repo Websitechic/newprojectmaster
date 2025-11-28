@@ -1634,6 +1634,8 @@ End of Report
 
       // Get all bookings to check for current meetings - use current timestamp for real-time accuracy
       const now = new Date();
+      console.log(`Checking for active meetings at ${now.toISOString()}`);
+      
       const allBookings = await db
         .select({
           id: bookings.id,
@@ -1647,15 +1649,22 @@ End of Report
         })
         .from(bookings)
         .leftJoin(users, eq(bookings.scheduledBy, users.id))
-        .where(
-          and(
-            eq(bookings.status, "scheduled"),
-            sql`${bookings.startTime} <= ${now}`,
-            sql`${bookings.endTime} >= ${now}`
-          )
-        );
+        .where(eq(bookings.status, "scheduled"));
 
-      console.log(`Found ${allBookings.length} active meetings at ${now.toISOString()}`);
+      // Filter active meetings in JavaScript for better timezone handling
+      const activeBookings = allBookings.filter(booking => {
+        const startTime = new Date(booking.startTime);
+        const endTime = new Date(booking.endTime);
+        const isActive = startTime <= now && endTime >= now;
+        
+        if (isActive) {
+          console.log(`Active meeting found: ${booking.title} (${startTime.toISOString()} - ${endTime.toISOString()})`);
+        }
+        
+        return isActive;
+      });
+
+      console.log(`Found ${activeBookings.length} active meetings out of ${allBookings.length} total scheduled meetings`);
 
       // Process staff data
       const staffReport = staffMembers.map(staff => {
@@ -1666,7 +1675,7 @@ End of Report
         const engagedTask = staffTasks.find(task => task.isTimerRunning);
 
         // Check if staff is in a meeting
-        const currentMeeting = allBookings.find(booking => 
+        const currentMeeting = activeBookings.find(booking => 
           Array.isArray(booking.participants) && booking.participants.includes(staff.id)
         );
 
@@ -1720,13 +1729,8 @@ End of Report
         let meetingInfo = null;
         if (currentMeeting) {
           meetingInfo = {
-            staffId: staff.id,
-            meetingId: currentMeeting.id,
-            meetingTitle: currentMeeting.title,
-            scheduledBy: currentMeeting.scheduledBy,
-            schedulerName: currentMeeting.schedulerName,
-            startTime: currentMeeting.startTime,
-            endTime: currentMeeting.endTime,
+            title: currentMeeting.title,
+            scheduledBy: currentMeeting.schedulerName || 'Unknown',
           };
         }
 

@@ -515,7 +515,7 @@ export default function Bookings() {
                         {format(new Date(booking.startTime), "MMM d, yyyy")}
                       </p>
                       <p className="text-gray-500">
-                        {format(new Date(booking.startTime), "h:mm a")} - {format(new Date(booking.endTime), "h:mm a")}
+                        {format(new Date(booking.startTime), "HH:mm")} - {format(new Date(booking.endTime), "HH:mm")}
                       </p>
                     </div>
                   </div>
