@@ -55,6 +55,8 @@ import { useBrowserNotification } from "@/hooks/use-browser-notification";
 import GeneralChannelPage from "@/pages/dashboard/general-channel";
 import ReviewLinks from "@/pages/dashboard/review-links";
 import ProjectBriefing from "@/pages/dashboard/project-briefing";
+import SendComplaint from "@/pages/send-complaint";
+import ReportIssues from "@/pages/report-issues";
 
 
 function PrivateRoute({ component: Component, ...rest }: any) {
@@ -555,7 +557,9 @@ function Router() {
           </Route>
           <Route path="/dashboard/sop" component={SOPPage} />
           <Route path="/dashboard/review-links" component={ReviewLinks} />
-        <Route path="/dashboard/project-briefing" component={ProjectBriefing} />
+          <Route path="/dashboard/project-briefing" component={ProjectBriefing} />
+          <Route path="/send-complaint" component={SendComplaint} />
+          <Route path="/report-issues" component={ReportIssues} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
