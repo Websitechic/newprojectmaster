@@ -40,7 +40,6 @@ import ClientSentiment from "@/pages/dashboard/client-sentiment";
 import ClientSentimentTracker from "@/pages/dashboard/client-sentiment-tracker";
 
 import Memos from "@/pages/dashboard/memos";
-import SendComplaint from "@/pages/send-complaint";
 import StaffComplaints from "@/pages/dashboard/staff-complaints";
 import StaffQueries from "@/pages/dashboard/staff-queries";
 import Notes from "@/pages/dashboard/notes";
@@ -48,6 +47,7 @@ import SOPPage from "@/pages/dashboard/sop";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import CommunicationTrackerPage from "@/pages/dashboard/communication-tracker";
 import KPIReportPage from "@/pages/dashboard/kpi-report";
+import SendComplaint from "@/pages/send-complaint";
 import ReportIssues from "@/pages/report-issues";
 import ReportManagement from "@/pages/dashboard/report-management";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
