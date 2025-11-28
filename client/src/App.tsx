@@ -53,6 +53,8 @@ import ReportManagement from "@/pages/dashboard/report-management";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useBrowserNotification } from "@/hooks/use-browser-notification";
 import GeneralChannelPage from "@/pages/dashboard/general-channel";
+import ReviewLinks from "@/pages/dashboard/review-links";
+
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -550,34 +552,9 @@ function Router() {
           <Route path="/dashboard/client-complaints">
             <ComplaintsManagement />
           </Route>
-          <Route path="/dashboard/sop">
-            <SOPPage />
-          </Route>
-          <Route path="/dashboard/communication-tracker">
-            <CommunicationTrackerPage />
-          </Route>
-          <Route path="/dashboard/kpi-report">
-            <KPIReportPage />
-          </Route>
-          <Route path="/dashboard/technical-support">
-            <TechnicalSupport />
-          </Route>
-          <Route path="/dashboard/technical-management">
-            <TechnicalManagementFixed />
-          </Route>
-          <Route path="/dashboard/deadline-extension-requests">
-            <DeadlineExtensionRequests />
-          </Route>
-          <Route path="/dashboard/send-complaint">
-            <SendComplaint />
-          </Route>
-          <Route path="/dashboard/report-issues">
-            <ReportIssues />
-          </Route>
-          <Route path="/dashboard/report-management">
-            <ReportManagement />
-          </Route>
-          <Route path="*" component={NotFound} />
+          <Route path="/dashboard/sop" component={SOPPage} />
+          <Route path="/dashboard/review-links" component={ReviewLinks} />
+          <Route component={NotFound} />
         </Switch>
       </Suspense>
     </div>

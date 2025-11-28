@@ -962,3 +962,32 @@ export const insertGeneralChannelMessageSchema = createInsertSchema(generalChann
 export const selectGeneralChannelMessageSchema = createSelectSchema(generalChannelMessages);
 export const insertGeneralChannelReadReceiptSchema = createInsertSchema(generalChannelReadReceipts);
 export const selectGeneralChannelReadReceiptSchema = createSelectSchema(generalChannelReadReceipts);
+
+// Review Links table
+export const reviewLinks = pgTable("review_links", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  linkUrl: text("link_url").notNull(),
+  description: text("description"),
+  sentBy: integer("sent_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  assignedTo: integer("assigned_to").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: text("status", { enum: ["pending", "reviewed"] }).notNull().default("pending"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const reviewLinksRelations = relations(reviewLinks, ({ one }) => ({
+  sender: one(users, {
+    fields: [reviewLinks.sentBy],
+    references: [users.id],
+  }),
+  assignee: one(users, {
+    fields: [reviewLinks.assignedTo],
+    references: [users.id],
+  }),
+}));
+
+export type ReviewLink = typeof reviewLinks.$inferSelect;
+export const insertReviewLinkSchema = createInsertSchema(reviewLinks);
+export const selectReviewLinkSchema = createSelectSchema(reviewLinks);

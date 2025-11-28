@@ -45,6 +45,7 @@ import {
   issueReports,
   generalChannelMessages,
   generalChannelReadReceipts,
+  reviewLinks,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull } from "drizzle-orm";
 import WebSocket from "ws";
@@ -3052,6 +3053,225 @@ End of Report
     } catch (error) {
       console.error("Error creating test staff query:", error);
       res.status(500).json({ error: "Failed to create test staff query", details: error.message });
+    }
+  });
+
+  // Review Links API Routes - Project Managers and Team Leads only
+
+  // Get all review links (filtered by role)
+  app.get("/api/review-links", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const isProjectManager = user.role === "project_manager";
+    const isTeamLead = user.role === "team_lead";
+
+    if (!isProjectManager && !isTeamLead) {
+      return res.status(403).json({ error: "Only project managers and team leads can access review links" });
+    }
+
+    try {
+      let links;
+
+      if (isProjectManager) {
+        // Project managers see links they sent
+        links = await db
+          .select({
+            id: reviewLinks.id,
+            title: reviewLinks.title,
+            linkUrl: reviewLinks.linkUrl,
+            description: reviewLinks.description,
+            sentBy: reviewLinks.sentBy,
+            assignedTo: reviewLinks.assignedTo,
+            status: reviewLinks.status,
+            reviewedAt: reviewLinks.reviewedAt,
+            createdAt: reviewLinks.createdAt,
+            updatedAt: reviewLinks.updatedAt,
+            assigneeName: users.name,
+            assigneeEmail: users.email,
+          })
+          .from(reviewLinks)
+          .leftJoin(users, eq(reviewLinks.assignedTo, users.id))
+          .where(eq(reviewLinks.sentBy, user.id))
+          .orderBy(desc(reviewLinks.createdAt));
+      } else {
+        // Team leads see links assigned to them
+        links = await db
+          .select({
+            id: reviewLinks.id,
+            title: reviewLinks.title,
+            linkUrl: reviewLinks.linkUrl,
+            description: reviewLinks.description,
+            sentBy: reviewLinks.sentBy,
+            assignedTo: reviewLinks.assignedTo,
+            status: reviewLinks.status,
+            reviewedAt: reviewLinks.reviewedAt,
+            createdAt: reviewLinks.createdAt,
+            updatedAt: reviewLinks.updatedAt,
+            senderName: users.name,
+            senderEmail: users.email,
+          })
+          .from(reviewLinks)
+          .leftJoin(users, eq(reviewLinks.sentBy, users.id))
+          .where(eq(reviewLinks.assignedTo, user.id))
+          .orderBy(desc(reviewLinks.createdAt));
+      }
+
+      res.json(links);
+    } catch (error) {
+      console.error("Error fetching review links:", error);
+      res.status(500).json({ error: "Failed to fetch review links" });
+    }
+  });
+
+  // Create a new review link (Project Managers only)
+  app.post("/api/review-links", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager") {
+      return res.status(403).json({ error: "Only project managers can create review links" });
+    }
+
+    try {
+      const { title, linkUrl, description, assignedTo } = req.body;
+
+      if (!title || !linkUrl || !assignedTo) {
+        return res.status(400).json({ error: "Title, link URL, and assignee are required" });
+      }
+
+      // Verify assignee is a team lead
+      const [assignee] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parseInt(assignedTo)))
+        .limit(1);
+
+      if (!assignee || assignee.role !== "team_lead") {
+        return res.status(400).json({ error: "Assignee must be a team lead" });
+      }
+
+      const [newLink] = await db
+        .insert(reviewLinks)
+        .values({
+          title,
+          linkUrl,
+          description: description || null,
+          sentBy: user.id,
+          assignedTo: parseInt(assignedTo),
+          status: "pending",
+        })
+        .returning();
+
+      // Create notification for team lead
+      await createNotification(
+        parseInt(assignedTo),
+        "task_assigned",
+        `${user.name} sent you a link to review: "${title}"`,
+        newLink.id,
+        "review_link"
+      );
+
+      res.json(newLink);
+    } catch (error) {
+      console.error("Error creating review link:", error);
+      res.status(500).json({ error: "Failed to create review link" });
+    }
+  });
+
+  // Mark review link as reviewed (Team Leads only)
+  app.put("/api/review-links/:id/reviewed", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "team_lead") {
+      return res.status(403).json({ error: "Only team leads can mark links as reviewed" });
+    }
+
+    try {
+      const linkId = parseInt(req.params.id);
+
+      // Check if link exists and is assigned to this team lead
+      const [link] = await db
+        .select()
+        .from(reviewLinks)
+        .where(and(
+          eq(reviewLinks.id, linkId),
+          eq(reviewLinks.assignedTo, user.id)
+        ))
+        .limit(1);
+
+      if (!link) {
+        return res.status(404).json({ error: "Review link not found or not assigned to you" });
+      }
+
+      // Update link status
+      const [updatedLink] = await db
+        .update(reviewLinks)
+        .set({
+          status: "reviewed",
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(reviewLinks.id, linkId))
+        .returning();
+
+      // Create notification for project manager
+      await createNotification(
+        link.sentBy,
+        "task_completed",
+        `${user.name} has reviewed your link: "${link.title}"`,
+        linkId,
+        "review_link"
+      );
+
+      res.json(updatedLink);
+    } catch (error) {
+      console.error("Error marking link as reviewed:", error);
+      res.status(500).json({ error: "Failed to mark link as reviewed" });
+    }
+  });
+
+  // Delete a review link (Project Managers only)
+  app.delete("/api/review-links/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "project_manager") {
+      return res.status(403).json({ error: "Only project managers can delete review links" });
+    }
+
+    try {
+      const linkId = parseInt(req.params.id);
+
+      // Check if link exists and was sent by this PM
+      const [link] = await db
+        .select()
+        .from(reviewLinks)
+        .where(and(
+          eq(reviewLinks.id, linkId),
+          eq(reviewLinks.sentBy, user.id)
+        ))
+        .limit(1);
+
+      if (!link) {
+        return res.status(404).json({ error: "Review link not found or not created by you" });
+      }
+
+      await db.delete(reviewLinks).where(eq(reviewLinks.id, linkId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting review link:", error);
+      res.status(500).json({ error: "Failed to delete review link" });
     }
   });
 
