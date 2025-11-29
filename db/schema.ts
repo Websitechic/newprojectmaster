@@ -929,16 +929,12 @@ export const generalChannelReadReceiptsRelations = relations(generalChannelReadR
 }));
 
 export const issueReportsRelations = relations(issueReports, ({ one }) => ({
-  reporter: one(users, {
-    fields: [issueReports.reporterId],
+  submitter: one(users, {
+    fields: [issueReports.submitterId],
     references: [users.id],
   }),
-  assignedToUser: one(users, {
-    fields: [issueReports.assignedTo],
-    references: [users.id],
-  }),
-  resolvedByUser: one(users, {
-    fields: [issueReports.resolvedBy],
+  reviewer: one(users, {
+    fields: [issueReports.reviewedBy],
     references: [users.id],
   }),
 }));
