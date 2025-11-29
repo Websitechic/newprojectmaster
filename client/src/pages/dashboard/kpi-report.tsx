@@ -89,9 +89,6 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
         {format(new Date(day.date), "MMM dd, yyyy")}
       </TableCell>
       <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
-      <TableCell className="font-medium">
-        {formatTime(day.actualWorkHours)}
-      </TableCell>
       <TableCell className="w-[250px]">
         <div className="space-y-1">
           <span className="text-sm font-medium text-gray-900 block">
@@ -374,8 +371,10 @@ export default function KPIReportPage() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Avg Hours/Day</p>
-                        <p className="text-2xl font-bold">{productivityData.summary.avgHoursPerDay.toFixed(1)}h</p>
+                        <p className="text-sm font-medium text-gray-600">Avg Hours</p>
+                        <p className="text-2xl font-bold">
+                          {(productivityData.dailyData.reduce((sum, day) => sum + day.totalSpanHours, 0) / productivityData.summary.totalDays).toFixed(1)}h
+                        </p>
                       </div>
                       <TrendingUp className="h-8 w-8 text-orange-500" />
                     </div>
@@ -731,7 +730,6 @@ export default function KPIReportPage() {
                             <TableRow>
                               <TableHead>Date</TableHead>
                               <TableHead>Total Span</TableHead>
-                              <TableHead>Actual Work</TableHead>
                               <TableHead className="w-[250px]">Tasks</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>
