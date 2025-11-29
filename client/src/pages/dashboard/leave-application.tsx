@@ -124,6 +124,22 @@ export default function LeaveApplication() {
     },
   });
 
+  // Mark as viewed when history tab is opened
+  const handleTabChange = async (value: string) => {
+    if (value === "history") {
+      try {
+        await fetch("/api/leave-applications/mark-viewed", {
+          method: "POST",
+          credentials: "include",
+        });
+        // Invalidate the indicator query to update the sidebar
+        queryClient.invalidateQueries({ queryKey: ["/api/leave-applications/has-updates"] });
+      } catch (error) {
+        console.error("Error marking leave applications as viewed:", error);
+      }
+    }
+  };
+
   // Check if user is staff, intern, customer support officer, team lead, or project manager
   if (!user || (user.role !== "staff" && user.role !== "intern" && user.role !== "customer_support_officer" && user.role !== "team_lead" && user.role !== "project_manager")) {
     return (
@@ -272,7 +288,7 @@ export default function LeaveApplication() {
               </p>
             </div>
 
-            <Tabs defaultValue="apply" className="w-full">
+            <Tabs defaultValue="apply" className="w-full" onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="apply" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />

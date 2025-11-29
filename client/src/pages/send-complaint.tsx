@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export default function SendComplaint() {
   const [location] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -39,6 +41,26 @@ export default function SendComplaint() {
     detailedExplanation: "",
   });
   const [screenshot, setScreenshot] = useState<File | null>(null);
+
+  // Mark as viewed when page loads
+  useEffect(() => {
+    const markViewed = async () => {
+      try {
+        await fetch("/api/staff-complaints/mark-viewed", {
+          method: "POST",
+          credentials: "include",
+        });
+        // Invalidate the indicator query to update the sidebar
+        queryClient.invalidateQueries({ queryKey: ["/api/staff-complaints/my-complaints/has-updates"] });
+      } catch (error) {
+        console.error("Error marking staff complaints as viewed:", error);
+      }
+    };
+
+    if (user) {
+      markViewed();
+    }
+  }, [user, queryClient]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));

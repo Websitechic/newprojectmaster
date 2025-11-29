@@ -3823,6 +3823,13 @@ End of Report
     const user = req.user!;
 
     try {
+      // Check if user has viewed the application history
+      const hasViewed = req.session?.leaveApplicationsViewed || false;
+      
+      if (hasViewed) {
+        return res.json({ hasUpdates: false });
+      }
+
       const updatedApplications = await db
         .select({ count: sql<number>`count(*)` })
         .from(leaveApplications)
@@ -3841,6 +3848,23 @@ End of Report
     }
   });
 
+  // Mark leave applications as viewed
+  app.post("/api/leave-applications/mark-viewed", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      if (req.session) {
+        req.session.leaveApplicationsViewed = true;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking leave applications as viewed:", error);
+      res.status(500).json({ error: "Failed to mark as viewed" });
+    }
+  });
+
   // Check for staff complaint updates (for the person who submitted)
   app.get("/api/staff-complaints/my-complaints/has-updates", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -3850,12 +3874,19 @@ End of Report
     const user = req.user!;
 
     try {
+      // Check if user has viewed the page
+      const hasViewed = req.session?.staffComplaintsViewed || false;
+      
+      if (hasViewed) {
+        return res.json({ hasUpdates: false });
+      }
+
       const updatedComplaints = await db
         .select({ count: sql<number>`count(*)` })
         .from(staffComplaints)
         .where(
           and(
-            eq(staffComplaints.submitterId, user.id), // Corrected from userId to submitterId
+            eq(staffComplaints.submitterId, user.id),
             ne(staffComplaints.status, "pending"),
             isNotNull(staffComplaints.reviewedAt)
           )
@@ -3865,6 +3896,23 @@ End of Report
     } catch (error) {
       console.error("Error checking staff complaint updates:", error);
       res.status(500).json({ error: "Failed to check updates" });
+    }
+  });
+
+  // Mark staff complaints as viewed
+  app.post("/api/staff-complaints/mark-viewed", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      if (req.session) {
+        req.session.staffComplaintsViewed = true;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking staff complaints as viewed:", error);
+      res.status(500).json({ error: "Failed to mark as viewed" });
     }
   });
 
@@ -4117,6 +4165,61 @@ End of Report
     } catch (error) {
       console.error("Error checking client complaint updates:", error);
       res.status(500).json({ error: "Failed to check updates" });
+    }
+  });
+
+  // Check for technical support updates
+  app.get("/api/technical-support/has-updates", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      // Check if user has viewed the page
+      const hasViewed = req.session?.technicalSupportViewed || false;
+      
+      if (hasViewed) {
+        return res.json({ hasUpdates: false });
+      }
+
+      // Check for requests where status has changed (assigned or resolved)
+      const updatedRequests = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(technicalSupportRequests)
+        .where(
+          and(
+            eq(technicalSupportRequests.requesterId, user.id),
+            or(
+              isNotNull(technicalSupportRequests.assignedToId),
+              eq(technicalSupportRequests.status, "resolved"),
+              eq(technicalSupportRequests.status, "closed")
+            )
+          )
+        );
+
+      res.json({ hasUpdates: (updatedRequests[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking technical support updates:", error);
+      res.status(500).json({ error: "Failed to check updates" });
+    }
+  });
+
+  // Mark technical support as viewed
+  app.post("/api/technical-support/mark-viewed", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      if (req.session) {
+        req.session.technicalSupportViewed = true;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking technical support as viewed:", error);
+      res.status(500).json({ error: "Failed to mark as viewed" });
     }
   });
 

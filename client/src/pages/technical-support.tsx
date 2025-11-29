@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -93,6 +93,26 @@ export default function TechnicalSupportPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  // Mark as viewed when page loads
+  useEffect(() => {
+    const markViewed = async () => {
+      try {
+        await fetch("/api/technical-support/mark-viewed", {
+          method: "POST",
+          credentials: "include",
+        });
+        // Invalidate the indicator query to update the sidebar
+        queryClient.invalidateQueries({ queryKey: ["/api/technical-support/has-updates"] });
+      } catch (error) {
+        console.error("Error marking technical support as viewed:", error);
+      }
+    };
+
+    if (user) {
+      markViewed();
+    }
+  }, [user, queryClient]);
 
   const { data: requests = [], isLoading, error } = useQuery<TechnicalSupportRequest[]>({
     queryKey: ["/api/technical-support/requests"],
