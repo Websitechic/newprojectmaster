@@ -240,56 +240,7 @@ export default function KPIReportPage() {
     // Create workbook
     const wb = XLSX.utils.book_new();
     
-    // Prepare header data
-    const headerData = [
-      ['KPI REPORT - ' + staffMember.name.toUpperCase()],
-      [''],
-      ['Department:', selectedDepartment.replace(/_/g, ' ').toUpperCase()],
-      ['Report Period:', useCustomRange && customStartDate && customEndDate 
-        ? `${format(customStartDate, 'MMM dd, yyyy')} - ${format(customEndDate, 'MMM dd, yyyy')}`
-        : `Last ${dateRange} Days`],
-      ['Generated:', format(new Date(), 'MMM dd, yyyy HH:mm')],
-      [''],
-      ['PERFORMANCE SUMMARY'],
-      ['Total Days:', productivityData.summary.totalDays],
-      ['Average Hours:', formatTimeForExport((() => {
-        const totalMinutes = productivityData.dailyData.reduce((sum, day) => sum + (day.totalSpanHours * 60), 0);
-        return totalMinutes / productivityData.summary.totalDays / 60;
-      })())],
-      ['Good Days:', productivityData.summary.goodDays],
-      ['Fair Days:', productivityData.summary.fairDays],
-      ['Poor Days:', productivityData.summary.poorDays],
-      [''],
-      ['DAILY PERFORMANCE TABLE'],
-      ['Date', 'Total Span', 'Tasks Worked On', 'Status']
-    ];
-
-    // Add daily data
-    const dailyRows = [...productivityData.dailyData]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .map(day => {
-        const tasksList = day.taskBreakdown?.map(t => t.title).filter(Boolean) || 
-                         day.tasks?.filter(Boolean) || [];
-        const tasksDisplay = tasksList.length > 0 
-          ? tasksList.join('; ') 
-          : 'No tasks recorded';
-        
-        return [
-          format(new Date(day.date), 'MMM dd, yyyy'),
-          formatTimeForExport(day.totalSpanHours),
-          tasksDisplay,
-          day.performanceStatus.toUpperCase()
-        ];
-      });
-
-    // Add task breakdown section
-    const taskBreakdownData = [
-      [''],
-      ['TASK BREAKDOWN'],
-      ['Task Name', 'Assigned Time', 'Actual Time Spent', 'Status']
-    ];
-
-    // Get unique tasks
+    // Get unique tasks for the period
     const allTasks = new Map();
     productivityData.dailyData.forEach((day: any) => {
       if (day.taskBreakdown) {
@@ -301,6 +252,74 @@ export default function KPIReportPage() {
       }
     });
 
+    // Calculate totals
+    const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
+      sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
+    const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
+      sum + Math.floor((task.timeSpent || 0) / 60), 0);
+    const productivity = totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
+
+    // Build data array matching reference format
+    const data: any[][] = [];
+    
+    // Title row
+    data.push(['STAFF PERFORMANCE REPORT']);
+    data.push([]);
+    
+    // Staff info section
+    data.push(['Staff Name:', staffMember.name]);
+    data.push(['Department:', selectedDepartment.replace(/_/g, ' ').toUpperCase()]);
+    data.push(['Report Period:', useCustomRange && customStartDate && customEndDate 
+      ? `${format(customStartDate, 'MMM dd, yyyy')} - ${format(customEndDate, 'MMM dd, yyyy')}`
+      : `Last ${dateRange} Days`]);
+    data.push(['Generated:', format(new Date(), 'MMM dd, yyyy HH:mm')]);
+    data.push([]);
+    
+    // Summary section
+    data.push(['PERFORMANCE SUMMARY']);
+    data.push(['Metric', 'Value']);
+    data.push(['Total Working Days', productivityData.summary.totalDays]);
+    data.push(['Average Daily Hours', formatTimeForExport((() => {
+      const totalMinutes = productivityData.dailyData.reduce((sum, day) => sum + (day.totalSpanHours * 60), 0);
+      return totalMinutes / productivityData.summary.totalDays / 60;
+    })())]);
+    data.push(['Good Performance Days', productivityData.summary.goodDays]);
+    data.push(['Fair Performance Days', productivityData.summary.fairDays]);
+    data.push(['Poor Performance Days', productivityData.summary.poorDays]);
+    data.push(['Productivity Score', `${productivity}%`]);
+    data.push([]);
+    
+    // Daily breakdown header
+    data.push(['DAILY PERFORMANCE BREAKDOWN']);
+    data.push(['Date', 'Total Hours Worked', 'Tasks Completed', 'Performance Status']);
+    
+    // Daily data sorted by date (newest first)
+    const sortedDailyData = [...productivityData.dailyData].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    sortedDailyData.forEach(day => {
+      const tasksList = day.taskBreakdown?.map(t => t.title).filter(Boolean) || 
+                       day.tasks?.filter(Boolean) || [];
+      const tasksDisplay = tasksList.length > 0 
+        ? `${tasksList.length} task(s): ${tasksList.join(', ')}` 
+        : 'No tasks recorded';
+      
+      data.push([
+        format(new Date(day.date), 'EEE, MMM dd, yyyy'),
+        formatTimeForExport(day.totalSpanHours),
+        tasksDisplay,
+        day.performanceStatus.toUpperCase()
+      ]);
+    });
+    
+    data.push([]);
+    data.push([]);
+    
+    // Task breakdown section
+    data.push(['TASK-LEVEL ANALYSIS']);
+    data.push(['Task Name', 'Assigned Time', 'Actual Time', 'Efficiency', 'Status']);
+    
     const taskRows = Array.from(allTasks.values())
       .sort((a: any, b: any) => a.title.localeCompare(b.title))
       .map((task: any) => {
@@ -308,11 +327,16 @@ export default function KPIReportPage() {
         const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
         
         let status = 'On Time';
-        if (assignedMinutes > 0) {
+        let efficiency = '100%';
+        
+        if (assignedMinutes > 0 && actualMinutes > 0) {
+          const taskEfficiency = Math.round((assignedMinutes / actualMinutes) * 100);
+          efficiency = `${taskEfficiency}%`;
+          
           if (actualMinutes < assignedMinutes) {
             status = 'Early';
           } else if (actualMinutes > assignedMinutes) {
-            status = 'Late';
+            status = 'Delayed';
           }
         }
 
@@ -320,57 +344,77 @@ export default function KPIReportPage() {
           task.title,
           formatMinutesForExport(assignedMinutes),
           formatMinutesForExport(actualMinutes),
+          efficiency,
           status
         ];
       });
-
-    // Calculate totals
-    const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
-      sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-    const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
-      sum + Math.floor((task.timeSpent || 0) / 60), 0);
-
-    taskRows.push([
+    
+    taskRows.forEach(row => data.push(row));
+    
+    // Totals row
+    data.push([
       'TOTAL',
       formatMinutesForExport(totalAssignedMinutes),
       formatMinutesForExport(totalActualMinutes),
+      `${productivity}%`,
       '-'
     ]);
-
-    // Productivity calculation
-    const productivity = totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
-    const productivityData2 = [
-      [''],
-      ['PRODUCTIVITY SCORE'],
-      ['Productivity %:', `${productivity}%`],
-      ['Interpretation:', totalActualMinutes > 0 ? (productivity >= 100 ? 'More efficient than expected' : 'Less efficient than expected') : 'No data']
-    ];
-
-    // Combine all data
-    const allData = [
-      ...headerData,
-      ...dailyRows,
-      ...taskBreakdownData,
-      ...taskRows,
-      ...productivityData2
-    ];
+    
+    data.push([]);
+    data.push([]);
+    
+    // Weekly averages if applicable
+    if (productivityData.weeklyData && productivityData.weeklyData.length > 0) {
+      data.push(['WEEKLY PERFORMANCE TREND']);
+      data.push(['Week', 'Average Hours', 'Status']);
+      
+      // Group by weeks
+      const weekGroups = new Map();
+      sortedDailyData.forEach(day => {
+        const weekStart = startOfWeek(new Date(day.date), { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(new Date(day.date), { weekStartsOn: 1 });
+        const weekKey = format(weekStart, 'MMM dd') + ' - ' + format(weekEnd, 'MMM dd');
+        
+        if (!weekGroups.has(weekKey)) {
+          weekGroups.set(weekKey, []);
+        }
+        weekGroups.get(weekKey).push(day);
+      });
+      
+      weekGroups.forEach((days, weekKey) => {
+        const totalHours = days.reduce((sum: number, day: any) => sum + day.totalSpanHours, 0);
+        const avgHours = totalHours / days.length;
+        const goodDays = days.filter((d: any) => d.performanceStatus === 'good').length;
+        const status = goodDays >= days.length / 2 ? 'GOOD' : goodDays > 0 ? 'FAIR' : 'POOR';
+        
+        data.push([
+          weekKey,
+          formatTimeForExport(avgHours),
+          status
+        ]);
+      });
+    }
+    
+    data.push([]);
+    data.push(['Report End']);
 
     // Create worksheet
-    const ws = XLSX.utils.aoa_to_sheet(allData);
+    const ws = XLSX.utils.aoa_to_sheet(data);
 
     // Set column widths
     ws['!cols'] = [
-      { wch: 20 }, // Date/Label column
-      { wch: 15 }, // Total Span/Assigned
-      { wch: 50 }, // Tasks/Task Name
-      { wch: 15 }  // Status
+      { wch: 25 },  // Column A - Labels/Dates
+      { wch: 20 },  // Column B - Values/Hours
+      { wch: 60 },  // Column C - Tasks/Details
+      { wch: 18 },  // Column D - Status/Efficiency
+      { wch: 15 }   // Column E - Additional
     ];
 
     // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(wb, ws, 'KPI Report');
+    XLSX.utils.book_append_sheet(wb, ws, staffMember.name.substring(0, 31));
 
     // Generate and download file
-    const fileName = `KPI-Report-${staffMember.name.replace(/\s+/g, '-')}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+    const fileName = `Performance-Report-${staffMember.name.replace(/\s+/g, '-')}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
 
@@ -406,56 +450,7 @@ export default function KPIReportPage() {
         
         const staffProductivityData = await response.json();
 
-        // Prepare header data
-        const headerData = [
-          ['KPI REPORT - ' + staff.name.toUpperCase()],
-          [''],
-          ['Department:', selectedDepartment.replace(/_/g, ' ').toUpperCase()],
-          ['Report Period:', useCustomRange && customStartDate && customEndDate 
-            ? `${format(customStartDate, 'MMM dd, yyyy')} - ${format(customEndDate, 'MMM dd, yyyy')}`
-            : `Last ${dateRange} Days`],
-          ['Generated:', format(new Date(), 'MMM dd, yyyy HH:mm')],
-          [''],
-          ['PERFORMANCE SUMMARY'],
-          ['Total Days:', staffProductivityData.summary.totalDays],
-          ['Average Hours:', formatTimeForExport((() => {
-            const totalMinutes = staffProductivityData.dailyData.reduce((sum: any, day: any) => sum + (day.totalSpanHours * 60), 0);
-            return totalMinutes / staffProductivityData.summary.totalDays / 60;
-          })())],
-          ['Good Days:', staffProductivityData.summary.goodDays],
-          ['Fair Days:', staffProductivityData.summary.fairDays],
-          ['Poor Days:', staffProductivityData.summary.poorDays],
-          [''],
-          ['DAILY PERFORMANCE TABLE'],
-          ['Date', 'Total Span', 'Tasks Worked On', 'Status']
-        ];
-
-        // Add daily data
-        const dailyRows = [...staffProductivityData.dailyData]
-          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .map((day: any) => {
-            const tasksList = day.taskBreakdown?.map((t: any) => t.title).filter(Boolean) || 
-                             day.tasks?.filter(Boolean) || [];
-            const tasksDisplay = tasksList.length > 0 
-              ? tasksList.join('; ') 
-              : 'No tasks recorded';
-            
-            return [
-              format(new Date(day.date), 'MMM dd, yyyy'),
-              formatTimeForExport(day.totalSpanHours),
-              tasksDisplay,
-              day.performanceStatus.toUpperCase()
-            ];
-          });
-
-        // Add task breakdown section
-        const taskBreakdownData = [
-          [''],
-          ['TASK BREAKDOWN'],
-          ['Task Name', 'Assigned Time', 'Actual Time Spent', 'Status']
-        ];
-
-        // Get unique tasks
+        // Get unique tasks for the period
         const allTasks = new Map();
         staffProductivityData.dailyData.forEach((day: any) => {
           if (day.taskBreakdown) {
@@ -467,6 +462,74 @@ export default function KPIReportPage() {
           }
         });
 
+        // Calculate totals
+        const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
+          sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
+        const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
+          sum + Math.floor((task.timeSpent || 0) / 60), 0);
+        const productivity = totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
+
+        // Build data array matching reference format
+        const data: any[][] = [];
+        
+        // Title row
+        data.push(['STAFF PERFORMANCE REPORT']);
+        data.push([]);
+        
+        // Staff info section
+        data.push(['Staff Name:', staff.name]);
+        data.push(['Department:', selectedDepartment.replace(/_/g, ' ').toUpperCase()]);
+        data.push(['Report Period:', useCustomRange && customStartDate && customEndDate 
+          ? `${format(customStartDate, 'MMM dd, yyyy')} - ${format(customEndDate, 'MMM dd, yyyy')}`
+          : `Last ${dateRange} Days`]);
+        data.push(['Generated:', format(new Date(), 'MMM dd, yyyy HH:mm')]);
+        data.push([]);
+        
+        // Summary section
+        data.push(['PERFORMANCE SUMMARY']);
+        data.push(['Metric', 'Value']);
+        data.push(['Total Working Days', staffProductivityData.summary.totalDays]);
+        data.push(['Average Daily Hours', formatTimeForExport((() => {
+          const totalMinutes = staffProductivityData.dailyData.reduce((sum: any, day: any) => sum + (day.totalSpanHours * 60), 0);
+          return totalMinutes / staffProductivityData.summary.totalDays / 60;
+        })())]);
+        data.push(['Good Performance Days', staffProductivityData.summary.goodDays]);
+        data.push(['Fair Performance Days', staffProductivityData.summary.fairDays]);
+        data.push(['Poor Performance Days', staffProductivityData.summary.poorDays]);
+        data.push(['Productivity Score', `${productivity}%`]);
+        data.push([]);
+        
+        // Daily breakdown header
+        data.push(['DAILY PERFORMANCE BREAKDOWN']);
+        data.push(['Date', 'Total Hours Worked', 'Tasks Completed', 'Performance Status']);
+        
+        // Daily data sorted by date (newest first)
+        const sortedDailyData = [...staffProductivityData.dailyData].sort((a: any, b: any) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        
+        sortedDailyData.forEach((day: any) => {
+          const tasksList = day.taskBreakdown?.map((t: any) => t.title).filter(Boolean) || 
+                           day.tasks?.filter(Boolean) || [];
+          const tasksDisplay = tasksList.length > 0 
+            ? `${tasksList.length} task(s): ${tasksList.join(', ')}` 
+            : 'No tasks recorded';
+          
+          data.push([
+            format(new Date(day.date), 'EEE, MMM dd, yyyy'),
+            formatTimeForExport(day.totalSpanHours),
+            tasksDisplay,
+            day.performanceStatus.toUpperCase()
+          ]);
+        });
+        
+        data.push([]);
+        data.push([]);
+        
+        // Task breakdown section
+        data.push(['TASK-LEVEL ANALYSIS']);
+        data.push(['Task Name', 'Assigned Time', 'Actual Time', 'Efficiency', 'Status']);
+        
         const taskRows = Array.from(allTasks.values())
           .sort((a: any, b: any) => a.title.localeCompare(b.title))
           .map((task: any) => {
@@ -474,11 +537,16 @@ export default function KPIReportPage() {
             const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
             
             let status = 'On Time';
-            if (assignedMinutes > 0) {
+            let efficiency = '100%';
+            
+            if (assignedMinutes > 0 && actualMinutes > 0) {
+              const taskEfficiency = Math.round((assignedMinutes / actualMinutes) * 100);
+              efficiency = `${taskEfficiency}%`;
+              
               if (actualMinutes < assignedMinutes) {
                 status = 'Early';
               } else if (actualMinutes > assignedMinutes) {
-                status = 'Late';
+                status = 'Delayed';
               }
             }
 
@@ -486,50 +554,70 @@ export default function KPIReportPage() {
               task.title,
               formatMinutesForExport(assignedMinutes),
               formatMinutesForExport(actualMinutes),
+              efficiency,
               status
             ];
           });
-
-        // Calculate totals
-        const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
-          sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-        const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
-          sum + Math.floor((task.timeSpent || 0) / 60), 0);
-
-        taskRows.push([
+        
+        taskRows.forEach(row => data.push(row));
+        
+        // Totals row
+        data.push([
           'TOTAL',
           formatMinutesForExport(totalAssignedMinutes),
           formatMinutesForExport(totalActualMinutes),
+          `${productivity}%`,
           '-'
         ]);
-
-        // Productivity calculation
-        const productivity = totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
-        const productivitySection = [
-          [''],
-          ['PRODUCTIVITY SCORE'],
-          ['Productivity %:', `${productivity}%`],
-          ['Interpretation:', totalActualMinutes > 0 ? (productivity >= 100 ? 'More efficient than expected' : 'Less efficient than expected') : 'No data']
-        ];
-
-        // Combine all data
-        const allData = [
-          ...headerData,
-          ...dailyRows,
-          ...taskBreakdownData,
-          ...taskRows,
-          ...productivitySection
-        ];
+        
+        data.push([]);
+        data.push([]);
+        
+        // Weekly averages if applicable
+        if (staffProductivityData.weeklyData && staffProductivityData.weeklyData.length > 0) {
+          data.push(['WEEKLY PERFORMANCE TREND']);
+          data.push(['Week', 'Average Hours', 'Status']);
+          
+          // Group by weeks
+          const weekGroups = new Map();
+          sortedDailyData.forEach((day: any) => {
+            const weekStart = startOfWeek(new Date(day.date), { weekStartsOn: 1 });
+            const weekEnd = endOfWeek(new Date(day.date), { weekStartsOn: 1 });
+            const weekKey = format(weekStart, 'MMM dd') + ' - ' + format(weekEnd, 'MMM dd');
+            
+            if (!weekGroups.has(weekKey)) {
+              weekGroups.set(weekKey, []);
+            }
+            weekGroups.get(weekKey).push(day);
+          });
+          
+          weekGroups.forEach((days: any[], weekKey: string) => {
+            const totalHours = days.reduce((sum: number, day: any) => sum + day.totalSpanHours, 0);
+            const avgHours = totalHours / days.length;
+            const goodDays = days.filter((d: any) => d.performanceStatus === 'good').length;
+            const status = goodDays >= days.length / 2 ? 'GOOD' : goodDays > 0 ? 'FAIR' : 'POOR';
+            
+            data.push([
+              weekKey,
+              formatTimeForExport(avgHours),
+              status
+            ]);
+          });
+        }
+        
+        data.push([]);
+        data.push(['Report End']);
 
         // Create worksheet
-        const ws = XLSX.utils.aoa_to_sheet(allData);
+        const ws = XLSX.utils.aoa_to_sheet(data);
 
         // Set column widths
         ws['!cols'] = [
-          { wch: 20 },
-          { wch: 15 },
-          { wch: 50 },
-          { wch: 15 }
+          { wch: 25 },  // Column A - Labels/Dates
+          { wch: 20 },  // Column B - Values/Hours
+          { wch: 60 },  // Column C - Tasks/Details
+          { wch: 18 },  // Column D - Status/Efficiency
+          { wch: 15 }   // Column E - Additional
         ];
 
         // Add worksheet to workbook - use staff name as sheet name (max 31 chars)
@@ -538,7 +626,7 @@ export default function KPIReportPage() {
       }
 
       // Generate and download file
-      const fileName = `KPI-Report-All-Users-${selectedDepartment}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      const fileName = `Department-Performance-Report-${selectedDepartment}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
       XLSX.writeFile(wb, fileName);
     } catch (error) {
       console.error('Export error:', error);
