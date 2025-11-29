@@ -5361,7 +5361,7 @@ End of Report
 
   app.post("/api/notes", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("      return res.status(401).send("Not authenticated");
+      return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
