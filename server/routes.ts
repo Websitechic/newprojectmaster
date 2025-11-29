@@ -3737,7 +3737,7 @@ End of Report
     try {
       // Insert read receipts for messages
       const receipts = messageIds.map(messageId => ({
-        messageId,
+        messageId: parseInt(messageId),
         userId: user.id,
       }));
 
@@ -3825,7 +3825,7 @@ End of Report
     try {
       // Check if user has viewed the application history
       const hasViewed = req.session?.leaveApplicationsViewed || false;
-      
+
       if (hasViewed) {
         return res.json({ hasUpdates: false });
       }
@@ -3876,7 +3876,7 @@ End of Report
     try {
       // Check if user has viewed the page
       const hasViewed = req.session?.staffComplaintsViewed || false;
-      
+
       if (hasViewed) {
         return res.json({ hasUpdates: false });
       }
@@ -4179,7 +4179,7 @@ End of Report
     try {
       // Check if user has viewed the page
       const hasViewed = req.session?.technicalSupportViewed || false;
-      
+
       if (hasViewed) {
         return res.json({ hasUpdates: false });
       }
@@ -5439,7 +5439,6 @@ End of Report
         reports = await db
           .select({
             id: issueReports.id,
-            userId: issueReports.submitterId, // Use submitterId for filtering user's own reports
             title: issueReports.title,
             description: issueReports.description,
             suggestions: issueReports.suggestions,
@@ -6562,7 +6561,9 @@ End of Report
       const [existingRequest] = await db
         .select()
         .from(deadlineExtensionRequests)
-        .where(eq(existingRequest.id, requestId))
+        .where(
+          eq(existingRequest.id, requestId)
+        )
         .limit(1);
 
       if (!existingRequest) {
@@ -6574,7 +6575,7 @@ End of Report
       }
 
       // Project managers can only update requests for their projects
-      if (user.role === "project_manager" && existingRequest.project.managerId !== user.id) {
+      if (user.role === "project_manager" && existingRequest.projectManagerId !== user.id) {
         return res.status(403).json({ error: "You can only update requests for your projects" });
       }
 
@@ -7133,18 +7134,17 @@ End of Report
   // Review leave application (approve/reject)
   app.put("/api/leave-applications/:id/review", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const user = req.user;
-    // Only project managers, operations managers, and team leads can review applications
+    const user = req.user!;
     if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "Access denied - Project Manager, Operations Manager, or Team Lead role required" });
     }
 
     try {
       const applicationId = parseInt(req.params.id);
-      const { status, reviewComments } = req.body;
+      const {status, reviewComments} = req.body;
 
       if (!status || !["approved", "rejected"].includes(status)) {
         return res.status(400).json({ error: "Invalid status. Must be 'approved' or 'rejected'" });
@@ -8156,7 +8156,7 @@ End of Report
     }
 
     try {
-      // Insert read receipts for messages that don't already have them
+      // Insert read receipts for messages
       const readReceiptsData = messageIds.map(messageId => ({
         messageId: parseInt(messageId),
         userId: user.id,
