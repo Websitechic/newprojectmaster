@@ -373,7 +373,12 @@ export default function KPIReportPage() {
                       <div>
                         <p className="text-sm font-medium text-gray-600">Avg Hours</p>
                         <p className="text-2xl font-bold">
-                          {(productivityData.dailyData.reduce((sum, day) => sum + day.totalSpanHours, 0) / productivityData.summary.totalDays).toFixed(1)}h
+                          {(() => {
+                            const totalMinutes = productivityData.dailyData.reduce((sum, day) => sum + (day.totalSpanHours * 60), 0);
+                            const avgMinutes = totalMinutes / productivityData.summary.totalDays;
+                            const avgHours = avgMinutes / 60;
+                            return avgHours.toFixed(1);
+                          })()}h
                         </p>
                       </div>
                       <TrendingUp className="h-8 w-8 text-orange-500" />
@@ -464,13 +469,68 @@ export default function KPIReportPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Tabs defaultValue="productivity" className="w-full">
+                  <Tabs defaultValue="daily" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="productivity">Productivity Score</TabsTrigger>
                       <TabsTrigger value="daily">Daily Productivity Details</TabsTrigger>
+                      <TabsTrigger value="productivity">Productivity Score</TabsTrigger>
                     </TabsList>
 
-                    {/* Tab 1: Productivity Score */}
+                    {/* Tab 1: Daily Productivity Details */}
+                    <TabsContent value="daily" className="space-y-4">
+                      {/* Status Legend - Moved to top */}
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Performance Status Legend</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                            <div className="text-sm">
+                              <div className="font-medium text-red-700">Poor</div>
+                              <div className="text-gray-600">Less than 2 hours worked</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                            <div className="text-sm">
+                              <div className="font-medium text-yellow-700">Fair</div>
+                              <div className="text-gray-600">2 to 4 hours worked</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                            <div className="text-sm">
+                              <div className="font-medium text-green-700">Good</div>
+                              <div className="text-gray-600">4 hours or more worked</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {isLoadingProductivity ? (
+                        <div className="flex items-center justify-center p-8">
+                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Total Span</TableHead>
+                              <TableHead className="w-[250px]">Tasks</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {[...productivityData.dailyData]
+                              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                              .map((day, index) => (
+                                <DailyProductivityRow key={index} day={day} />
+                              ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </TabsContent>
+
+                    {/* Tab 2: Productivity Score */}
                     <TabsContent value="productivity" className="space-y-4">
                       <div className="mt-4">
                         {/* Productivity Calculation - Moved to top */}
@@ -690,60 +750,7 @@ export default function KPIReportPage() {
                       </div>
                     </TabsContent>
 
-                    {/* Tab 2: Daily Productivity Details */}
-                    <TabsContent value="daily" className="space-y-4">
-                      {/* Status Legend - Moved to top */}
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-900 mb-3">Performance Status Legend</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                            <div className="text-sm">
-                              <div className="font-medium text-red-700">Poor</div>
-                              <div className="text-gray-600">Less than 2 hours worked</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                            <div className="text-sm">
-                              <div className="font-medium text-yellow-700">Fair</div>
-                              <div className="text-gray-600">2 to 4 hours worked</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                            <div className="text-sm">
-                              <div className="font-medium text-green-700">Good</div>
-                              <div className="text-gray-600">4 hours or more worked</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {isLoadingProductivity ? (
-                        <div className="flex items-center justify-center p-8">
-                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-                        </div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Total Span</TableHead>
-                              <TableHead className="w-[250px]">Tasks</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {[...productivityData.dailyData]
-                              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                              .map((day, index) => (
-                                <DailyProductivityRow key={index} day={day} />
-                              ))}
-                          </TableBody>
-                        </Table>
-                      )}
-                    </TabsContent>
+                    
                   </Tabs>
                 </CardContent>
               </Card>
