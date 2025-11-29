@@ -596,16 +596,12 @@ export default function LeaveApplication() {
                                     </div>
                                     <div>
                                       <Label className="font-medium">Reason</Label>
-                                      <div className="mt-1 bg-gray-50 p-3 rounded-md border">
-                                        <p className="text-sm whitespace-pre-wrap">{application.reason}</p>
-                                      </div>
+                                      <p className="mt-1 text-sm">{application.reason}</p>
                                     </div>
                                     {application.reviewComments && (
                                       <div>
                                         <Label className="font-medium">Review Comments</Label>
-                                        <div className="mt-1 bg-blue-50 p-3 rounded-md border border-blue-200">
-                                          <p className="text-sm whitespace-pre-wrap">{application.reviewComments}</p>
-                                        </div>
+                                        <p className="mt-1 text-sm">{application.reviewComments}</p>
                                       </div>
                                     )}
                                     {application.proofImageUrl && (
