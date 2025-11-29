@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ export default function ReportIssues() {
   const [location] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [formData, setFormData] = useState({
@@ -41,6 +43,11 @@ export default function ReportIssues() {
     suggestions: "",
     priority: "medium",
     category: "other",
+  });
+
+  // Clear the indicator when page is opened
+  useState(() => {
+    queryClient.setQueryData(["/api/issue-reports/has-updates"], false);
   });
 
   // Fetch user's issue reports

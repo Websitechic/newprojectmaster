@@ -96,12 +96,14 @@ export function useSidebarIndicators(): SidebarIndicators {
     refetchInterval: 10000,
   });
 
-  // Extension Requests: Visible when requests approved/declined, cleared when page clicked
+  // Extension Requests: Visible when requests approved/declined, not visible after opening page
   const { data: extensionRequestUpdates = false } = useQuery({
     queryKey: ["/api/deadline-extension-requests/has-updates"],
     queryFn: async () => {
       try {
-        const response = await fetch("/api/deadline-extension-requests/has-updates");
+        const response = await fetch("/api/deadline-extension-requests/has-updates", {
+          credentials: "include",
+        });
         if (!response.ok) return false;
         const data = await response.json();
         return data.hasUpdates || false;
@@ -114,12 +116,14 @@ export function useSidebarIndicators(): SidebarIndicators {
     refetchInterval: 10000,
   });
 
-  // Report App Issue/Error: Visible when status updated, cleared when page clicked
+  // Report App Issue/Error: Visible when status updated, not visible after clicking page
   const { data: reportAppIssueUpdates = false } = useQuery({
     queryKey: ["/api/issue-reports/has-updates"],
     queryFn: async () => {
       try {
-        const response = await fetch("/api/issue-reports/has-updates");
+        const response = await fetch("/api/issue-reports/has-updates", {
+          credentials: "include",
+        });
         if (!response.ok) return false;
         const data = await response.json();
         return data.hasUpdates || false;

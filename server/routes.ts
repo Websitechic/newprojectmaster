@@ -4120,6 +4120,92 @@ End of Report
     }
   });
 
+  // Check for extension request updates (for staff)
+  app.get("/api/deadline-extension-requests/has-updates", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "staff" && user.role !== "intern") {
+        return res.json({ hasUpdates: false });
+      }
+
+      const decidedRequests = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(deadlineExtensionRequests)
+        .where(
+          and(
+            eq(deadlineExtensionRequests.requesterId, user.id),
+            ne(deadlineExtensionRequests.status, "pending")
+          )
+        );
+
+      res.json({ hasUpdates: (decidedRequests[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking extension request updates:", error);
+      res.status(500).json({ error: "Failed to check updates" });
+    }
+  });
+
+  // Check for issue report updates (for users who submitted reports)
+  app.get("/api/issue-reports/has-updates", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      const updatedReports = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(issueReports)
+        .where(
+          and(
+            eq(issueReports.submitterId, user.id),
+            ne(issueReports.status, "pending")
+          )
+        );
+
+      res.json({ hasUpdates: (updatedReports[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking issue report updates:", error);
+      res.status(500).json({ error: "Failed to check updates" });
+    }
+  });
+
+  // Check for unresolved app issues (for operations managers and replit developers)
+  app.get("/api/issue-reports/has-unresolved", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "operations_manager" && user.specialization !== "operations_manager" && user.specialization !== "replit_development") {
+        return res.json({ hasUnresolved: false });
+      }
+
+      const unresolvedReports = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(issueReports)
+        .where(
+          and(
+            ne(issueReports.status, "closed"),
+            ne(issueReports.status, "resolved")
+          )
+        );
+
+      res.json({ hasUnresolved: (unresolvedReports[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking unresolved issues:", error);
+      res.status(500).json({ error: "Failed to check unresolved issues" });
+    }
+  });
+
   // Check if client needs to submit weekly sentiment
   app.get("/api/client-sentiment/needs-weekly-submission", async (req, res) => {
     if (!req.isAuthenticated()) {

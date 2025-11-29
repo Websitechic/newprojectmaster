@@ -64,6 +64,11 @@ export default function ExtensionRequestsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<FormData>(defaultForm);
 
+  // Clear the indicator when page is opened
+  useState(() => {
+    queryClient.setQueryData(["/api/deadline-extension-requests/has-updates"], false);
+  });
+
   const { data: requests = [], isLoading } = useQuery<ExtensionRequest[]>({
     queryKey: ["/api/deadline-extension-requests"],
     queryFn: async () => {
