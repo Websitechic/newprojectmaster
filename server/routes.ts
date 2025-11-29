@@ -4154,7 +4154,7 @@ End of Report
       }
 
       // Additional validation
-      if (!staffName.trim()) {
+      if (!name.trim()) {
         return res.status(400).json({ error: "Staff name cannot be empty" });
       }
 
@@ -5361,7 +5361,7 @@ End of Report
 
   app.post("/api/notes", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).send("      return res.status(401).send("Not authenticated");
     }
 
     const user = req.user!;
@@ -5750,7 +5750,8 @@ End of Report
             requesterId: technicalSupportRequests.requesterId,
             assignedToId: technicalSupportRequests.assignedToId,
             status: technicalSupportRequests.status,
-            priority: technicalSupportRequests.priority,            resolution: technicalSupportRequests.resolution,
+            priority: technicalSupportRequests.priority,
+            resolution: technicalSupportRequests.resolution,
             createdAt: technicalSupportRequests.createdAt,
             updatedAt: technicalSupportRequests.updatedAt,
             resolvedAt: technicalSupportRequests.resolvedAt,
