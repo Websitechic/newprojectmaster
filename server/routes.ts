@@ -6285,7 +6285,7 @@ End of Report
       const [existingRequest] = await db
         .select()
         .from(deadlineExtensionRequests)
-        .where(eq(existingRequest.id, requestId))
+        .where(eq(deadlineExtensionRequests.id, requestId))
         .limit(1);
 
       if (!existingRequest) {
@@ -6294,11 +6294,6 @@ End of Report
 
       if (existingRequest.status !== "pending") {
         return res.status(400).json({ error: "Request has already been processed" });
-      }
-
-      // Project managers can only update requests for their projects
-      if (user.role === "project_manager" && existingRequest.project.managerId !== user.id) {
-        return res.status(403).json({ error: "You can only update requests for your projects" });
       }
 
       // Update the request
@@ -6310,7 +6305,7 @@ End of Report
           decidedBy: user.id,
           decidedAt: new Date(),
         })
-        .where(eq(existingRequest.id, requestId))
+        .where(eq(deadlineExtensionRequests.id, requestId))
         .returning();
 
       // If approved, update the task
