@@ -759,10 +759,10 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-3 max-w-[320px]" align="start">
-                          <div className="space-y-3">
+                        <PopoverContent className="w-auto p-2 max-w-[280px]" align="start">
+                          <div className="space-y-2">
                             <div>
-                              <label className="text-xs font-medium mb-1 block">Start Date</label>
+                              <label className="text-[10px] font-medium mb-0.5 block text-gray-700">Start Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customStartDate}
@@ -770,11 +770,11 @@ export default function KPIReportPage() {
                                   setCustomStartDate(date);
                                   setUseCustomRange(true);
                                 }}
-                                className="p-0 scale-90"
+                                className="p-0"
                               />
                             </div>
-                            <div>
-                              <label className="text-xs font-medium mb-1 block">End Date</label>
+                            <div className="border-t pt-2">
+                              <label className="text-[10px] font-medium mb-0.5 block text-gray-700">End Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customEndDate}
@@ -783,13 +783,13 @@ export default function KPIReportPage() {
                                   setUseCustomRange(true);
                                 }}
                                 disabled={(date) => customStartDate ? date < customStartDate : false}
-                                className="p-0 scale-90"
+                                className="p-0"
                               />
                             </div>
                             {customStartDate && customEndDate && (
                               <Button 
                                 size="sm"
-                                className="w-full" 
+                                className="w-full text-xs h-7" 
                                 onClick={() => {
                                   setUseCustomRange(true);
                                 }}
