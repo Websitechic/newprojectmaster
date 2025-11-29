@@ -6329,15 +6329,13 @@ End of Report
 
       // Create notification for the requester
       try {
-        await db
-          .insert(notifications)
-          .values({
-            userId: existingRequest.requesterId,
-            type: "task_updated",
-            content: `Your deadline extension request has been ${status}. Reason: ${decisionReason}`,
-            referenceId: requestId,
-            referenceType: "project",
-          });
+        await createNotification(
+          existingRequest.requesterId,
+          "task_updated",
+          `Your deadline extension request has been ${status}. Reason: ${decisionReason}`,
+          requestId,
+          "project"
+        );
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
         // Continue execution even if notification fails
