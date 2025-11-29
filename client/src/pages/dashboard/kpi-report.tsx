@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Download, FileText, FileSpreadsheet, FileDown, Calendar, User, Building2, TrendingUp } from "lucide-react";
-import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
+import { format, subDays, subMonths, startOfWeek, endOfWeek } from "date-fns";
 
 interface StaffMember {
   id: number;
@@ -81,7 +83,10 @@ const formatTime = (hours: number) => {
 
 function DailyProductivityRow({ day }: { day: DailyProductivity }) {
   const [showAllTasks, setShowAllTasks] = useState(false);
-  const displayTasks = showAllTasks ? day.tasks : day.tasks.slice(0, 3);
+  
+  // Ensure tasks is an array, even if undefined or null
+  const tasksList = Array.isArray(day.tasks) ? day.tasks : [];
+  const displayTasks = showAllTasks ? tasksList : tasksList.slice(0, 3);
 
   return (
     <TableRow>
@@ -94,7 +99,7 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
           <span className="text-sm font-medium text-gray-900 block">
             {day.taskCount} task{day.taskCount !== 1 ? 's' : ''}
           </span>
-          {day.tasks && day.tasks.length > 0 && (
+          {tasksList.length > 0 ? (
             <div className="space-y-1">
               {displayTasks.map((task, taskIndex) => (
                 <div 
@@ -105,18 +110,20 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
                   • {task}
                 </div>
               ))}
-              {day.tasks.length > 3 && (
+              {tasksList.length > 3 && (
                 <button
                   onClick={() => setShowAllTasks(!showAllTasks)}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
                 >
                   {showAllTasks 
                     ? '↑ Show Less' 
-                    : `↓ Show ${day.tasks.length - 3} More`
+                    : `↓ Show ${tasksList.length - 3} More`
                   }
                 </button>
               )}
             </div>
+          ) : (
+            <div className="text-xs text-gray-500 italic">No tasks</div>
           )}
         </div>
       </TableCell>
@@ -134,6 +141,9 @@ export default function KPIReportPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("");
   const [selectedStaff, setSelectedStaff] = useState<string>("");
   const [dateRange, setDateRange] = useState<number>(30); // Last 30 days
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  const [useCustomRange, setUseCustomRange] = useState(false);
 
   // Check if user is operations manager or team lead
   if (user?.role !== "operations_manager" && user?.role !== "team_lead" && user?.specialization !== "operations_manager") {
@@ -171,12 +181,20 @@ export default function KPIReportPage() {
 
   // Get productivity data for selected staff
   const { data: productivityData, isLoading: isLoadingProductivity } = useQuery<ProductivityData>({
-    queryKey: ["/api/kpi-report/productivity", selectedStaff, dateRange],
+    queryKey: ["/api/kpi-report/productivity", selectedStaff, dateRange, customStartDate, customEndDate, useCustomRange],
     queryFn: async () => {
       if (!selectedStaff) return null;
 
-      const endDate = new Date();
-      const startDate = subDays(endDate, dateRange);
+      let endDate: Date;
+      let startDate: Date;
+
+      if (useCustomRange && customStartDate && customEndDate) {
+        startDate = customStartDate;
+        endDate = customEndDate;
+      } else {
+        endDate = new Date();
+        startDate = subDays(endDate, dateRange);
+      }
 
       const response = await fetch(
         `/api/kpi-report/productivity?staffId=${selectedStaff}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
@@ -325,18 +343,75 @@ export default function KPIReportPage() {
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
                       Date Range
                     </label>
-                    <Select value={dateRange.toString()} onValueChange={(value) => setDateRange(parseInt(value))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="7">Last 7 days</SelectItem>
-                        <SelectItem value="14">Last 14 days</SelectItem>
-                        <SelectItem value="30">Last 30 days</SelectItem>
-                        <SelectItem value="60">Last 60 days</SelectItem>
-                        <SelectItem value="90">Last 90 days</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select 
+                        value={useCustomRange ? "custom" : dateRange.toString()} 
+                        onValueChange={(value) => {
+                          if (value === "custom") {
+                            setUseCustomRange(true);
+                          } else {
+                            setUseCustomRange(false);
+                            setDateRange(parseInt(value));
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="7">Last 7 Days</SelectItem>
+                          <SelectItem value="14">Last 14 Days</SelectItem>
+                          <SelectItem value="30">Last Month</SelectItem>
+                          <SelectItem value="60">Last 2 Months</SelectItem>
+                          <SelectItem value="180">Last 6 Months</SelectItem>
+                          <SelectItem value="custom">Custom Range</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="icon">
+                            <Calendar className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <div className="p-4 space-y-4">
+                            <div>
+                              <label className="text-sm font-medium mb-2 block">Start Date</label>
+                              <CalendarComponent
+                                mode="single"
+                                selected={customStartDate}
+                                onSelect={(date) => {
+                                  setCustomStartDate(date);
+                                  setUseCustomRange(true);
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium mb-2 block">End Date</label>
+                              <CalendarComponent
+                                mode="single"
+                                selected={customEndDate}
+                                onSelect={(date) => {
+                                  setCustomEndDate(date);
+                                  setUseCustomRange(true);
+                                }}
+                                disabled={(date) => customStartDate ? date < customStartDate : false}
+                              />
+                            </div>
+                            {customStartDate && customEndDate && (
+                              <Button 
+                                className="w-full" 
+                                onClick={() => {
+                                  setUseCustomRange(true);
+                                }}
+                              >
+                                Apply Custom Range
+                              </Button>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
 
                   {selectedStaffMember && (
@@ -386,11 +461,12 @@ export default function KPIReportPage() {
                             // Divide by number of days to get average minutes per day
                             const avgMinutesPerDay = totalMinutes / productivityData.summary.totalDays;
                             
-                            // Convert back to hours for display
-                            const avgHours = avgMinutesPerDay / 60;
+                            // Convert to hours and minutes for display
+                            const hours = Math.floor(avgMinutesPerDay / 60);
+                            const minutes = Math.round(avgMinutesPerDay % 60);
                             
-                            return avgHours.toFixed(1);
-                          })()}h
+                            return `${hours} hr ${minutes}m`;
+                          })()}
                         </p>
                       </div>
                       <TrendingUp className="h-8 w-8 text-orange-500" />
@@ -434,7 +510,11 @@ export default function KPIReportPage() {
                 <CardHeader>
                   <CardTitle>Weekly Activity Tracking</CardTitle>
                   <CardDescription>
-                    Daily productivity trend for {selectedStaffMember?.name} (Last {dateRange} days)
+                    Daily productivity trend for {selectedStaffMember?.name} 
+                    {useCustomRange && customStartDate && customEndDate 
+                      ? ` (${format(customStartDate, 'MMM dd, yyyy')} - ${format(customEndDate, 'MMM dd, yyyy')})`
+                      : ` (Last ${dateRange === 30 ? 'Month' : dateRange === 60 ? '2 Months' : dateRange === 180 ? '6 Months' : `${dateRange} Days`})`
+                    }
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
