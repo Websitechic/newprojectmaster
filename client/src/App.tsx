@@ -559,8 +559,8 @@ function Router() {
           <Route path="/dashboard/kpi-report" component={KPIReportPage} />
           <Route path="/dashboard/communication-tracker" component={CommunicationTrackerPage} />
           <Route path="/dashboard/report-management" component={ReportManagement} />
-          <PrivateRoute path="/send-complaint" component={SendComplaint} />
-          <PrivateRoute path="/report-issues" component={ReportIssues} />
+          <PrivateRoute path="/dashboard/send-complaint" component={SendComplaint} />
+          <PrivateRoute path="/dashboard/report-issues" component={ReportIssues} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
