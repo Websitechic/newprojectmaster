@@ -186,7 +186,7 @@ export default function LeaveManagement() {
       reviewApplication.mutate({
         applicationId: selectedApplication.id,
         status: reviewAction,
-        comments: reviewComments.trim() || undefined,
+        reviewComments: reviewComments.trim() || undefined,
       });
     }
   };

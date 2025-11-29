@@ -2473,7 +2473,7 @@ End of Report
             global.connectedClients.forEach((client) => {
               if (client.readyState === 1) {
                 try {
-                  client.send(JSON.JSON.stringify({
+                  client.send(JSON.stringify({
                     type: 'task_timer_update',
                     data: {
                       taskId: currentTask.id,
@@ -4371,7 +4371,6 @@ End of Report
         console.log(`Notifications sent to ${operationsManagers.length} operations managers`);
       } catch (notificationError) {
         console.error("Error creating staff complaint notifications:", notificationError);
-        // Continue execution even if notification fails
       }
 
       res.json({ success: true, complaintId: newComplaint.id });
@@ -4450,7 +4449,6 @@ End of Report
           );
         } catch (notificationError) {
           console.error("Error creating notification for staff complaint update:", notificationError);
-          // Continue execution even if notification fails
         }
       }
 
@@ -5359,7 +5357,7 @@ End of Report
     }
   });
 
-  app.post("/api/notes", async (req, res) => {
+  app.post("/api/notes", async (req, res=> {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
@@ -5689,7 +5687,7 @@ End of Report
       const canUpdate = booking.scheduledBy === user.id || booking.participants.includes(user.id);
 
       if (!canUpdate) {
-        return res.status(403).json({ error: "You don't have permission to update this booking" });
+        return res.status(403).json({ error: "You donnot have permission to update this booking" });
       }
 
       // Update the booking status
@@ -6861,21 +6859,21 @@ End of Report
       return res.status(401).send("Not authenticated");
     }
 
-    const user = req.user;
-    // Only project managers, operations managers, and team leads can review applications
+    const user = req.user!;
     if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).send("Access denied");
     }
 
     try {
       const applicationId = parseInt(req.params.id);
-      const { status, reviewComments } = req.body;
+      const { status, reviewComments, comments } = req.body;
+      const finalComments = reviewComments || comments;
 
       if (!status || !["approved", "rejected"].includes(status)) {
         return res.status(400).json({ error: "Invalid status. Must be 'approved' or 'rejected'" });
       }
 
-      if (status === "rejected" && !reviewComments?.trim()) {
+      if (status === "rejected" && !finalComments?.trim()) {
         return res.status(400).json({ error: "Review comments are required when rejecting an application" });
       }
 
@@ -6899,7 +6897,7 @@ End of Report
         .update(leaveApplications)
         .set({
           status,
-          reviewComments: reviewComments?.trim() || null,
+          reviewComments: finalComments,
           reviewedAt: new Date(),
           reviewedBy: user.id,
           updatedAt: new Date(),
@@ -6914,7 +6912,7 @@ End of Report
           .values({
             userId: updatedApplication.userId,
             type: "task_updated", // Using existing type
-            content: `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
+            content: `Your leave application has been ${status}${finalComments ? `: ${finalComments}` : ''}`,
             referenceId: updatedApplication.id,
             referenceType: "leave_application", // Using a more specific type
           });
@@ -7881,7 +7879,7 @@ End of Report
     }
 
     try {
-      // Insert read receipts for messages that don't already have them
+      // Insert read receipts for messages
       const readReceiptsData = messageIds.map(messageId => ({
         messageId: parseInt(messageId),
         userId: user.id,
@@ -9262,84 +9260,56 @@ End of Report
         return res.status(403).json({ error: "You can only submit tasks assigned to you" });
       }
 
-      // Calculate final time if timer is running
-      let finalTimeSpent = task.timeSpent || 0;
+      // If timer is running, stop it first
+      let newTimeSpent = task.timeSpent || 0;
       if (task.isTimerRunning && task.timerStartTime) {
         const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
-        finalTimeSpent += elapsedSeconds;
+        newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
+
+        // Clear the timer interval
+        if (global.timerIntervals && global.timerIntervals.has(taskId)) {
+          clearInterval(global.timerIntervals.get(taskId));
+          global.timerIntervals.delete(taskId);
+        }
       }
 
-      // Update task as completed and stop timer
+      // Update task to review status and stop timer
+      const now = new Date();
       const [updatedTask] = await db
         .update(tasks)
         .set({
-          status: "completed",
-          progress: 100,
+          status: "review",
           isTimerRunning: false,
-          timeSpent: finalTimeSpent,
+          timeSpent: newTimeSpent,
           timerStartTime: null,
-          updatedAt: new Date(),
+          updatedAt: now
         })
         .where(eq(tasks.id, taskId))
         .returning();
 
-      // Get project info for notifications
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, task.projectId))
-        .limit(1);
-
-      // Notify project manager about task completion
-      if (project && project.managerId && project.managerId !== user.id) {
-        await createNotification(
-          project.managerId,
-          "task_completed",
-          `${user.name} completed task: "${task.title}"`,
-          taskId,
-          "task"
-        );
-      }
-
-      // Notify client about task completion if it's a client project
-      if (project && project.clientId) {
-        await createNotification(
-          project.clientId,
-          "task_completed",
-          `Task completed in your project "${project.name}": "${task.title}"`,
-          taskId,
-          "task"
-        );
-      }
-
-      // Broadcast timer stop and task completion to all connected clients
+      // Broadcast task update via WebSocket
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
-          if (client.readyState === 1) { // WebSocket.OPEN
-            client.send(JSON.stringify({
-              type: 'task_timer_stopped',
-              data: {
-                taskId: updatedTask.id,
-                isTimerRunning: updatedTask.isTimerRunning,
-                timeSpent: updatedTask.timeSpent,
-                timerStartTime: null,
-              }
-            }));
-            client.send(JSON.stringify({
-              type: 'task_completed',
-              data: {
-                taskId: updatedTask.id,
-                projectId: updatedTask.projectId,
-                status: updatedTask.status,
-                completedBy: user.id,
-                completedAt: new Date().toISOString()
-              }
-            }));
+          if (client.readyState === 1) {
+            try {
+              client.send(JSON.stringify({
+                type: 'task_updated',
+                data: {
+                  taskId: updatedTask.id,
+                  projectId: updatedTask.projectId,
+                  status: updatedTask.status,
+                  updatedBy: user.id,
+                  updatedAt: now.toISOString()
+                }
+              }));
+            } catch (error) {
+              console.error('Error broadcasting task submission:', error);
+            }
           }
         });
       }
 
-      res.json({ success: true, task: updatedTask });
+      res.json(updatedTask);
     } catch (error) {
       console.error("Error submitting task:", error);
       res.status(500).json({ error: "Failed to submit task" });
