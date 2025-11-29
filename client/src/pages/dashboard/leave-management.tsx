@@ -376,6 +376,7 @@ export default function LeaveManagement() {
                     <TableHead>Status</TableHead>
                     <TableHead>Applied</TableHead>
                     <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -429,6 +430,18 @@ export default function LeaveManagement() {
                               <span className="text-xs text-muted-foreground">Proof attached</span>
                             </div>
                           )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedApplication(application);
+                              setIsDetailDialogOpen(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );

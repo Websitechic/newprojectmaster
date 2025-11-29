@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Clock, CheckCircle, XCircle, User, Calendar, AlertCircle } from "lucide-react";
+import { Clock, CheckCircle, XCircle, User, Calendar, AlertCircle, Eye } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface ExtensionRequest {
@@ -327,6 +327,7 @@ export default function DeadlineExtensionRequestsPage() {
                           <TableHead>Status</TableHead>
                           <TableHead>Decision Reason</TableHead>
                           <TableHead>Submitted</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -370,6 +371,85 @@ export default function DeadlineExtensionRequestsPage() {
                               {request.decisionReason || "Pending review"}
                             </TableCell>
                             <TableCell>{new Date(request.createdAt).toLocaleDateString()}</TableCell>
+                            <TableCell className="text-right">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl">
+                                  <DialogHeader>
+                                    <DialogTitle>Extension Request Details</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label className="font-medium">Staff Member</Label>
+                                      <p className="mt-1">{request.requesterName}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="font-medium">Project</Label>
+                                      <p className="mt-1">{request.projectName}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="font-medium">Task</Label>
+                                      <p className="mt-1">{request.taskTitle}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="font-medium">Current Deadline</Label>
+                                      <p className="mt-1">
+                                        {request.taskDeadline 
+                                          ? new Date(request.taskDeadline).toLocaleDateString()
+                                          : "No deadline"}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <Label className="font-medium">Requested Deadline</Label>
+                                      <p className="mt-1">
+                                        {request.requestedDeadline 
+                                          ? new Date(request.requestedDeadline).toLocaleDateString()
+                                          : "Not specified"}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <Label className="font-medium">Status</Label>
+                                      <div className="mt-1">
+                                        <Badge className={getStatusColor(request.status)}>
+                                          <div className="flex items-center gap-1">
+                                            {getStatusIcon(request.status)}
+                                            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                          </div>
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <Label className="font-medium">Reason for Extension</Label>
+                                      <p className="mt-1 text-sm">{request.reason}</p>
+                                    </div>
+                                    {request.decisionReason && (
+                                      <div>
+                                        <Label className="font-medium">Decision Reason</Label>
+                                        <p className="mt-1 text-sm">{request.decisionReason}</p>
+                                      </div>
+                                    )}
+                                    {request.approvedDeadline && (
+                                      <div>
+                                        <Label className="font-medium">Approved Deadline</Label>
+                                        <p className="mt-1">
+                                          {new Date(request.approvedDeadline).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {request.approvedWorkingHours && (
+                                      <div>
+                                        <Label className="font-medium">Approved Working Hours</Label>
+                                        <p className="mt-1">{request.approvedWorkingHours} hours</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

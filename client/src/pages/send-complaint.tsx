@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Upload, MessageSquare, AlertCircle } from "lucide-react";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -382,6 +383,9 @@ function ComplaintHistoryTable() {
             <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-900">
               Review Comments
             </th>
+            <th className="border border-gray-200 px-4 py-2 text-center text-sm font-medium text-gray-900">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -410,6 +414,50 @@ function ComplaintHistoryTable() {
                 ) : (
                   <span className="text-gray-400 italic">No review yet</span>
                 )}
+              </td>
+              <td className="border border-gray-200 px-4 py-2 text-center">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Upload className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Complaint Details</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="font-medium">Submitted Date</Label>
+                        <p className="mt-1">{formatDate(complaint.createdAt)}</p>
+                      </div>
+                      <div>
+                        <Label className="font-medium">Status</Label>
+                        <div className="mt-1">{getStatusBadge(complaint.status)}</div>
+                      </div>
+                      <div>
+                        <Label className="font-medium">Complaint Details</Label>
+                        <p className="mt-1 text-sm">{complaint.detailedExplanation}</p>
+                      </div>
+                      {complaint.reviewComments && (
+                        <div>
+                          <Label className="font-medium">Review Comments</Label>
+                          <p className="mt-1 text-sm">{complaint.reviewComments}</p>
+                        </div>
+                      )}
+                      {complaint.screenshotUrl && (
+                        <div>
+                          <Label className="font-medium">Screenshot</Label>
+                          <img
+                            src={complaint.screenshotUrl}
+                            alt="Complaint screenshot"
+                            className="mt-2 max-w-full h-auto max-h-64 object-contain rounded border"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </td>
             </tr>
           ))}

@@ -14,6 +14,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -51,6 +58,7 @@ import {
   CheckCircle,
   XCircle,
   Calendar,
+  Eye,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { Header } from "@/components/dashboard/header";
@@ -511,6 +519,7 @@ export default function LeaveApplication() {
                         <TableHead>Status</TableHead>
                         <TableHead>Applied</TableHead>
                         <TableHead>Reason</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -549,6 +558,65 @@ export default function LeaveApplication() {
                                   Review: {application.reviewComments}
                                 </p>
                               )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl">
+                                  <DialogHeader>
+                                    <DialogTitle>Leave Application Details</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label className="font-medium">Leave Type</Label>
+                                      <p className="mt-1">{leaveTypeLabels[application.leaveType]}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="font-medium">Period</Label>
+                                      <p className="mt-1">
+                                        {formatDate(application.startDate, "MMM d, yyyy")} - {formatDate(application.endDate, "MMM d, yyyy")}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <Label className="font-medium">Total Days</Label>
+                                      <p className="mt-1">{application.totalDays}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="font-medium">Status</Label>
+                                      <div className="mt-1">
+                                        <Badge variant="outline" className={statusColors[application.status]}>
+                                          <StatusIcon className="h-3 w-3 mr-1" />
+                                          {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <Label className="font-medium">Reason</Label>
+                                      <p className="mt-1 text-sm">{application.reason}</p>
+                                    </div>
+                                    {application.reviewComments && (
+                                      <div>
+                                        <Label className="font-medium">Review Comments</Label>
+                                        <p className="mt-1 text-sm">{application.reviewComments}</p>
+                                      </div>
+                                    )}
+                                    {application.proofImageUrl && (
+                                      <div>
+                                        <Label className="font-medium">Proof Document</Label>
+                                        <img
+                                          src={application.proofImageUrl}
+                                          alt="Leave proof"
+                                          className="mt-2 max-w-full h-auto max-h-64 object-contain rounded border"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
                             </TableCell>
                           </TableRow>
                         );
