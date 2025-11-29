@@ -86,6 +86,7 @@ export default function ProjectResources() {
   // State for file upload dialog
   const [showFileDialog, setShowFileDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [fileName, setFileName] = useState("");
   const [fileCategory, setFileCategory] = useState("");
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -107,56 +108,76 @@ export default function ProjectResources() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleFileUpload = async () => {
-    if (!selectedFile || !fileCategory.trim()) {
-      alert("Please select a file and choose a category");
+    if (!selectedFiles || selectedFiles.length === 0 || !fileCategory.trim()) {
+      alert("Please select at least one file and choose a category");
       return;
     }
 
     setIsUploadingFile(true);
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('category', fileCategory.trim());
-      // Add custom file name if provided, but preserve the original extension
-      if (fileName.trim()) {
-        const originalExtension = selectedFile.name.split('.').pop();
-        const customName = fileName.trim();
-        // Only add extension if the custom name doesn't already have it
-        const hasExtension = customName.toLowerCase().endsWith(`.${originalExtension?.toLowerCase()}`);
-        const finalFileName = hasExtension ? customName : `${customName}.${originalExtension}`;
-        formData.append('customFileName', finalFileName);
-      }
+      const files = Array.from(selectedFiles);
+      let successCount = 0;
+      let failCount = 0;
 
-      const response = await fetch(`/api/projects/${projectId}/resources/upload`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = "Failed to upload file";
+      // Upload files sequentially
+      for (const file of files) {
         try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error || errorData.details || errorMessage;
-        } catch (e) {
-          errorMessage = errorText || errorMessage;
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('category', fileCategory.trim());
+          
+          // Add custom file name if provided and only one file is selected
+          if (fileName.trim() && files.length === 1) {
+            const originalExtension = file.name.split('.').pop();
+            const customName = fileName.trim();
+            const hasExtension = customName.toLowerCase().endsWith(`.${originalExtension?.toLowerCase()}`);
+            const finalFileName = hasExtension ? customName : `${customName}.${originalExtension}`;
+            formData.append('customFileName', finalFileName);
+          }
+
+          const response = await fetch(`/api/projects/${projectId}/resources/upload`, {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage = "Failed to upload file";
+            try {
+              const errorData = JSON.parse(errorText);
+              errorMessage = errorData.error || errorData.details || errorMessage;
+            } catch (e) {
+              errorMessage = errorText || errorMessage;
+            }
+            throw new Error(errorMessage);
+          }
+
+          successCount++;
+        } catch (error) {
+          console.error(`Error uploading ${file.name}:`, error);
+          failCount++;
         }
-        throw new Error(errorMessage);
       }
 
       // Reset form and close dialog
-      setSelectedFile(null);
+      setSelectedFiles(null);
       setFileName("");
       setFileCategory("");
       setShowFileDialog(false);
 
       // Refresh resources list
       await refetch();
-      alert("File uploaded successfully!");
+      
+      // Show summary message
+      if (failCount === 0) {
+        alert(`Successfully uploaded ${successCount} file${successCount !== 1 ? 's' : ''}!`);
+      } else {
+        alert(`Uploaded ${successCount} file${successCount !== 1 ? 's' : ''} successfully. ${failCount} failed.`);
+      }
     } catch (error) {
-      console.error("Error uploading file:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to upload file";
+      console.error("Error uploading files:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload files";
       alert(`Error: ${errorMessage}`);
     } finally {
       setIsUploadingFile(false);
@@ -517,32 +538,47 @@ export default function ProjectResources() {
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="file">Select File</Label>
+                        <Label htmlFor="file">Select File(s)</Label>
                         <Input
                           id="file"
                           type="file"
                           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-                          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                          multiple
+                          onChange={(e) => setSelectedFiles(e.target.files)}
                         />
-                        {selectedFile && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
-                          </p>
+                        {selectedFiles && selectedFiles.length > 0 && (
+                          <div className="text-sm text-muted-foreground mt-2">
+                            <p className="font-medium">Selected {selectedFiles.length} file(s):</p>
+                            <ul className="list-disc list-inside">
+                              {Array.from(selectedFiles).map((file, index) => (
+                                <li key={index}>
+                                  {file.name} ({(file.size / 1024).toFixed(2)} KB)
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         )}
                       </div>
-                      <div>
-                        <Label htmlFor="fileName">File Name (Optional)</Label>
-                        <Input
-                          id="fileName"
-                          type="text"
-                          placeholder="Enter custom file name or leave blank to use original"
-                          value={fileName}
-                          onChange={(e) => setFileName(e.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          If left blank, the original file name will be used
+                      {selectedFiles && selectedFiles.length === 1 && (
+                        <div>
+                          <Label htmlFor="fileName">File Name (Optional)</Label>
+                          <Input
+                            id="fileName"
+                            type="text"
+                            placeholder="Enter custom file name or leave blank to use original"
+                            value={fileName}
+                            onChange={(e) => setFileName(e.target.value)}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            If left blank, the original file name will be used
+                          </p>
+                        </div>
+                      )}
+                      {selectedFiles && selectedFiles.length > 1 && (
+                        <p className="text-sm text-muted-foreground">
+                          Custom file names are only available when uploading a single file. All files will use their original names.
                         </p>
-                      </div>
+                      )}
                       <div>
                         <Label htmlFor="fileCategory">Category</Label>
                         <Select value={fileCategory} onValueChange={setFileCategory}>
@@ -568,9 +604,9 @@ export default function ProjectResources() {
                         </Button>
                         <Button 
                           onClick={handleFileUpload}
-                          disabled={!selectedFile || !fileCategory.trim() || isUploadingFile}
+                          disabled={!selectedFiles || selectedFiles.length === 0 || !fileCategory.trim() || isUploadingFile}
                         >
-                          {isUploadingFile ? "Uploading..." : "Upload"}
+                          {isUploadingFile ? "Uploading..." : selectedFiles && selectedFiles.length > 1 ? `Upload ${selectedFiles.length} Files` : "Upload"}
                         </Button>
                       </div>
                     </div>
