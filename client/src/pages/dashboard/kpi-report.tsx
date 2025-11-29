@@ -31,6 +31,14 @@ interface DailyProductivity {
   performanceColor: string;
   taskCount: number;
   tasks: string[];
+  taskBreakdown?: Array<{
+    id: number;
+    title: string;
+    timeSpent: number;
+    workingHours?: number;
+    workingMinutes?: number;
+    isCompleted: boolean;
+  }>;
 }
 
 interface WeeklyData {
@@ -84,8 +92,9 @@ const formatTime = (hours: number) => {
 function DailyProductivityRow({ day }: { day: DailyProductivity }) {
   const [showAllTasks, setShowAllTasks] = useState(false);
   
-  // Ensure tasks is an array, even if undefined or null
-  const tasksList = Array.isArray(day.tasks) ? day.tasks : [];
+  // Get tasks from taskBreakdown instead of tasks array
+  const tasksList = day.taskBreakdown?.map(t => t.title) || day.tasks || [];
+  const taskCount = day.taskCount || tasksList.length;
   const displayTasks = showAllTasks ? tasksList : tasksList.slice(0, 3);
 
   return (
@@ -97,7 +106,7 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
       <TableCell className="w-[250px]">
         <div className="space-y-1">
           <span className="text-sm font-medium text-gray-900 block">
-            {day.taskCount} task{day.taskCount !== 1 ? 's' : ''}
+            {taskCount} task{taskCount !== 1 ? 's' : ''}
           </span>
           {tasksList.length > 0 ? (
             <div className="space-y-1">
@@ -373,10 +382,10 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <div className="p-4 space-y-4">
+                        <PopoverContent className="w-auto p-2" align="start">
+                          <div className="space-y-2">
                             <div>
-                              <label className="text-sm font-medium mb-2 block">Start Date</label>
+                              <label className="text-xs font-medium mb-1 block">Start Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customStartDate}
@@ -384,10 +393,11 @@ export default function KPIReportPage() {
                                   setCustomStartDate(date);
                                   setUseCustomRange(true);
                                 }}
+                                className="p-0"
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-2 block">End Date</label>
+                              <label className="text-xs font-medium mb-1 block">End Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customEndDate}
@@ -396,10 +406,12 @@ export default function KPIReportPage() {
                                   setUseCustomRange(true);
                                 }}
                                 disabled={(date) => customStartDate ? date < customStartDate : false}
+                                className="p-0"
                               />
                             </div>
                             {customStartDate && customEndDate && (
                               <Button 
+                                size="sm"
                                 className="w-full" 
                                 onClick={() => {
                                   setUseCustomRange(true);
@@ -641,6 +653,7 @@ export default function KPIReportPage() {
                                     productivityData.dailyData.forEach((day: any) => {
                                       if (day.taskBreakdown) {
                                         day.taskBreakdown.forEach((task: any) => {
+                                          // Only add if not already in map (ensures uniqueness)
                                           if (!allTasks.has(task.id)) {
                                             allTasks.set(task.id, task);
                                           }
@@ -726,6 +739,9 @@ export default function KPIReportPage() {
                                 than expected.
                               </span>
                             </div>
+                            <div className="text-xs text-gray-600 mt-2">
+                              Showing unique tasks worked on within the selected date range
+                            </div>
                           </div>
                         </div>
 
@@ -746,6 +762,7 @@ export default function KPIReportPage() {
                               productivityData.dailyData.forEach((day: any) => {
                                 if (day.taskBreakdown) {
                                   day.taskBreakdown.forEach((task: any) => {
+                                    // Use task.id as key to ensure uniqueness
                                     if (!allTasks.has(task.id)) {
                                       allTasks.set(task.id, task);
                                     }
@@ -753,6 +770,9 @@ export default function KPIReportPage() {
                                 }
                               });
                               const uniqueTasks = Array.from(allTasks.values());
+                              
+                              // Sort tasks by title for consistent display
+                              uniqueTasks.sort((a: any, b: any) => a.title.localeCompare(b.title));
                               
                               return uniqueTasks.map((task: any) => {
                                 // Get assigned time in minutes
