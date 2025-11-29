@@ -3371,6 +3371,36 @@ End of Report
     }
   });
 
+  // Check for unreviewed assigned reviews (for team leads)
+  app.get("/api/review-links/has-unreviewed", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "team_lead") {
+        return res.json({ hasUnreviewed: false });
+      }
+
+      const unreviewedLinks = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(reviewLinks)
+        .where(
+          and(
+            eq(reviewLinks.assignedTo, user.id),
+            eq(reviewLinks.status, "pending")
+          )
+        );
+
+      res.json({ hasUnreviewed: (unreviewedLinks[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking unreviewed links:", error);
+      res.status(500).json({ error: "Failed to check unreviewed links" });
+    }
+  });
+
   // Mark review link as reviewed
   app.put("/api/review-links/:id/reviewed", async (req, res) => {
     if (!req.isAuthenticated()) {
