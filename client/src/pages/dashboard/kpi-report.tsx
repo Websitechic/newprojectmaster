@@ -160,7 +160,11 @@ export default function KPIReportPage() {
       if (!selectedDepartment) return [];
       const response = await fetch(`/api/staff?specialization=${selectedDepartment}`);
       if (!response.ok) throw new Error("Failed to fetch staff");
-      return response.json();
+      const data = await response.json();
+      
+      // Filter to only show staff whose specialization matches the selected department
+      // This prevents team leads and customer support officers from appearing under wrong departments
+      return data.filter((staff: StaffMember) => staff.specialization === selectedDepartment);
     },
     enabled: !!selectedDepartment,
   });
@@ -374,9 +378,17 @@ export default function KPIReportPage() {
                         <p className="text-sm font-medium text-gray-600">Avg Hours</p>
                         <p className="text-2xl font-bold">
                           {(() => {
-                            const totalMinutes = productivityData.dailyData.reduce((sum, day) => sum + (day.totalSpanHours * 60), 0);
-                            const avgMinutes = totalMinutes / productivityData.summary.totalDays;
-                            const avgHours = avgMinutes / 60;
+                            // Convert each day's total span to minutes, sum them up
+                            const totalMinutes = productivityData.dailyData.reduce((sum, day) => {
+                              return sum + (day.totalSpanHours * 60);
+                            }, 0);
+                            
+                            // Divide by number of days to get average minutes per day
+                            const avgMinutesPerDay = totalMinutes / productivityData.summary.totalDays;
+                            
+                            // Convert back to hours for display
+                            const avgHours = avgMinutesPerDay / 60;
+                            
                             return avgHours.toFixed(1);
                           })()}h
                         </p>
