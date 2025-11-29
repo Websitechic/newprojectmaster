@@ -5748,7 +5748,8 @@ End of Report
             requesterId: technicalSupportRequests.requesterId,
             assignedToId: technicalSupportRequests.assignedToId,
             status: technicalSupportRequests.status,
-            priority: technicalSupportRequests.priority,            resolution: technicalSupportRequests.resolution,
+            priority: technicalSupportRequests.priority,
+            resolution: technicalSupportRequests.resolution,
             createdAt: technicalSupportRequests.createdAt,
             updatedAt: technicalSupportRequests.updatedAt,
             resolvedAt: technicalSupportRequests.resolvedAt,
@@ -6139,8 +6140,7 @@ End of Report
 
       res.json(requests);
     } catch (error) {
-      console.error("Error fetching deadline extension requests:", error);
-      res.status(500).json({ error: "Failed to fetch deadline extension requests" });
+      console.error("Error fetching deadline extension requests:", error);      res.status(500).json({ error: "Failed to fetch deadline extension requests" });
     }
   });
 
