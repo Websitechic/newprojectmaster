@@ -376,12 +376,14 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       icon: <Calendar size={20} />,
       label: "Leave Management",
       href: "/dashboard/leave-management",
+      hasUpdate: indicators.leaveManagement,
       key: "leave-management",
     },
     {
       icon: <Wrench size={20} />,
       label: "Technical Management",
       href: "/dashboard/technical-management",
+      hasUpdate: indicators.technicalManagement,
       key: "technical-management",
     }
   ] : [];
@@ -449,12 +451,14 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       icon: <Settings size={20} />,
       label: "Technical Management",
       href: "/dashboard/technical-management",
+      hasUpdate: indicators.technicalManagement,
       key: "technical-management",
     }] : []),
     ...(user?.specialization !== "technical_support" ? [{
       icon: <Settings size={20} />,
       label: "Technical Support",
       href: "/dashboard/technical-support",
+      hasUpdate: indicators.technicalSupport,
       key: "technical-support",
     }] : [])
   ] : user?.role === "customer_support_officer" ? [
@@ -462,6 +466,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       icon: <Settings size={20} />,
       label: "Technical Management",
       href: "/dashboard/technical-management",
+      hasUpdate: indicators.technicalManagement,
       key: "technical-management",
     }
   ] : [];
@@ -510,6 +515,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       icon: <Wrench size={20} />,
       label: "Technical Management",
       href: "/dashboard/technical-management",
+      hasUpdate: indicators.technicalManagement,
       key: "operations-technical-management",
     },
     {
@@ -522,6 +528,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       icon: <Calendar size={20} />,
       label: "Leave Management",
       href: "/dashboard/leave-management",
+      hasUpdate: indicators.leaveManagement,
       key: "operations-leave-management",
     },
     {
@@ -608,6 +615,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       icon: <Wrench size={20} />,
       label: "Technical Management",
       href: "/dashboard/technical-management",
+      hasUpdate: indicators.technicalManagement,
       key: "team-lead-technical-management",
     },
     {
@@ -620,6 +628,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       icon: <Calendar size={20} />,
       label: "Leave Management",
       href: "/dashboard/leave-management",
+      hasUpdate: indicators.leaveManagement,
       key: "team-lead-leave-management",
     },
     {
@@ -709,6 +718,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     icon: <ExternalLink size={20} />,
     label: user?.role === "team_lead" ? "Assigned Reviews" : "Send for Review",
     href: "/dashboard/review-links",
+    hasUpdate: user?.role === "team_lead" ? indicators.assignedReviews : undefined,
     key: "review-links",
   }] : [];
 
@@ -753,34 +763,28 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     // Clear indicators when visiting specific pages
     try {
       if (href === "/dashboard/staff-queries") {
-        // Mark staff queries as viewed
         await fetch("/api/staff-queries/mark-viewed", { method: "POST" });
       } else if (href === "/dashboard/leave-application") {
-        // Mark leave applications as viewed
         await fetch("/api/leave-applications/mark-viewed", { method: "POST" });
       } else if (href === "/dashboard/send-complaint") {
-        // Mark complaints as viewed
         await fetch("/api/staff-complaints/mark-viewed", { method: "POST" });
       } else if (href === "/dashboard/extension-requests") {
-        // Mark extension requests as viewed
         await fetch("/api/deadline-extension-requests/mark-viewed", { method: "POST" });
+      } else if (href === "/dashboard/technical-support") {
+        await fetch("/api/technical-support/mark-viewed", { method: "POST" });
+      } else if (href === "/dashboard/report-issues") {
+        await fetch("/api/issue-reports/mark-viewed", { method: "POST" });
       } else if (href === "/dashboard/client-sentiment-tracker") {
-        // Mark client sentiment tracker as viewed
         await fetch("/api/client-sentiment/mark-viewed", { method: "POST" });
       } else if (href === "/dashboard/client-complaints") {
-        // Mark client complaints as viewed
         await fetch("/api/complaints/mark-viewed", { method: "POST" });
       } else if (href === "/dashboard/staff-complaints") {
-        // Mark staff complaints as viewed
         await fetch("/api/staff-complaints/mark-viewed", { method: "POST" });
       } else if (href === "/dashboard/client-management") {
-        // Mark client management as viewed
         await fetch("/api/clients/mark-viewed", { method: "POST" });
       } else if (href === "/dashboard/register-dissatisfaction") {
-        // Mark dissatisfaction page as viewed
         await fetch("/api/complaints/my-complaints/mark-viewed", { method: "POST" });
       } else if (href === "/dashboard/client-sentiment") {
-        // Mark client sentiment as viewed
         await fetch("/api/client-sentiment/mark-viewed", { method: "POST" });
       }
     } catch (error) {
@@ -825,6 +829,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
             href="/dashboard/report-issues"
             onClick={() => handleMenuItemClick("/dashboard/report-issues")}
             active={currentPath === "/dashboard/report-issues"}
+            hasUpdate={indicators.reportAppIssue}
           />
 
           {/* Report Management - Only for operations managers and Replit Development staff */}
@@ -835,6 +840,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
               href="/dashboard/report-management"
               onClick={() => handleMenuItemClick("/dashboard/report-management")}
               active={currentPath === "/dashboard/report-management"}
+              hasUpdate={indicators.appIssueManagement}
             />
           )}
         </div>
