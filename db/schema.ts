@@ -875,22 +875,19 @@ export const selectSopSegmentSchema = createSelectSchema(sopSegments);
 // Issue Reports table
 export const issueReports = pgTable("issue_reports", {
   id: serial("id").primaryKey(),
-  reporterId: integer("reporter_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  submitterId: integer("submitter_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   reporterName: text("reporter_name").notNull(),
-  reporterRole: text("reporter_role").notNull(),
-  issueType: text("issue_type").notNull(), // "bug", "feature_request", "performance", "ui_ux", "other"
-  issueSeverity: text("issue_severity").notNull(), // "low", "medium", "high", "critical"
-  issueTitle: text("issue_title").notNull(),
-  issueDescription: text("issue_description").notNull(),
-  stepsToReproduce: text("steps_to_reproduce"),
-  expectedBehavior: text("expected_behavior"),
-  actualBehavior: text("actual_behavior"),
+  reporterEmail: text("reporter_email").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  suggestions: text("suggestions"),
+  priority: text("priority", { enum: ["low", "medium", "high", "urgent"] }).notNull().default("medium"),
+  category: text("category", { enum: ["bug", "feature_request", "improvement", "other"] }).notNull().default("other"),
+  status: text("status", { enum: ["pending", "reviewing", "resolved", "closed"] }).notNull().default("pending"),
   screenshotUrl: text("screenshot_url"),
-  status: text("status").notNull().default("pending"), // "pending", "in_progress", "resolved", "closed"
-  assignedTo: integer("assigned_to").references(() => users.id),
-  resolvedBy: integer("resolved_by").references(() => users.id),
-  resolvedAt: timestamp("resolved_at"),
-  resolutionNote: text("resolution_note"),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewComments: text("review_comments"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

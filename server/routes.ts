@@ -4249,7 +4249,7 @@ End of Report
   });
 
   // Staff Complaints API Routes
-  // Get user's own complaints
+  // Get user's own staff complaints
   app.get("/api/staff-complaints/my-complaints", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -4259,23 +4259,12 @@ End of Report
 
     try {
       const complaints = await db
-        .select({
-          id: staffComplaints.id,
-          submitterId: staffComplaints.submitterId, // Use submitterId as per schema
-          name: staffComplaints.name,
-          email: staffComplaints.email,
-          department: staffComplaints.department,
-          detailedExplanation: staffComplaints.detailedExplanation,
-          screenshotUrl: staffComplaints.screenshotUrl,
-          status: staffComplaints.status,
-          reviewComments: staffComplaints.reviewComments,
-          createdAt: staffComplaints.createdAt,
-          updatedAt: staffComplaints.updatedAt,
-        })
+        .select()
         .from(staffComplaints)
-        .where(eq(staffComplaints.submitterId, user.id)) // Correctly filter by submitterId
+        .where(eq(staffComplaints.submitterId, user.id))
         .orderBy(desc(staffComplaints.createdAt));
 
+      console.log(`Fetched ${complaints.length} complaints for user ${user.id}`);
       res.json(complaints);
     } catch (error) {
       console.error("Error fetching user's staff complaints:", error);
@@ -5761,8 +5750,7 @@ End of Report
             requesterId: technicalSupportRequests.requesterId,
             assignedToId: technicalSupportRequests.assignedToId,
             status: technicalSupportRequests.status,
-            priority: technicalSupportRequests.priority,
-            resolution: technicalSupportRequests.resolution,
+            priority: technicalSupportRequests.priority,            resolution: technicalSupportRequests.resolution,
             createdAt: technicalSupportRequests.createdAt,
             updatedAt: technicalSupportRequests.updatedAt,
             resolvedAt: technicalSupportRequests.resolvedAt,
@@ -6985,7 +6973,7 @@ End of Report
       }
 
       // Check if user has access to this project
-      let hasAccess = 
+      const hasAccess = 
         user.role === "operations_manager" || 
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
@@ -7099,6 +7087,7 @@ End of Report
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
         (user.role === "staff" && await db
@@ -7140,7 +7129,7 @@ End of Report
     const projectId = parseInt(req.params.id);
 
     try {
-      // Check project access
+      // Check if project exists
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
@@ -9078,7 +9067,6 @@ End of Report
         return res.status(404).json({ error: "Task not found" });
       }
 
-      // Verify user is assigned to this task
       if (task.assigneeId !== user.id) {
         return res.status(403).json({ error: "You are not assigned to this task" });
       }
