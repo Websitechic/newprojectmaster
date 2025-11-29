@@ -92,8 +92,12 @@ const formatTime = (hours: number) => {
 function DailyProductivityRow({ day }: { day: DailyProductivity }) {
   const [showAllTasks, setShowAllTasks] = useState(false);
   
-  // Get tasks from taskBreakdown instead of tasks array
-  const tasksList = day.taskBreakdown?.map(t => t.title) || day.tasks || [];
+  // Get tasks from multiple sources with fallbacks
+  const tasksList = 
+    day.taskBreakdown?.map(t => t.title).filter(Boolean) || 
+    day.tasks?.filter(Boolean) || 
+    [];
+  
   const taskCount = day.taskCount || tasksList.length;
   const displayTasks = showAllTasks ? tasksList : tasksList.slice(0, 3);
 
@@ -132,7 +136,7 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
               )}
             </div>
           ) : (
-            <div className="text-xs text-gray-500 italic">No tasks</div>
+            <div className="text-xs text-gray-500 italic">No tasks recorded</div>
           )}
         </div>
       </TableCell>
@@ -382,8 +386,8 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-2" align="start">
-                          <div className="space-y-2">
+                        <PopoverContent className="w-auto p-3 max-w-[320px]" align="start">
+                          <div className="space-y-3">
                             <div>
                               <label className="text-xs font-medium mb-1 block">Start Date</label>
                               <CalendarComponent
@@ -393,7 +397,7 @@ export default function KPIReportPage() {
                                   setCustomStartDate(date);
                                   setUseCustomRange(true);
                                 }}
-                                className="p-0"
+                                className="p-0 scale-90"
                               />
                             </div>
                             <div>
@@ -406,7 +410,7 @@ export default function KPIReportPage() {
                                   setUseCustomRange(true);
                                 }}
                                 disabled={(date) => customStartDate ? date < customStartDate : false}
-                                className="p-0"
+                                className="p-0 scale-90"
                               />
                             </div>
                             {customStartDate && customEndDate && (
@@ -417,7 +421,7 @@ export default function KPIReportPage() {
                                   setUseCustomRange(true);
                                 }}
                               >
-                                Apply Custom Range
+                                Apply Range
                               </Button>
                             )}
                           </div>
