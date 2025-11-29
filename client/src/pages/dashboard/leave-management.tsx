@@ -173,10 +173,20 @@ export default function LeaveManagement() {
 
   const confirmReview = () => {
     if (selectedApplication && reviewAction) {
+      // Only require comments for rejections
+      if (reviewAction === "rejected" && !reviewComments.trim()) {
+        toast({
+          title: "Error",
+          description: "Please provide a reason for rejection",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       reviewApplication.mutate({
         applicationId: selectedApplication.id,
         status: reviewAction,
-        comments: reviewComments,
+        comments: reviewComments.trim() || undefined,
       });
     }
   };
