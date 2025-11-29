@@ -3401,6 +3401,61 @@ End of Report
     }
   });
 
+  // Check for pending leave applications (for managers)
+  app.get("/api/leave-applications/has-pending", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager" && user.role !== "team_lead") {
+        return res.json({ hasPending: false });
+      }
+
+      const pendingApplications = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(leaveApplications)
+        .where(eq(leaveApplications.status, "pending"));
+
+      res.json({ hasPending: (pendingApplications[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking pending leave applications:", error);
+      res.status(500).json({ error: "Failed to check pending leave applications" });
+    }
+  });
+
+  // Check for unassigned technical support requests (for managers and tech support)
+  app.get("/api/technical-support/has-unassigned", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    try {
+      if (user.role !== "project_manager" && user.role !== "operations_manager" && user.specialization !== "operations_manager" && user.role !== "team_lead" && user.role !== "customer_support_officer" && user.specialization !== "technical_support") {
+        return res.json({ hasUnassigned: false });
+      }
+
+      const unassignedRequests = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(technicalSupportRequests)
+        .where(
+          and(
+            eq(technicalSupportRequests.status, "pending"),
+            isNull(technicalSupportRequests.assignedToId)
+          )
+        );
+
+      res.json({ hasUnassigned: (unassignedRequests[0]?.count || 0) > 0 });
+    } catch (error) {
+      console.error("Error checking unassigned technical requests:", error);
+      res.status(500).json({ error: "Failed to check unassigned technical requests" });
+    }
+  });
+
   // Mark review link as reviewed
   app.put("/api/review-links/:id/reviewed", async (req, res) => {
     if (!req.isAuthenticated()) {
