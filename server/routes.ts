@@ -4082,7 +4082,7 @@ End of Report
     }
   });
 
-  // Check for staff query updates
+  // Check for staff queries updates
   app.get("/api/staff-queries/has-updates", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -7018,7 +7018,7 @@ End of Report
               type: "task_assigned", // Using existing type
               content: `New client complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
               referenceId: newComplaint.id,
-              referenceType: "project", // Using existing type
+              referenceType: "project", // Using a general type
             });
         }
 
@@ -8145,7 +8145,7 @@ End of Report
         .returning();
 
       // Note: Message updates are handled via query invalidation on the client
-      // No need for WebSocket broadcast here as the client will refetch
+      // No need for WebSocket broadcast here as the      client will refetch
       res.json({ success: true, message: updatedMessage });
     } catch (error) {
       console.error("Error editing team message:", error);
