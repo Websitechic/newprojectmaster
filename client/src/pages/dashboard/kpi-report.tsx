@@ -766,10 +766,10 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-3 max-w-[320px]" align="start">
-                          <div className="space-y-2">
+                        <PopoverContent className="w-auto p-4 max-w-[380px]" align="end" side="bottom" sideOffset={8}>
+                          <div className="space-y-4">
                             <div>
-                              <label className="text-xs font-medium mb-1 block text-gray-700">Start Date</label>
+                              <label className="text-sm font-medium mb-2 block text-gray-700">Start Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customStartDate}
@@ -777,11 +777,11 @@ export default function KPIReportPage() {
                                   setCustomStartDate(date);
                                   setUseCustomRange(true);
                                 }}
-                                className="p-0"
+                                className="rounded-md border"
                               />
                             </div>
-                            <div className="border-t pt-2">
-                              <label className="text-xs font-medium mb-1 block text-gray-700">End Date</label>
+                            <div className="border-t pt-3">
+                              <label className="text-sm font-medium mb-2 block text-gray-700">End Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customEndDate}
@@ -790,13 +790,13 @@ export default function KPIReportPage() {
                                   setUseCustomRange(true);
                                 }}
                                 disabled={(date) => customStartDate ? date < customStartDate : false}
-                                className="p-0"
+                                className="rounded-md border"
                               />
                             </div>
                             {customStartDate && customEndDate && (
                               <Button 
                                 size="sm"
-                                className="w-full text-[10px] h-7 mt-1" 
+                                className="w-full mt-2" 
                                 onClick={() => {
                                   setUseCustomRange(true);
                                 }}
