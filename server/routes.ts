@@ -1225,6 +1225,7 @@ export function registerRoutes(app: Express): Server {
       });
 
       // Group sessions by date for daily breakdown - get tasks worked on each specific day
+      // This matches exactly how the Productivity Tracking page shows tasks
       allSessions.forEach(session => {
         if (!session.startTime || !session.taskId) return;
 
@@ -1236,13 +1237,17 @@ export function registerRoutes(app: Express): Server {
         const dailyData = dailyMap.get(dateKey);
         const task = tasksInRange.find(t => t.id === session.taskId);
 
-        if (task) {
+        if (task && task.title) {
           // Only add task title if not already in the list for this day
           if (!dailyData.tasks.includes(task.title)) {
             dailyData.tasks.push(task.title);
-            dailyData.taskCount = dailyData.tasks.length;
           }
         }
+      });
+
+      // Update task count after all sessions are processed
+      dailyMap.forEach((dailyData) => {
+        dailyData.taskCount = dailyData.tasks.length;
       });
 
       // Calculate total actual work hours per day from sessions
@@ -1299,14 +1304,15 @@ export function registerRoutes(app: Express): Server {
       });
 
       // Convert to array with taskBreakdown - ensure tasks array is properly populated
+      // This matches the structure used by the Productivity Tracking page
       const dailyData = Array.from(dailyMap.values()).map(day => ({
         date: day.date,
         totalSpanHours: day.totalSpanHours,
         actualWorkHours: day.actualWorkHours,
         performanceStatus: day.performanceStatus,
         performanceColor: day.performanceColor,
-        taskCount: day.tasks.length, // Use actual tasks array length
-        tasks: day.tasks, // This now contains tasks from sessions
+        taskCount: day.tasks.length, // Count of unique tasks worked on that day
+        tasks: day.tasks.filter(Boolean), // Remove any null/undefined values
         taskBreakdown: Array.from(taskDetailsMap.values()),
         workdayStart: day.workdayStart,
         workdayEnd: day.workdayEnd
