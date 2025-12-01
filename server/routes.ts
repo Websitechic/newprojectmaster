@@ -4829,7 +4829,9 @@ End of Report
       const [existingComplaint] = await db
         .select()
         .from(staffComplaints)
-        .where(eq(existingComplaint.id, complaintId)) // Use existingComplaint.id for filtering
+        .where(
+          eq(existingComplaint.id, complaintId)
+        ) // Use existingComplaint.id for filtering
         .limit(1);
 
       if (!existingComplaint) {
