@@ -93,12 +93,8 @@ const formatTime = (hours: number) => {
 function DailyProductivityRow({ day }: { day: DailyProductivity }) {
   const [showAllTasks, setShowAllTasks] = useState(false);
   
-  // Get tasks from multiple sources with fallbacks
-  const tasksList = 
-    day.taskBreakdown?.map(t => t.title).filter(Boolean) || 
-    day.tasks?.filter(Boolean) || 
-    [];
-  
+  // Use the tasks array which contains tasks for this specific day
+  const tasksList = Array.isArray(day.tasks) ? day.tasks.filter(Boolean) : [];
   const taskCount = day.taskCount || tasksList.length;
   const displayTasks = showAllTasks ? tasksList : tasksList.slice(0, 3);
 
@@ -759,10 +755,10 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-1 max-w-[200px]" align="start">
-                          <div className="space-y-1">
+                        <PopoverContent className="w-auto p-2 max-w-[280px]" align="start">
+                          <div className="space-y-2">
                             <div>
-                              <label className="text-[8px] font-medium mb-0 block text-gray-700">Start Date</label>
+                              <label className="text-[10px] font-medium mb-1 block text-gray-700">Start Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customStartDate}
@@ -773,8 +769,8 @@ export default function KPIReportPage() {
                                 className="p-0"
                               />
                             </div>
-                            <div className="border-t pt-1">
-                              <label className="text-[8px] font-medium mb-0 block text-gray-700">End Date</label>
+                            <div className="border-t pt-2">
+                              <label className="text-[10px] font-medium mb-1 block text-gray-700">End Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customEndDate}
@@ -789,7 +785,7 @@ export default function KPIReportPage() {
                             {customStartDate && customEndDate && (
                               <Button 
                                 size="sm"
-                                className="w-full text-[9px] h-5 mt-0.5 py-0" 
+                                className="w-full text-[10px] h-7 mt-1" 
                                 onClick={() => {
                                   setUseCustomRange(true);
                                 }}
