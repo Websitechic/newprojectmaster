@@ -93,9 +93,12 @@ const formatTime = (hours: number) => {
 function DailyProductivityRow({ day }: { day: DailyProductivity }) {
   const [showAllTasks, setShowAllTasks] = useState(false);
   
-  // Use the tasks array which contains tasks for this specific day
-  const tasksList = Array.isArray(day.tasks) ? day.tasks.filter(Boolean) : [];
-  const taskCount = day.taskCount || tasksList.length;
+  // Get tasks from taskBreakdown if available, otherwise fall back to tasks array
+  const tasksList = day.taskBreakdown && day.taskBreakdown.length > 0
+    ? day.taskBreakdown.map(task => task.title).filter(Boolean)
+    : (Array.isArray(day.tasks) ? day.tasks.filter(Boolean) : []);
+  
+  const taskCount = tasksList.length;
   const displayTasks = showAllTasks ? tasksList : tasksList.slice(0, 3);
 
   return (
@@ -755,10 +758,10 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-2 max-w-[280px]" align="start">
+                        <PopoverContent className="w-auto p-3 max-w-[320px]" align="start">
                           <div className="space-y-2">
                             <div>
-                              <label className="text-[10px] font-medium mb-1 block text-gray-700">Start Date</label>
+                              <label className="text-xs font-medium mb-1 block text-gray-700">Start Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customStartDate}
@@ -770,7 +773,7 @@ export default function KPIReportPage() {
                               />
                             </div>
                             <div className="border-t pt-2">
-                              <label className="text-[10px] font-medium mb-1 block text-gray-700">End Date</label>
+                              <label className="text-xs font-medium mb-1 block text-gray-700">End Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customEndDate}
