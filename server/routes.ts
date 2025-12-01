@@ -1165,15 +1165,23 @@ export function registerRoutes(app: Express): Server {
       const end = new Date(endDate as string);
       const staffIdNum = parseInt(staffId as string);
 
-      // Get tasks assigned to the staff member within the date range
-      const tasksInRange = await db
+      // Get all sessions for the staff member within the date range
+      const allSessions = await db
+        .select()
+        .from(taskSessions)
+        .where(and(
+          eq(taskSessions.userId, staffIdNum),
+          gte(taskSessions.startTime, start),
+          sql`${taskSessions.startTime} <= ${end}`
+        ));
+
+      // Get ALL tasks that have sessions (not filtered by date range)
+      // This ensures we show all tasks worked on each day, regardless of when they were created
+      const taskIdsFromSessions = [...new Set(allSessions.map(s => s.taskId).filter(Boolean))];
+      const allTasksWorkedOn = taskIdsFromSessions.length > 0 ? await db
         .select()
         .from(tasks)
-        .where(and(
-          eq(tasks.assigneeId, staffIdNum),
-          gte(tasks.createdAt, start),
-          sql`${tasks.createdAt} <= ${end}`
-        ));
+        .where(inArray(tasks.id, taskIdsFromSessions)) : [];
 
       // Process daily productivity data
       const dailyMap = new Map();
@@ -1201,20 +1209,10 @@ export function registerRoutes(app: Express): Server {
         });
       });
 
-      // Get all sessions for the staff member within the date range
-      const allSessions = await db
-        .select()
-        .from(taskSessions)
-        .where(and(
-          eq(taskSessions.userId, staffIdNum),
-          gte(taskSessions.startTime, start),
-          sql`${taskSessions.startTime} <= ${end}`
-        ));
-
-      // Build taskDetails from tasks in range using task.timeSpent
+      // Build taskDetails from all tasks worked on using task.timeSpent
       const taskDetailsMap = new Map();
 
-      tasksInRange.forEach(task => {
+      allTasksWorkedOn.forEach(task => {
         taskDetailsMap.set(task.id, {
           id: task.id,
           title: task.title,
@@ -1235,7 +1233,7 @@ export function registerRoutes(app: Express): Server {
         if (!dailyMap.has(dateKey)) return;
 
         const dailyData = dailyMap.get(dateKey);
-        const task = tasksInRange.find(t => t.id === session.taskId);
+        const task = allTasksWorkedOn.find(t => t.id === session.taskId);
 
         if (task && task.title) {
           // Only add task title if not already in the list for this day
@@ -1282,17 +1280,39 @@ export function registerRoutes(app: Express): Server {
         }
       });
 
-      // Calculate allocated time from tasks in date range
-      tasksInRange.forEach(task => {
-        const taskDate = new Date(task.createdAt);
-        const dateKey = taskDate.toISOString().split('T')[0];
+      // Calculate allocated time from tasks worked on (based on sessions, not task creation date)
+      // Group sessions by date to calculate allocated time per day
+      const allocatedTimeByDate = new Map();
+      allSessions.forEach(session => {
+        if (!session.startTime || !session.taskId) return;
 
-        if (dailyMap.has(dateKey)) {
-          const dailyData = dailyMap.get(dateKey);
-          const allocatedHours = (task.workingHours || 0) + ((task.workingMinutes || 0) / 60);
-          if (allocatedHours > 0) {
-            dailyData.totalSpanHours += allocatedHours;
+        const sessionDate = new Date(session.startTime);
+        const dateKey = sessionDate.toISOString().split('T')[0];
+
+        if (!dailyMap.has(dateKey)) return;
+
+        const task = allTasksWorkedOn.find(t => t.id === session.taskId);
+        if (task) {
+          if (!allocatedTimeByDate.has(dateKey)) {
+            allocatedTimeByDate.set(dateKey, new Set());
           }
+          allocatedTimeByDate.get(dateKey).add(task.id);
+        }
+      });
+
+      // Calculate total allocated hours per day
+      allocatedTimeByDate.forEach((taskIds, dateKey) => {
+        const dailyData = dailyMap.get(dateKey);
+        if (dailyData) {
+          taskIds.forEach(taskId => {
+            const task = allTasksWorkedOn.find(t => t.id === taskId);
+            if (task) {
+              const allocatedHours = (task.workingHours || 0) + ((task.workingMinutes || 0) / 60);
+              if (allocatedHours > 0) {
+                dailyData.totalSpanHours += allocatedHours;
+              }
+            }
+          });
         }
       });
 
