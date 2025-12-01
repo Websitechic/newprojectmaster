@@ -759,10 +759,10 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-1.5 max-w-[240px]" align="start">
-                          <div className="space-y-1.5">
+                        <PopoverContent className="w-auto p-1 max-w-[200px]" align="start">
+                          <div className="space-y-1">
                             <div>
-                              <label className="text-[9px] font-medium mb-0.5 block text-gray-700">Start Date</label>
+                              <label className="text-[8px] font-medium mb-0 block text-gray-700">Start Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customStartDate}
@@ -773,8 +773,8 @@ export default function KPIReportPage() {
                                 className="p-0"
                               />
                             </div>
-                            <div className="border-t pt-1.5">
-                              <label className="text-[9px] font-medium mb-0.5 block text-gray-700">End Date</label>
+                            <div className="border-t pt-1">
+                              <label className="text-[8px] font-medium mb-0 block text-gray-700">End Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customEndDate}
@@ -789,7 +789,7 @@ export default function KPIReportPage() {
                             {customStartDate && customEndDate && (
                               <Button 
                                 size="sm"
-                                className="w-full text-[10px] h-6 mt-1" 
+                                className="w-full text-[9px] h-5 mt-0.5 py-0" 
                                 onClick={() => {
                                   setUseCustomRange(true);
                                 }}
