@@ -4567,8 +4567,8 @@ End of Report
     }
 
     const user = req.user!;
-    const hasAccess = user.role === "project_manager" || 
-                     user.role === "operations_manager" || 
+    const hasAccess = user.role === "project_manager" ||
+                     user.role === "operations_manager" ||
                      user.role === "team_lead" ||
                      user.specialization === "operations_manager";
 
@@ -4640,8 +4640,8 @@ End of Report
         .set({
           status: status as "approved" | "rejected",
           reviewComments: reviewComments || null,
-          reviewedBy: req.user!.id,
           reviewedAt: new Date(),
+          reviewedBy: req.user!.id,
           updatedAt: new Date(),
         })
         .where(eq(leaveApplications.id, applicationId))
