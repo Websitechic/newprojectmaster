@@ -4560,6 +4560,109 @@ End of Report
     }
   });
 
+  // Middleware for project managers, operations managers, and team leads
+  const isProjectManagerOrOperationsManager = (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const hasAccess = user.role === "project_manager" || 
+                     user.role === "operations_manager" || 
+                     user.role === "team_lead" ||
+                     user.specialization === "operations_manager";
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied - Only project managers, operations managers, and team leads can access this resource" });
+    }
+
+    next();
+  };
+
+  // Get all leave applications (Project Manager, Operations Manager, and Team Lead)
+  app.get("/api/leave-applications/all", isProjectManagerOrOperationsManager, async (req, res) => {
+    try {
+      const applications = await db
+        .select({
+          id: leaveApplications.id,
+          leaveType: leaveApplications.leaveType,
+          reason: leaveApplications.reason,
+          startDate: leaveApplications.startDate,
+          endDate: leaveApplications.endDate,
+          totalDays: leaveApplications.totalDays,
+          proofImageUrl: leaveApplications.proofImageUrl,
+          status: leaveApplications.status,
+          appliedAt: leaveApplications.appliedAt,
+          reviewedAt: leaveApplications.reviewedAt,
+          reviewComments: leaveApplications.reviewComments,
+          userName: users.name,
+          userEmail: users.email,
+        })
+        .from(leaveApplications)
+        .innerJoin(users, eq(leaveApplications.userId, users.id))
+        .orderBy(desc(leaveApplications.createdAt));
+
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching all leave applications:", error);
+      res.status(500).json({ error: "Failed to fetch leave applications" });
+    }
+  });
+
+  // Review leave application (Project Manager, Operations Manager, and Team Lead)
+  app.put("/api/leave-applications/:id/review", isProjectManagerOrOperationsManager, async (req, res) => {
+    try {
+      const applicationId = parseInt(req.params.id);
+      const { status, reviewComments } = req.body;
+
+      if (!status || !["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Valid status (approved or rejected) is required" });
+      }
+
+      // Get the application first
+      const [application] = await db
+        .select()
+        .from(leaveApplications)
+        .where(eq(leaveApplications.id, applicationId))
+        .limit(1);
+
+      if (!application) {
+        return res.status(404).json({ error: "Leave application not found" });
+      }
+
+      if (application.status !== "pending") {
+        return res.status(400).json({ error: "This application has already been reviewed" });
+      }
+
+      // Update the application
+      const [updatedApplication] = await db
+        .update(leaveApplications)
+        .set({
+          status: status as "approved" | "rejected",
+          reviewComments: reviewComments || null,
+          reviewedBy: req.user!.id,
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(leaveApplications.id, applicationId))
+        .returning();
+
+      // Create notification for the applicant
+      await createNotification(
+        updatedApplication.userId,
+        "task_updated",
+        `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
+        updatedApplication.id,
+        "project"
+      );
+
+      res.json(updatedApplication);
+    } catch (error) {
+      console.error("Error reviewing leave application:", error);
+      res.status(500).json({ error: "Failed to review leave application" });
+    }
+  });
+
   // Staff Complaints API Routes
   // Get user's own staff complaints
   app.get("/api/staff-complaints/my-complaints", async (req, res) => {
