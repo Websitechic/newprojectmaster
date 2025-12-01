@@ -691,7 +691,7 @@ export default function KPIReportPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
                       Department
@@ -736,94 +736,106 @@ export default function KPIReportPage() {
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
                       Date Range
                     </label>
-                    <div className="flex gap-2">
-                      <Select 
-                        value={useCustomRange ? "custom" : dateRange.toString()} 
-                        onValueChange={(value) => {
-                          if (value === "custom") {
-                            setUseCustomRange(true);
-                          } else {
-                            setUseCustomRange(false);
-                            setDateRange(parseInt(value));
-                          }
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="7">Last 7 Days</SelectItem>
-                          <SelectItem value="14">Last 14 Days</SelectItem>
-                          <SelectItem value="30">Last Month</SelectItem>
-                          <SelectItem value="60">Last 2 Months</SelectItem>
-                          <SelectItem value="180">Last 6 Months</SelectItem>
-                          <SelectItem value="custom">Custom Range</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="icon">
-                            <Calendar className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-3 max-w-[320px]" align="start">
-                          <div className="space-y-2">
-                            <div>
-                              <label className="text-xs font-medium mb-1 block text-gray-700">Start Date</label>
-                              <CalendarComponent
-                                mode="single"
-                                selected={customStartDate}
-                                onSelect={(date) => {
-                                  setCustomStartDate(date);
-                                  setUseCustomRange(true);
-                                }}
-                                className="p-0"
-                              />
-                            </div>
-                            <div className="border-t pt-2">
-                              <label className="text-xs font-medium mb-1 block text-gray-700">End Date</label>
-                              <CalendarComponent
-                                mode="single"
-                                selected={customEndDate}
-                                onSelect={(date) => {
-                                  setCustomEndDate(date);
-                                  setUseCustomRange(true);
-                                }}
-                                disabled={(date) => customStartDate ? date < customStartDate : false}
-                                className="p-0"
-                              />
-                            </div>
-                            {customStartDate && customEndDate && (
-                              <Button 
-                                size="sm"
-                                className="w-full text-[10px] h-7 mt-1" 
-                                onClick={() => {
-                                  setUseCustomRange(true);
-                                }}
-                              >
-                                Apply Range
-                              </Button>
-                            )}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
+                    <Select 
+                      value={useCustomRange ? "custom" : dateRange.toString()} 
+                      onValueChange={(value) => {
+                        if (value === "custom") {
+                          setUseCustomRange(true);
+                        } else {
+                          setUseCustomRange(false);
+                          setDateRange(parseInt(value));
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7">Last 7 Days</SelectItem>
+                        <SelectItem value="14">Last 14 Days</SelectItem>
+                        <SelectItem value="30">Last Month</SelectItem>
+                        <SelectItem value="60">Last 2 Months</SelectItem>
+                        <SelectItem value="180">Last 6 Months</SelectItem>
+                        <SelectItem value="custom">Custom Range</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  {selectedStaffMember && (
-                    <div className="flex flex-col justify-end">
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-blue-600" />
-                          <div>
-                            <p className="text-sm font-medium text-blue-900">{selectedStaffMember.name}</p>
-                            <p className="text-xs text-blue-600">{selectedStaffMember.specialization}</p>
-                          </div>
-                        </div>
+                  {useCustomRange && (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">
+                          Start Date
+                        </label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <Calendar className="mr-2 h-4 w-4" />
+                              {customStartDate ? format(customStartDate, "PPP") : "Pick a date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent
+                              mode="single"
+                              selected={customStartDate}
+                              onSelect={setCustomStartDate}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">
+                          End Date
+                        </label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <Calendar className="mr-2 h-4 w-4" />
+                              {customEndDate ? format(customEndDate, "PPP") : "Pick a date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent
+                              mode="single"
+                              selected={customEndDate}
+                              onSelect={setCustomEndDate}
+                              disabled={(date) => customStartDate ? date < customStartDate : false}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </>
+                  )}
+
+                  
+                </div>
+                
+                {selectedStaffMember && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2">
+                      <User className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">Viewing: {selectedStaffMember.name}</p>
+                        <p className="text-xs text-blue-600">
+                          {selectedStaffMember.specialization.replace(/_/g, ' ')} • 
+                          {useCustomRange && customStartDate && customEndDate 
+                            ? ` ${format(customStartDate, 'MMM dd, yyyy')} - ${format(customEndDate, 'MMM dd, yyyy')}`
+                            : ` Last ${dateRange} Days`
+                          }
+                        </p>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
