@@ -233,11 +233,11 @@ export function registerRoutes(app: Express): Server {
   // User endpoint for authentication
   app.get("/api/user", (req, res) => {
     try {
-      console.log('Auth check:', { 
-        isAuthenticated: req.isAuthenticated(), 
+      console.log('Auth check:', {
+        isAuthenticated: req.isAuthenticated(),
         hasUser: !!req.user,
         sessionID: req.session?.id,
-        cookie: req.session?.cookie 
+        cookie: req.session?.cookie
       });
 
       if (req.isAuthenticated() && req.user) {
@@ -444,7 +444,7 @@ export function registerRoutes(app: Express): Server {
             try {
               client.write(`data: ${JSON.stringify({
                 type: 'meeting_status_update',
-                activeBookings: activeBookings.filter(b => 
+                activeBookings: activeBookings.filter(b =>
                   Array.isArray(b.participants) && b.participants.includes(userId)
                 ),
                 timestamp: now.toISOString()
@@ -1248,7 +1248,7 @@ export function registerRoutes(app: Express): Server {
         dailyData.taskCount = dailyData.tasks.length;
       });
 
-      console.log('Daily task data after session processing:', 
+      console.log('Daily task data after session processing:',
         Array.from(dailyMap.entries()).map(([date, data]) => ({
           date,
           taskCount: data.taskCount,
@@ -1665,10 +1665,10 @@ export function registerRoutes(app: Express): Server {
           ])
         ];
 
-        const csvContent = csvRows.map(row => 
-          row.map(field => 
-            typeof field === 'string' && field.includes(',') 
-              ? `"${field.replace(/"/g, '""')}"` 
+        const csvContent = csvRows.map(row =>
+          row.map(field =>
+            typeof field === 'string' && field.includes(',')
+              ? `"${field.replace(/"/g, '""')}"`
               : field
           ).join(',')
         ).join('\n');
@@ -1728,13 +1728,13 @@ Poor Performance Days: ${productivityData.summary.poorDays}
 
 DAILY BREAKDOWN
 ---------------
-${productivityData.dailyData.map((day: any) => 
+${productivityData.dailyData.map((day: any) =>
   `${day.date} | ${day.totalSpanHours.toFixed(2)}h span | ${day.actualWorkHours.toFixed(2)}h work | ${day.taskCount} tasks | ${day.performanceStatus.toUpperCase()}`
 ).join('\n')}
 
 WEEKLY OVERVIEW
 ---------------
-${productivityData.weeklyData ? productivityData.weeklyData.map((week: any) => 
+${productivityData.weeklyData ? productivityData.weeklyData.map((week: any) =>
   `${week.day}: ${week.hours.toFixed(2)} hours (${week.performanceStatus})`
 ).join('\n') : 'No weekly data available'}
 
@@ -1849,7 +1849,7 @@ End of Report
         const engagedTask = staffTasks.find(task => task.isTimerRunning);
 
         // Check if staff is in a meeting
-        const currentMeeting = activeBookings.find(booking => 
+        const currentMeeting = activeBookings.find(booking =>
           Array.isArray(booking.participants) && booking.participants.includes(staff.id)
         );
 
@@ -2181,7 +2181,7 @@ End of Report
       const departmentList = [
         "Technical support",
         "Design",
-        "Development", 
+        "Development",
         "Media buying",
         "Copywriting",
         "Automation",
@@ -2363,8 +2363,8 @@ End of Report
       }
 
       // Check if user has access to this task's project
-      const hasAccess = 
-        user.role === "operations_manager" || 
+      const hasAccess =
+        user.role === "operations_manager" ||
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -2997,10 +2997,10 @@ End of Report
 
       const fileUrl = `/uploads/leave-proof/${req.file.filename}`;
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         fileUrl,
-        fileName 
+        fileName
       });
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -3032,8 +3032,8 @@ End of Report
 
       console.log("Test notification created:", newNotification);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Test notification created successfully",
         notificationId: newNotification.id,
         notification: newNotification
@@ -3083,8 +3083,8 @@ End of Report
         .values(testQueryData)
         .returning();
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Test staff query created successfully",
         queryId: newQuery.id,
         testData: testQueryData
@@ -3266,8 +3266,8 @@ End of Report
     }
 
     const user = req.user!;
-    const hasAccess = user.role === "project_manager" || 
-                     user.role === "operations_manager" || 
+    const hasAccess = user.role === "project_manager" ||
+                     user.role === "operations_manager" ||
                      user.role === "team_lead" ||
                      user.role === "customer_support_officer" ||
                      user.specialization === "operations_manager";
@@ -3295,8 +3295,8 @@ End of Report
     }
 
     const user = req.user!;
-    const hasAccess = user.role === "project_manager" || 
-                     user.role === "operations_manager" || 
+    const hasAccess = user.role === "project_manager" ||
+                     user.role === "operations_manager" ||
                      user.role === "team_lead" ||
                      user.role === "customer_support_officer" ||
                      user.specialization === "operations_manager";
@@ -3337,8 +3337,8 @@ End of Report
     }
 
     const user = req.user as User;
-    const hasAccess = user.role === "project_manager" || 
-                     user.role === "operations_manager" || 
+    const hasAccess = user.role === "project_manager" ||
+                     user.role === "operations_manager" ||
                      user.role === "team_lead" ||
                      user.role === "customer_support_officer" ||
                      user.specialization === "operations_manager";
@@ -3385,8 +3385,8 @@ End of Report
     }
 
     const user = req.user!;
-    const hasAccess = user.role === "project_manager" || 
-                     user.role === "operations_manager" || 
+    const hasAccess = user.role === "project_manager" ||
+                     user.role === "operations_manager" ||
                      user.role === "team_lead" ||
                      user.role === "customer_support_officer" ||
                      user.specialization === "operations_manager";
@@ -4923,7 +4923,7 @@ End of Report
       userMemos.push(...departmentMemos);
 
       // Remove duplicates and add read status
-      const uniqueMemos = userMemos.filter((memo, index, self) => 
+      const uniqueMemos = userMemos.filter((memo, index, self) =>
         index === self.findIndex(m => m.id === memo.id)
       );
 
@@ -5070,7 +5070,7 @@ End of Report
       // Get conversations where user is either sender or receiver
       const conversations = await db
         .select({
-          userId: sql<number>`CASE 
+          userId: sql<number>`CASE
             WHEN ${directMessages.senderId} = ${user.id} THEN ${directMessages.receiverId}
             ELSE ${directMessages.senderId}
           END`,
@@ -5274,7 +5274,7 @@ End of Report
       // Update the message
       const [updatedMessage] = await db
         .update(directMessages)
-        .set({ 
+        .set({
           content: content.trim(),
           updatedAt: new Date()
         })
@@ -5555,7 +5555,7 @@ End of Report
             .insert(notifications)
             .values({
               userId: manager.id,
-              type: "task_assigned",
+              type: "task_assigned", // Using existing type
               content: `New issue report from ${user.name}: ${title}`,
               referenceId: newReport.id,
               referenceType: "project",
@@ -6006,7 +6006,7 @@ End of Report
       // Update the booking status
       const [updatedBooking] = await db
         .update(bookings)
-        .set({ 
+        .set({
           status,
           updatedAt: new Date()
         })
@@ -6135,7 +6135,7 @@ End of Report
           name: request.requesterName,
           email: request.requesterEmail,
         },
-        assignedTo: request.assignedToId ? 
+        assignedTo: request.assignedToId ?
           assignedUsers.find(u => u.id === request.assignedToId) || null : null,
         task: request.taskId ? {
           id: request.taskId,
@@ -6861,7 +6861,8 @@ End of Report
       // Parse valuable things if it's a string
       let parsedValuableThings = [];
       if (valuableThings) {
-        try {          parsedValuableThings = typeof valuableThings === 'string' ? JSON.parse(valuableThings) : valuableThings;
+        try {
+          parsedValuableThings = typeof valuableThings === 'string' ? JSON.parse(valuableThings) : valuableThings;
           if (!Array.isArray(parsedValuableThings)) {
             parsedValuableThings = [];
           }
@@ -7182,10 +7183,10 @@ End of Report
 
     try {
       const applicationId = parseInt(req.params.id);
-      const {status, reviewComments} = req.body;
+      const { status, reviewComments } = req.body;
 
-      if (!status || !["approved", "rejected"].includes(status)) {
-        return res.status(400).json({ error: "Invalid status. Must be 'approved' or 'rejected'" });
+      if (!status || (status !== "approved" && status !== "rejected")) {
+        return res.status(400).json({ error: "Valid status (approved or rejected) is required" });
       }
 
       if (status === "rejected" && !reviewComments?.trim()) {
@@ -7286,8 +7287,8 @@ End of Report
       }
 
       // Check if user has access to this project
-      const hasAccess = 
-        user.role === "operations_manager" || 
+      const hasAccess =
+        user.role === "operations_manager" ||
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7345,8 +7346,8 @@ End of Report
         )
         .limit(1);
 
-      const hasAccess = 
-        user.role === "operations_manager" || 
+      const hasAccess =
+        user.role === "operations_manager" ||
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7395,8 +7396,8 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      const hasAccess = 
-        user.role === "operations_manager" || 
+      const hasAccess =
+        user.role === "operations_manager" ||
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7446,8 +7447,8 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      const hasAccess = 
-        user.role === "operations_manager" || 
+      const hasAccess =
+        user.role === "operations_manager" ||
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7542,8 +7543,8 @@ End of Report
       const filePath = `/uploads/leave-proof/${req.file.filename}`;
 
       // Use custom file name if provided, otherwise use original file name
-      const displayName = customFileName && customFileName.trim() 
-        ? customFileName.trim() 
+      const displayName = customFileName && customFileName.trim()
+        ? customFileName.trim()
         : req.file.originalname;
 
       // Insert the new resource
@@ -7562,98 +7563,8 @@ End of Report
       res.json({ success: true, resourceId: newResource.id });
     } catch (error) {
       console.error("Error uploading file:", error);
-      res.status(500).json({ 
-        error: "Failed to upload file", 
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Add resource link to project
-  app.post("/api/projects/:id/resources/link", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    const user = req.user!;
-    const projectId = parseInt(req.params.id);
-    const { name, link, category } = req.body;
-
-    console.log("Resource link endpoint called:", { projectId, name, link, category, userId: user.id, userRole:user.role });
-
-    try {
-      // Validate required fields
-      if (!name || !link || !category) {
-        console.log("Missing required fields:", { name, link, category });
-        return res.status(400).json({ error: "Name, link, and category are required" });
-      }
-
-      // Validate URL format
-      try {
-        new URL(link);
-      } catch (urlError) {
-        console.log("Invalid URL format:", link);
-        return res.status(400).json({ error: "Invalid URL format" });
-      }
-
-      // Check if project exists using proper Drizzle syntax
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, projectId))
-        .limit(1);
-
-      if (!project) {
-        console.log("Project not found:", projectId);
-        return res.status(404).json({ error: "Project not found" });
-      }
-
-      // Check user access permissions
-      const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
-      const isTeamLead = user.role === 'team_lead';
-      const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
-      const isCustomerSupportOfficer = user.role === 'customer_support_officer';
-      const isClient = user.role === 'client' && project.clientId === user.id;
-
-      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isCustomerSupportOfficer || isClient;
-
-      console.log("Access check:", { 
-        isOperationsManager,
-        isTeamLead,
-        isProjectManager, 
-        isCustomerSupportOfficer, 
-        isClient, 
-        hasAccess,
-        userRole: user.role,
-        userSpecialization: user.specialization,
-        projectManagerId: project.managerId,
-        projectClientId: project.clientId
-      });
-
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Access denied - insufficient permissions" });
-      }
-
-      // Insert the new resource
-      const [newResource] = await db
-        .insert(resources)
-        .values({
-          name: name.trim(),
-          type: category,
-          link: link.trim(),
-          projectId,
-          uploadedBy: user.id,
-        })
-        .returning();
-
-      console.log("Resource created successfully:", newResource);
-      res.json({ success: true, resourceId: newResource.id });
-
-    } catch (error) {
-      console.error("Error adding resource link:", error);
-      console.error("Error stack:", error.stack);
-      res.status(500).json({ 
-        error: "Failed to add resource link", 
+      res.status(500).json({
+        error: "Failed to upload file",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -7805,8 +7716,8 @@ End of Report
         )
         .limit(1);
 
-      const hasAccess = 
-        user.role === "operations_manager" || 
+      const hasAccess =
+        user.role === "operations_manager" ||
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7853,7 +7764,9 @@ End of Report
     try {
        // Check project access
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-      if (!project) return res.status(404).json({ error: "Project not found" });      // Check if user is a member of the project (for all roles including customer support)
+      if (!project) return res.status(404).json({ error: "Project not found" });
+
+      // Check if user is a member of the project (for all roles including customer support)
       const [membership] = await db
         .select()
         .from(projectMembers)
@@ -7865,8 +7778,8 @@ End of Report
         )
         .limit(1);
 
-      const hasAccess = 
-        user.role === "operations_manager" || 
+      const hasAccess =
+        user.role === "operations_manager" ||
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -7955,8 +7868,8 @@ End of Report
         )
         .limit(1);
 
-      const hasAccess = 
-        user.role === "operations_manager" || 
+      const hasAccess =
+        user.role === "operations_manager" ||
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -8021,7 +7934,7 @@ End of Report
           const mentionedName = match[1].trim();
 
           // Find user by exact or partial name match
-          const mentionedUser = allMembers.find(member => 
+          const mentionedUser = allMembers.find(member =>
             member.name && (
               member.name.toLowerCase() === mentionedName.toLowerCase() ||
               member.name.toLowerCase().startsWith(mentionedName.toLowerCase())
@@ -8284,8 +8197,8 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      const hasAccess = 
-        user.role === "operations_manager" || 
+      const hasAccess =
+        user.role === "operations_manager" ||
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -8345,8 +8258,8 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, plan.projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
-      const hasAccess = 
-        user.role === "operations_manager" || 
+      const hasAccess =
+        user.role === "operations_manager" ||
         user.role === "team_lead" ||
         user.specialization === "operations_manager" ||
         user.role === "product_owner" ||
@@ -8467,10 +8380,10 @@ End of Report
     const user = req.user!;
 
     // Check if user has permission to create projects
-    const canCreateProjects = 
-      user.role === "project_manager" || 
+    const canCreateProjects =
+      user.role === "project_manager" ||
       user.role === "customer_support_officer" ||
-      user.role === "operations_manager" || 
+      user.role === "operations_manager" ||
       user.role === "team_lead" ||
       user.specialization === "operations_manager";
 
@@ -8894,7 +8807,7 @@ End of Report
       res.json({ success: true, planId: newPlan.id });
     } catch (error) {
       console.error("Error creating project plan:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to create project plan",
         details: error instanceof Error ? error.message : String(error)
       });
@@ -9293,8 +9206,8 @@ End of Report
         );
 
       if (runningTasks.length > 0 && !runningTasks.some(t => t.id === taskId)) {
-        return res.status(400).json({ 
-          error: "You already have a timer running on another task. Please pause it first." 
+        return res.status(400).json({
+          error: "You already have a timer running on another task. Please pause it first."
         });
       }
 
@@ -9575,84 +9488,56 @@ End of Report
         return res.status(403).json({ error: "You can only submit tasks assigned to you" });
       }
 
-      // Calculate final time if timer is running
-      let finalTimeSpent = task.timeSpent || 0;
+      // If timer is running, stop it first
+      let newTimeSpent = task.timeSpent || 0;
       if (task.isTimerRunning && task.timerStartTime) {
         const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
-        finalTimeSpent += elapsedSeconds;
+        newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
+
+        // Clear the timer interval
+        if (global.timerIntervals && global.timerIntervals.has(taskId)) {
+          clearInterval(global.timerIntervals.get(taskId));
+          global.timerIntervals.delete(taskId);
+        }
       }
 
-      // Update task as completed and stop timer
+      // Update task to review status and stop timer
+      const now = new Date();
       const [updatedTask] = await db
         .update(tasks)
         .set({
-          status: "completed",
-          progress: 100,
+          status: "review",
           isTimerRunning: false,
-          timeSpent: finalTimeSpent,
+          timeSpent: newTimeSpent,
           timerStartTime: null,
-          updatedAt: new Date(),
+          updatedAt: now
         })
         .where(eq(tasks.id, taskId))
         .returning();
 
-      // Get project info for notifications
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, task.projectId))
-        .limit(1);
-
-      // Notify project manager about task completion
-      if (project && project.managerId && project.managerId !== user.id) {
-        await createNotification(
-          project.managerId,
-          "task_completed",
-          `${user.name} completed task: "${task.title}"`,
-          taskId,
-          "task"
-        );
-      }
-
-      // Notify client about task completion if it's a client project
-      if (project && project.clientId) {
-        await createNotification(
-          project.clientId,
-          "task_completed",
-          `Task completed in your project "${project.name}": "${task.title}"`,
-          taskId,
-          "task"
-        );
-      }
-
-      // Broadcast timer stop and task completion to all connected clients
+      // Broadcast task update via WebSocket
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
-          if (client.readyState === 1) { // WebSocket.OPEN
-            client.send(JSON.stringify({
-              type: 'task_timer_stopped',
-              data: {
-                taskId: updatedTask.id,
-                isTimerRunning: updatedTask.isTimerRunning,
-                timeSpent: updatedTask.timeSpent,
-                timerStartTime: null,
-              }
-            }));
-            client.send(JSON.stringify({
-              type: 'task_completed',
-              data: {
-                taskId: updatedTask.id,
-                projectId: updatedTask.projectId,
-                status: updatedTask.status,
-                completedBy: user.id,
-                completedAt: new Date().toISOString()
-              }
-            }));
+          if (client.readyState === 1) {
+            try {
+              client.send(JSON.stringify({
+                type: 'task_updated',
+                data: {
+                  taskId: updatedTask.id,
+                  projectId: updatedTask.projectId,
+                  status: updatedTask.status,
+                  updatedBy: user.id,
+                  updatedAt: now.toISOString()
+                }
+              }));
+            } catch (error) {
+              console.error('Error broadcasting task submission:', error);
+            }
           }
         });
       }
 
-      res.json({ success: true, task: updatedTask });
+      res.json(updatedTask);
     } catch (error) {
       console.error("Error submitting task:", error);
       res.status(500).json({ error: "Failed to submit task" });
