@@ -1250,6 +1250,14 @@ export function registerRoutes(app: Express): Server {
         dailyData.taskCount = dailyData.tasks.length;
       });
 
+      console.log('Daily task data after session processing:', 
+        Array.from(dailyMap.entries()).map(([date, data]) => ({
+          date,
+          taskCount: data.taskCount,
+          tasks: data.tasks
+        }))
+      );
+
       // Calculate total actual work hours per day from sessions
       allSessions.forEach(session => {
         if (!session.startTime) return;
@@ -1305,18 +1313,21 @@ export function registerRoutes(app: Express): Server {
 
       // Convert to array with taskBreakdown - ensure tasks array is properly populated
       // This matches the structure used by the Productivity Tracking page
-      const dailyData = Array.from(dailyMap.values()).map(day => ({
-        date: day.date,
-        totalSpanHours: day.totalSpanHours,
-        actualWorkHours: day.actualWorkHours,
-        performanceStatus: day.performanceStatus,
-        performanceColor: day.performanceColor,
-        taskCount: day.tasks.length, // Count of unique tasks worked on that day
-        tasks: day.tasks.filter(Boolean), // Remove any null/undefined values
-        taskBreakdown: Array.from(taskDetailsMap.values()),
-        workdayStart: day.workdayStart,
-        workdayEnd: day.workdayEnd
-      }));
+      const dailyData = Array.from(dailyMap.values()).map(day => {
+        const validTasks = day.tasks.filter(task => task && task.trim().length > 0);
+        return {
+          date: day.date,
+          totalSpanHours: day.totalSpanHours,
+          actualWorkHours: day.actualWorkHours,
+          performanceStatus: day.performanceStatus,
+          performanceColor: day.performanceColor,
+          taskCount: validTasks.length, // Count of unique tasks worked on that day
+          tasks: validTasks, // Only include valid task titles
+          taskBreakdown: Array.from(taskDetailsMap.values()),
+          workdayStart: day.workdayStart,
+          workdayEnd: day.workdayEnd
+        };
+      });
 
       // Calculate weekly data based on actual dates in range (not just day names)
       const weeklyDataArray = [];

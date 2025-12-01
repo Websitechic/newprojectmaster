@@ -96,8 +96,15 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
   // Use the tasks array which is populated from session data on the backend
   // This matches exactly how the Productivity page shows tasks per day
   const tasksList = Array.isArray(day.tasks) && day.tasks.length > 0
-    ? day.tasks.filter(Boolean)
+    ? day.tasks.filter(task => task && typeof task === 'string' && task.trim().length > 0)
     : [];
+
+  // Debug logging
+  console.log(`Day ${day.date}:`, {
+    rawTasks: day.tasks,
+    tasksList,
+    taskCount: day.taskCount
+  });
 
   const taskCount = tasksList.length;
   const displayTasks = showAllTasks ? tasksList : tasksList.slice(0, 3);
