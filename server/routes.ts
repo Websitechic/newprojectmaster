@@ -1224,7 +1224,7 @@ export function registerRoutes(app: Express): Server {
         });
       });
 
-      // Group sessions by date for daily breakdown
+      // Group sessions by date for daily breakdown - get tasks worked on each specific day
       allSessions.forEach(session => {
         if (!session.startTime || !session.taskId) return;
 
@@ -1237,9 +1237,10 @@ export function registerRoutes(app: Express): Server {
         const task = tasksInRange.find(t => t.id === session.taskId);
 
         if (task) {
+          // Only add task title if not already in the list for this day
           if (!dailyData.tasks.includes(task.title)) {
             dailyData.tasks.push(task.title);
-            dailyData.taskCount += 1;
+            dailyData.taskCount = dailyData.tasks.length;
           }
         }
       });
@@ -1297,15 +1298,15 @@ export function registerRoutes(app: Express): Server {
         }
       });
 
-      // Convert to array with taskBreakdown
+      // Convert to array with taskBreakdown - ensure tasks array is properly populated
       const dailyData = Array.from(dailyMap.values()).map(day => ({
         date: day.date,
         totalSpanHours: day.totalSpanHours,
         actualWorkHours: day.actualWorkHours,
         performanceStatus: day.performanceStatus,
         performanceColor: day.performanceColor,
-        taskCount: day.taskCount,
-        tasks: day.tasks,
+        taskCount: day.tasks.length, // Use actual tasks array length
+        tasks: day.tasks, // This now contains tasks from sessions
         taskBreakdown: Array.from(taskDetailsMap.values()),
         workdayStart: day.workdayStart,
         workdayEnd: day.workdayEnd
