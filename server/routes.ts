@@ -7029,6 +7029,7 @@ End of Report
           screenshotUrl,
           submitterId: user.id,
           status: "pending",
+        })
         .returning();
 
       console.log("Client complaint created:", newComplaint.id);
