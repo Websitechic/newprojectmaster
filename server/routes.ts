@@ -96,7 +96,7 @@ async function createNotification(userId: number, type: string, content: string,
             }
           };
 
-          userClient.write(`data: ${JSON.stringify(notificationPayload)}\n\n`);
+          userClient.write(`data: ${JSON.JSON.stringify(notificationPayload)}\n\n`);
           console.log(`📨 SSE notification sent to user ${userId}:`, notificationPayload);
         } catch (error) {
           console.error(`❌ Error sending SSE notification to user ${userId}:`, error);
@@ -217,7 +217,7 @@ export function registerRoutes(app: Express): Server {
       const originalStatusSend = statusRes.send;
       statusRes.send = function(data) {
         if (typeof data === 'string' && !data.startsWith('{') && !data.startsWith('[')) {
-          return originalStatusSend.call(this, JSON.stringify({ error: data }));
+          return originalStatusSend.call(this, JSON.JSON.stringify({ error: data }));
         }
         return originalStatusSend.call(this, data);
       };
@@ -3533,7 +3533,7 @@ End of Report
     }
 
     try {
-      const linkId = parseInt(req.params.id);
+      const linkId= parseInt(req.params.id);
 
       // Check if link exists and is assigned to this team lead
       const [link] = await db
@@ -4856,7 +4856,7 @@ End of Report
       const [existingComplaint] = await db
         .select()
         .from(staffComplaints)
-        .where(eq(staffComplaints.id, complaintId))
+        .where(eq(existingComplaint.id, complaintId))
         .limit(1);
 
       if (!existingComplaint) {
@@ -4875,7 +4875,7 @@ End of Report
           reviewComments: reviewComments || null,
           reviewedAt: new Date(),
         })
-        .where(eq(staffComplaints.id, complaintId))
+        .where(eq(existingComplaint.id, complaintId))
         .returning();
 
       console.log("Staff complaint updated successfully:", updatedComplaint);
@@ -4896,7 +4896,7 @@ End of Report
         }
       }
 
-      res.json({ success: true, complaint: updatedComplaint });
+      res.json({ success: true, complaint: updatedApplication });
     } catch (error) {
       console.error("Error updating staff complaint:", error);
       res.status(500).json({ error: "Failed to update staff complaint", details: error.message });
@@ -5669,7 +5669,7 @@ End of Report
         })
         .returning();
 
-      // Create notifications for operations managers and product owners
+      // Create notifications for operations managers
       try {
         const managers = await db
           .select()
@@ -6735,7 +6735,7 @@ End of Report
       const [existingRequest] = await db
         .select()
         .from(deadlineExtensionRequests)
-        .where(eq(deadlineExtensionRequests.id, requestId))
+        .where(eq(existingRequest.id, requestId))
         .limit(1);
 
       if (!existingRequest) {
@@ -7029,7 +7029,6 @@ End of Report
           screenshotUrl,
           submitterId: user.id,
           status: "pending",
-        })
         .returning();
 
       console.log("Client complaint created:", newComplaint.id);
@@ -7324,10 +7323,6 @@ End of Report
 
       if (!status || (status !== "approved" && status !== "rejected")) {
         return res.status(400).json({ error: "Valid status (approved or rejected) is required" });
-      }
-
-      if (status === "rejected" && !reviewComments?.trim()) {
-        return res.status(400).json({ error: "Review comments are required when rejecting an application" });
       }
 
       // Check if application exists
@@ -8392,8 +8387,15 @@ End of Report
       }
 
        // Check project access
-      const [project] = await db.select().from(projects).where(eq(projects.id, plan.projectId)).limit(1);
-      if (!project) return res.status(404).json({ error: "Project not found" });
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, plan.projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
 
       const hasAccess =
         user.role === "operations_manager" ||
@@ -8487,7 +8489,7 @@ End of Report
         return;
       }
       try {
-        res.write(`data: ${JSON.JSON.stringify({type: "heartbeat"})}\n\n`);
+        res.write(`data: ${JSON.stringify({type: "heartbeat"})}\n\n`);
       } catch (error) {
         console.error(`Error sending heartbeat to user ${userId}:`, error);
         clearInterval(heartbeat);
@@ -8696,7 +8698,11 @@ End of Report
         const teamLeads = await db
           .select()
           .from(users)
-          .where(eq(users.role, "team_lead"));
+          .where(
+            and(
+              eq(users.role, "team_lead")
+            )
+          );
 
         // Remove existing members except the project manager and team leads
         await db
