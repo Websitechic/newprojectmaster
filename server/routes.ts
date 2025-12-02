@@ -4829,9 +4829,7 @@ End of Report
       const [existingComplaint] = await db
         .select()
         .from(staffComplaints)
-        .where(
-          eq(existingComplaint.id, complaintId)
-        ) // Use existingComplaint.id for filtering
+        .where(eq(staffComplaints.id, complaintId))
         .limit(1);
 
       if (!existingComplaint) {
@@ -4850,7 +4848,7 @@ End of Report
           reviewComments: reviewComments || null,
           reviewedAt: new Date(),
         })
-        .where(eq(existingComplaint.id, complaintId)) // Use existingComplaint.id for filtering
+        .where(eq(staffComplaints.id, complaintId))
         .returning();
 
       console.log("Staff complaint updated successfully:", updatedComplaint);
@@ -4871,7 +4869,7 @@ End of Report
         }
       }
 
-      res.json({ success: true, complaint: updatedComplaint }); // Corrected variable name
+      res.json({ success: true, complaint: updatedComplaint });
     } catch (error) {
       console.error("Error updating staff complaint:", error);
       res.status(500).json({ error: "Failed to update staff complaint", details: error.message });
