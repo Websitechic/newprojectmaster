@@ -818,7 +818,15 @@ export function registerRoutes(app: Express): Server {
         return res.json({});
       }
 
-      // Get unread counts for each project using read receipts for team chat (projectMessages)
+      // Get ALL read receipts for this user first (more efficient than per-project queries)
+      const allReadReceipts = await db
+        .select({ messageId: messageReadReceipts.messageId })
+        .from(messageReadReceipts)
+        .where(eq(messageReadReceipts.userId, userId));
+
+      const readMessageIds = new Set(allReadReceipts.map(r => r.messageId));
+
+      // Get unread counts for each project
       const unreadCounts: Record<number, number> = {};
 
       for (const projectId of validProjectIds) {
@@ -839,16 +847,8 @@ export function registerRoutes(app: Express): Server {
             continue;
           }
 
-          // Get message IDs that the user has already read (for team messages)
-          const readMessageIds = await db
-            .select({ messageId: messageReadReceipts.messageId })
-            .from(messageReadReceipts)
-            .where(eq(messageReadReceipts.userId, userId));
-
-          const readIds = new Set(readMessageIds.map(r => r.messageId));
-
-          // Count unread team messages
-          const unreadCount = teamMessagesList.filter(msg => !readIds.has(msg.id)).length;
+          // Count only messages that don't have read receipts
+          const unreadCount = teamMessagesList.filter(msg => !readMessageIds.has(msg.id)).length;
           unreadCounts[projectId] = unreadCount;
         } catch (error) {
           console.error(`Error counting messages for project ${projectId}:`, error);
