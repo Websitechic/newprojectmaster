@@ -761,6 +761,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const user = req.user!;
+    const userId = user.id;
 
     try {
       // Get all projects the user has access to
@@ -801,37 +802,63 @@ export function registerRoutes(app: Express): Server {
         return res.json({});
       }
 
-      // Get unread message counts for each project
-      const unreadCounts = await db
-        .select({
-          projectId: projectMessages.projectId,
-          unreadCount: sql<number>`count(*)`,
-        })
-        .from(projectMessages)
-        .leftJoin(
-          messageReadReceipts,
-          and(
-            eq(messageReadReceipts.messageId, projectMessages.id),
-            eq(messageReadReceipts.userId, user.id)
-          )
-        )
-        .where(
-          and(
-            inArray(projectMessages.projectId, userProjectIds),
-            ne(projectMessages.senderId, user.id), // Don't count own messages
-            isNull(messageReadReceipts.id) // Not read by user
-          )
-        )
-        .groupBy(projectMessages.projectId);
+      // Remove duplicates and filter out null/undefined values
+      const uniqueProjectIds = Array.from(new Set(userProjectIds.filter(id => id !== null && id !== undefined)));
 
-      const counts = unreadCounts.reduce((acc, count) => {
-        acc[count.projectId] = count.unreadCount;
-        return acc;
-      }, {} as Record<number, number>);
+      if (uniqueProjectIds.length === 0) {
+        return res.json({});
+      }
 
-      res.json(counts);
+      // Validate project IDs are valid numbers
+      const validProjectIds = uniqueProjectIds.filter(id =>
+        id !== null && id !== undefined && typeof id === 'number' && !isNaN(id) && Number.isInteger(id) && id > 0
+      );
+
+      if (validProjectIds.length === 0) {
+        return res.json({});
+      }
+
+      // Get unread counts for each project using read receipts for team chat (projectMessages)
+      const unreadCounts: Record<number, number> = {};
+
+      for (const projectId of validProjectIds) {
+        try {
+          // Get all team messages for this project that are not from current user
+          const teamMessagesList = await db
+            .select({ id: projectMessages.id })
+            .from(projectMessages)
+            .where(
+              and(
+                eq(projectMessages.projectId, projectId),
+                ne(projectMessages.senderId, userId)
+              )
+            );
+
+          if (teamMessagesList.length === 0) {
+            unreadCounts[projectId] = 0;
+            continue;
+          }
+
+          // Get message IDs that the user has already read (for team messages)
+          const readMessageIds = await db
+            .select({ messageId: messageReadReceipts.messageId })
+            .from(messageReadReceipts)
+            .where(eq(messageReadReceipts.userId, userId));
+
+          const readIds = new Set(readMessageIds.map(r => r.messageId));
+
+          // Count unread team messages
+          const unreadCount = teamMessagesList.filter(msg => !readIds.has(msg.id)).length;
+          unreadCounts[projectId] = unreadCount;
+        } catch (error) {
+          console.error(`Error counting messages for project ${projectId}:`, error);
+          unreadCounts[projectId] = 0;
+        }
+      }
+
+      res.json(unreadCounts);
     } catch (error) {
-      console.error("Error fetching project unread counts:", error);
+      console.error("Error fetching unread counts:", error);
       res.status(500).json({ error: "Failed to fetch unread counts" });
     }
   });
