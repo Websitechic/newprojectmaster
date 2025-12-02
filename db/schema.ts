@@ -75,7 +75,6 @@ export const users = pgTable("users", {
   }).default(AbsenceReason.NOT_APPLICABLE),
   absenceEndDate: timestamp("absence_end_date"),
   breakOneTime: text("break_one_time"), // Format: "HH:mm" (e.g., "10:00") - Daily break time
-  breakTwoTime: text("break_two_time"), // DEPRECATED: No longer used
   currentTaskId: integer("current_task_id"),
   taskStartTime: timestamp("task_start_time"),
   emailVerified: boolean("email_verified").default(false),
