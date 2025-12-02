@@ -2123,7 +2123,7 @@ End of Report
           .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
           .orderBy(desc(sops.updatedAt));
       } catch (dbError) {
-        // If reference_link column doesn't exist, select without it
+        // If reference_link column doesn't exist, select basic fields
         console.log("reference_link column may not exist, selecting basic fields");
         sopList = await db
           .select({
