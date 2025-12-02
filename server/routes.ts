@@ -217,7 +217,7 @@ export function registerRoutes(app: Express): Server {
       const originalStatusSend = statusRes.send;
       statusRes.send = function(data) {
         if (typeof data === 'string' && !data.startsWith('{') && !data.startsWith('[')) {
-          return originalStatusSend.call(this, JSON.JSON.stringify({ error: data }));
+          return originalStatusSend.call(this, JSON.stringify({ error: data }));
         }
         return originalStatusSend.call(this, data);
       };
