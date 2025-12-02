@@ -6677,7 +6677,7 @@ End of Report
     }
   });
 
-  // Update deadline extension request (Project Managers, Operations Managers, and Customer Support Officers only)
+  // Update deadline extension request (Project Managers, Operations Managers, Team Leads, Customer Support Officers, and Replit Developers)
   app.put("/api/deadline-extension-requests/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -6688,8 +6688,14 @@ End of Report
     const { status, decisionReason, approvedDeadline, approvedWorkingHours } = req.body;
 
     try {
-      if (user.role !== "project_manager" && user.role !== "operations_manager" && user.role !== "customer_support_officer" && user.specialization !== "operations_manager") {
-        return res.status(403).json({ error: "Only project managers, operations managers, and customer support officers can update extension requests" });
+      const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isTeamLead = user.role === "team_lead";
+      const isCustomerSupportOfficer = user.role === "customer_support_officer";
+      const isReplitDeveloper = user.specialization === "replit_development" || user.specialization === "Replit Development";
+      const isProjectManager = user.role === "project_manager";
+
+      if (!isOperationsManager && !isTeamLead && !isCustomerSupportOfficer && !isReplitDeveloper && !isProjectManager) {
+        return res.status(403).json({ error: "Only project managers, operations managers, team leads, customer support officers, and Replit developers can update extension requests" });
       }
 
       if (!status || !["approved", "declined"].includes(status)) {
@@ -6704,9 +6710,7 @@ End of Report
       const [existingRequest] = await db
         .select()
         .from(deadlineExtensionRequests)
-        .where(
-          eq(existingRequest.id, requestId)
-        )
+        .where(eq(deadlineExtensionRequests.id, requestId))
         .limit(1);
 
       if (!existingRequest) {
@@ -6718,8 +6722,11 @@ End of Report
       }
 
       // Project managers can only update requests for their projects
-      if (user.role === "project_manager" && existingRequest.projectManagerId !== user.id) {
-        return res.status(403).json({ error: "You can only update requests for your projects" });
+      // Operations managers, team leads, customer support officers, and Replit developers can update any request
+      if (isProjectManager && !isOperationsManager && !isTeamLead && !isCustomerSupportOfficer && !isReplitDeveloper) {
+        if (existingRequest.projectManagerId !== user.id) {
+          return res.status(403).json({ error: "You can only update requests for your projects" });
+        }
       }
 
       // Update the request
