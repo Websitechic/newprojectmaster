@@ -525,17 +525,17 @@ export default function ProductivityPage() {
                                 const hours = data.hours || 0;
                                 const taskCount = data.taskCount || 0;
                                 const tasks = data.tasks || [];
+                                const timeInSeconds = data.timeSpent || 0;
 
                                 return (
                                   <div className="space-y-2">
                                     <div className="font-medium">{safeLabel}</div>
 
-                                    {data.workdayStart && data.workdayEnd ? (
+                                    {data.workdayStart ? (
                                       <div className="text-sm text-gray-600">
                                         <div><strong>Started:</strong> {formatTime(data.workdayStart)}</div>
-                                        <div><strong>Ended:</strong> {formatTime(data.workdayEnd)}</div>
+                                        <div><strong>Ended:</strong> {data.workdayEnd ? formatTime(data.workdayEnd) : 'In progress'}</div>
                                         <div><strong>Total Time Worked:</strong> {(() => {
-                                        const timeInSeconds = data.timeSpent || 0;
                                         const h = Math.floor(timeInSeconds / 3600);
                                         const m = Math.floor((timeInSeconds % 3600) / 60);
                                         return `${h}h ${m}m`;
