@@ -1572,9 +1572,19 @@ export function registerRoutes(app: Express): Server {
         weeklyBreakdown: []
       };
 
-      // Generate weekly breakdown (Mon-Fri)
+      // Generate weekly breakdown (Mon-Fri) - Calculate using sessions like Total Time Worked
       const weeklyBreakdown = [];
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+      // Get all sessions for the week
+      const weekSessions = await db
+        .select()
+        .from(taskSessions)
+        .where(and(
+          eq(taskSessions.userId, user.id),
+          gte(taskSessions.startTime, weekStart),
+          sql`${taskSessions.startTime} <= ${weekEnd}`
+        ));
 
       for (let i = 0; i < 7; i++) {
         const currentDay = new Date(weekStart);
@@ -1585,14 +1595,37 @@ export function registerRoutes(app: Express): Server {
         const dayEnd = new Date(currentDay);
         dayEnd.setHours(23, 59, 59, 999);
 
-        // Get tasks for this specific day
-        const dayTasks = weekTasks.filter(task => {
-          const taskDate = new Date(task.updatedAt);
-          return taskDate >= dayStart && taskDate <= dayEnd;
+        // Get sessions for this specific day
+        const daySessions = weekSessions.filter(session => {
+          if (!session.startTime) return false;
+          const sessionDate = new Date(session.startTime);
+          return sessionDate >= dayStart && sessionDate <= dayEnd;
         });
 
-        const totalTime = dayTasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
-        const hours = totalTime / 3600; // Convert seconds to hours
+        // Calculate total time from sessions (same as Total Time Worked card)
+        let totalTimeInSeconds = 0;
+        const uniqueTaskIds = new Set();
+        
+        daySessions.forEach(session => {
+          if (session.taskId) {
+            uniqueTaskIds.add(session.taskId);
+          }
+          
+          let sessionDuration = 0;
+          if (session.duration) {
+            sessionDuration = session.duration;
+          } else if (session.endTime === null) {
+            // Active session
+            const now = new Date();
+            sessionDuration = Math.floor((now.getTime() - new Date(session.startTime).getTime()) / 1000);
+          }
+          
+          if (sessionDuration > 0) {
+            totalTimeInSeconds += sessionDuration;
+          }
+        });
+
+        const hours = totalTimeInSeconds / 3600; // Convert seconds to hours
 
         // Calculate performance status (consistent with daily data)
         let performanceStatus = 'poor';
@@ -1609,34 +1642,44 @@ export function registerRoutes(app: Express): Server {
           performanceColor = '#F59E0B';
         }
 
-        // Get first and last timer activities for workday span calculation
-        const timerTasks = dayTasks.filter(task => task.timerStartTime);
+        // Get first and last session times for workday span
         let workdayStart = null;
         let workdayEnd = null;
-        let totalSpanHours = hours; // Default to actual work hours
-
-        if (timerTasks.length > 0) {
-          const timerStarts = timerTasks.map(task => new Date(task.timerStartTime)).sort((a, b) => a.getTime() - b.getTime());
-          const timerEnds = timerTasks.map(task => {
-            const start = new Date(task.timerStartTime);
-            return new Date(start.getTime() + ((task.timerDuration || 0) * 1000));
+        
+        if (daySessions.length > 0) {
+          const sessionStarts = daySessions.map(s => new Date(s.startTime)).sort((a, b) => a.getTime() - b.getTime());
+          workdayStart = sessionStarts[0].toISOString();
+          
+          // Find the latest end time
+          const sessionEnds = daySessions.map(s => {
+            if (s.endTime) {
+              return new Date(s.endTime);
+            } else {
+              // Active session - use current time
+              return new Date();
+            }
           }).sort((a, b) => b.getTime() - a.getTime());
+          
+          workdayEnd = sessionEnds[0].toISOString();
+        }
 
-          workdayStart = timerStarts[0].toISOString();
-          workdayEnd = timerEnds[0].toISOString();
-          totalSpanHours = Math.max(hours, (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60));
+        // Get task titles for this day
+        const dayTaskTitles = [];
+        if (uniqueTaskIds.size > 0) {
+          const dayTasks = allUserTasks.filter(task => uniqueTaskIds.has(task.id));
+          dayTaskTitles.push(...dayTasks.map(task => task.title));
         }
 
         weeklyBreakdown.push({
           day: currentDay.toISOString().split('T')[0],
           dayName: dayNames[currentDay.getDay()],
-          timeSpent: totalTime,
+          timeSpent: totalTimeInSeconds,
           hours,
-          taskCount: dayTasks.length,
-          tasks: dayTasks.map(task => task.title),
+          taskCount: uniqueTaskIds.size,
+          tasks: dayTaskTitles,
           workdayStart,
           workdayEnd,
-          totalSpanHours,
+          totalSpanHours: hours, // Use actual work hours, not span
           performanceStatus,
           performanceColor
         });
