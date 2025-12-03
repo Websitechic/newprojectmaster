@@ -534,8 +534,13 @@ export default function ProductivityPage() {
                                       <div className="text-sm text-gray-600">
                                         <div><strong>Started:</strong> {formatTime(data.workdayStart)}</div>
                                         <div><strong>Ended:</strong> {formatTime(data.workdayEnd)}</div>
-                                        <div><strong>Total Time Worked:</strong> {hours.toFixed(2)}h</div>
-                                      </div>
+                                        <div><strong>Total Time Worked:</strong> {(() => {
+                                        const timeInSeconds = data.timeSpent || 0;
+                                        const h = Math.floor(timeInSeconds / 3600);
+                                        const m = Math.floor((timeInSeconds % 3600) / 60);
+                                        return `${h}h ${m}m`;
+                                      })()}</div>
+                                    </div>
                                     ) : (
                                       <div className="text-sm text-gray-600">
                                         No timer activity recorded
@@ -640,9 +645,9 @@ export default function ProductivityPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#DC2626' }}></div>
+                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#450E00' }}></div>
                             <div className="text-sm">
-                              <div className="font-medium" style={{ color: '#DC2626' }}>Excessive Hours</div>
+                              <div className="font-medium" style={{ color: '#450E00' }}>Excessive Hours</div>
                               <div className="text-gray-600">Over 9 hours worked</div>
                             </div>
                           </div>
