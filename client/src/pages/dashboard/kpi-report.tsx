@@ -28,7 +28,7 @@ interface DailyProductivity {
   date: string;
   totalSpanHours: number;
   actualWorkHours: number;
-  performanceStatus: 'poor' | 'fair' | 'good';
+  performanceStatus: 'poor' | 'fair' | 'good' | 'excessive_hours'; // Added 'excessive_hours'
   performanceColor: string;
   taskCount: number;
   tasks: string[];
@@ -80,6 +80,7 @@ const getStatusColor = (status: string) => {
     case 'good': return 'bg-green-100 text-green-800';
     case 'fair': return 'bg-yellow-100 text-yellow-800';
     case 'poor': return 'bg-red-100 text-red-800';
+    case 'excessive_hours': return 'bg-red-700 text-white'; // Stronger red for excessive hours
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -150,7 +151,7 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
       </TableCell>
       <TableCell>
         <Badge className={getStatusColor(day.performanceStatus)}>
-          {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)}
+          {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1).replace('_', ' ')} {/* Replaced _ with space */}
         </Badge>
       </TableCell>
     </TableRow>
@@ -964,10 +965,10 @@ export default function KPIReportPage() {
 
                     {/* Tab 1: Daily Productivity Details */}
                     <TabsContent value="daily" className="space-y-4">
-                      {/* Status Legend - Moved to top */}
+                      {/* Status Legend - Modified to include Excessive Hours */}
                       <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-900 mb-3">Performance Status Legend</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Daily Performance Status Legend</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                           <div className="flex items-center gap-2">
                             <div className="w-4 h-4 rounded-full bg-red-500"></div>
                             <div className="text-sm">
@@ -979,16 +980,26 @@ export default function KPIReportPage() {
                             <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
                             <div className="text-sm">
                               <div className="font-medium text-yellow-700">Fair</div>
-                              <div className="text-gray-600">2 to 4 hours worked</div>
+                              <div className="text-gray-600">2-4 hours worked</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="w-4 h-4 rounded-full bg-green-500"></div>
                             <div className="text-sm">
                               <div className="font-medium text-green-700">Good</div>
-                              <div className="text-gray-600">4 hours or more worked</div>
+                              <div className="text-gray-600">4-9 hours worked</div>
                             </div>
                           </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#DC2626' }}></div>
+                            <div className="text-sm">
+                              <div className="font-medium" style={{ color: '#DC2626' }}>Excessive Hours</div>
+                              <div className="text-gray-600">Over 9 hours worked</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3 text-xs text-gray-500">
+                          <strong>Note:</strong> Blue bars show total time worked. Performance is based on total time worked.
                         </div>
                       </div>
 

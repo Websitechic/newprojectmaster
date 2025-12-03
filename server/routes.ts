@@ -1349,7 +1349,10 @@ export function registerRoutes(app: Express): Server {
           dailyData.totalSpanHours = dailyData.actualWorkHours;
         }
 
-        if (dailyData.actualWorkHours >= 4) {
+        if (dailyData.actualWorkHours > 9) {
+          dailyData.performanceStatus = 'excessive';
+          dailyData.performanceColor = '#DC2626';
+        } else if (dailyData.actualWorkHours >= 4) {
           dailyData.performanceStatus = 'good';
           dailyData.performanceColor = '#10B981';
         } else if (dailyData.actualWorkHours >= 2) {
@@ -1387,7 +1390,7 @@ export function registerRoutes(app: Express): Server {
             day: dateKey,
             dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()],
             hours: dayData.actualWorkHours,
-            totalSpanHours: dayData.totalSpanHours,
+            totalSpanHours: dayData.actualWorkHours,
             performanceStatus: dayData.performanceStatus,
             performanceColor: dayData.performanceColor,
             taskCount: dayData.taskCount
@@ -1595,7 +1598,10 @@ export function registerRoutes(app: Express): Server {
         let performanceStatus = 'poor';
         let performanceColor = '#EF4444';
 
-        if (hours >= 4) {
+        if (hours > 9) {
+          performanceStatus = 'excessive';
+          performanceColor = '#DC2626';
+        } else if (hours >= 4) {
           performanceStatus = 'good';
           performanceColor = '#10B981';
         } else if (hours >= 2) {

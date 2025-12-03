@@ -617,7 +617,7 @@ export default function ProductivityPage() {
                       {/* Performance Legend */}
                       <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                         <h4 className="text-sm font-medium text-gray-900 mb-3">Daily Performance Status Legend</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                           <div className="flex items-center gap-2">
                             <div className="w-4 h-4 rounded-full bg-red-500"></div>
                             <div className="text-sm">
@@ -636,7 +636,14 @@ export default function ProductivityPage() {
                             <div className="w-4 h-4 rounded-full bg-green-500"></div>
                             <div className="text-sm">
                               <div className="font-medium text-green-700">Good</div>
-                              <div className="text-gray-600">4+ hours worked</div>
+                              <div className="text-gray-600">4-9 hours worked</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#DC2626' }}></div>
+                            <div className="text-sm">
+                              <div className="font-medium" style={{ color: '#DC2626' }}>Excessive Hours</div>
+                              <div className="text-gray-600">Over 9 hours worked</div>
                             </div>
                           </div>
                         </div>
