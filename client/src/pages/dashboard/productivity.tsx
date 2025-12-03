@@ -205,7 +205,7 @@ export default function ProductivityPage() {
     item && item.dayName && typeof item.hours === 'number'
   ).map(item => ({
     day: item.dayName || 'Unknown',
-    hours: Math.max(0, item.hours || 0),
+    hours: Math.max(0, item.timeSpent ? item.timeSpent / 3600 : 0), // Convert timeSpent from seconds to hours
     timeSpent: Math.max(0, item.timeSpent || 0),
     taskCount: Math.max(0, item.taskCount || 0),
     tasks: Array.isArray(item.tasks) ? item.tasks : [],
@@ -645,9 +645,9 @@ export default function ProductivityPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#450E00' }}></div>
+                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#541505' }}></div>
                             <div className="text-sm">
-                              <div className="font-medium" style={{ color: '#450E00' }}>Excessive Hours</div>
+                              <div className="font-medium" style={{ color: '#541505' }}>Excessive Hours</div>
                               <div className="text-gray-600">Over 9 hours worked</div>
                             </div>
                           </div>
