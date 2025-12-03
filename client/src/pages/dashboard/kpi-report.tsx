@@ -114,7 +114,7 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
       <TableCell className="font-medium">
         {format(new Date(day.date), "MMM dd, yyyy")}
       </TableCell>
-      <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
+      <TableCell>{formatTime(day.actualWorkHours)}</TableCell>
       <TableCell className="w-[250px]">
         <div className="space-y-1">
           <span className="text-sm font-medium text-gray-900 block">
@@ -906,7 +906,7 @@ export default function KPIReportPage() {
                 <CardHeader>
                   <CardTitle>Weekly Activity Tracking</CardTitle>
                   <CardDescription>
-                    Daily productivity trend for {selectedStaffMember?.name} 
+                    Total time worked for {selectedStaffMember?.name} 
                     {useCustomRange && customStartDate && customEndDate 
                       ? ` (${format(customStartDate, 'MMM dd, yyyy')} - ${format(customEndDate, 'MMM dd, yyyy')})`
                       : ` (Last ${dateRange === 30 ? 'Month' : dateRange === 60 ? '2 Months' : dateRange === 180 ? '6 Months' : `${dateRange} Days`})`
@@ -928,15 +928,14 @@ export default function KPIReportPage() {
                       <Tooltip 
                         formatter={(value: number, name: string) => [
                           `${value.toFixed(2)} hours`,
-                          name === "hours" ? "Actual Work" : "Total Span"
+                          "Total Time Worked"
                         ]}
                         labelFormatter={(label) => {
                           const date = new Date(label);
                           return format(date, 'EEEE, MMM dd, yyyy');
                         }}
                       />
-                      <Bar dataKey="totalSpanHours" fill="#94A3B8" name="Total Span" />
-                      <Bar dataKey="hours" fill="#3b82f6" name="Actual Work" />
+                      <Bar dataKey="hours" fill="#3b82f6" name="Total Time Worked" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -1002,7 +1001,7 @@ export default function KPIReportPage() {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Date</TableHead>
-                              <TableHead>Total Span</TableHead>
+                              <TableHead>Total Time Worked</TableHead>
                               <TableHead className="w-[250px]">Tasks</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>

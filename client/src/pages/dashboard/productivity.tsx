@@ -475,7 +475,7 @@ export default function ProductivityPage() {
                 <CardHeader>
                   <CardTitle>Weekly Activity Tracking</CardTitle>
                   <CardDescription>
-                    Workday span and performance for each day (Monday to Friday)
+                    Total time worked for each day (Monday to Friday)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -497,8 +497,7 @@ export default function ProductivityPage() {
                             formatter={(value: number, name: string, props: any) => {
                               const data = props?.payload;
                               const safeValue = typeof value === 'number' && !isNaN(value) ? value : 0;
-                              const displayName = name === 'totalSpanHours' ? 'Total Span' : 
-                                                name === 'hours' ? 'Actual Work Hours' : name;
+                              const displayName = 'Total Time Worked';
                               return [
                                 `${safeValue.toFixed(2)} hours`,
                                 displayName
@@ -524,7 +523,6 @@ export default function ProductivityPage() {
 
                                 const performanceStatus = data.performanceStatus || 'unknown';
                                 const hours = data.hours || 0;
-                                const totalSpanHours = data.totalSpanHours || 0;
                                 const taskCount = data.taskCount || 0;
                                 const tasks = data.tasks || [];
 
@@ -536,8 +534,7 @@ export default function ProductivityPage() {
                                       <div className="text-sm text-gray-600">
                                         <div><strong>Started:</strong> {formatTime(data.workdayStart)}</div>
                                         <div><strong>Ended:</strong> {formatTime(data.workdayEnd)}</div>
-                                        <div><strong>Total Span:</strong> {totalSpanHours.toFixed(2)}h</div>
-                                        <div><strong>Actual Work:</strong> {hours.toFixed(2)}h</div>
+                                        <div><strong>Total Time Worked:</strong> {hours.toFixed(2)}h</div>
                                       </div>
                                     ) : (
                                       <div className="text-sm text-gray-600">
@@ -585,16 +582,10 @@ export default function ProductivityPage() {
                             }}
                           />
                           <Bar 
-                            dataKey="totalSpanHours" 
-                            fill="#E5E7EB"
-                            radius={[4, 4, 0, 0]}
-                            name="Total Span"
-                          />
-                          <Bar 
                             dataKey="hours" 
                             fill="#3b82f6"
                             radius={[4, 4, 0, 0]}
-                            name="Actual Work"
+                            name="Total Time Worked"
                           />
 
                           {/* Performance status indicators above bars */}
@@ -650,8 +641,7 @@ export default function ProductivityPage() {
                           </div>
                         </div>
                         <div className="mt-3 text-xs text-gray-500">
-                          <strong>Note:</strong> Light gray bars show total workday span (first timer start to last timer end). 
-                          Blue bars show actual work hours. Performance is based on actual work hours.
+                          <strong>Note:</strong> Blue bars show total time worked. Performance is based on total time worked.
                         </div>
                       </div>
                     </div>
