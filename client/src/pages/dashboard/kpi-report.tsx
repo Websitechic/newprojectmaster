@@ -850,13 +850,24 @@ export default function KPIReportPage() {
                         <p className="text-sm font-medium text-gray-600">Avg Hours</p>
                         <p className="text-2xl font-bold">
                           {(() => {
-                            // Convert each day's total span to minutes, sum them up
-                            const totalMinutes = productivityData.dailyData.reduce((sum, day) => {
-                              return sum + (day.totalSpanHours * 60);
+                            // Filter out days with excessive hours (> 9 hours = 540 minutes)
+                            const validDays = productivityData.dailyData.filter(day => {
+                              const totalMinutes = day.actualWorkHours * 60;
+                              return totalMinutes <= 540; // Exclude if > 9 hours
+                            });
+
+                            // If no valid days, show 0
+                            if (validDays.length === 0) {
+                              return '0 hr 0m';
+                            }
+
+                            // Convert each valid day's Total Time Worked to minutes and sum
+                            const totalMinutes = validDays.reduce((sum, day) => {
+                              return sum + (day.actualWorkHours * 60);
                             }, 0);
 
-                            // Divide by number of days to get average minutes per day
-                            const avgMinutesPerDay = totalMinutes / productivityData.summary.totalDays;
+                            // Divide by number of included days to get average minutes per day
+                            const avgMinutesPerDay = totalMinutes / validDays.length;
 
                             // Convert to hours and minutes for display
                             const hours = Math.floor(avgMinutesPerDay / 60);
