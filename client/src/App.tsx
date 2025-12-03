@@ -86,32 +86,15 @@ function GlobalNotificationListener() {
   const { showNotification } = useBrowserNotification();
   const audioUnlockedRef = useRef(false);
 
-  // Track audio unlock state
-  useEffect(() => {
-    const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
-    if (wasUnlocked) {
-      audioUnlockedRef.current = true;
-      console.log('✅ Audio was previously unlocked in this session');
-    }
-  }, []);
-
-  // Unlock audio on first user interaction - CRITICAL for mobile browsers
+  // Unlock audio on first user interaction
   useEffect(() => {
     const unlockAudio = () => {
-      if (audioUnlockedRef.current) {
-        console.log('⏭️ Audio already unlocked, skipping');
-        return;
-      }
-
-      console.log('🔓 Unlocking audio context on user interaction...');
-
-      // Dispatch init-audio event to unlock
+      if (audioUnlockedRef.current) return;
+      
+      console.log('🔓 Unlocking audio on user interaction');
       window.dispatchEvent(new Event('init-audio'));
-
-      // Mark as unlocked and persist to sessionStorage
       audioUnlockedRef.current = true;
-      sessionStorage.setItem('audioUnlocked', 'true');
-      console.log('✅ Audio context unlock initiated and persisted to sessionStorage');
+      sessionStorage.setItem('audioUnlocked', 'true');e');
     };
 
     // Only add listeners if not already unlocked
@@ -222,35 +205,22 @@ function GlobalNotificationListener() {
                   }, 50);
                 }
 
-                // Play sound with retry logic and proper error handling
-                const playSoundWithRetry = async (retries = 5) => {
+                // Play sound with simple retry
+                const playSoundWithRetry = async (retries = 3) => {
                   for (let i = 0; i < retries; i++) {
                     try {
-                      // Add small delay before first attempt to ensure audio is ready
-                      if (i === 0) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                      }
-
+                      if (i === 0) await new Promise(resolve => setTimeout(resolve, 100));
                       await playNotificationSound();
-                      console.log('✅ Direct message sound played successfully on attempt', i + 1);
+                      console.log('✅ Direct message sound played');
                       return;
                     } catch (err) {
-                      console.error(`❌ Direct message sound attempt ${i + 1}/${retries} failed:`, {
-                        error: err,
-                        message: err instanceof Error ? err.message : 'Unknown error'
-                      });
-
-                      // If this isn't the last attempt, wait before retrying
+                      console.error(`❌ Sound attempt ${i + 1} failed:`, err);
                       if (i < retries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 150));
-
-                        // Try to unlock again before retry
+                        await new Promise(resolve => setTimeout(resolve, 100));
                         window.dispatchEvent(new Event('init-audio'));
                       }
                     }
                   }
-
-                  console.error('❌ All direct message sound playback attempts failed');
                 };
 
                 playSoundWithRetry();
@@ -303,18 +273,16 @@ function GlobalNotificationListener() {
                   audioUnlockedRef.current = true;
                 }
 
-                // Play sound with retry logic
-                const playSoundWithRetry = async (retries = 3) => {
+                // Play sound
+                const playSoundWithRetry = async (retries = 2) => {
                   for (let i = 0; i < retries; i++) {
                     try {
                       await playNotificationSound();
-                      console.log('✅ Team message sound played successfully');
+                      console.log('✅ Team message sound played');
                       return;
                     } catch (err) {
-                      console.error(`❌ Team message sound attempt ${i + 1} failed:`, err);
-                      if (i < retries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                      }
+                      console.error(`❌ Sound attempt ${i + 1} failed:`, err);
+                      if (i < retries - 1) await new Promise(resolve => setTimeout(resolve, 100));
                     }
                   }
                 };

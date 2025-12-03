@@ -108,39 +108,26 @@ export function useNotificationSound() {
     }
   }, []);
 
-  // Initialize on mount and restore unlock state from sessionStorage
+  // Initialize on mount
   useEffect(() => {
     let mounted = true;
     
-    // Initialize audio context first
     const init = async () => {
       await initAudioContext();
-
+      
       if (!mounted) return;
 
-      // Check if audio was previously unlocked AFTER initialization
+      // If audio was previously unlocked, mark as attempted
       const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
-      if (wasUnlocked && audioContextRef.current) {
-        console.log('✅ Restoring audio unlock state from previous session');
+      if (wasUnlocked) {
         unlockAttemptedRef.current = true;
-        
-        // Don't set isUnlocked yet - wait for successful resume
-        // This prevents "Sound Enabled" from showing before user interaction
-        if (audioContextRef.current.state === 'suspended') {
-          console.log('⏸️ Audio context suspended on restore, waiting for user interaction to resume');
-          // Don't set isUnlocked - will be set when user interacts and resume succeeds
-        } else if (audioContextRef.current.state === 'running') {
-          // Only set unlocked if already running
-          if (mounted) {
-            setIsUnlocked(true);
-          }
-        }
+        console.log('✅ Audio was previously unlocked');
       }
     };
 
     init();
 
-    // Listen for init-audio event (fired from App.tsx or Header)
+    // Listen for init-audio event
     const handleInitAudio = async () => {
       await unlockAudioContext();
     };
@@ -150,8 +137,6 @@ export function useNotificationSound() {
     return () => {
       mounted = false;
       window.removeEventListener('init-audio', handleInitAudio);
-      // Don't close audio context on unmount - keep it alive for page navigation
-      // Only close when user logs out (handled in Header component)
     };
   }, [initAudioContext, unlockAudioContext]);
 
@@ -183,88 +168,64 @@ export function useNotificationSound() {
   }, [isUnlocked, unlockAudioContext]);
 
   const playNotificationSound = useCallback(async () => {
-    console.log('🔊 playNotificationSound called', {
-      hasAudioContext: !!audioContextRef.current,
-      hasBuffer: !!audioBufferRef.current,
-      isInitialized,
-      isUnlocked,
-      contextState: audioContextRef.current?.state,
-      sessionUnlocked: sessionStorage.getItem('audioUnlocked')
-    });
-
     try {
       // Initialize if needed
       if (!audioContextRef.current || !audioBufferRef.current) {
-        console.log('🔇 Audio not initialized yet, initializing now...');
+        console.log('🔇 Initializing audio...');
         await initAudioContext();
         await new Promise(resolve => setTimeout(resolve, 100));
-
-        if (!audioContextRef.current || !audioBufferRef.current) {
-          console.error('🔇 Audio initialization failed');
-          return;
-        }
       }
 
-      // CRITICAL: Always try to resume on every playback attempt
-      // This handles page navigation where context becomes suspended
+      if (!audioContextRef.current || !audioBufferRef.current) {
+        console.error('🔇 Audio initialization failed');
+        return;
+      }
+
+      // ALWAYS resume audio context before playing - handles suspension from page navigation
       if (audioContextRef.current.state !== 'running') {
-        console.log('⏸️ Audio context not running (state: ' + audioContextRef.current.state + '), attempting resume...');
+        console.log('⏸️ Resuming audio context from state:', audioContextRef.current.state);
         
         try {
           await audioContextRef.current.resume();
-          console.log('✅ Audio context resumed, new state:', audioContextRef.current.state);
-        } catch (resumeError) {
-          console.warn('⚠️ Resume failed, trying silent buffer unlock:', resumeError);
-        }
-
-        // If still not running, try silent buffer unlock
-        if (audioContextRef.current.state !== 'running' && silentBufferRef.current) {
-          try {
-            const silentSource = audioContextRef.current.createBufferSource();
-            silentSource.buffer = silentBufferRef.current;
-            silentSource.connect(audioContextRef.current.destination);
-            silentSource.start(0);
-            
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            if (audioContextRef.current.state === 'running') {
-              console.log('✅ Audio unlocked via silent buffer');
-            }
-          } catch (unlockError) {
-            console.error('❌ Silent buffer unlock failed:', unlockError);
+          
+          // If still not running after resume, try silent buffer
+          if (audioContextRef.current.state !== 'running' && silentBufferRef.current) {
+            const silent = audioContextRef.current.createBufferSource();
+            silent.buffer = silentBufferRef.current;
+            silent.connect(audioContextRef.current.destination);
+            silent.start(0);
+            await new Promise(resolve => setTimeout(resolve, 50));
+            await audioContextRef.current.resume();
           }
+          
+          console.log('✅ Audio resumed, state:', audioContextRef.current.state);
+        } catch (err) {
+          console.error('❌ Resume failed:', err);
         }
 
-        // Update state if now running
+        // Update unlock state
         if (audioContextRef.current.state === 'running') {
           setIsUnlocked(true);
           sessionStorage.setItem('audioUnlocked', 'true');
           unlockAttemptedRef.current = true;
         } else {
-          console.error('❌ Could not resume audio context, state:', audioContextRef.current.state);
+          console.error('❌ Audio context not running, state:', audioContextRef.current.state);
           return;
         }
       }
 
-      // Play the notification sound
+      // Play sound
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBufferRef.current;
-
       const gainNode = audioContextRef.current.createGain();
       gainNode.gain.value = 0.5;
-
       source.connect(gainNode);
       gainNode.connect(audioContextRef.current.destination);
-
-      source.onended = () => {
-        console.log('✅ Notification sound completed');
-      };
-
       source.start(0);
-      console.log('🔊 Notification sound playing');
-
+      
+      console.log('🔊 Sound playing');
     } catch (error) {
-      console.error('❌ Error playing notification sound:', error);
+      console.error('❌ Playback error:', error);
     }
   }, [initAudioContext]);
 
