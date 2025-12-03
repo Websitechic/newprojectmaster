@@ -94,7 +94,7 @@ function GlobalNotificationListener() {
       console.log('🔓 Unlocking audio on user interaction');
       window.dispatchEvent(new Event('init-audio'));
       audioUnlockedRef.current = true;
-      sessionStorage.setItem('audioUnlocked', 'true');e');
+      sessionStorage.setItem('audioUnlocked', 'true');
     };
 
     // Only add listeners if not already unlocked
