@@ -205,22 +205,31 @@ function GlobalNotificationListener() {
                   }, 50);
                 }
 
-                // Play sound with simple retry
+                // Play sound with improved retry logic
                 const playSoundWithRetry = async (retries = 3) => {
                   for (let i = 0; i < retries; i++) {
                     try {
-                      if (i === 0) await new Promise(resolve => setTimeout(resolve, 100));
+                      // Longer initial delay to ensure audio context is ready
+                      if (i === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                      }
+                      
+                      // Ensure audio is unlocked before each attempt
+                      window.dispatchEvent(new Event('init-audio'));
+                      await new Promise(resolve => setTimeout(resolve, 50));
+                      
                       await playNotificationSound();
-                      console.log('✅ Direct message sound played');
+                      console.log('✅ Direct message sound played successfully');
                       return;
                     } catch (err) {
-                      console.error(`❌ Sound attempt ${i + 1} failed:`, err);
+                      console.error(`❌ Sound attempt ${i + 1}/${retries} failed:`, err);
                       if (i < retries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        window.dispatchEvent(new Event('init-audio'));
+                        // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, 150 * (i + 1)));
                       }
                     }
                   }
+                  console.error('❌ All sound playback attempts failed');
                 };
 
                 playSoundWithRetry();
@@ -273,18 +282,29 @@ function GlobalNotificationListener() {
                   audioUnlockedRef.current = true;
                 }
 
-                // Play sound
-                const playSoundWithRetry = async (retries = 2) => {
+                // Play sound with improved retry logic
+                const playSoundWithRetry = async (retries = 3) => {
                   for (let i = 0; i < retries; i++) {
                     try {
+                      // Ensure audio is unlocked before each attempt
+                      if (i === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                      }
+                      window.dispatchEvent(new Event('init-audio'));
+                      await new Promise(resolve => setTimeout(resolve, 50));
+                      
                       await playNotificationSound();
-                      console.log('✅ Team message sound played');
+                      console.log('✅ Team message sound played successfully');
                       return;
                     } catch (err) {
-                      console.error(`❌ Sound attempt ${i + 1} failed:`, err);
-                      if (i < retries - 1) await new Promise(resolve => setTimeout(resolve, 100));
+                      console.error(`❌ Sound attempt ${i + 1}/${retries} failed:`, err);
+                      if (i < retries - 1) {
+                        // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, 150 * (i + 1)));
+                      }
                     }
                   }
+                  console.error('❌ All sound playback attempts failed');
                 };
 
                 playSoundWithRetry();

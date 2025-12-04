@@ -173,7 +173,7 @@ export function useNotificationSound() {
       if (!audioContextRef.current || !audioBufferRef.current) {
         console.log('🔇 Initializing audio...');
         await initAudioContext();
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 150));
       }
 
       if (!audioContextRef.current || !audioBufferRef.current) {
@@ -185,47 +185,57 @@ export function useNotificationSound() {
       if (audioContextRef.current.state !== 'running') {
         console.log('⏸️ Resuming audio context from state:', audioContextRef.current.state);
         
-        try {
-          await audioContextRef.current.resume();
-          
-          // If still not running after resume, try silent buffer
-          if (audioContextRef.current.state !== 'running' && silentBufferRef.current) {
-            const silent = audioContextRef.current.createBufferSource();
-            silent.buffer = silentBufferRef.current;
-            silent.connect(audioContextRef.current.destination);
-            silent.start(0);
-            await new Promise(resolve => setTimeout(resolve, 50));
+        // Try multiple resume strategies
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
             await audioContextRef.current.resume();
+            
+            // Wait a bit for state to update
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // If still not running, try playing silent buffer to force unlock
+            if (audioContextRef.current.state !== 'running' && silentBufferRef.current) {
+              console.log(`🔓 Attempt ${attempt + 1}: Playing silent buffer to unlock`);
+              const silent = audioContextRef.current.createBufferSource();
+              silent.buffer = silentBufferRef.current;
+              silent.connect(audioContextRef.current.destination);
+              silent.start(0);
+              await new Promise(resolve => setTimeout(resolve, 100));
+              await audioContextRef.current.resume();
+            }
+            
+            // Check if we succeeded
+            if (audioContextRef.current.state === 'running') {
+              console.log('✅ Audio resumed successfully');
+              setIsUnlocked(true);
+              sessionStorage.setItem('audioUnlocked', 'true');
+              unlockAttemptedRef.current = true;
+              break;
+            }
+          } catch (err) {
+            console.error(`❌ Resume attempt ${attempt + 1} failed:`, err);
+            if (attempt === 2) {
+              console.error('❌ All resume attempts failed, audio context state:', audioContextRef.current.state);
+              // Don't return - try to play anyway, it might work
+            }
           }
-          
-          console.log('✅ Audio resumed, state:', audioContextRef.current.state);
-        } catch (err) {
-          console.error('❌ Resume failed:', err);
-        }
-
-        // Update unlock state
-        if (audioContextRef.current.state === 'running') {
-          setIsUnlocked(true);
-          sessionStorage.setItem('audioUnlocked', 'true');
-          unlockAttemptedRef.current = true;
-        } else {
-          console.error('❌ Audio context not running, state:', audioContextRef.current.state);
-          return;
         }
       }
 
-      // Play sound
+      // Play sound even if state is not "running" - sometimes it works anyway
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBufferRef.current;
       const gainNode = audioContextRef.current.createGain();
-      gainNode.gain.value = 0.5;
+      gainNode.gain.value = 0.6; // Slightly louder
       source.connect(gainNode);
       gainNode.connect(audioContextRef.current.destination);
       source.start(0);
       
-      console.log('🔊 Sound playing');
+      console.log('🔊 Sound playing, context state:', audioContextRef.current.state);
     } catch (error) {
       console.error('❌ Playback error:', error);
+      // Try to reinitialize for next time
+      initAudioContext().catch(console.error);
     }
   }, [initAudioContext]);
 
