@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell as BarCell } from "recharts";
 import { Clock, CheckCircle, Target, TrendingUp, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ProductivityCard } from "@/components/ui/productivity-card";
@@ -521,6 +521,14 @@ export default function ProductivityPage() {
                                   }
                                 };
 
+                                const formatDate = (dateKey: string) => {
+                                  try {
+                                    return format(new Date(dateKey), 'MMM dd, yyyy');
+                                  } catch (e) {
+                                    return '';
+                                  }
+                                };
+
                                 const performanceStatus = data.performanceStatus || 'unknown';
                                 const hours = data.hours || 0;
                                 const taskCount = data.taskCount || 0;
@@ -530,6 +538,9 @@ export default function ProductivityPage() {
                                 return (
                                   <div className="space-y-2">
                                     <div className="font-medium">{safeLabel}</div>
+                                    {data.day && (
+                                      <div className="text-xs text-gray-500">{formatDate(data.day)}</div>
+                                    )}
 
                                     {data.workdayStart ? (
                                       <div className="text-sm text-gray-600">
@@ -588,10 +599,25 @@ export default function ProductivityPage() {
                           />
                           <Bar 
                             dataKey="hours" 
-                            fill="#3b82f6"
                             radius={[4, 4, 0, 0]}
                             name="Total Time Worked"
-                          />
+                          >
+                            {weeklyData.map((entry, index) => {
+                              let fillColor = '#6B7280'; // Default gray
+                              
+                              if (entry.performanceStatus === 'poor') {
+                                fillColor = '#EF4444'; // Red
+                              } else if (entry.performanceStatus === 'fair') {
+                                fillColor = '#F97316'; // Orange
+                              } else if (entry.performanceStatus === 'good') {
+                                fillColor = '#22C55E'; // Green
+                              } else if (entry.performanceStatus === 'excessive') {
+                                fillColor = '#4B5563'; // Dark gray
+                              }
+                              
+                              return <Cell key={`bar-cell-${index}`} fill={fillColor} />;
+                            })}
+                          </Bar>
 
                           {/* Performance status indicators above bars */}
                           {weeklyData.map((entry, index) => {
@@ -645,9 +671,9 @@ export default function ProductivityPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#541505' }}></div>
+                            <div className="w-4 h-4 rounded-full bg-gray-600"></div>
                             <div className="text-sm">
-                              <div className="font-medium" style={{ color: '#541505' }}>Excessive Hours</div>
+                              <div className="font-medium text-gray-700">Excessive Hours</div>
                               <div className="text-gray-600">Over 9 hours worked</div>
                             </div>
                           </div>
