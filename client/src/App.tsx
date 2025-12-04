@@ -205,34 +205,10 @@ function GlobalNotificationListener() {
                   }, 50);
                 }
 
-                // Play sound with improved retry logic
-                const playSoundWithRetry = async (retries = 3) => {
-                  for (let i = 0; i < retries; i++) {
-                    try {
-                      // Longer initial delay to ensure audio context is ready
-                      if (i === 0) {
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                      }
-                      
-                      // Ensure audio is unlocked before each attempt
-                      window.dispatchEvent(new Event('init-audio'));
-                      await new Promise(resolve => setTimeout(resolve, 50));
-                      
-                      await playNotificationSound();
-                      console.log('✅ Direct message sound played successfully');
-                      return;
-                    } catch (err) {
-                      console.error(`❌ Sound attempt ${i + 1}/${retries} failed:`, err);
-                      if (i < retries - 1) {
-                        // Exponential backoff
-                        await new Promise(resolve => setTimeout(resolve, 150 * (i + 1)));
-                      }
-                    }
-                  }
-                  console.error('❌ All sound playback attempts failed');
-                };
-
-                playSoundWithRetry();
+                // Play sound immediately - no delays
+                playNotificationSound().catch(err => {
+                  console.error('❌ Direct message sound playback failed:', err);
+                });
 
                 // Show browser notification only if message is TO current user
                 if (data.data.receiverId === user.id) {
@@ -282,32 +258,10 @@ function GlobalNotificationListener() {
                   audioUnlockedRef.current = true;
                 }
 
-                // Play sound with improved retry logic
-                const playSoundWithRetry = async (retries = 3) => {
-                  for (let i = 0; i < retries; i++) {
-                    try {
-                      // Ensure audio is unlocked before each attempt
-                      if (i === 0) {
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                      }
-                      window.dispatchEvent(new Event('init-audio'));
-                      await new Promise(resolve => setTimeout(resolve, 50));
-                      
-                      await playNotificationSound();
-                      console.log('✅ Team message sound played successfully');
-                      return;
-                    } catch (err) {
-                      console.error(`❌ Sound attempt ${i + 1}/${retries} failed:`, err);
-                      if (i < retries - 1) {
-                        // Exponential backoff
-                        await new Promise(resolve => setTimeout(resolve, 150 * (i + 1)));
-                      }
-                    }
-                  }
-                  console.error('❌ All sound playback attempts failed');
-                };
-
-                playSoundWithRetry();
+                // Play sound immediately - no delays
+                playNotificationSound().catch(err => {
+                  console.error('❌ Team message sound playback failed:', err);
+                });
 
                 // Show browser notification
                 const senderName = data.data.senderName || 'Team member';
@@ -342,8 +296,10 @@ function GlobalNotificationListener() {
 
                 showNotification(
                   'General Channel',
-                  `${data.data?.senderName}: ${data.data?.content?.substring(0, 50)}...`,
-                  '/dashboard/general-channel'
+                  {
+                    body: `${data.data?.senderName}: ${data.data?.content?.substring(0, 50)}...`,
+                    data: { url: '/dashboard/general-channel' }
+                  }
                 );
               }
 
@@ -367,8 +323,10 @@ function GlobalNotificationListener() {
               // Show browser notification
               showNotification(
                 'You were mentioned',
-                data.notification?.content || 'Someone mentioned you in a team chat',
-                '/dashboard/projects'
+                {
+                  body: data.notification?.content || 'Someone mentioned you in a team chat',
+                  data: { url: '/dashboard/projects' }
+                }
               );
 
               // Invalidate relevant queries

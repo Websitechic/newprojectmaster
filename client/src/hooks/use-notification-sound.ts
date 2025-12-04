@@ -173,7 +173,6 @@ export function useNotificationSound() {
       if (!audioContextRef.current || !audioBufferRef.current) {
         console.log('🔇 Initializing audio...');
         await initAudioContext();
-        await new Promise(resolve => setTimeout(resolve, 150));
       }
 
       if (!audioContextRef.current || !audioBufferRef.current) {
@@ -181,57 +180,31 @@ export function useNotificationSound() {
         return;
       }
 
-      // ALWAYS resume audio context before playing - handles suspension from page navigation
-      if (audioContextRef.current.state !== 'running') {
-        console.log('⏸️ Resuming audio context from state:', audioContextRef.current.state);
-        
-        // Try multiple resume strategies
-        for (let attempt = 0; attempt < 3; attempt++) {
-          try {
-            await audioContextRef.current.resume();
-            
-            // Wait a bit for state to update
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            // If still not running, try playing silent buffer to force unlock
-            if (audioContextRef.current.state !== 'running' && silentBufferRef.current) {
-              console.log(`🔓 Attempt ${attempt + 1}: Playing silent buffer to unlock`);
-              const silent = audioContextRef.current.createBufferSource();
-              silent.buffer = silentBufferRef.current;
-              silent.connect(audioContextRef.current.destination);
-              silent.start(0);
-              await new Promise(resolve => setTimeout(resolve, 100));
-              await audioContextRef.current.resume();
-            }
-            
-            // Check if we succeeded
-            if (audioContextRef.current.state === 'running') {
-              console.log('✅ Audio resumed successfully');
-              setIsUnlocked(true);
-              sessionStorage.setItem('audioUnlocked', 'true');
-              unlockAttemptedRef.current = true;
-              break;
-            }
-          } catch (err) {
-            console.error(`❌ Resume attempt ${attempt + 1} failed:`, err);
-            if (attempt === 2) {
-              console.error('❌ All resume attempts failed, audio context state:', audioContextRef.current.state);
-              // Don't return - try to play anyway, it might work
-            }
-          }
+      // Resume audio context if suspended - do this immediately without delays
+      if (audioContextRef.current.state === 'suspended') {
+        console.log('⏸️ Audio context suspended, resuming...');
+        try {
+          await audioContextRef.current.resume();
+          console.log('✅ Audio context resumed');
+        } catch (err) {
+          console.error('❌ Failed to resume audio context:', err);
         }
       }
 
-      // Play sound even if state is not "running" - sometimes it works anyway
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBufferRef.current;
-      const gainNode = audioContextRef.current.createGain();
-      gainNode.gain.value = 0.6; // Slightly louder
-      source.connect(gainNode);
-      gainNode.connect(audioContextRef.current.destination);
-      source.start(0);
-      
-      console.log('🔊 Sound playing, context state:', audioContextRef.current.state);
+      // Play the notification sound immediately
+      if (audioContextRef.current && audioBufferRef.current) {
+        const source = audioContextRef.current.createBufferSource();
+        source.buffer = audioBufferRef.current;
+        const gainNode = audioContextRef.current.createGain();
+        gainNode.gain.value = 0.7; // Optimal volume
+        source.connect(gainNode);
+        gainNode.connect(audioContextRef.current.destination);
+        source.start(0);
+        
+        console.log('🔊 Notification sound played immediately, context state:', audioContextRef.current.state);
+        setIsUnlocked(true);
+        sessionStorage.setItem('audioUnlocked', 'true');
+      }
     } catch (error) {
       console.error('❌ Playback error:', error);
       // Try to reinitialize for next time

@@ -82,6 +82,16 @@ The application follows a modern full-stack architecture with clear separation b
 3. Server broadcasts to relevant project members
 4. Database stores message history
 5. Unread counts updated in real-time
+6. SSE notifications trigger immediately with sound and browser notifications
+7. Audio context resumed automatically when suspended from page navigation
+
+### Notification System (Latest Fix - Dec 4, 2025)
+- **Sound Playback**: Simplified to play immediately without delays
+- **Audio Context**: Automatically resumes from suspended state
+- **Browser Notifications**: Shows on all pages, minimized state, and different tabs
+- **Volume**: Optimized to 0.7 (audible but not jarring)
+- **Files**: `use-notification-sound.ts` manages audio generation and playback
+- **Centralized Handler**: App.tsx SSE handler manages all notifications to prevent duplicates
 
 ## External Dependencies
 
