@@ -8156,6 +8156,63 @@ End of Report
         });
       }
 
+      // Broadcast via SSE to all project members for real-time notifications
+      if (global.sseClients) {
+        const sseMessage = {
+          type: "project_message",
+          data: {
+            id: newMessage.id,
+            projectId,
+            senderId: user.id,
+            senderName: user.name,
+            projectName: project.name,
+            content: content.trim(),
+            createdAt: newMessage.createdAt,
+          }
+        };
+
+        // Get all project members
+        const projectMembersList = await db
+          .select({ userId: projectMembers.userId })
+          .from(projectMembers)
+          .where(eq(projectMembers.projectId, projectId));
+
+        // Add project manager and special roles
+        const memberIds = new Set([
+          ...projectMembersList.map(m => m.userId),
+          project.managerId,
+        ]);
+
+        // Also notify team leads and operations managers
+        const specialUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(
+            or(
+              eq(users.role, "team_lead"),
+              eq(users.role, "operations_manager"),
+              eq(users.specialization, "operations_manager")
+            )
+          );
+        specialUsers.forEach(u => memberIds.add(u.id));
+
+        // Send SSE to each connected member
+        memberIds.forEach(memberId => {
+          if (memberId && global.sseClients.has(memberId)) {
+            const client = global.sseClients.get(memberId);
+            if (client && !client.writableEnded) {
+              try {
+                client.write(`data: ${JSON.stringify(sseMessage)}\n\n`);
+                console.log(`✅ SSE team message sent to user ${memberId}`);
+              } catch (error) {
+                console.error(`❌ Error sending SSE to user ${memberId}:`, error);
+                global.sseClients.delete(memberId);
+              }
+            }
+          }
+        });
+      }
+
       // Construct message with sender info for response
       const messageWithSender = {
         ...newMessage,
