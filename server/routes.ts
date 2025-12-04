@@ -96,7 +96,7 @@ async function createNotification(userId: number, type: string, content: string,
             }
           };
 
-          userClient.write(`data: ${JSON.JSON.stringify(notificationPayload)}\n\n`);
+          userClient.write(`data: ${JSON.stringify(notificationPayload)}\n\n`);
           console.log(`📨 SSE notification sent to user ${userId}:`, notificationPayload);
         } catch (error) {
           console.error(`❌ Error sending SSE notification to user ${userId}:`, error);
@@ -2587,7 +2587,7 @@ End of Report
             global.connectedClients.forEach((client) => {
               if (client.readyState === 1) {
                 try {
-                  client.send(JSON.JSON.stringify({
+                  client.send(JSON.stringify({
                     type: 'task_timer_update',
                     data: {
                       taskId: currentTask.id,
