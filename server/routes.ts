@@ -8156,8 +8156,10 @@ End of Report
         });
       }
 
-      // Broadcast via SSE to all project members for real-time notifications
-      if (global.sseClients) {
+      // Broadcast via SSE to all connected clients (important: send to ALL users, not just project members)
+      console.log(`📢 Broadcasting team message to all ${global.sseClients ? global.sseClients.size : 0} connected SSE clients`);
+      
+      if (global.sseClients && global.sseClients.size > 0) {
         const sseMessage = {
           type: "project_message",
           data: {
@@ -8171,46 +8173,23 @@ End of Report
           }
         };
 
-        // Get all project members
-        const projectMembersList = await db
-          .select({ userId: projectMembers.userId })
-          .from(projectMembers)
-          .where(eq(projectMembers.projectId, projectId));
-
-        // Add project manager and special roles
-        const memberIds = new Set([
-          ...projectMembersList.map(m => m.userId),
-          project.managerId,
-        ]);
-
-        // Also notify team leads and operations managers
-        const specialUsers = await db
-          .select({ id: users.id })
-          .from(users)
-          .where(
-            or(
-              eq(users.role, "team_lead"),
-              eq(users.role, "operations_manager"),
-              eq(users.specialization, "operations_manager")
-            )
-          );
-        specialUsers.forEach(u => memberIds.add(u.id));
-
-        // Send SSE to each connected member
-        memberIds.forEach(memberId => {
-          if (memberId && global.sseClients.has(memberId)) {
-            const client = global.sseClients.get(memberId);
-            if (client && !client.writableEnded) {
-              try {
-                client.write(`data: ${JSON.stringify(sseMessage)}\n\n`);
-                console.log(`✅ SSE team message sent to user ${memberId}`);
-              } catch (error) {
-                console.error(`❌ Error sending SSE to user ${memberId}:`, error);
-                global.sseClients.delete(memberId);
-              }
+        let sentCount = 0;
+        // Send to ALL connected SSE clients for real-time notification
+        global.sseClients.forEach((client, userId) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify(sseMessage)}\n\n`);
+              sentCount++;
+              console.log(`✅ SSE team message sent to user ${userId}`);
+            } catch (error) {
+              console.error(`❌ Error sending SSE to user ${userId}:`, error);
+              global.sseClients.delete(userId);
             }
           }
         });
+        console.log(`📊 Team message broadcast complete - sent to ${sentCount} users`);
+      } else {
+        console.log('⚠️ No connected SSE clients to broadcast to');
       }
 
       // Construct message with sender info for response
