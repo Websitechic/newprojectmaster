@@ -79,18 +79,18 @@ export function useNotificationSound() {
 
   // Unlock audio context with silent buffer
   const unlockAudioContext = useCallback(async () => {
-    if (unlockAttemptedRef.current || !audioContextRef.current || !silentBufferRef.current) {
+    if (!audioContextRef.current || !silentBufferRef.current) {
+      console.log('⚠️ Audio context or silent buffer not ready for unlock');
       return;
     }
 
-    unlockAttemptedRef.current = true;
-
     try {
-      console.log('🔓 Attempting to unlock audio on user interaction');
+      console.log('🔓 Attempting to unlock audio on user interaction, current state:', audioContextRef.current.state);
 
-      // Resume if suspended
+      // Resume if suspended - ALWAYS try, don't block on unlockAttemptedRef
       if (audioContextRef.current.state === 'suspended') {
         await audioContextRef.current.resume();
+        console.log('✅ Audio context resumed from suspended state');
       }
 
       // Play silent buffer to unlock
@@ -100,11 +100,12 @@ export function useNotificationSound() {
       source.start(0);
 
       setIsUnlocked(true);
+      unlockAttemptedRef.current = true;
       sessionStorage.setItem('audioUnlocked', 'true');
       console.log('✅ Audio context unlocked successfully and persisted');
     } catch (error) {
       console.error('❌ Error unlocking audio context:', error);
-      unlockAttemptedRef.current = false; // Allow retry
+      // Don't block - allow retries
     }
   }, []);
 
@@ -169,46 +170,56 @@ export function useNotificationSound() {
 
   const playNotificationSound = useCallback(async () => {
     try {
-      // Initialize if needed
+      // ALWAYS ensure audio context is initialized
       if (!audioContextRef.current || !audioBufferRef.current) {
-        console.log('🔇 Initializing audio...');
+        console.log('🔇 Audio context or buffer missing, initializing...');
         await initAudioContext();
       }
 
-      if (!audioContextRef.current || !audioBufferRef.current) {
-        console.error('🔇 Audio initialization failed');
+      // Check again after initialization attempt
+      if (!audioContextRef.current) {
+        console.error('🔇 CRITICAL: Audio context still null after initialization - AudioContext may not be supported');
         return;
       }
 
-      // Resume audio context if suspended - do this immediately without delays
-      if (audioContextRef.current.state === 'suspended') {
-        console.log('⏸️ Audio context suspended, resuming...');
+      if (!audioBufferRef.current) {
+        console.error('🔇 CRITICAL: Audio buffer still null after initialization');
+        return;
+      }
+
+      // ALWAYS try to resume if suspended - retry allows multiple attempts
+      const currentState = audioContextRef.current.state;
+      console.log('📊 Audio context state before playback:', currentState);
+      
+      if (currentState === 'suspended') {
+        console.log('⏸️ Audio context suspended, attempting resume...');
         try {
           await audioContextRef.current.resume();
-          console.log('✅ Audio context resumed');
+          console.log('✅ Audio context successfully resumed');
         } catch (err) {
           console.error('❌ Failed to resume audio context:', err);
+          throw err; // Throw so caller knows it failed
         }
       }
 
-      // Play the notification sound immediately
-      if (audioContextRef.current && audioBufferRef.current) {
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = audioBufferRef.current;
-        const gainNode = audioContextRef.current.createGain();
-        gainNode.gain.value = 0.7; // Optimal volume
-        source.connect(gainNode);
-        gainNode.connect(audioContextRef.current.destination);
-        source.start(0);
-        
-        console.log('🔊 Notification sound played immediately, context state:', audioContextRef.current.state);
-        setIsUnlocked(true);
-        sessionStorage.setItem('audioUnlocked', 'true');
-      }
+      // Play the notification sound
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBufferRef.current;
+      const gainNode = audioContextRef.current.createGain();
+      gainNode.gain.value = 0.7; // Optimal volume - 70%
+      source.connect(gainNode);
+      gainNode.connect(audioContextRef.current.destination);
+      
+      // Start playback
+      source.start(0);
+      
+      console.log('🔊 Notification sound PLAYED SUCCESSFULLY - context state:', audioContextRef.current.state);
+      setIsUnlocked(true);
+      sessionStorage.setItem('audioUnlocked', 'true');
     } catch (error) {
-      console.error('❌ Playback error:', error);
-      // Try to reinitialize for next time
-      initAudioContext().catch(console.error);
+      console.error('❌ SOUND PLAYBACK FAILED:', error);
+      // Re-throw for caller to handle
+      throw error;
     }
   }, [initAudioContext]);
 

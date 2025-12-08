@@ -292,7 +292,10 @@ function GlobalNotificationListener() {
 
               // Don't play sound for own messages
               if (data.data?.senderId !== user?.id) {
-                playNotificationSound();
+                console.log('🔊 TRIGGER: Playing sound for general channel message');
+                playNotificationSound().catch(err => {
+                  console.error('❌ General channel sound playback failed:', err);
+                });
 
                 showNotification(
                   'General Channel',
@@ -318,7 +321,9 @@ function GlobalNotificationListener() {
               console.log('📌 Team mention notification received:', data);
 
               // Play notification sound for mentions
-              playNotificationSound();
+              playNotificationSound().catch(err => {
+                console.error('❌ Team mention sound playback failed:', err);
+              });
 
               // Show browser notification
               showNotification(
