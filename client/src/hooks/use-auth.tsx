@@ -205,48 +205,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Set up SSE for real-time notifications
-  useEffect(() => {
-    if (!user?.id) return;
-
-    let isMounted = true;
-    console.log("Setting up SSE connection for notifications...");
-    const eventSource = new EventSource("/api/notifications/stream");
-
-    eventSource.onopen = () => {
-      if (isMounted) {
-        console.log("SSE connection opened for notifications");
-      }
-    };
-
-    eventSource.onmessage = (event) => {
-      if (!isMounted) return;
-
-      try {
-        const data = JSON.parse(event.data);
-        console.log("SSE message received:", data);
-
-        if (data.type === "notification") {
-          // Invalidate notifications to refresh the list
-          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }).catch(console.error);
-        }
-      } catch (error) {
-        console.error("Error parsing SSE message:", error);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      if (isMounted) {
-        console.error("SSE error:", error);
-      }
-    };
-
-    return () => {
-      isMounted = false;
-      console.log("Closing SSE connection for notifications");
-      eventSource.close();
-    };
-  }, [user?.id, queryClient]);
+  // SSE connection is now centralized in GlobalNotificationListener (App.tsx)
+  // to prevent multiple connections overwriting each other on the server
 
 
   return (

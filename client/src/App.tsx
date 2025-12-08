@@ -144,6 +144,9 @@ function GlobalNotificationListener() {
             if (data.type === 'notification' && data.notification) {
               console.log('🔔 Global notification received:', data.notification);
 
+              // Dispatch event for other components (like NotificationsDropdown) to listen
+              window.dispatchEvent(new CustomEvent('notification-received', { detail: data.notification }));
+
               // Invalidate notifications query to update UI
               queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
 

@@ -177,81 +177,23 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     fetchUnreadCount();
   }, []);
 
-  // SSE connection for real-time updates
+  // Listen for direct message events from GlobalNotificationListener (App.tsx)
+  // instead of creating our own SSE connection
   useEffect(() => {
     if (!user || !user.id) return;
 
-    let eventSource: EventSource | null = null;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
-    let isConnecting = false;
-
-    const connectSSE = () => {
-      if (isConnecting || !user?.id) return;
-
-      isConnecting = true;
-
-      try {
-        eventSource = new EventSource('/api/notifications/stream', {
-          withCredentials: true
-        });
-
-        eventSource.onopen = () => {
-          console.log('Sidebar SSE connection opened');
-          isConnecting = false;
-        };
-
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'direct_message' && data.data) {
-              // Only increment if message is TO current user
-              if (data.data.receiverId === user.id) {
-                setUnreadDirectMessages(prev => prev + 1);
-              }
-            }
-          } catch (error) {
-            console.error('Failed to parse SSE message:', error);
-          }
-        };
-
-        eventSource.onerror = (error) => {
-          console.error('Sidebar SSE connection error:', error);
-          isConnecting = false;
-
-          if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
-            eventSource.close();
-          }
-          eventSource = null;
-
-          if (user?.id && !reconnectTimeout) {
-            reconnectTimeout = setTimeout(() => {
-              reconnectTimeout = null;
-              connectSSE();
-            }, 5000);
-          }
-        };
-      } catch (error) {
-        console.error('Failed to create SSE connection:', error);
-        isConnecting = false;
+    const handleDirectMessage = (event: CustomEvent) => {
+      const data = event.detail;
+      // Only increment if message is TO current user
+      if (data.receiverId === user.id) {
+        setUnreadDirectMessages(prev => prev + 1);
       }
     };
 
-    // Wait for authentication to be fully established
-    const connectionDelay = setTimeout(() => {
-      connectSSE();
-    }, 1000);
+    window.addEventListener('direct-message-received', handleDirectMessage as EventListener);
 
     return () => {
-      clearTimeout(connectionDelay);
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-        reconnectTimeout = null;
-      }
-      if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
-        eventSource.close();
-      }
-      eventSource = null;
-      isConnecting = false;
+      window.removeEventListener('direct-message-received', handleDirectMessage as EventListener);
     };
   }, [user]);
 

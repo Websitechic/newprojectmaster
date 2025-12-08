@@ -86,42 +86,24 @@ export default function ClientChat() {
     },
   });
 
-  // Set up SSE for real-time updates
+  // Listen for team message events from GlobalNotificationListener (App.tsx)
   useEffect(() => {
     if (!user?.id || !projectId) return;
 
-    console.log(`Setting up SSE for client chat in project ${projectId}`);
-    
-    const eventSource = new EventSource("/api/notifications/stream", {
-      withCredentials: true
-    });
-
-    eventSource.onopen = () => {
-      console.log("SSE connection opened for client chat");
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log("SSE message received in client chat:", data);
-        if (data.type === "project_message" && data.data.projectId === projectId && data.data.type === "client") {
-          console.log("Client message received via SSE, invalidating queries");
-          queryClient.invalidateQueries({ 
-            queryKey: [`/api/projects/${projectId}/messages`, "client"] 
-          });
-        }
-      } catch (error) {
-        console.error("Error parsing SSE message in client chat:", error);
+    const handleTeamMessage = (event: CustomEvent) => {
+      const data = event.detail;
+      if (data.projectId === projectId && data.type === "client") {
+        console.log("Client message received via event, invalidating queries");
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/projects/${projectId}/messages`, "client"] 
+        });
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error("SSE error in client chat:", error);
-    };
+    window.addEventListener('team-message-received', handleTeamMessage as EventListener);
 
     return () => {
-      console.log("Closing SSE connection for client chat");
-      eventSource.close();
+      window.removeEventListener('team-message-received', handleTeamMessage as EventListener);
     };
   }, [user?.id, projectId, queryClient]);
 
