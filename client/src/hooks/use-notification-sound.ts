@@ -10,16 +10,35 @@ export function useNotificationSound() {
   const [isUnlocked, setIsUnlocked] = useState(() => {
     return typeof window !== 'undefined' && sessionStorage.getItem('audioUnlocked') === 'true';
   });
-  const initializingRef = useRef(false);
-  const mountedRef = useRef(true);
 
-  // Create notification sound buffer - simple beep
-  const createNotificationBuffer = useCallback((context: AudioContext) => {
+  // Initialize audio context - called once on mount
+  useEffect(() => {
+    console.log('🎬 useNotificationSound useEffect running - MOUNT');
+    
     try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      
+      if (!AudioContextClass) {
+        console.error('❌ AudioContext not supported in this browser');
+        return;
+      }
+
+      console.log('📦 AudioContext class found, creating context...');
+
+      // Create context
+      audioContextRef.current = new AudioContextClass();
+      console.log('🎵 Created new AudioContext, state:', audioContextRef.current.state);
+
+      // Create silent buffer for unlocking
+      const silentBufferSize = Math.floor(audioContextRef.current.sampleRate * 0.1);
+      silentBufferRef.current = audioContextRef.current.createBuffer(1, silentBufferSize, audioContextRef.current.sampleRate);
+      console.log('🔇 Created silent buffer');
+
+      // Create notification sound buffer - simple beep
       const duration = 0.3;
-      const sampleRate = context.sampleRate;
+      const sampleRate = audioContextRef.current.sampleRate;
       const numSamples = Math.floor(duration * sampleRate);
-      const buffer = context.createBuffer(1, numSamples, sampleRate);
+      const buffer = audioContextRef.current.createBuffer(1, numSamples, sampleRate);
       const data = buffer.getChannelData(0);
 
       for (let i = 0; i < numSamples; i++) {
@@ -31,93 +50,28 @@ export function useNotificationSound() {
         );
       }
 
-      return buffer;
-    } catch (error) {
-      console.error('❌ Error creating notification buffer:', error);
-      return null;
-    }
-  }, []);
-
-  // Initialize audio context synchronously on first call
-  // NOTE: No state dependencies to prevent re-creation loops
-  const initAudioContext = useCallback(() => {
-    console.log('🔧 initAudioContext called, initializingRef:', initializingRef.current);
-    
-    if (initializingRef.current) {
-      console.log('⏭️ Already initializing, skipping');
-      return false;
-    }
-
-    if (audioContextRef.current && audioBufferRef.current) {
-      console.log('✅ Audio already initialized');
-      return true;
-    }
-
-    initializingRef.current = true;
-    console.log('🎯 Starting audio initialization...');
-
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      
-      if (!AudioContextClass) {
-        console.error('❌ AudioContext not supported in this browser');
-        initializingRef.current = false;
-        return false;
-      }
-
-      console.log('📦 AudioContext class found, creating context...');
-
-      // Create or reuse context
-      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-        audioContextRef.current = new AudioContextClass();
-        console.log('🎵 Created new AudioContext, state:', audioContextRef.current.state);
-      }
-
-      // Create silent buffer for unlocking
-      const silentBufferSize = Math.floor(audioContextRef.current.sampleRate * 0.1);
-      silentBufferRef.current = audioContextRef.current.createBuffer(1, silentBufferSize, audioContextRef.current.sampleRate);
-      console.log('🔇 Created silent buffer');
-
-      // Create notification sound buffer
-      audioBufferRef.current = createNotificationBuffer(audioContextRef.current);
-      
-      if (!audioBufferRef.current) {
-        console.error('❌ Failed to create notification buffer');
-        initializingRef.current = false;
-        return false;
-      }
-
+      audioBufferRef.current = buffer;
       setIsInitialized(true);
       console.log('✅ Audio context and buffers created successfully!', {
         state: audioContextRef.current.state,
         sampleRate: audioContextRef.current.sampleRate
       });
-      
-      initializingRef.current = false;
-      return true;
+
     } catch (error) {
       console.error('❌ Audio initialization error:', error);
-      initializingRef.current = false;
-      return false;
     }
-  }, [createNotificationBuffer]);
+
+    return () => {
+      console.log('🛑 useNotificationSound cleanup');
+    };
+  }, []); // Empty dependency array - run once on mount
 
   // Unlock audio context on user interaction
   const unlockAudioContext = useCallback(async () => {
     console.log('🔓 unlockAudioContext called');
     
-    // Initialize first if needed
     if (!audioContextRef.current || !silentBufferRef.current) {
-      console.log('⚠️ Audio not initialized, initializing first...');
-      const success = initAudioContext();
-      if (!success) {
-        console.error('❌ Failed to initialize audio for unlock');
-        return;
-      }
-    }
-
-    if (!audioContextRef.current || !silentBufferRef.current) {
-      console.error('❌ Still no audio context after initialization');
+      console.error('❌ Audio not initialized yet');
       return;
     }
 
@@ -142,35 +96,7 @@ export function useNotificationSound() {
     } catch (error) {
       console.error('❌ Error unlocking audio context:', error);
     }
-  }, [initAudioContext]);
-
-  // Initialize on mount
-  useEffect(() => {
-    console.log('🎬 useNotificationSound useEffect running');
-    mountedRef.current = true;
-    
-    // Initialize immediately
-    const success = initAudioContext();
-    console.log('🎬 Initial audio setup result:', success);
-
-    // Check if previously unlocked
-    if (sessionStorage.getItem('audioUnlocked') === 'true') {
-      console.log('📋 Audio was previously unlocked (from sessionStorage)');
-    }
-
-    // Listen for init-audio event
-    const handleInitAudio = () => {
-      console.log('📻 init-audio event received');
-      unlockAudioContext();
-    };
-
-    window.addEventListener('init-audio', handleInitAudio);
-
-    return () => {
-      mountedRef.current = false;
-      window.removeEventListener('init-audio', handleInitAudio);
-    };
-  }, [initAudioContext, unlockAudioContext]);
+  }, []);
 
   // Set up automatic unlock on first user interaction
   useEffect(() => {
@@ -201,24 +127,8 @@ export function useNotificationSound() {
     console.log('🔔 playNotificationSound called');
     
     try {
-      // Ensure audio is initialized
       if (!audioContextRef.current || !audioBufferRef.current) {
-        console.log('⚠️ Audio not ready, attempting initialization...');
-        const success = initAudioContext();
-        if (!success) {
-          console.error('❌ Could not initialize audio for playback');
-          return;
-        }
-      }
-
-      // Check again
-      if (!audioContextRef.current) {
-        console.error('❌ AudioContext is null after initialization');
-        return;
-      }
-
-      if (!audioBufferRef.current) {
-        console.error('❌ AudioBuffer is null after initialization');
+        console.error('❌ Audio not ready - context:', !!audioContextRef.current, 'buffer:', !!audioBufferRef.current);
         return;
       }
 
@@ -261,7 +171,7 @@ export function useNotificationSound() {
     } catch (error) {
       console.error('❌ Error playing notification sound:', error);
     }
-  }, [initAudioContext]);
+  }, []);
 
   return {
     playNotificationSound,
