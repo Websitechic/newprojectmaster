@@ -100,8 +100,8 @@ export function NotificationsDropdown() {
     };
   }, [queryClient]);
 
-  // Combine fetched notifications with SSE notifications and sort by createdAt descending
-  const combinedNotifications = [...sseNotifications, ...notifications].sort((a, b) => {
+  // Combine fetched notifications and sort by createdAt descending
+  const sortedNotifications = [...notifications].sort((a, b) => {
     const dateA = a.createdAt ? parseISO(a.createdAt) : null;
     const dateB = b.createdAt ? parseISO(b.createdAt) : null;
 
@@ -112,8 +112,8 @@ export function NotificationsDropdown() {
     return dateB.getTime() - dateA.getTime();
   });
 
-  // Remove duplicates, prioritizing SSE notifications if they have the same ID
-  const uniqueNotifications = Array.from(new Map(combinedNotifications.map(item => [item.id, item])).values());
+  // Remove duplicates, prioritizing fetched notifications if they have the same ID
+  const uniqueNotifications = Array.from(new Map(sortedNotifications.map(item => [item.id, item])).values());
 
 
   const unreadCount = uniqueNotifications.filter(n => !n.read).length;
