@@ -95,4 +95,4 @@ task = "shell.exec"
 args = "npm run dev"
 
 [agent]
-integrations = ["javascript_websocket==1.0.0", "javascript_auth==1.0.0"]
+integrations = ["javascript_websocket:1.0.0", "javascript_auth:1.0.0"]
