@@ -239,19 +239,19 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "projects",
     },
     {
+      icon: <MessageSquare size={20} />,
+      label: "General Channel",
+      href: "/dashboard/general-channel",
+      badge: generalChannelUnread,
+      key: "general-channel",
+    },
+    {
       icon: <MessageCircle size={20} />,
       label: "Direct Messages",
       href: "/dashboard/direct-messages",
       badge: unreadDirectMessages,
       hasUpdate: indicators.directMessages,
       key: "direct-messages",
-    },
-    {
-      icon: <MessageSquare size={20} />,
-      label: "General Channel",
-      href: "/dashboard/general-channel",
-      badge: generalChannelUnread,
-      key: "general-channel",
     },
     {
       icon: <PlayCircle size={20} />,
