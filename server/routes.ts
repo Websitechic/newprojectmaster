@@ -53,6 +53,47 @@ import WebSocket from "ws";
 import { format } from "date-fns";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
+// Helper function to send notification to OneSignal
+async function sendToOneSignal(userId: number, title: string, content: string) {
+  try {
+    const appId = process.env.ONESIGNAL_APP_ID;
+    const restApiKey = process.env.ONESIGNAL_REST_API_KEY;
+
+    if (!appId || !restApiKey) {
+      console.log('OneSignal credentials not configured, skipping push notification');
+      return;
+    }
+
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': `Basic ${restApiKey}`,
+      },
+      body: JSON.stringify({
+        app_id: appId,
+        include_external_user_ids: [userId.toString()],
+        headings: { en: title },
+        contents: { en: content },
+        data: {
+          timestamp: new Date().toISOString(),
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`OneSignal API error (${response.status}):`, errorText);
+      return;
+    }
+
+    const result = await response.json();
+    console.log(`✅ OneSignal notification sent for user ${userId}:`, result.id);
+  } catch (error) {
+    console.error(`❌ Error sending to OneSignal for user ${userId}:`, error);
+  }
+}
+
 // Helper function to create notifications
 async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
   try {
@@ -75,6 +116,10 @@ async function createNotification(userId: number, type: string, content: string,
       referenceType: newNotification.referenceType,
       content: newNotification.content
     });
+
+    // Send to OneSignal
+    const title = type.replace(/_/g, ' ').toUpperCase();
+    await sendToOneSignal(userId, title, content);
 
     // Send SSE notification if user is connected
     if (global.sseClients && global.sseClients.has(userId)) {

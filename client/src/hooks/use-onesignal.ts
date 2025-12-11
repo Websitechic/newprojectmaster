@@ -20,17 +20,19 @@ export function useOneSignal(userId?: number) {
         }
 
         // Initialize OneSignal
-        await OneSignal.init({
+        await (OneSignal as any).init({
           appId: appId,
           allowLocalhostAsSecureOrigin: true,
         });
 
         // Set external user ID
-        await OneSignal.setExternalUserId(userId.toString());
+        await (OneSignal as any).User.PushSubscription.optIn();
+        await (OneSignal as any).login(userId.toString());
         console.log('OneSignal external user ID set:', userId);
 
         // Request notification permission
-        await OneSignal.showSlidedownPrompt();
+        const permission = await (OneSignal as any).Notifications.requestPermission(true);
+        console.log('OneSignal notification permission:', permission);
       } catch (error) {
         console.error('Error initializing OneSignal:', error);
       }
