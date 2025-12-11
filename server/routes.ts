@@ -80,10 +80,16 @@ async function createNotification(userId: number, type: string, content: string,
     // Send to OneSignal using the proper service
     const title = type.replace(/_/g, ' ').toUpperCase();
     try {
+      console.log(`🚀 Attempting OneSignal notification for user ${userId}, type: ${type}`);
       await sendOneSignalNotification(userId, title, content);
-      console.log(`📲 OneSignal notification sent for user ${userId}`);
+      console.log(`✅ OneSignal notification sent for user ${userId}`);
     } catch (error) {
-      console.error(`❌ OneSignal notification failed for user ${userId}:`, error);
+      console.error(`❌ OneSignal notification failed for user ${userId}:`, {
+        error: error instanceof Error ? error.message : error,
+        type,
+        title,
+        contentPreview: content.substring(0, 100)
+      });
     }
 
     // Send SSE notification if user is connected
