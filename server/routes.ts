@@ -3740,6 +3740,24 @@ End of Report
         senderEmail: sender.email,
       };
 
+      // Notify all users in the general channel except the sender
+      try {
+        const allUsers = await db.select({ id: users.id }).from(users);
+        for (const targetUser of allUsers) {
+          if (targetUser.id !== user.id) {
+            await createNotification(
+              targetUser.id,
+              "message",
+              `New message in General Channel from ${user.name}`,
+              newMessage.id,
+              "general_channel_message"
+            );
+          }
+        }
+      } catch (notifError) {
+        console.error("Error creating general channel notifications:", notifError);
+      }
+
       // Broadcast to all connected clients via SSE
       if (global.sseClients) {
         global.sseClients.forEach((client, userId) => {
@@ -8123,6 +8141,28 @@ End of Report
           isEdited: false,
         })
         .returning();
+
+      // Notify all project members (except sender) about the new message
+      try {
+        const projectMembersData = await db
+          .select({ userId: projectMembers.userId })
+          .from(projectMembers)
+          .where(eq(projectMembers.projectId, projectId));
+        
+        for (const member of projectMembersData) {
+          if (member.userId !== user.id) {
+            await createNotification(
+              member.userId,
+              "message",
+              `New message in ${project.name} from ${user.name}`,
+              newMessage.id,
+              "project_message"
+            );
+          }
+        }
+      } catch (notifError) {
+        console.error("Error creating project message notifications:", notifError);
+      }
 
       // Check for @mentions in the message - improved regex to handle spaces
       const mentionRegex = /@([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
