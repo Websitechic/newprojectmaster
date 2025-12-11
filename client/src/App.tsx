@@ -52,6 +52,7 @@ import ReportIssues from "@/pages/report-issues";
 import ReportManagement from "@/pages/dashboard/report-management";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useBrowserNotification } from "@/hooks/use-browser-notification";
+import { useOneSignal } from "@/hooks/use-onesignal";
 import GeneralChannelPage from "@/pages/dashboard/general-channel";
 import ReviewLinks from "@/pages/dashboard/review-links";
 import ProjectBriefing from "@/pages/dashboard/project-briefing";
@@ -85,6 +86,9 @@ function GlobalNotificationListener() {
   const { playNotificationSound } = useNotificationSound();
   const { showNotification } = useBrowserNotification();
   const audioUnlockedRef = useRef(false);
+  
+  // Initialize OneSignal with user ID
+  useOneSignal(user?.id);
 
   // Unlock audio on first user interaction
   useEffect(() => {
