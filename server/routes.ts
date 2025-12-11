@@ -52,47 +52,7 @@ import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull, relat
 import WebSocket from "ws";
 import { format } from "date-fns";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-
-// Helper function to send notification to OneSignal
-async function sendToOneSignal(userId: number, title: string, content: string) {
-  try {
-    const appId = process.env.ONESIGNAL_APP_ID;
-    const restApiKey = process.env.ONESIGNAL_REST_API_KEY;
-
-    if (!appId || !restApiKey) {
-      console.log('OneSignal credentials not configured, skipping push notification');
-      return;
-    }
-
-    const response = await fetch('https://onesignal.com/api/v1/notifications', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': `Basic ${restApiKey}`,
-      },
-      body: JSON.stringify({
-        app_id: appId,
-        include_external_user_ids: [userId.toString()],
-        headings: { en: title },
-        contents: { en: content },
-        data: {
-          timestamp: new Date().toISOString(),
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`OneSignal API error (${response.status}):`, errorText);
-      return;
-    }
-
-    const result = await response.json();
-    console.log(`✅ OneSignal notification sent for user ${userId}:`, result.id);
-  } catch (error) {
-    console.error(`❌ Error sending to OneSignal for user ${userId}:`, error);
-  }
-}
+import { sendOneSignalNotification } from "./onesignal";
 
 // Helper function to create notifications
 async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
@@ -117,9 +77,14 @@ async function createNotification(userId: number, type: string, content: string,
       content: newNotification.content
     });
 
-    // Send to OneSignal
+    // Send to OneSignal using the proper service
     const title = type.replace(/_/g, ' ').toUpperCase();
-    await sendToOneSignal(userId, title, content);
+    try {
+      await sendOneSignalNotification(userId, title, content);
+      console.log(`📲 OneSignal notification sent for user ${userId}`);
+    } catch (error) {
+      console.error(`❌ OneSignal notification failed for user ${userId}:`, error);
+    }
 
     // Send SSE notification if user is connected
     if (global.sseClients && global.sseClients.has(userId)) {
@@ -5613,6 +5578,18 @@ End of Report
         newMessage.id,
         "direct_message"
       );
+
+      // Also send direct OneSignal push for direct messages
+      try {
+        await sendOneSignalNotification(
+          parseInt(receiverId),
+          `${user.name} sent you a message`,
+          messageContent.substring(0, 100)
+        );
+        console.log(`📧 Direct OneSignal push sent for message to user ${receiverId}`);
+      } catch (error) {
+        console.error(`❌ Failed to send OneSignal push for message:`, error);
+      }
 
       console.log('📧 Direct message notification created for receiver:', receiverId);
 
