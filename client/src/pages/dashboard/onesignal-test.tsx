@@ -1,5 +1,6 @@
 
 import { useUser } from "@/hooks/use-user";
+import { useOneSignal } from "@/hooks/use-onesignal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,9 @@ import { useEffect, useState } from "react";
 
 export default function OneSignalTest() {
   const { user } = useUser();
+  
+  // Initialize OneSignal for this user
+  useOneSignal(user?.id);
   const [status, setStatus] = useState<{
     sdkLoaded: boolean;
     permission: string;
@@ -22,6 +26,7 @@ export default function OneSignalTest() {
   });
 
   const checkStatus = async () => {
+    console.log('[OneSignal Test] Checking status...', { userId: user?.id });
     try {
       const OneSignalModule = await import('react-onesignal');
       const OneSignal = OneSignalModule.default;
@@ -31,16 +36,28 @@ export default function OneSignalTest() {
       const subscriptionId = await OneSignal.User.PushSubscription.id;
       const optedIn = await OneSignal.User.PushSubscription.optedIn;
 
+      console.log('[OneSignal Test] Status retrieved:', {
+        permission,
+        isPushSupported,
+        subscriptionId,
+        optedIn,
+        userId: user?.id
+      });
+
       setStatus({
         sdkLoaded: true,
         permission,
         subscribed: optedIn,
         subscriptionId,
-        userId: user?.id.toString() || null,
+        userId: user?.id?.toString() || null,
       });
     } catch (error) {
-      console.error('Error checking OneSignal status:', error);
-      setStatus(prev => ({ ...prev, sdkLoaded: false }));
+      console.error('[OneSignal Test] Error checking OneSignal status:', error);
+      setStatus(prev => ({ 
+        ...prev, 
+        sdkLoaded: false,
+        userId: user?.id?.toString() || null 
+      }));
     }
   };
 
@@ -72,10 +89,15 @@ export default function OneSignalTest() {
   };
 
   useEffect(() => {
-    checkStatus();
-    const interval = setInterval(checkStatus, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (user?.id) {
+      console.log('[OneSignal Test] User authenticated, checking status');
+      checkStatus();
+      const interval = setInterval(checkStatus, 5000);
+      return () => clearInterval(interval);
+    } else {
+      console.log('[OneSignal Test] No user authenticated yet');
+    }
+  }, [user?.id]);
 
   return (
     <div className="space-y-6">
@@ -92,6 +114,21 @@ export default function OneSignalTest() {
           <CardDescription>Current subscription and permission status</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!user && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-4">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+                ⚠️ You must be logged in to test OneSignal
+              </p>
+            </div>
+          )}
+          
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4 mb-4">
+            <p className="text-sm font-medium mb-2">Configuration</p>
+            <p className="text-xs text-muted-foreground break-all">
+              App ID: {import.meta.env.VITE_ONESIGNAL_APP_ID || 'NOT SET'}
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium">SDK Loaded</p>
