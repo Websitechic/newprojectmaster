@@ -3737,8 +3737,8 @@ End of Report
 
       // Send OneSignal push notifications to all users (except sender)
       console.log('\n========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW ==========');
-      console.log(`Sender: ${user.name} (ID: ${user.id})`);
-      console.log(`Message: ${content.substring(0, 50)}...`);
+      console.log('Sender:', user.name, '(ID:', user.id + ')');
+      console.log('Message:', content.substring(0, 50) + '...');
       
       try {
         // Get all users except the sender (excluding clients)
@@ -3753,7 +3753,7 @@ End of Report
           );
         
         const recipientIds = allUsers.map(u => u.id);
-        console.log(`Target recipients: ${recipientIds.length} users`);
+        console.log('Target recipients:', recipientIds.length, 'users');
         
         if (recipientIds.length > 0) {
           // Extract clean content without reply quotes
@@ -3769,10 +3769,10 @@ End of Report
           // Send OneSignal push to all recipients
           await sendOneSignalNotification(
             recipientIds,
-            `General Channel: ${user.name}`,
+            'General Channel: ' + user.name,
             cleanContent.substring(0, 100) + (cleanContent.length > 100 ? '...' : '')
           );
-          console.log(`OneSignal push sent to ${recipientIds.length} users`);
+          console.log('OneSignal push sent to', recipientIds.length, 'users');
         }
       } catch (oneSignalError) {
         console.error('OneSignal general channel notification failed:', oneSignalError);
