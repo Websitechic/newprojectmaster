@@ -3735,6 +3735,35 @@ End of Report
         });
       }
 
+      // Send OneSignal push notifications to all users (except sender)
+      console.log(`\n========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW ==========`);
+      console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
+      console.log(`📧 Message: ${content.substring(0, 50)}...`);
+      
+      try {
+        // Get all users except the sender
+        const allUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(ne(users.id, user.id));
+        
+        const recipientIds = allUsers.map(u => u.id);
+        console.log(`📧 Target recipients: ${recipientIds.length} users`);
+        
+        if (recipientIds.length > 0) {
+          // Send OneSignal push to all recipients
+          await sendOneSignalNotification(
+            recipientIds,
+            `General Channel: ${sender.name}`,
+            content.substring(0, 100) + (content.length > 100 ? '...' : '')
+          );
+          console.log(`✅ OneSignal push sent to ${recipientIds.length} users`);
+        }
+      } catch (oneSignalError) {
+        console.error(`❌ OneSignal general channel notification failed:`, oneSignalError);
+      }
+      console.log(`========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW END ==========\n`);
+
       res.json(messageWithSender);
     } catch (error) {
       console.error("Error sending general channel message:", error);
@@ -8247,6 +8276,47 @@ End of Report
       } else {
         console.log('⚠️ No connected SSE clients to broadcast to');
       }
+
+      // Send OneSignal push notifications to all project members (except sender)
+      console.log(`\n========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW ==========`);
+      console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
+      console.log(`📧 Project: ${project.name} (ID: ${projectId})`);
+      
+      try {
+        // Get all project members except the sender
+        const projectMembersList = await db
+          .select({ userId: projectMembers.userId })
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              ne(projectMembers.userId, user.id)
+            )
+          );
+        
+        // Also include project manager if not the sender
+        const recipientIds: number[] = projectMembersList.map(m => m.userId);
+        if (project.managerId && project.managerId !== user.id && !recipientIds.includes(project.managerId)) {
+          recipientIds.push(project.managerId);
+        }
+        
+        console.log(`📧 Target recipients: ${recipientIds.length} users - [${recipientIds.join(', ')}]`);
+        
+        if (recipientIds.length > 0) {
+          // Send OneSignal push to all recipients
+          await sendOneSignalNotification(
+            recipientIds,
+            `New message in ${project.name}`,
+            `${user.name}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`
+          );
+          console.log(`✅ OneSignal push sent to ${recipientIds.length} team members`);
+        } else {
+          console.log(`⚠️ No recipients to notify (sender is the only member)`);
+        }
+      } catch (oneSignalError) {
+        console.error(`❌ OneSignal team message notification failed:`, oneSignalError);
+      }
+      console.log(`========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);
 
       // Construct message with sender info for response
       const messageWithSender = {
