@@ -67,10 +67,20 @@ export async function sendOneSignalNotification(
   try {
     const userIds = Array.isArray(userId) ? userId : [userId];
     
+    // Filter out invalid user IDs
+    const validUserIds = userIds.filter(id => id && !isNaN(Number(id)) && Number(id) > 0);
+    
+    if (validUserIds.length === 0) {
+      console.error('❌ No valid user IDs provided');
+      return;
+    }
+    
+    console.log('✓ Valid user IDs:', validUserIds.length, 'out of', userIds.length);
+    
     const notification: OneSignalNotification = {
       headings: { en: title },
       contents: { en: message },
-      include_external_user_ids: userIds.map(id => id.toString()),
+      include_external_user_ids: validUserIds.map(id => id.toString()),
     };
 
     if (url) {
@@ -130,11 +140,38 @@ export async function sendOneSignalNotification(
     }
 
     const result = JSON.parse(responseText);
+    
+    // Check if there are errors
+    if (result.errors && result.errors.length > 0) {
+      const hasSubscriberError = result.errors.some((err: string) => 
+        err.includes('not subscribed') || err.includes('No valid player IDs')
+      );
+      
+      if (hasSubscriberError) {
+        console.log('\n⚠️⚠️⚠️ ONESIGNAL: NO SUBSCRIBERS FOUND ⚠️⚠️⚠️');
+        console.log('   - This means users have not enabled push notifications');
+        console.log('   - Users need to:');
+        console.log('     1. Grant browser notification permission');
+        console.log('     2. Be logged into the app');
+        console.log('     3. Have OneSignal SDK properly initialized');
+        console.log('   - Notification ID:', result.id || 'None');
+        console.log('   - Attempted User IDs:', validUserIds);
+        console.log('   - Errors:', result.errors);
+        console.log('═══════════════════════════════════════════════════════════════\n');
+        return; // Don't throw error for no subscribers
+      } else {
+        console.error('\n❌❌❌ ONESIGNAL API ERROR ❌❌❌');
+        console.error('   - Errors:', result.errors);
+        console.error('   - User IDs:', validUserIds);
+        console.error('═══════════════════════════════════════════════════════════════\n');
+        return;
+      }
+    }
+    
     console.log('\n✅✅✅ ONESIGNAL NOTIFICATION SENT SUCCESSFULLY ✅✅✅');
     console.log('   - Notification ID:', result.id);
     console.log('   - Recipients Count:', result.recipients);
-    console.log('   - Errors:', result.errors || 'None');
-    console.log('   - User IDs:', userIds);
+    console.log('   - User IDs:', validUserIds);
     console.log('═══════════════════════════════════════════════════════════════\n');
   } catch (error) {
     console.error('\n❌❌❌ ONESIGNAL SERVICE EXCEPTION ❌❌❌');

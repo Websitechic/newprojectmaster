@@ -86,15 +86,22 @@ function GlobalNotificationListener() {
   const { playNotificationSound } = useNotificationSound();
   const { showNotification } = useBrowserNotification();
   const audioUnlockedRef = useRef(false);
-  
-  // Initialize OneSignal with user ID
+
+  // Initialize OneSignal for authenticated users
   useOneSignal(user?.id);
+
+  // Log OneSignal initialization status
+  useEffect(() => {
+    if (user?.id) {
+      console.log('[App] OneSignal should initialize for user:', user.id);
+    }
+  }, [user?.id]);
 
   // Unlock audio on first user interaction
   useEffect(() => {
     const unlockAudio = () => {
       if (audioUnlockedRef.current) return;
-      
+
       console.log('🔓 Unlocking audio on user interaction');
       window.dispatchEvent(new Event('init-audio'));
       audioUnlockedRef.current = true;
