@@ -5577,27 +5577,38 @@ End of Report
       }
 
       // Create notification for receiver - use 'message' type to trigger sound
-      await createNotification(
-        parseInt(receiverId),
-        "message",
-        `New message from ${user.name}`,
-        newMessage.id,
-        "direct_message"
-      );
+      console.log(`📧 Creating notification for direct message to user ${receiverId}`);
+      
+      try {
+        await createNotification(
+          parseInt(receiverId),
+          "message",
+          `New message from ${user.name}`,
+          newMessage.id,
+          "direct_message"
+        );
+        console.log(`✅ Notification created successfully for user ${receiverId}`);
+      } catch (notifError) {
+        console.error(`❌ Error creating notification for user ${receiverId}:`, notifError);
+      }
 
       // Also send direct OneSignal push for direct messages
+      console.log(`📧 Attempting to send OneSignal push notification to user ${receiverId}`);
       try {
         await sendOneSignalNotification(
           parseInt(receiverId),
           `${user.name} sent you a message`,
           messageContent.substring(0, 100)
         );
-        console.log(`📧 Direct OneSignal push sent for message to user ${receiverId}`);
+        console.log(`✅ Direct OneSignal push sent successfully for message to user ${receiverId}`);
       } catch (error) {
-        console.error(`❌ Failed to send OneSignal push for message:`, error);
+        console.error(`❌ Failed to send OneSignal push for message to user ${receiverId}:`, {
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined
+        });
       }
 
-      console.log('📧 Direct message notification created for receiver:', receiverId);
+      console.log(`📧 Direct message notification process completed for receiver: ${receiverId}`);
 
       // Broadcast message to both sender and receiver via SSE
       const broadcastMessage = {

@@ -2,13 +2,21 @@
 const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || '';
 const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY || '';
 
-// Log configuration on startup
+// Log configuration on startup with validation
+const isAppIdValid = !!ONESIGNAL_APP_ID && ONESIGNAL_APP_ID !== 'YOUR_ONESIGNAL_APP_ID' && ONESIGNAL_APP_ID.length > 0;
+const isApiKeyValid = !!ONESIGNAL_REST_API_KEY && ONESIGNAL_REST_API_KEY !== 'YOUR_ONESIGNAL_REST_API_KEY' && ONESIGNAL_REST_API_KEY.length > 0;
+
 console.log('🔧 OneSignal Configuration:', {
-  appIdConfigured: !!ONESIGNAL_APP_ID && ONESIGNAL_APP_ID !== 'YOUR_ONESIGNAL_APP_ID',
-  restApiKeyConfigured: !!ONESIGNAL_REST_API_KEY && ONESIGNAL_REST_API_KEY !== 'YOUR_ONESIGNAL_REST_API_KEY',
+  appIdConfigured: isAppIdValid,
+  restApiKeyConfigured: isApiKeyValid,
   appIdPreview: ONESIGNAL_APP_ID ? ONESIGNAL_APP_ID.substring(0, 8) + '...' : 'NOT_SET',
-  restApiKeyPreview: ONESIGNAL_REST_API_KEY ? ONESIGNAL_REST_API_KEY.substring(0, 12) + '...' : 'NOT_SET'
+  restApiKeyPreview: ONESIGNAL_REST_API_KEY ? ONESIGNAL_REST_API_KEY.substring(0, 12) + '...' : 'NOT_SET',
+  configurationValid: isAppIdValid && isApiKeyValid
 });
+
+if (!isAppIdValid || !isApiKeyValid) {
+  console.warn('⚠️⚠️⚠️ OneSignal is NOT properly configured! Notifications will not be sent. ⚠️⚠️⚠️');
+}
 
 interface OneSignalNotification {
   headings: { en: string };
@@ -63,9 +71,12 @@ export async function sendOneSignalNotification(
     console.log('📤 Sending OneSignal notification:', {
       userIds: userIds,
       title,
-      payloadKeys: Object.keys(payload)
+      messagePreview: message.substring(0, 50),
+      payloadKeys: Object.keys(payload),
+      payload: JSON.stringify(payload, null, 2)
     });
 
+    console.log('🌐 Making request to OneSignal API...');
     const response = await fetch('https://onesignal.com/api/v1/notifications', {
       method: 'POST',
       headers: {
@@ -73,6 +84,12 @@ export async function sendOneSignalNotification(
         'Authorization': `Basic ${ONESIGNAL_REST_API_KEY}`,
       },
       body: JSON.stringify(payload),
+    });
+
+    console.log('📥 OneSignal API response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
     });
 
     const responseText = await response.text();
