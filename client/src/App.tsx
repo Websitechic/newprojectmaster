@@ -58,7 +58,7 @@ import ReviewLinks from "@/pages/dashboard/review-links";
 import ProjectBriefing from "@/pages/dashboard/project-briefing";
 
 // Lazy load OneSignalTest component
-const OneSignalTest = lazy(() => import("@/pages/onesignal-test"));
+const OneSignalTest = lazy(() => import("@/pages/dashboard/onesignal-test"));
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -89,12 +89,8 @@ function GlobalNotificationListener() {
   const { showNotification } = useBrowserNotification();
   const audioUnlockedRef = useRef(false);
 
-  // Initialize OneSignal for authenticated users with web push configuration
-  useOneSignal(user?.id, {
-    // Add safari_web_id for web push configuration
-    // Ensure this is correctly set in your OneSignal dashboard and environment variables
-    safari_web_id: import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID || "YOUR_DEFAULT_SAFARI_WEB_ID",
-  });
+  // Initialize OneSignal for authenticated users
+  useOneSignal(user?.id);
 
   // Log OneSignal initialization status
   useEffect(() => {
