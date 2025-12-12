@@ -1,23 +1,27 @@
-import { useEffect, useRef } from 'react';
-import OneSignal from 'react-onesignal';
+import { useEffect } from 'react';
 
 let isInitialized = false;
 
 export function useOneSignal(userId?: number) {
-  const hasLoggedIn = useRef(false);
-
   useEffect(() => {
-    const initializeOneSignal = async () => {
-      try {
-        const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
-        
-        if (!appId || appId === 'YOUR_ONESIGNAL_APP_ID') {
-          console.log('OneSignal: App ID not configured, skipping initialization');
-          return;
-        }
+    const appId = (import.meta.env.VITE_ONESIGNAL_APP_ID as string) || '';
+    
+    console.log('[OneSignal] Hook triggered, userId:', userId, 'appId:', appId ? appId.substring(0, 8) + '...' : 'NOT SET');
+    
+    if (!appId || appId === 'YOUR_ONESIGNAL_APP_ID') {
+      console.log('[OneSignal] App ID not configured');
+      return;
+    }
 
+    const loadAndInitOneSignal = async () => {
+      try {
         if (!isInitialized) {
-          console.log('OneSignal: Initializing with App ID:', appId.substring(0, 8) + '...');
+          console.log('[OneSignal] Loading SDK...');
+          
+          const OneSignalModule = await import('react-onesignal');
+          const OneSignal = OneSignalModule.default;
+          
+          console.log('[OneSignal] Initializing with appId:', appId.substring(0, 8) + '...');
           
           await OneSignal.init({
             appId: appId,
@@ -25,41 +29,35 @@ export function useOneSignal(userId?: number) {
           });
           
           isInitialized = true;
-          console.log('OneSignal: Initialized successfully');
-
-          OneSignal.Notifications.addEventListener('permissionChange', (granted: boolean) => {
-            console.log('OneSignal: Permission changed to:', granted);
-          });
-
-          OneSignal.Notifications.addEventListener('click', (event: any) => {
-            console.log('OneSignal: Notification clicked:', event);
-          });
+          console.log('[OneSignal] Initialized successfully!');
         }
-
-        if (userId && !hasLoggedIn.current) {
-          console.log('OneSignal: Logging in user:', userId);
-          await OneSignal.login(userId.toString());
-          hasLoggedIn.current = true;
-          console.log('OneSignal: User logged in successfully:', userId);
+        
+        if (userId) {
+          console.log('[OneSignal] Setting user ID:', userId);
           
-          await OneSignal.Slidedown.promptPush();
-          console.log('OneSignal: Permission prompt shown');
+          const OneSignalModule = await import('react-onesignal');
+          const OneSignal = OneSignalModule.default;
+          
+          try {
+            await OneSignal.login(userId.toString());
+            console.log('[OneSignal] User logged in:', userId);
+          } catch (loginErr) {
+            console.error('[OneSignal] Login error:', loginErr);
+          }
+          
+          try {
+            console.log('[OneSignal] Prompting for push permission...');
+            await OneSignal.Slidedown.promptPush();
+            console.log('[OneSignal] Push prompt shown');
+          } catch (promptErr) {
+            console.log('[OneSignal] Push prompt not shown (may already be granted or blocked):', promptErr);
+          }
         }
       } catch (error) {
-        console.error('OneSignal initialization error:', error);
+        console.error('[OneSignal] Error:', error);
       }
     };
 
-    initializeOneSignal();
-  }, [userId]);
-
-  useEffect(() => {
-    return () => {
-      if (!userId && hasLoggedIn.current) {
-        OneSignal.logout().catch(console.error);
-        hasLoggedIn.current = false;
-        console.log('OneSignal: User logged out');
-      }
-    };
+    loadAndInitOneSignal();
   }, [userId]);
 }
