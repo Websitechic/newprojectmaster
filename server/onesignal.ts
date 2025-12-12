@@ -34,17 +34,35 @@ export async function sendOneSignalNotification(
   url?: string,
   data?: any
 ): Promise<void> {
-  console.log('📲 sendOneSignalNotification called:', { userId, title, messagePreview: message.substring(0, 50) });
+  console.log('\n╔════════════════════════════════════════════════════════════════╗');
+  console.log('║           ONESIGNAL NOTIFICATION SERVICE CALLED                ║');
+  console.log('╚════════════════════════════════════════════════════════════════╝');
+  console.log('📲 Input Parameters:');
+  console.log(`   - User ID(s): ${Array.isArray(userId) ? userId.join(', ') : userId}`);
+  console.log(`   - Title: "${title}"`);
+  console.log(`   - Message Preview: "${message.substring(0, 50)}..."`);
+  console.log(`   - URL: ${url || 'none'}`);
+  console.log(`   - Data: ${data ? JSON.stringify(data) : 'none'}`);
+  
+  console.log('\n🔧 Configuration Check:');
+  console.log(`   - App ID Exists: ${!!ONESIGNAL_APP_ID}`);
+  console.log(`   - App ID Valid: ${ONESIGNAL_APP_ID !== 'YOUR_ONESIGNAL_APP_ID'}`);
+  console.log(`   - App ID Preview: ${ONESIGNAL_APP_ID ? ONESIGNAL_APP_ID.substring(0, 8) + '...' : 'NOT SET'}`);
+  console.log(`   - REST API Key Exists: ${!!ONESIGNAL_REST_API_KEY}`);
+  console.log(`   - REST API Key Valid: ${ONESIGNAL_REST_API_KEY !== 'YOUR_ONESIGNAL_REST_API_KEY'}`);
+  console.log(`   - REST API Key Preview: ${ONESIGNAL_REST_API_KEY ? ONESIGNAL_REST_API_KEY.substring(0, 12) + '...' : 'NOT SET'}`);
   
   if (!ONESIGNAL_APP_ID || ONESIGNAL_APP_ID === 'YOUR_ONESIGNAL_APP_ID') {
-    console.warn('⚠️ OneSignal App ID not configured - skipping notification');
+    console.error('❌ OneSignal App ID not configured - ABORTING');
     return;
   }
   
   if (!ONESIGNAL_REST_API_KEY || ONESIGNAL_REST_API_KEY === 'YOUR_ONESIGNAL_REST_API_KEY') {
-    console.warn('⚠️ OneSignal REST API Key not configured - skipping notification');
+    console.error('❌ OneSignal REST API Key not configured - ABORTING');
     return;
   }
+  
+  console.log('✅ Configuration valid - proceeding with API call...');
 
   try {
     const userIds = Array.isArray(userId) ? userId : [userId];
@@ -68,15 +86,19 @@ export async function sendOneSignalNotification(
       ...notification,
     };
 
-    console.log('📤 Sending OneSignal notification:', {
-      userIds: userIds,
-      title,
-      messagePreview: message.substring(0, 50),
-      payloadKeys: Object.keys(payload),
-      payload: JSON.stringify(payload, null, 2)
-    });
+    console.log('\n📤 Preparing OneSignal API Request:');
+    console.log('   - Target User IDs:', userIds);
+    console.log('   - Title:', title);
+    console.log('   - Message Preview:', message.substring(0, 50) + '...');
+    console.log('   - Payload Keys:', Object.keys(payload));
+    console.log('   - Full Payload:', JSON.stringify(payload, null, 2));
 
-    console.log('🌐 Making request to OneSignal API...');
+    console.log('\n🌐 Making HTTP Request to OneSignal API...');
+    console.log('   - Endpoint: https://onesignal.com/api/v1/notifications');
+    console.log('   - Method: POST');
+    console.log('   - Auth Header: Basic ' + ONESIGNAL_REST_API_KEY.substring(0, 12) + '...');
+    
+    const startTime = Date.now();
     const response = await fetch('https://onesignal.com/api/v1/notifications', {
       method: 'POST',
       headers: {
@@ -85,40 +107,41 @@ export async function sendOneSignalNotification(
       },
       body: JSON.stringify(payload),
     });
+    const responseTime = Date.now() - startTime;
 
-    console.log('📥 OneSignal API response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok
-    });
+    console.log('\n📥 OneSignal API Response Received:');
+    console.log(`   - Response Time: ${responseTime}ms`);
+    console.log(`   - Status Code: ${response.status}`);
+    console.log(`   - Status Text: ${response.statusText}`);
+    console.log(`   - Success: ${response.ok}`);
 
     const responseText = await response.text();
-    console.log('📥 OneSignal API response:', {
-      status: response.status,
-      statusText: response.statusText,
-      body: responseText.substring(0, 500)
-    });
+    console.log('\n📄 Response Body:');
+    console.log(responseText.substring(0, 1000));
 
     if (!response.ok) {
-      console.error('❌ OneSignal API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: responseText
-      });
+      console.error('\n❌❌❌ ONESIGNAL API ERROR ❌❌❌');
+      console.error('   - HTTP Status:', response.status);
+      console.error('   - Status Text:', response.statusText);
+      console.error('   - Response Body:', responseText);
+      console.error('   - User IDs Attempted:', userIds);
+      console.error('═══════════════════════════════════════════════════════════════\n');
       throw new Error(`OneSignal API error: ${response.status} - ${responseText}`);
     }
 
     const result = JSON.parse(responseText);
-    console.log('✅ OneSignal notification sent successfully:', {
-      id: result.id,
-      recipients: result.recipients,
-      errors: result.errors
-    });
+    console.log('\n✅✅✅ ONESIGNAL NOTIFICATION SENT SUCCESSFULLY ✅✅✅');
+    console.log('   - Notification ID:', result.id);
+    console.log('   - Recipients Count:', result.recipients);
+    console.log('   - Errors:', result.errors || 'None');
+    console.log('   - User IDs:', userIds);
+    console.log('═══════════════════════════════════════════════════════════════\n');
   } catch (error) {
-    console.error('❌ Failed to send OneSignal notification:', {
-      error: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined
-    });
+    console.error('\n❌❌❌ ONESIGNAL SERVICE EXCEPTION ❌❌❌');
+    console.error('   - Error Type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('   - Error Message:', error instanceof Error ? error.message : error);
+    console.error('   - Stack Trace:', error instanceof Error ? error.stack : 'No stack available');
+    console.error('═══════════════════════════════════════════════════════════════\n');
     throw error; // Re-throw to let caller handle
   }
 }

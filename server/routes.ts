@@ -80,16 +80,24 @@ async function createNotification(userId: number, type: string, content: string,
     // Send to OneSignal using the proper service
     const title = type.replace(/_/g, ' ').toUpperCase();
     try {
-      console.log(`🚀 Attempting OneSignal notification for user ${userId}, type: ${type}`);
-      await sendOneSignalNotification(userId, title, content);
-      console.log(`✅ OneSignal notification sent for user ${userId}`);
+      console.log(`\n🚀 [createNotification] OneSignal call START:`);
+      console.log(`   - User ID: ${userId}`);
+      console.log(`   - Notification Type: ${type}`);
+      console.log(`   - Title: ${title}`);
+      console.log(`   - Content Preview: ${content.substring(0, 100)}`);
+      console.log(`   - Calling sendOneSignalNotification...`);
+      
+      const result = await sendOneSignalNotification(userId, title, content);
+      
+      console.log(`✅ [createNotification] OneSignal call SUCCESS`);
+      console.log(`   - Result:`, result);
     } catch (error) {
-      console.error(`❌ OneSignal notification failed for user ${userId}:`, {
-        error: error instanceof Error ? error.message : error,
-        type,
-        title,
-        contentPreview: content.substring(0, 100)
-      });
+      console.error(`\n❌ [createNotification] OneSignal call FAILED:`);
+      console.error(`   - User ID: ${userId}`);
+      console.error(`   - Type: ${type}`);
+      console.error(`   - Title: ${title}`);
+      console.error(`   - Error:`, error instanceof Error ? error.message : error);
+      console.error(`   - Stack:`, error instanceof Error ? error.stack : 'No stack trace');
     }
 
     // Send SSE notification if user is connected
@@ -5577,7 +5585,11 @@ End of Report
       }
 
       // Create notification for receiver - use 'message' type to trigger sound
-      console.log(`📧 Creating notification for direct message to user ${receiverId}`);
+      console.log(`\n========== DIRECT MESSAGE NOTIFICATION FLOW START ==========`);
+      console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
+      console.log(`📧 Receiver ID: ${receiverId}`);
+      console.log(`📧 Message Content: ${messageContent.substring(0, 50)}...`);
+      console.log(`📧 Creating database notification...`);
       
       try {
         await createNotification(
@@ -5587,28 +5599,33 @@ End of Report
           newMessage.id,
           "direct_message"
         );
-        console.log(`✅ Notification created successfully for user ${receiverId}`);
+        console.log(`✅ Database notification created successfully`);
       } catch (notifError) {
-        console.error(`❌ Error creating notification for user ${receiverId}:`, notifError);
+        console.error(`❌ Error creating database notification:`, notifError);
       }
 
-      // Also send direct OneSignal push for direct messages
-      console.log(`📧 Attempting to send OneSignal push notification to user ${receiverId}`);
+      // Send direct OneSignal push for direct messages
+      console.log(`\n📧 DIRECT ONESIGNAL PUSH ATTEMPT:`);
+      console.log(`   - Target User ID: ${receiverId}`);
+      console.log(`   - Title: "${user.name} sent you a message"`);
+      console.log(`   - Message Preview: "${messageContent.substring(0, 100)}"`);
+      
       try {
-        await sendOneSignalNotification(
+        const result = await sendOneSignalNotification(
           parseInt(receiverId),
           `${user.name} sent you a message`,
           messageContent.substring(0, 100)
         );
-        console.log(`✅ Direct OneSignal push sent successfully for message to user ${receiverId}`);
+        console.log(`✅ ONESIGNAL PUSH SENT SUCCESSFULLY`);
+        console.log(`   - Result:`, result);
       } catch (error) {
-        console.error(`❌ Failed to send OneSignal push for message to user ${receiverId}:`, {
-          error: error instanceof Error ? error.message : error,
-          stack: error instanceof Error ? error.stack : undefined
-        });
+        console.error(`\n❌ ONESIGNAL PUSH FAILED:`);
+        console.error(`   - Error Type: ${error instanceof Error ? error.constructor.name : typeof error}`);
+        console.error(`   - Error Message: ${error instanceof Error ? error.message : error}`);
+        console.error(`   - Error Stack:`, error instanceof Error ? error.stack : 'No stack trace');
       }
 
-      console.log(`📧 Direct message notification process completed for receiver: ${receiverId}`);
+      console.log(`========== DIRECT MESSAGE NOTIFICATION FLOW END ==========\n`);
 
       // Broadcast message to both sender and receiver via SSE
       const broadcastMessage = {
