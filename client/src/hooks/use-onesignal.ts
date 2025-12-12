@@ -66,9 +66,9 @@ export function useOneSignal(userId?: number) {
           await initPromise;
         }
         
-        // Check if we've already subscribed this user
+        // Check if we've already processed this user
         if (hasSubscribed.current) {
-          console.log('[OneSignal] ✓ User already subscribed in this session');
+          console.log('[OneSignal] ✓ User already processed in this session');
           return;
         }
         
@@ -76,16 +76,12 @@ export function useOneSignal(userId?: number) {
         const OneSignalModule2 = await import('react-onesignal');
         const OneSignal2 = OneSignalModule2.default;
         
-        // Check current permission state
-        const permission = await OneSignal2.Notifications.permission;
-        console.log('[OneSignal] 🔔 Current permission state:', permission);
-        
-        // Login user to OneSignal
+        // Login user to OneSignal first
         console.log('[OneSignal] 👤 Logging in user:', userId);
         await OneSignal2.login(userId.toString());
         console.log('[OneSignal] ✅ User logged in successfully');
         
-        // Check if user is already subscribed
+        // Check if push is supported
         const isPushSupported = await OneSignal2.Notifications.isPushSupported();
         console.log('[OneSignal] 📱 Push supported:', isPushSupported);
         
@@ -94,65 +90,75 @@ export function useOneSignal(userId?: number) {
           return;
         }
         
+        // Check current permission state
         const permissionNative = await OneSignal2.Notifications.permissionNative;
         console.log('[OneSignal] 🔐 Native permission:', permissionNative);
         
-        // If permission is default (not granted or denied), show prompt
+        // Handle permission states
         if (permissionNative === 'default') {
+          // Permission not yet requested - show prompt
           console.log('[OneSignal] 🔔 Requesting notification permission...');
           
           try {
-            // Use the slidedown prompt
             const didShow = await OneSignal2.Slidedown.promptPush();
             console.log('[OneSignal] 📊 Slidedown shown:', didShow);
             
-            // Wait a bit for user interaction
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Wait for user interaction
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
-            // Check permission again
+            // Check permission again after prompt
             const newPermission = await OneSignal2.Notifications.permissionNative;
             console.log('[OneSignal] 🔐 Permission after prompt:', newPermission);
             
             if (newPermission === 'granted') {
-              console.log('[OneSignal] ✅ Permission granted!');
+              console.log('[OneSignal] ✅ Permission granted by user!');
+              // Explicitly opt in after permission granted
+              await OneSignal2.User.PushSubscription.optIn();
+              console.log('[OneSignal] ✅ User opted in successfully');
               hasSubscribed.current = true;
             } else if (newPermission === 'denied') {
               console.warn('[OneSignal] ❌ Permission denied by user');
             }
           } catch (promptError) {
-            console.error('[OneSignal] ❌ Error showing permission prompt:', promptError);
+            console.error('[OneSignal] ❌ Error with permission prompt:', promptError);
           }
         } else if (permissionNative === 'granted') {
+          // Permission already granted - ensure subscription is active
           console.log('[OneSignal] ✅ Permission already granted');
-          hasSubscribed.current = true;
           
-          // Ensure user is subscribed
           try {
             const optedIn = await OneSignal2.User.PushSubscription.optedIn;
-            console.log('[OneSignal] 📊 User opted in:', optedIn);
+            console.log('[OneSignal] 📊 Current opt-in status:', optedIn);
             
             if (!optedIn) {
               console.log('[OneSignal] 🔄 Opting in user...');
               await OneSignal2.User.PushSubscription.optIn();
               console.log('[OneSignal] ✅ User opted in successfully');
+            } else {
+              console.log('[OneSignal] ✅ User already opted in');
             }
+            
+            hasSubscribed.current = true;
           } catch (optInError) {
             console.error('[OneSignal] ❌ Error opting in user:', optInError);
           }
         } else if (permissionNative === 'denied') {
           console.warn('[OneSignal] ⛔ Notifications blocked by user - cannot subscribe');
+          console.warn('[OneSignal] 💡 User needs to enable notifications in browser settings');
         }
         
-        // Get subscription ID if available
+        // Log final subscription status
         try {
           const subscriptionId = await OneSignal2.User.PushSubscription.id;
-          if (subscriptionId) {
-            console.log('[OneSignal] 🎯 Subscription ID:', subscriptionId.substring(0, 8) + '...');
-          } else {
-            console.log('[OneSignal] ⚠️ No subscription ID yet');
-          }
+          const token = await OneSignal2.User.PushSubscription.token;
+          const optedIn = await OneSignal2.User.PushSubscription.optedIn;
+          
+          console.log('[OneSignal] 📊 Final Status:');
+          console.log('   - Subscription ID:', subscriptionId ? subscriptionId.substring(0, 8) + '...' : 'None');
+          console.log('   - Has Token:', !!token);
+          console.log('   - Opted In:', optedIn);
         } catch (err) {
-          console.log('[OneSignal] ℹ️ Could not get subscription ID:', err);
+          console.log('[OneSignal] ℹ️ Could not get final status:', err);
         }
         
       } catch (error) {
