@@ -3741,21 +3741,36 @@ End of Report
       console.log(`📧 Message: ${content.substring(0, 50)}...`);
       
       try {
-        // Get all users except the sender
+        // Get all users except the sender (excluding clients)
         const allUsers = await db
-          .select({ id: users.id })
+          .select({ id: users.id, role: users.role })
           .from(users)
-          .where(ne(users.id, user.id));
+          .where(
+            and(
+              ne(users.id, user.id),
+              ne(users.role, 'client')
+            )
+          );
         
         const recipientIds = allUsers.map(u => u.id);
         console.log(`📧 Target recipients: ${recipientIds.length} users`);
         
         if (recipientIds.length > 0) {
+          // Extract clean content without reply quotes
+          let cleanContent = content;
+          if (cleanContent.startsWith('> Replying to')) {
+            const parts = cleanContent.split('\n\n');
+            cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : cleanContent;
+          }
+          if (cleanContent.startsWith('🔄 Forwarded:\n')) {
+            cleanContent = cleanContent.replace('🔄 Forwarded:\n', '');
+          }
+
           // Send OneSignal push to all recipients
           await sendOneSignalNotification(
             recipientIds,
-            `General Channel: ${sender.name}`,
-            content.substring(0, 100) + (content.length > 100 ? '...' : '')
+            `General Channel: ${user.name}`,
+            cleanContent.substring(0, 100) + (cleanContent.length > 100 ? '...' : '')
           );
           console.log(`✅ OneSignal push sent to ${recipientIds.length} users`);
         }
@@ -5640,13 +5655,22 @@ End of Report
       console.log(`   - Message Preview: "${messageContent.substring(0, 100)}"`);
       
       try {
-        const result = await sendOneSignalNotification(
+        // Extract clean content without reply quotes
+        let cleanContent = messageContent;
+        if (cleanContent.startsWith('> Replying to')) {
+          const parts = cleanContent.split('\n\n');
+          cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : cleanContent;
+        }
+        if (cleanContent.startsWith('🔄 Forwarded:\n')) {
+          cleanContent = cleanContent.replace('🔄 Forwarded:\n', '');
+        }
+
+        await sendOneSignalNotification(
           parseInt(receiverId),
           `${user.name} sent you a message`,
-          messageContent.substring(0, 100)
+          cleanContent.substring(0, 100) + (cleanContent.length > 100 ? '...' : '')
         );
         console.log(`✅ ONESIGNAL PUSH SENT SUCCESSFULLY`);
-        console.log(`   - Result:`, result);
       } catch (error) {
         console.error(`\n❌ ONESIGNAL PUSH FAILED:`);
         console.error(`   - Error Type: ${error instanceof Error ? error.constructor.name : typeof error}`);
@@ -8299,15 +8323,39 @@ End of Report
         if (project.managerId && project.managerId !== user.id && !recipientIds.includes(project.managerId)) {
           recipientIds.push(project.managerId);
         }
+
+        // Add team leads and operations managers
+        const allUsers = await db
+          .select({ id: users.id, role: users.role, specialization: users.specialization })
+          .from(users);
+        
+        allUsers.forEach(u => {
+          const isTeamLead = u.role === 'team_lead';
+          const isOperationsManager = u.role === 'operations_manager' || u.specialization === 'operations_manager';
+          
+          if ((isTeamLead || isOperationsManager) && u.id !== user.id && !recipientIds.includes(u.id)) {
+            recipientIds.push(u.id);
+          }
+        });
         
         console.log(`📧 Target recipients: ${recipientIds.length} users - [${recipientIds.join(', ')}]`);
         
         if (recipientIds.length > 0) {
+          // Extract clean content without reply quotes
+          let cleanContent = content;
+          if (cleanContent.startsWith('> Replying to')) {
+            const parts = cleanContent.split('\n\n');
+            cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : cleanContent;
+          }
+          if (cleanContent.startsWith('🔄 Forwarded:\n')) {
+            cleanContent = cleanContent.replace('🔄 Forwarded:\n', '');
+          }
+
           // Send OneSignal push to all recipients
           await sendOneSignalNotification(
             recipientIds,
             `New message in ${project.name}`,
-            `${user.name}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`
+            `${user.name}: ${cleanContent.substring(0, 100)}${cleanContent.length > 100 ? '...' : ''}``
           );
           console.log(`✅ OneSignal push sent to ${recipientIds.length} team members`);
         } else {
@@ -8315,6 +8363,8 @@ End of Report
         }
       } catch (oneSignalError) {
         console.error(`❌ OneSignal team message notification failed:`, oneSignalError);
+      }
+      console.log(`========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);fication failed:`, oneSignalError);
       }
       console.log(`========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);
 
