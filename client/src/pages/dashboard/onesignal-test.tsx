@@ -28,28 +28,36 @@ export default function OneSignalTest() {
   const checkStatus = async () => {
     console.log('[OneSignal Test] Checking status...', { userId: user?.id });
     try {
-      const OneSignalModule = await import('react-onesignal');
-      const OneSignal = OneSignalModule.default;
+      if (typeof window.OneSignalDeferred === 'undefined') {
+        setStatus(prev => ({ 
+          ...prev, 
+          sdkLoaded: false,
+          userId: user?.id?.toString() || null 
+        }));
+        return;
+      }
 
-      const permission = await OneSignal.Notifications.permissionNative;
-      const isPushSupported = await OneSignal.Notifications.isPushSupported();
-      const subscriptionId = await OneSignal.User.PushSubscription.id;
-      const optedIn = await OneSignal.User.PushSubscription.optedIn;
+      window.OneSignalDeferred.push(async (OneSignal: any) => {
+        const permission = await OneSignal.Notifications.permissionNative;
+        const isPushSupported = OneSignal.Notifications.isPushSupported();
+        const subscriptionId = await OneSignal.User.PushSubscription.id;
+        const optedIn = await OneSignal.User.PushSubscription.optedIn;
 
-      console.log('[OneSignal Test] Status retrieved:', {
-        permission,
-        isPushSupported,
-        subscriptionId,
-        optedIn,
-        userId: user?.id
-      });
+        console.log('[OneSignal Test] Status retrieved:', {
+          permission,
+          isPushSupported,
+          subscriptionId,
+          optedIn,
+          userId: user?.id
+        });
 
-      setStatus({
-        sdkLoaded: true,
-        permission,
-        subscribed: optedIn,
-        subscriptionId,
-        userId: user?.id?.toString() || null,
+        setStatus({
+          sdkLoaded: true,
+          permission,
+          subscribed: optedIn,
+          subscriptionId,
+          userId: user?.id?.toString() || null,
+        });
       });
     } catch (error) {
       console.error('[OneSignal Test] Error checking OneSignal status:', error);
@@ -63,13 +71,12 @@ export default function OneSignalTest() {
 
   const requestPermission = async () => {
     try {
-      const OneSignalModule = await import('react-onesignal');
-      const OneSignal = OneSignalModule.default;
-
-      await OneSignal.Slidedown.promptPush();
-      
-      // Wait and check status
-      setTimeout(checkStatus, 2000);
+      window.OneSignalDeferred.push(async (OneSignal: any) => {
+        await OneSignal.Slidedown.promptPush();
+        
+        // Wait and check status
+        setTimeout(checkStatus, 2000);
+      });
     } catch (error) {
       console.error('Error requesting permission:', error);
     }
@@ -77,12 +84,11 @@ export default function OneSignalTest() {
 
   const optIn = async () => {
     try {
-      const OneSignalModule = await import('react-onesignal');
-      const OneSignal = OneSignalModule.default;
-
-      await OneSignal.User.PushSubscription.optIn();
-      
-      setTimeout(checkStatus, 1000);
+      window.OneSignalDeferred.push(async (OneSignal: any) => {
+        await OneSignal.User.PushSubscription.optIn();
+        
+        setTimeout(checkStatus, 1000);
+      });
     } catch (error) {
       console.error('Error opting in:', error);
     }
