@@ -48,6 +48,16 @@ export function useOneSignal(userId?: number) {
           }).then(() => {
             isInitialized = true;
             console.log('[OneSignal] ✅ SDK initialized successfully');
+          }).catch((error) => {
+            console.error('[OneSignal] ❌ Initialization failed:', error);
+            if (error.message && error.message.includes('not configured for web push')) {
+              console.error('[OneSignal] Please configure web push in your OneSignal dashboard:');
+              console.error('[OneSignal] 1. Go to https://dashboard.onesignal.com');
+              console.error('[OneSignal] 2. Select your app');
+              console.error('[OneSignal] 3. Go to Settings > Platforms > Web Push');
+              console.error('[OneSignal] 4. Configure your site URL and enable web push');
+            }
+            throw error;
           });
           
           await initPromise;

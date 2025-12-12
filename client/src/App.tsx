@@ -57,6 +57,8 @@ import GeneralChannelPage from "@/pages/dashboard/general-channel";
 import ReviewLinks from "@/pages/dashboard/review-links";
 import ProjectBriefing from "@/pages/dashboard/project-briefing";
 
+// Lazy load OneSignalTest component
+const OneSignalTest = lazy(() => import("@/pages/onesignal-test"));
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -87,8 +89,12 @@ function GlobalNotificationListener() {
   const { showNotification } = useBrowserNotification();
   const audioUnlockedRef = useRef(false);
 
-  // Initialize OneSignal for authenticated users
-  useOneSignal(user?.id);
+  // Initialize OneSignal for authenticated users with web push configuration
+  useOneSignal(user?.id, {
+    // Add safari_web_id for web push configuration
+    // Ensure this is correctly set in your OneSignal dashboard and environment variables
+    safari_web_id: import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID || "YOUR_DEFAULT_SAFARI_WEB_ID",
+  });
 
   // Log OneSignal initialization status
   useEffect(() => {
@@ -524,6 +530,7 @@ function Router() {
           <Route path="/dashboard/kpi-report" component={KPIReportPage} />
           <Route path="/dashboard/communication-tracker" component={CommunicationTrackerPage} />
           <Route path="/dashboard/report-management" component={ReportManagement} />
+          <Route path="/dashboard/onesignal-test" component={OneSignalTest} />
           <PrivateRoute path="/dashboard/send-complaint" component={SendComplaint} />
           <PrivateRoute path="/dashboard/report-issues" component={ReportIssues} />
           <Route component={NotFound} />
