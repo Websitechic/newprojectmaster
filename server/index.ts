@@ -12,7 +12,6 @@ import { initializeEmailService } from "./services/email";
 import { WebSocketServer } from "ws";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { db } from "../db";
-import { sql } from "drizzle-orm";
 
 // Declare global SSE clients map
 declare global {
@@ -87,23 +86,12 @@ let emailServiceInitialized = false;
   try {
     log("Starting server initialization...");
 
-    // Check database connection first
-    try {
-      await db.execute(sql`SELECT 1`);
-      console.log("Database connection verified");
-    } catch (dbError: any) {
-      console.error("Database connection failed:", dbError.message);
-      console.error("Please check your DATABASE_URL environment variable");
-      process.exit(1);
-    }
-
     // Auto-migrate database on startup
     try {
       await migrate(db, { migrationsFolder: "./migrations" });
       console.log("Database migrations completed successfully");
     } catch (error: any) {
       console.error("Database migration error:", error.message || error);
-      console.error("Full error:", error);
       // Only continue if it's a duplicate column/constraint error (already applied)
       const isDuplicateError = error.message && (
         error.message.includes('already exists') || 
@@ -153,23 +141,15 @@ let emailServiceInitialized = false;
 
     // WebSocket upgrade handling with improved error management and path filtering
     server.on('upgrade', (request, socket, head) => {
-      try {
-        const url = new URL(request.url!, `http://${request.headers.host}`);
+      const url = new URL(request.url!, `http://${request.headers.host}`);
 
-        // Only handle our application WebSocket upgrades, let Vite handle HMR WebSocket
-        if (url.pathname !== '/api/ws') {
-          console.log('Ignoring non-application WebSocket upgrade:', url.pathname);
-          return;
-        }
-
-        console.log('Application WebSocket upgrade request received for /api/ws');
-      } catch (urlError) {
-        console.error('Error parsing WebSocket upgrade URL:', urlError);
-        if (socket && !socket.destroyed) {
-          socket.destroy();
-        }
+      // Only handle our application WebSocket upgrades, let Vite handle HMR WebSocket
+      if (url.pathname !== '/api/ws') {
+        console.log('Ignoring non-application WebSocket upgrade:', url.pathname);
         return;
       }
+
+      console.log('Application WebSocket upgrade request received for /api/ws');
 
       // Set upgrade timeout with longer duration
       const upgradeTimeout = setTimeout(() => {

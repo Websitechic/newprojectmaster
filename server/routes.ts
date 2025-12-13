@@ -86,9 +86,9 @@ async function createNotification(userId: number, type: string, content: string,
       console.log(`   - Title: ${title}`);
       console.log(`   - Content Preview: ${content.substring(0, 100)}`);
       console.log(`   - Calling sendOneSignalNotification...`);
-      
+
       const result = await sendOneSignalNotification(userId, title, content);
-      
+
       console.log(`✅ [createNotification] OneSignal call SUCCESS`);
       console.log(`   - Result:`, result);
     } catch (error) {
@@ -1629,12 +1629,12 @@ export function registerRoutes(app: Express): Server {
         // Calculate total time from sessions (same as Total Time Worked card)
         let totalTimeInSeconds = 0;
         const uniqueTaskIds = new Set();
-        
+
         daySessions.forEach(session => {
           if (session.taskId) {
             uniqueTaskIds.add(session.taskId);
           }
-          
+
           let sessionDuration = 0;
           if (session.duration) {
             sessionDuration = session.duration;
@@ -1643,7 +1643,7 @@ export function registerRoutes(app: Express): Server {
             const now = new Date();
             sessionDuration = Math.floor((now.getTime() - new Date(session.startTime).getTime()) / 1000);
           }
-          
+
           if (sessionDuration > 0) {
             totalTimeInSeconds += sessionDuration;
           }
@@ -1669,11 +1669,11 @@ export function registerRoutes(app: Express): Server {
         // Get first and last session times for workday span
         let workdayStart = null;
         let workdayEnd = null;
-        
+
         if (daySessions.length > 0) {
           const sessionStarts = daySessions.map(s => new Date(s.startTime)).sort((a, b) => a.getTime() - b.getTime());
           workdayStart = sessionStarts[0].toISOString();
-          
+
           // Find the latest end time
           const sessionEnds = daySessions.map(s => {
             if (s.endTime) {
@@ -1683,7 +1683,7 @@ export function registerRoutes(app: Express): Server {
               return new Date();
             }
           }).sort((a, b) => b.getTime() - a.getTime());
-          
+
           workdayEnd = sessionEnds[0].toISOString();
         }
 
@@ -3736,48 +3736,33 @@ End of Report
       }
 
       // Send OneSignal push notifications to all users (except sender)
-      console.log('\n========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW ==========');
-      console.log('Sender:', user.name, '(ID:', user.id + ')');
-      console.log('Message:', content.substring(0, 50) + '...');
-      
-      try {
-        // Get all users except the sender (excluding clients)
-        const allUsers = await db
-          .select({ id: users.id, role: users.role })
-          .from(users)
-          .where(
-            and(
-              ne(users.id, user.id),
-              ne(users.role, 'client')
-            )
-          );
-        
-        const recipientIds = allUsers.map(u => u.id);
-        console.log('Target recipients:', recipientIds.length, 'users');
-        
-        if (recipientIds.length > 0) {
-          // Extract clean content without reply quotes
-          let cleanContent = content;
-          if (cleanContent.startsWith('> Replying to')) {
-            const parts = cleanContent.split('\n\n');
-            cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : cleanContent;
-          }
-          if (cleanContent.startsWith('Forwarded:\n')) {
-            cleanContent = cleanContent.replace('Forwarded:\n', '');
-          }
+      console.log(`\n========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW ==========`);
+      console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
+      console.log(`📧 Message: ${content.substring(0, 50)}...`);
 
+      try {
+        // Get all users except the sender
+        const allUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(ne(users.id, user.id));
+
+        const recipientIds = allUsers.map(u => u.id);
+        console.log(`📧 Target recipients: ${recipientIds.length} users`);
+
+        if (recipientIds.length > 0) {
           // Send OneSignal push to all recipients
           await sendOneSignalNotification(
             recipientIds,
-            'General Channel: ' + user.name,
-            cleanContent.substring(0, 100) + (cleanContent.length > 100 ? '...' : '')
+            `General Channel: ${sender.name}`,
+            content.substring(0, 100) + (content.length > 100 ? '...' : '')
           );
-          console.log('OneSignal push sent to', recipientIds.length, 'users');
+          console.log(`✅ OneSignal push sent to ${recipientIds.length} users`);
         }
       } catch (oneSignalError) {
-        console.error('OneSignal general channel notification failed:', oneSignalError);
+        console.error(`❌ OneSignal general channel notification failed:`, oneSignalError);
       }
-      console.log('========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW END ==========\n');
+      console.log(`========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW END ==========\n`);
 
       res.json(messageWithSender);
     } catch (error) {
@@ -4881,7 +4866,7 @@ End of Report
         return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
       }
 
-      if (!name.trim() || !email.trim() || !detailedExplanation.trim()) {
+      if (!name.trim() || !email.trim() ||!detailedExplanation.trim()) {
         return res.status(400).json({ error: "Fields cannot be empty" });
       }
 
@@ -4930,7 +4915,6 @@ End of Report
         console.log(`Notifications sent to ${operationsManagers.length} operations managers`);
       } catch (notificationError) {
         console.error("Error creating staff complaint notifications:", notificationError);
-        // Continue execution even if notification fails
       }
 
       res.json({ success: true, complaintId: newComplaint.id });
@@ -5009,7 +4993,6 @@ End of Report
           );
         } catch (notificationError) {
           console.error("Error creating notification for staff complaint update:", notificationError);
-          // Continue execution even if notification fails
         }
       }
 
@@ -5634,7 +5617,7 @@ End of Report
       console.log(`📧 Receiver ID: ${receiverId}`);
       console.log(`📧 Message Content: ${messageContent.substring(0, 50)}...`);
       console.log(`📧 Creating database notification...`);
-      
+
       try {
         await createNotification(
           parseInt(receiverId),
@@ -5653,24 +5636,15 @@ End of Report
       console.log(`   - Target User ID: ${receiverId}`);
       console.log(`   - Title: "${user.name} sent you a message"`);
       console.log(`   - Message Preview: "${messageContent.substring(0, 100)}"`);
-      
-      try {
-        // Extract clean content without reply quotes
-        let cleanContent = messageContent;
-        if (cleanContent.startsWith('> Replying to')) {
-          const parts = cleanContent.split('\n\n');
-          cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : cleanContent;
-        }
-        if (cleanContent.startsWith('🔄 Forwarded:\n')) {
-          cleanContent = cleanContent.replace('🔄 Forwarded:\n', '');
-        }
 
-        await sendOneSignalNotification(
+      try {
+        const result = await sendOneSignalNotification(
           parseInt(receiverId),
           `${user.name} sent you a message`,
-          cleanContent.substring(0, 100) + (cleanContent.length > 100 ? '...' : '')
+          messageContent.substring(0, 100)
         );
         console.log(`✅ ONESIGNAL PUSH SENT SUCCESSFULLY`);
+        console.log(`   - Result:`, result);
       } catch (error) {
         console.error(`\n❌ ONESIGNAL PUSH FAILED:`);
         console.error(`   - Error Type: ${error instanceof Error ? error.constructor.name : typeof error}`);
@@ -6881,7 +6855,7 @@ End of Report
         return res.status(403).json({ error: "Only project managers, operations managers, team leads, customer support officers, and Replit developers can update extension requests" });
       }
 
-      if (!status || !["approved", "declined"].includes(status)) {
+      if (!status || (status !== "approved" && status !== "declined")) {
         return res.status(400).json({ error: "Valid status (approved or declined) is required" });
       }
 
@@ -8267,7 +8241,7 @@ End of Report
 
       // Broadcast via SSE to all connected clients (important: send to ALL users, not just project members)
       console.log(`📢 Broadcasting team message to all ${global.sseClients ? global.sseClients.size : 0} connected SSE clients`);
-      
+
       if (global.sseClients && global.sseClients.size > 0) {
         const sseMessage = {
           type: "project_message",
@@ -8305,7 +8279,7 @@ End of Report
       console.log(`\n========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW ==========`);
       console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
       console.log(`📧 Project: ${project.name} (ID: ${projectId})`);
-      
+
       try {
         // Get all project members except the sender
         const projectMembersList = await db
@@ -8317,45 +8291,21 @@ End of Report
               ne(projectMembers.userId, user.id)
             )
           );
-        
+
         // Also include project manager if not the sender
         const recipientIds: number[] = projectMembersList.map(m => m.userId);
         if (project.managerId && project.managerId !== user.id && !recipientIds.includes(project.managerId)) {
           recipientIds.push(project.managerId);
         }
 
-        // Add team leads and operations managers
-        const allUsers = await db
-          .select({ id: users.id, role: users.role, specialization: users.specialization })
-          .from(users);
-        
-        allUsers.forEach(u => {
-          const isTeamLead = u.role === 'team_lead';
-          const isOperationsManager = u.role === 'operations_manager' || u.specialization === 'operations_manager';
-          
-          if ((isTeamLead || isOperationsManager) && u.id !== user.id && !recipientIds.includes(u.id)) {
-            recipientIds.push(u.id);
-          }
-        });
-        
         console.log(`📧 Target recipients: ${recipientIds.length} users - [${recipientIds.join(', ')}]`);
-        
-        if (recipientIds.length > 0) {
-          // Extract clean content without reply quotes
-          let cleanContent = content;
-          if (cleanContent.startsWith('> Replying to')) {
-            const parts = cleanContent.split('\n\n');
-            cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : cleanContent;
-          }
-          if (cleanContent.startsWith('🔄 Forwarded:\n')) {
-            cleanContent = cleanContent.replace('🔄 Forwarded:\n', '');
-          }
 
+        if (recipientIds.length > 0) {
           // Send OneSignal push to all recipients
           await sendOneSignalNotification(
             recipientIds,
             `New message in ${project.name}`,
-            `${user.name}: ${cleanContent.substring(0, 100)}${cleanContent.length > 100 ? '...' : ''}``
+            `${user.name}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`
           );
           console.log(`✅ OneSignal push sent to ${recipientIds.length} team members`);
         } else {
@@ -8363,8 +8313,6 @@ End of Report
         }
       } catch (oneSignalError) {
         console.error(`❌ OneSignal team message notification failed:`, oneSignalError);
-      }
-      console.log(`========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);fication failed:`, oneSignalError);
       }
       console.log(`========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);
 
@@ -9462,7 +9410,7 @@ End of Report
         } else {
           tasksList = [];
         }
-      } else if (user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "team_lead") {
+      } else if (user.role === "operations_manager" || user.specialization ==="operations_manager" || user.role === "team_lead") {
         // Operations managers and team leads see all tasks
         tasksList = await db
           .select()
