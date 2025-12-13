@@ -25,7 +25,13 @@ interface OneSignalNotification {
   include_player_ids?: string[];
   url?: string;
   data?: any;
-  filters?: Array<{ field: string; relation: string; value: string }>;
+  filters?: Array<{ 
+    field?: string; 
+    relation?: string; 
+    value?: string;
+    operator?: string;
+    filters?: Array<{ field: string; relation: string; value: string }>;
+  }>;
 }
 
 export async function sendOneSignalNotification(
@@ -82,10 +88,15 @@ export async function sendOneSignalNotification(
       headings: { en: title },
       contents: { en: message },
       include_external_user_ids: validUserIds.map(id => id.toString()),
-      // Target only mobile devices (iOS and Android)
-      // Remove this filter if you want to include web push
+      // Target only Android and iOS devices
       filters: [
-        { field: "device_type", relation: "!=", value: "0" } // Exclude web (0 = web)
+        {
+          operator: "OR",
+          filters: [
+            { field: "device_type", relation: "=", value: "1" }, // iOS
+            { field: "device_type", relation: "=", value: "2" }  // Android
+          ]
+        }
       ]
     };
 
