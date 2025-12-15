@@ -87,8 +87,10 @@ export async function sendOneSignalNotification(
     const notification: OneSignalNotification = {
       headings: { en: title },
       contents: { en: message },
+      // CRITICAL: Only send to specified user IDs via external_user_id
       include_external_user_ids: validUserIds.map(id => id.toString()),
-      // Target only Android and iOS devices
+      // Note: Device type filter is applied AFTER user ID filter
+      // This means only specified users on iOS/Android will receive it
       filters: [
         {
           operator: "OR",
