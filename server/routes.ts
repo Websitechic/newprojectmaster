@@ -5612,7 +5612,7 @@ End of Report
       }
 
       // Create notification for receiver - use 'message' type to trigger sound
-      console.log(`\n========== DIRECT MESSAGE NOTIFICATION FLOW START ==========`);
+      console.log(`\n========== DIRECT MESSAGE NOTIFICATION FLOW ==========`);
       console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
       console.log(`📧 Receiver ID: ${receiverId}`);
       console.log(`📧 Message Content: ${messageContent.substring(0, 50)}...`);
@@ -5639,9 +5639,9 @@ End of Report
 
       try {
         const result = await sendOneSignalNotification(
-          parseInt(receiverId),
-          `${user.name} sent you a message`,
-          messageContent.substring(0, 100)
+          [parseInt(receiverId)], // Pass as array to ensure only this user receives it
+          `Direct Message from ${user.name}`,
+          messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : '')
         );
         console.log(`✅ ONESIGNAL PUSH SENT SUCCESSFULLY`);
         console.log(`   - Result:`, result);
@@ -5786,8 +5786,7 @@ End of Report
         screenshotUrl = `/uploads/leave-proof/${req.file.filename}`;
       }
 
-      const [newReport] = await db
-        .insert(issueReports)
+      const [newReport] = await db        .insert(issueReports)
         .values({
           title: title.trim(),
           description: description.trim(),
@@ -6857,10 +6856,6 @@ End of Report
 
       if (!status || (status !== "approved" && status !== "declined")) {
         return res.status(400).json({ error: "Valid status (approved or declined) is required" });
-      }
-
-      if (!decisionReason) {
-        return res.status(400).json({ error: "Decision reason is required" });
       }
 
       // Check if request exists
@@ -8186,7 +8181,6 @@ End of Report
           .from(users)
           .where(
             or(
-              eq(users.id, project.managerId),
               eq(users.role, "team_lead"),
               eq(users.role, "operations_manager"),
               eq(users.specialization, "operations_manager")
@@ -8279,42 +8273,66 @@ End of Report
       console.log(`\n========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW ==========`);
       console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
       console.log(`📧 Project: ${project.name} (ID: ${projectId})`);
+      console.log(`📧 Message: ${content.substring(0, 50)}...`);
 
       try {
-        // Get all project members except the sender
-        const projectMembersList = await db
+        // Get all project members
+        const allProjectMembers = await db
           .select({ userId: projectMembers.userId })
           .from(projectMembers)
           .where(
             and(
               eq(projectMembers.projectId, projectId),
-              ne(projectMembers.userId, user.id)
+              eq(projectMembers.invitationStatus, "accepted")
             )
           );
 
-        // Also include project manager if not the sender
-        const recipientIds: number[] = projectMembersList.map(m => m.userId);
-        if (project.managerId && project.managerId !== user.id && !recipientIds.includes(project.managerId)) {
-          recipientIds.push(project.managerId);
+        const memberIds = allProjectMembers.map(m => m.userId);
+
+        // Add project manager if not already in the list
+        if (project.managerId && !memberIds.includes(project.managerId)) {
+          memberIds.push(project.managerId);
         }
 
-        console.log(`📧 Target recipients: ${recipientIds.length} users - [${recipientIds.join(', ')}]`);
+        // Get all team leads and operations managers
+        const teamLeadsAndOpsManagers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(
+            or(
+              eq(users.role, 'team_lead'),
+              eq(users.role, 'operations_manager'),
+              eq(users.specialization, 'operations_manager')
+            )
+          );
+
+        // Add team leads and ops managers if not already in the list
+        teamLeadsAndOpsManagers.forEach(u => {
+          if (!memberIds.includes(u.id)) {
+            memberIds.push(u.id);
+          }
+        });
+
+        // Filter out the sender - CRITICAL: Only send to project members, not all users
+        const recipientIds = memberIds.filter(id => id !== user.id);
+
+        console.log(`📧 Total project members: ${memberIds.length}`);
+        console.log(`📧 Recipients (excluding sender): ${recipientIds.length}`);
+        console.log(`📧 Recipient IDs: ${recipientIds.join(', ')}`);
 
         if (recipientIds.length > 0) {
-          // Send OneSignal push to all recipients
+          // Send OneSignal push to ONLY the specific project members
           await sendOneSignalNotification(
-            recipientIds,
-            `New message in ${project.name}`,
-            `${user.name}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`
+            recipientIds, // Array of specific user IDs
+            `Team Chat: ${user.name} in ${project.name}`,
+            content.substring(0, 100) + (content.length > 100 ? '...' : '')
           );
-          console.log(`✅ OneSignal push sent to ${recipientIds.length} team members`);
-        } else {
-          console.log(`⚠️ No recipients to notify (sender is the only member)`);
+          console.log(`✅ OneSignal push sent to ${recipientIds.length} project members ONLY`);
         }
       } catch (oneSignalError) {
-        console.error(`❌ OneSignal team message notification failed:`, oneSignalError);
+        console.error(`❌ OneSignal team chat notification failed:`, oneSignalError);
       }
-      console.log(`========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);
+      console.log(`========== TEAM CHAT ONESIGNAL NOTIFICATION FLOW END ==========\n`);
 
       // Construct message with sender info for response
       const messageWithSender = {
