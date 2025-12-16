@@ -221,9 +221,9 @@ export function Header() {
   const totalUnread = unreadMessages.reduce((sum, msg) => sum + msg.unreadCount, 0);
 
   return (
-    <header className="h-16 bg-background border-b border-border px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
-      {/* Left Section - Audio Unlock Status */}
-      <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
+    <header className="h-14 sm:h-16 bg-background border-b border-border px-3 sm:px-4 lg:px-6 flex items-center justify-between w-full max-w-none">
+      {/* Left Section - Audio Unlock Status (hidden on mobile) */}
+      <div className="hidden md:flex flex-1 max-w-none lg:max-w-md">
         {showUnlockButton && (
           <Button
             variant="ghost"
@@ -235,41 +235,46 @@ export function Header() {
             }}
             className={`text-xs ${isUnlocked ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground animate-pulse'}`}
           >
-            {isUnlocked ? '✓ Sound Enabled' : '🔊 Click to Enable Notification Sound'}
+            {isUnlocked ? '✓ Sound Enabled' : '🔊 Click to Enable Sound'}
           </Button>
         )}
       </div>
 
+      {/* Mobile spacer to push items to right */}
+      <div className="flex-1 md:hidden ml-12"></div>
+
       {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
         {/* Theme Toggle */}
-        <ThemeToggle />
+        <div className="hidden sm:block">
+          <ThemeToggle />
+        </div>
 
         {/* Unread Messages Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="relative">
-              <MessageSquare className="w-5 h-5" />
+            <Button variant="ghost" size="sm" className="relative p-2">
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
               {totalUnread > 0 && (
                 <Badge 
                   variant="destructive" 
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  className="absolute -top-0.5 -right-0.5 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-xs"
                 >
                   {totalUnread > 9 ? "9+" : totalUnread}
                 </Badge>
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-72 p-0">
-            <div className="px-2 py-1.5 text-sm font-semibold border-b">
+          <DropdownMenuContent align="end" className="w-64 sm:w-72 p-0 mr-2">
+            <div className="px-3 py-2 text-xs sm:text-sm font-semibold border-b">
               Unread Messages
             </div>
             {unreadMessages.length === 0 ? (
-              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+              <div className="px-3 py-4 text-center text-xs sm:text-sm text-muted-foreground">
                 No unread messages
               </div>
             ) : (
-              <ScrollArea className="h-96">
+              <ScrollArea className="h-72 sm:h-96">
                 <div className="p-1">
                   {unreadMessages.map((message) => (
                     <DropdownMenuItem
@@ -277,14 +282,14 @@ export function Header() {
                       onClick={() => handleMessageClick(message)}
                       className="cursor-pointer"
                     >
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-medium">{message.name}</span>
-                          <span className="text-xs text-muted-foreground">
+                      <div className="flex items-center justify-between w-full gap-2">
+                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                          <span className="font-medium text-xs sm:text-sm truncate">{message.name}</span>
+                          <span className="text-xs text-muted-foreground truncate">
                             {message.type === "team_chat" ? "Team Chat" : message.type === "direct_message" ? "Direct Message" : "General Channel"}
                           </span>
                         </div>
-                        <Badge variant="destructive" className="ml-2">
+                        <Badge variant="destructive" className="ml-2 flex-shrink-0 text-xs">
                           {message.unreadCount}
                         </Badge>
                       </div>
@@ -304,18 +309,18 @@ export function Header() {
         {/* Profile Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">
+            <Button variant="ghost" className="relative h-7 w-7 sm:h-8 sm:w-8 rounded-full p-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs sm:text-sm font-medium">
                   {user?.name?.charAt(0) || 'U'}
                 </span>
               </div>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuContent className="w-48 sm:w-56 mr-2" align="end" forceMount>
             <div className="flex flex-col space-y-1 p-2">
-              <p className="text-sm font-medium leading-none">{user?.name}</p>
-              <p className="text-xs leading-none text-muted-foreground capitalize">
+              <p className="text-xs sm:text-sm font-medium leading-none truncate">{user?.name}</p>
+              <p className="text-xs leading-none text-muted-foreground capitalize truncate">
                 {user?.role === 'client' ?
                   `${user?.clientType?.replace('_', ' ') || 'Client'}` :
                   user?.role?.replace('_', ' ')
@@ -323,13 +328,13 @@ export function Header() {
               </p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
+            <DropdownMenuItem className="text-xs sm:text-sm">
+              <User className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              className="text-destructive focus:text-destructive"
+              className="text-destructive focus:text-destructive text-xs sm:text-sm"
               onClick={handleLogout}
             >
               Logout

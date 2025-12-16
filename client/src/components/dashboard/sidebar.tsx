@@ -75,17 +75,17 @@ function SidebarItem({ icon, label, href, active, badge, external, onClick, hasU
   const content = (
     <div
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative cursor-pointer",
+        "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 relative cursor-pointer",
         active
           ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 shadow-sm"
           : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
       )}
       onClick={onClick}
     >
-      <div className={cn("w-5 h-5 flex-shrink-0", active ? "text-purple-700 dark:text-purple-300" : "text-gray-500 dark:text-gray-400")}>
+      <div className={cn("w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0", active ? "text-purple-700 dark:text-purple-300" : "text-gray-500 dark:text-gray-400")}>
         {icon}
       </div>
-      <span className="flex-1 truncate">{label}</span>
+      <span className="flex-1 truncate text-left">{label}</span>
       {((badge && badge > 0) || hasUpdate) ? (
         <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
       ) : null}
@@ -737,20 +737,20 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
   const SidebarContent = () => (
     <>
       {/* Logo Section */}
-      <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">W</span>
+      <div className="flex-shrink-0 px-3 sm:px-4 py-3 sm:py-4 border-b border-border">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-base sm:text-lg">W</span>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-lg font-bold text-foreground truncate">Websitechic</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base sm:text-lg font-bold text-foreground truncate">Websitechic</h1>
             <p className="text-xs text-muted-foreground uppercase tracking-wide truncate">Digital Agency</p>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-2 sm:px-4 py-4 sm:py-6 overflow-y-auto">
+      {/* Navigation - Scrollable */}
+      <nav className="flex-1 overflow-y-auto px-2 sm:px-3 py-3 sm:py-4">
         <div className="space-y-1">
           {menuItems.map((item) => {
             const { key, ...itemProps } = item;
@@ -788,21 +788,21 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
         </div>
       </nav>
 
-      {/* User Profile */}
-      <div className="px-2 sm:px-4 py-4 border-t border-border">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-accent">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-primary-foreground text-sm font-medium">
+      {/* User Profile - Fixed at bottom */}
+      <div className="flex-shrink-0 px-2 sm:px-3 py-3 border-t border-border">
+        <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 rounded-lg bg-accent">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-primary-foreground text-xs sm:text-sm font-medium">
               {user?.name?.charAt(0) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+            <p className="text-xs sm:text-sm font-medium text-foreground truncate">{user?.name}</p>
             <p className="text-xs text-muted-foreground capitalize truncate">
               {user?.role === 'client' ?
-                `${user?.clientType?.replace('_', ' ') || 'Client'} • ${user?.productService?.replace('_', ' ') || 'Service not specified'}` :
+                `${user?.clientType?.replace('_', ' ') || 'Client'}` :
                 user?.role === 'project_manager' && user?.projectManagerType ?
-                `${user?.role?.replace('_', ' ')} • ${user?.projectManagerType}` :
+                `${user?.role?.replace('_', ' ')}` :
                 user?.role?.replace('_', ' ')
               }
             </p>
@@ -810,7 +810,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
         </div>
         <Button
           variant="ghost"
-          className="w-full justify-start mt-2 text-muted-foreground hover:text-foreground hover:bg-accent"
+          size="sm"
+          className="w-full justify-start mt-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
           onClick={async () => {
             try {
               await logout();
@@ -821,7 +822,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
             }
           }}
         >
-          <LogOut size={16} className="mr-3 flex-shrink-0" />
+          <LogOut size={14} className="mr-2 flex-shrink-0" />
           <span className="truncate">Logout</span>
         </Button>
       </div>
@@ -857,8 +858,10 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
 
       {/* Mobile Sidebar */}
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <SheetContent side="left" className="w-64 p-0 bg-background">
-          <SidebarContent />
+        <SheetContent side="left" className="w-72 sm:w-80 p-0 bg-background h-full overflow-hidden">
+          <div className="h-full flex flex-col overflow-hidden">
+            <SidebarContent />
+          </div>
         </SheetContent>
       </Sheet>
     </>
