@@ -1,2 +1,2 @@
 
-// OneSignal web push disabled - mobile push only
+importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');

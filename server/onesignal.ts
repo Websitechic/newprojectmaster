@@ -84,14 +84,20 @@ export async function sendOneSignalNotification(
     
     console.log('✓ Valid user IDs:', validUserIds.length, 'out of', userIds.length);
     
-    // CRITICAL: Use include_external_user_ids to target ONLY specific users
-    // This ensures notifications are sent ONLY to the specified user IDs
     const notification: OneSignalNotification = {
       headings: { en: title },
       contents: { en: message },
       include_external_user_ids: validUserIds.map(id => id.toString()),
-      // Device type filters are NOT needed when using include_external_user_ids
-      // as OneSignal will automatically send to all devices of the specified users
+      // Target only Android and iOS devices
+      filters: [
+        {
+          operator: "OR",
+          filters: [
+            { field: "device_type", relation: "=", value: "1" }, // iOS
+            { field: "device_type", relation: "=", value: "2" }  // Android
+          ]
+        }
+      ]
     };
 
     if (url) {
