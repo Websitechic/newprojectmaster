@@ -111,11 +111,31 @@
 
   /* Enhanced responsive cards */
   .card-responsive {
-    @apply p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg shadow-sm border;
+    @apply p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg shadow-sm border w-full max-w-full;
   }
 
   .card-compact {
-    @apply p-2 sm:p-3 md:p-4 rounded-md shadow-sm border;
+    @apply p-2 sm:p-3 md:p-4 rounded-md shadow-sm border w-full max-w-full;
+  }
+
+  /* Ensure all cards fit within viewport */
+  .ui-card,
+  [class*="Card"] {
+    @apply w-full max-w-full;
+  }
+
+  /* Fix table overflow on all screen sizes */
+  .table-container {
+    @apply w-full overflow-x-auto;
+  }
+
+  table {
+    @apply w-full;
+  }
+
+  /* Responsive table headers and cells */
+  th, td {
+    @apply text-xs sm:text-sm px-2 sm:px-3 py-2;
   }
 
   /* Enhanced responsive buttons */
@@ -143,6 +163,16 @@
 
   .dashboard-content {
     @apply flex-1 flex flex-col min-h-screen w-full min-w-0 max-w-none;
+  }
+
+  /* Header spacing fix for all screen sizes */
+  header.h-14,
+  header.sm\:h-16 {
+    @apply mt-0 pt-2 sm:pt-3;
+  }
+
+  header .flex.items-center.gap-1\.5 {
+    @apply items-center justify-center;
   }
 
   /* Fix sidebar overlap - ensure main content has proper left margin on desktop */

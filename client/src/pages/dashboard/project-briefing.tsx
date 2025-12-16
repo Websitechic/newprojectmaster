@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -50,17 +49,17 @@ import { Separator } from "@/components/ui/separator";
 // Function to render formatted text
 function renderFormattedText(text: string) {
   if (!text) return '';
-  
+
   // Replace markdown bold with <strong>
   let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
+
   // Replace markdown italic with <em>
   formatted = formatted.replace(/(?<!\*)\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>');
-  
+
   // Keep underline tags as is (already HTML)
   // Convert line breaks
   formatted = formatted.replace(/\n/g, '<br />');
-  
+
   return formatted;
 }
 
@@ -150,7 +149,7 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-1 p-2 border rounded-t-md bg-gray-50">
+      <div className="flex flex-wrap gap-1 p-2 border rounded-t-md bg-gray-50">
         <Button
           type="button"
           variant="ghost"
@@ -208,7 +207,7 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="min-h-[400px] rounded-t-none border-t-0 font-mono text-sm"
+        className="min-h-[400px] rounded-t-none border-t-0 font-mono text-sm w-full"
       />
     </div>
   );
@@ -239,11 +238,11 @@ export default function ProjectBriefing() {
 
   if (!hasAccess) {
     return (
-      <div className="flex h-screen w-full">
+      <div className="flex h-screen w-full overflow-hidden">
         <Sidebar currentPath="/dashboard/project-briefing" />
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 flex flex-col overflow-hidden lg:ml-64 xl:ml-72 min-w-0">
           <Header />
-          <div className="flex-1 flex items-center justify-center w-full">
+          <div className="flex-1 flex items-center justify-center w-full max-w-full p-4">
             <div className="text-center">
               <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
@@ -390,7 +389,7 @@ export default function ProjectBriefing() {
       });
       return;
     }
-    
+
     if (editingBriefing) {
       updateBriefingMutation.mutate({ id: editingBriefing.id, data: formData });
     } else {
@@ -407,16 +406,16 @@ export default function ProjectBriefing() {
   ];
 
   return (
-    <div className="flex h-screen w-full">
+    <div className="flex h-screen w-full overflow-hidden">
       <Sidebar currentPath="/dashboard/project-briefing" />
-      <div className="flex-1 flex flex-col overflow-hidden w-full">
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-64 xl:ml-72 min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full">
-          <div className="w-full space-y-4 lg:space-y-6">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-full">
+          <div className="w-full max-w-full space-y-4 lg:space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-center sm:text-left">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2 justify-center sm:justify-start">
                   <FileText className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
                   New Project Briefing
                 </h1>
@@ -424,7 +423,7 @@ export default function ProjectBriefing() {
                   Create and manage project briefings with detailed information and links
                 </p>
               </div>
-              <Button onClick={() => setIsCreating(!isCreating)} className="flex items-center gap-2">
+              <Button onClick={() => setIsCreating(!isCreating)} className="flex items-center gap-2 w-full sm:w-auto">
                 <Plus size={16} />
                 {isCreating ? "Cancel" : "New Briefing"}
               </Button>
@@ -432,56 +431,58 @@ export default function ProjectBriefing() {
 
             {/* Search Bar */}
             {!isCreating && briefings.length > 0 && (
-              <div className="relative">
+              <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
                   placeholder="Search by project name, client, or category..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 w-full"
                 />
               </div>
             )}
 
             {/* Create/Edit Form */}
             {(isCreating || editingBriefing) && (
-              <Card>
+              <Card className="w-full">
                 <CardHeader>
                   <CardTitle>{editingBriefing ? 'Edit' : 'Create'} Project Briefing</CardTitle>
                   <CardDescription>Fill in the project details below</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <Label htmlFor="projectName">Project Name *</Label>
-                      <Input
-                        id="projectName"
-                        value={formData.projectName}
-                        onChange={(e) => setFormData(prev => ({ ...prev, projectName: e.target.value }))}
-                        placeholder="Enter project name"
-                        className="mt-1"
-                      />
+                  <form onSubmit={handleSubmit} className="space-y-4 w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="projectName">Project Name *</Label>
+                        <Input
+                          id="projectName"
+                          value={formData.projectName}
+                          onChange={(e) => setFormData(prev => ({ ...prev, projectName: e.target.value }))}
+                          placeholder="Enter project name"
+                          className="mt-1 w-full"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="clientName">Client Name *</Label>
+                        <Input
+                          id="clientName"
+                          value={formData.clientName}
+                          onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
+                          placeholder="Enter client name"
+                          className="mt-1 w-full"
+                        />
+                      </div>
                     </div>
 
-                    <div>
-                      <Label htmlFor="clientName">Client Name *</Label>
-                      <Input
-                        id="clientName"
-                        value={formData.clientName}
-                        onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
-                        placeholder="Enter client name"
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
+                    <div className="w-full">
                       <Label htmlFor="category">Project Category *</Label>
                       <Select
                         value={formData.category}
                         onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                       >
-                        <SelectTrigger className="mt-1">
+                        <SelectTrigger className="mt-1 w-full">
                           <SelectValue placeholder="Select project category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -494,7 +495,7 @@ export default function ProjectBriefing() {
                       </Select>
                     </div>
 
-                    <div>
+                    <div className="w-full">
                       <Label htmlFor="projectDetails">Project Details *</Label>
                       <RichTextEditor
                         value={formData.projectDetails}
@@ -503,7 +504,7 @@ export default function ProjectBriefing() {
                       />
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4">
+                    <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
                       <Button
                         type="button"
                         variant="outline"
@@ -512,10 +513,11 @@ export default function ProjectBriefing() {
                           setEditingBriefing(null);
                           resetForm();
                         }}
+                        className="w-full sm:w-auto"
                       >
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={createBriefingMutation.isPending || updateBriefingMutation.isPending}>
+                      <Button type="submit" disabled={createBriefingMutation.isPending || updateBriefingMutation.isPending} className="w-full sm:w-auto">
                         <Save size={16} className="mr-1" />
                         {editingBriefing 
                           ? (updateBriefingMutation.isPending ? "Updating..." : "Update Briefing")
@@ -531,7 +533,7 @@ export default function ProjectBriefing() {
             {/* Briefings List */}
             <div className="space-y-4">
               {filteredBriefings.length === 0 ? (
-                <Card className="p-12 text-center">
+                <Card className="p-6 sm:p-12 text-center w-full">
                   <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
                     {searchQuery ? "No matching briefings found" : "No Project Briefings"}
@@ -542,7 +544,7 @@ export default function ProjectBriefing() {
                       : "Get started by creating your first project briefing."}
                   </p>
                   {!searchQuery && (
-                    <Button onClick={() => setIsCreating(true)}>
+                    <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto">
                       <Plus size={16} className="mr-1" />
                       Create First Briefing
                     </Button>
@@ -550,20 +552,20 @@ export default function ProjectBriefing() {
                 </Card>
               ) : (
                 filteredBriefings.map((briefing) => (
-                  <Card key={briefing.id} className="hover:shadow-md transition-shadow">
+                  <Card key={briefing.id} className="hover:shadow-md transition-shadow w-full">
                     <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-xl mb-2">{briefing.projectName}</CardTitle>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span>Client: {briefing.clientName}</span>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
+                        <div className="flex-1 w-full">
+                          <CardTitle className="text-xl mb-2 break-words">{briefing.projectName}</CardTitle>
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-gray-600">
+                            <span className="truncate max-w-[150px] sm:max-w-none">Client: {briefing.clientName}</span>
                             <span>•</span>
-                            <span>{briefing.category}</span>
+                            <span className="truncate max-w-[150px] sm:max-w-none">{briefing.category}</span>
                             <span>•</span>
                             <span>{new Date(briefing.createdAt).toLocaleDateString()}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mt-3 sm:mt-0 w-full sm:w-auto justify-end sm:justify-start">
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -578,23 +580,24 @@ export default function ProjectBriefing() {
                               });
                               setIsCreating(false);
                             }}
+                            className="flex-1 sm:flex-auto"
                           >
                             <Edit className="h-4 w-4 text-green-600" />
                           </Button>
                           <Dialog>
                             <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" title="View Details">
+                              <Button variant="ghost" size="sm" title="View Details" className="flex-1 sm:flex-auto">
                                 <Eye className="h-4 w-4 text-blue-600" />
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto w-full">
                               <DialogHeader>
                                 <DialogTitle>{briefing.projectName}</DialogTitle>
                               </DialogHeader>
                               <div className="space-y-4">
                                 <div>
                                   <h3 className="font-medium text-sm text-gray-700 mb-1">Client</h3>
-                                  <p className="text-gray-900">{briefing.clientName}</p>
+                                  <p className="text-gray-900 break-words">{briefing.clientName}</p>
                                 </div>
                                 <div>
                                   <h3 className="font-medium text-sm text-gray-700 mb-1">Category</h3>
@@ -604,7 +607,7 @@ export default function ProjectBriefing() {
                                   <h3 className="font-medium text-sm text-gray-700 mb-1">Project Details</h3>
                                   <div className="prose prose-sm max-w-none">
                                     <div 
-                                      className="text-gray-700 whitespace-pre-wrap"
+                                      className="text-gray-700 whitespace-pre-wrap break-words"
                                       dangerouslySetInnerHTML={{ __html: renderFormattedText(briefing.projectDetails) }}
                                     />
                                   </div>
@@ -618,7 +621,7 @@ export default function ProjectBriefing() {
                           </Dialog>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
+                              <Button variant="ghost" size="sm" className="flex-1 sm:flex-auto">
                                 <Trash2 className="h-4 w-4 text-red-600" />
                               </Button>
                             </AlertDialogTrigger>

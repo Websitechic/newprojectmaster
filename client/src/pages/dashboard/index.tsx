@@ -350,9 +350,9 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
                 {/* Tasks in Progress */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                         <AlertCircle className="h-5 w-5" />
                         Tasks in Progress
@@ -362,7 +362,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {tasksInProgress.length > 0 ? (
                       <Collapsible
                         open={openSections.inProgress}
@@ -396,9 +396,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Pending Tasks (paused timer) */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
                         <Clock className="h-5 w-5" />
                         Pending Tasks
@@ -408,7 +408,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {pendingTasks.length > 0 ? (
                       <Collapsible
                         open={openSections.pending}
@@ -442,9 +442,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Todo Tasks */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
                         <Clock className="h-5 w-5" />
                         Todo Tasks
@@ -454,7 +454,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {todoTasks.length > 0 ? (
                       <Collapsible
                         open={openSections.todo}
@@ -502,9 +502,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Tasks in Review */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
                         <CheckCircle className="h-5 w-5" />
                         Tasks in Review
@@ -512,7 +512,7 @@ export default function Dashboard() {
                       <Badge variant="secondary">{tasksInReview.length}</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {tasksInReview.length > 0 ? (
                       <Collapsible
                         open={openSections.review}
@@ -546,9 +546,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Technical Support */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                         <HelpCircle className="h-5 w-5" />
                         Technical Support
@@ -558,7 +558,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {technicalSupportTasks.length > 0 ? (
                       <div className="space-y-3">
                         <Select>
@@ -653,9 +653,9 @@ export default function Dashboard() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
                   {/* Active Projects */}
 
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center justify-between">
+                  <Card className="w-full">
+                    <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                      <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                         <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                           <Play className="h-5 w-5" />
                           Active Projects
@@ -682,7 +682,7 @@ export default function Dashboard() {
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="max-h-48 overflow-y-auto">
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 max-h-48 overflow-y-auto">
                       {(() => {
                         const activeProjects =
                           projects?.filter((project) => {
@@ -760,9 +760,9 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Pending Projects */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center justify-between">
+                  <Card className="w-full">
+                    <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                      <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                         <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
                           <Clock className="h-5 w-5" />
                           Pending Projects
@@ -806,7 +806,7 @@ export default function Dashboard() {
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="max-h-48 overflow-y-auto">
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 max-h-48 overflow-y-auto">
                       {(() => {
                         const oneWeekAgo = new Date();
                         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -888,9 +888,9 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Completed Projects */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center justify-between">
+                  <Card className="w-full">
+                    <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                      <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                         <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                           <CheckCircle className="h-5 w-5" />
                           Completed Projects
@@ -915,7 +915,7 @@ export default function Dashboard() {
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="max-h-48 overflow-y-auto">
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 max-h-48 overflow-y-auto">
                       {(() => {
                         const oneMonthAgo = new Date();
                         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
@@ -973,9 +973,9 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
                 {/* Tasks in Progress */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                         <AlertCircle className="h-5 w-5" />
                         Tasks in Progress
@@ -985,7 +985,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {tasksInProgress.length > 0 ? (
                       <Collapsible
                         open={openSections.inProgress}
@@ -1019,9 +1019,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Pending Tasks (paused timer) */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
                         <Clock className="h-5 w-5" />
                         Pending Tasks
@@ -1031,7 +1031,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {pendingTasks.length > 0 ? (
                       <Collapsible
                         open={openSections.pending}
@@ -1065,9 +1065,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Todo Tasks */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
                         <Clock className="h-5 w-5" />
                         Todo Tasks
@@ -1077,7 +1077,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {todoTasks.length > 0 ? (
                       <Collapsible
                         open={openSections.todo}
@@ -1125,9 +1125,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Tasks in Review */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
                         <CheckCircle className="h-5 w-5" />
                         Tasks in Review
@@ -1135,7 +1135,7 @@ export default function Dashboard() {
                       <Badge variant="secondary">{tasksInReview.length}</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {tasksInReview.length > 0 ? (
                       <Collapsible
                         open={openSections.review}
@@ -1169,9 +1169,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Technical Support */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                         <HelpCircle className="h-5 w-5" />
                         Technical Support
@@ -1181,7 +1181,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {technicalSupportTasks.length > 0 ? (
                       <div className="space-y-3">
                         <Select>
@@ -1237,14 +1237,14 @@ export default function Dashboard() {
 
               {/* Overall Progress */}
               <div className="grid grid-cols-1 gap-6 mb-6">
-                <Card className="max-w-md">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                <Card className="max-w-md w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400 text-sm sm:text-base">
                       <CheckCircle className="h-5 w-5" />
                       Overall Progress
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     <div className="space-y-4">
                       <div className="text-center">
                         <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">

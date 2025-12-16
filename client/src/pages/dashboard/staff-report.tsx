@@ -400,12 +400,12 @@ export default function StaffReport() {
   }) || [];
 
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72 min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="flex flex-col space-y-6">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full">
+          <div className="flex flex-col space-y-4 sm:space-y-6 w-full max-w-full">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Staff Report</h1>
@@ -466,8 +466,8 @@ export default function StaffReport() {
                 </p>
               </div>
             </CardContent>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <CardContent className="p-3 sm:p-4 md:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 <div className="rounded-md border border-green-300 bg-green-50 p-3">
                   <div className="flex items-center gap-2">
                     <Play className="h-4 w-4 text-green-700" />

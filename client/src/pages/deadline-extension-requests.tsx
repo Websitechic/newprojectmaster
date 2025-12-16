@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -118,7 +117,7 @@ export default function DeadlineExtensionRequestsPage() {
 
   const handleSubmitDecision = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedRequest || !decisionForm.decisionReason) {
       toast({
         title: "Error",
@@ -225,8 +224,9 @@ export default function DeadlineExtensionRequestsPage() {
                   <CardDescription>Requests awaiting your decision</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="rounded-md border">
-                    <Table>
+                  <div className="rounded-md border overflow-x-auto">
+                    <div className="min-w-full overflow-x-auto">
+                    <Table className="min-w-[800px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
@@ -296,6 +296,7 @@ export default function DeadlineExtensionRequestsPage() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -315,8 +316,9 @@ export default function DeadlineExtensionRequestsPage() {
                     No extension requests found.
                   </div>
                 ) : (
-                  <div className="rounded-md border">
-                    <Table>
+                  <div className="rounded-md border overflow-x-auto">
+                    <div className="min-w-full overflow-x-auto">
+                    <Table className="min-w-[800px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
@@ -454,6 +456,7 @@ export default function DeadlineExtensionRequestsPage() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                   </div>
                 )}
               </CardContent>

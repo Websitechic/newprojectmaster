@@ -205,11 +205,11 @@ export default function ReviewLinks() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72 min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-full">
           <div className="mb-6">
             <div className="flex justify-between items-center">
               <div>
