@@ -127,10 +127,16 @@
   /* Fix table overflow on all screen sizes */
   .table-container {
     @apply w-full overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   table {
     @apply w-full;
+  }
+  
+  /* Enable smooth scrolling on mobile for tables */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Responsive table headers and cells */

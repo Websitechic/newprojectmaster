@@ -245,8 +245,8 @@ export function Header() {
 
       {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}
       <div className="flex items-center justify-end gap-2 sm:gap-3 flex-shrink-0">
-        {/* Theme Toggle */}
-        <div className="hidden sm:block">
+        {/* Theme Toggle - Now visible on all screen sizes */}
+        <div>
           <ThemeToggle />
         </div>
 

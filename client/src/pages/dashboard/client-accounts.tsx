@@ -556,8 +556,7 @@ export default function ClientAccounts() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto w-full">
-            <div className="min-w-full overflow-x-auto">
+          <div className="overflow-x-auto w-full -webkit-overflow-scrolling-touch">
             <table className="w-full min-w-[1200px]">
               <thead>
                 <tr className="border-b bg-muted/50">
@@ -606,7 +605,6 @@ export default function ClientAccounts() {
                 ))}
               </tbody>
             </table>
-            </div>
           </div>
         </CardContent>
       </Card>

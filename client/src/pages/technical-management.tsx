@@ -386,8 +386,7 @@ export default function TechnicalManagementPage() {
           </CardHeader>
           <CardContent className="p-0">
             {/* Desktop Table View - Optimized for High Volume */}
-            <div className="hidden lg:block overflow-x-auto">
-              <div className="overflow-x-auto w-full">
+            <div className="hidden lg:block overflow-x-auto w-full -webkit-overflow-scrolling-touch">
                 <table className="w-full text-sm min-w-[1000px]">
                   <thead className="bg-gray-50 border-b sticky top-0 z-10">
                     <tr>
@@ -647,7 +646,6 @@ export default function TechnicalManagementPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
             </div>
 
             {/* Mobile Card View - Optimized for High Volume */}
