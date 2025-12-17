@@ -542,6 +542,7 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {engagedStaff.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -620,6 +621,7 @@ export default function StaffReport() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-green-50 p-3 rounded-full mb-3">
@@ -651,6 +653,7 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {onBreakStaff.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -706,6 +709,7 @@ export default function StaffReport() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-amber-50 p-3 rounded-full mb-3">
@@ -737,6 +741,7 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {absentStaff.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -780,6 +785,7 @@ export default function StaffReport() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-red-50 p-3 rounded-full mb-3">
@@ -811,6 +817,7 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {inMeetingStaff.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -848,6 +855,7 @@ export default function StaffReport() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-purple-50 p-3 rounded-full mb-3">
@@ -879,6 +887,7 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {availableStaff.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -928,6 +937,7 @@ export default function StaffReport() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-blue-50 p-3 rounded-full mb-3">

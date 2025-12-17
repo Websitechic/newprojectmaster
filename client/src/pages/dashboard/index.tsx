@@ -348,7 +348,7 @@ export default function Dashboard() {
             <>
               {/* Staff & Support Maintenance Client & Intern Dashboard */}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full overflow-hidden">
                 {/* Tasks in Progress */}
                 <Card className="w-full">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
@@ -650,7 +650,7 @@ export default function Dashboard() {
                     <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Project Status</h2>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full overflow-hidden">
                   {/* Active Projects */}
 
                   <Card className="w-full">
@@ -971,7 +971,7 @@ export default function Dashboard() {
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Task Status</h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full overflow-hidden">
                 {/* Tasks in Progress */}
                 <Card className="w-full">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
