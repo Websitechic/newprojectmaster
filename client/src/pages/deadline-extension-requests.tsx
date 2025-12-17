@@ -224,10 +224,12 @@ export default function DeadlineExtensionRequestsPage() {
                   <CardDescription>Requests awaiting your decision</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto w-full" style={{ 
+                  <div className="overflow-x-auto w-full max-w-full" style={{ 
                     WebkitOverflowScrolling: 'touch',
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: 'rgba(155, 155, 155, 0.7) transparent'
+                    scrollbarWidth: 'auto',
+                    scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)',
+                    overflowX: 'auto',
+                    display: 'block'
                   }}>
                     <Table className="min-w-[800px]">
                       <TableHeader>
@@ -318,10 +320,12 @@ export default function DeadlineExtensionRequestsPage() {
                     No extension requests found.
                   </div>
                 ) : (
-                  <div className="rounded-md border overflow-x-auto w-full" style={{ 
+                  <div className="rounded-md border overflow-x-auto w-full max-w-full" style={{ 
                     WebkitOverflowScrolling: 'touch',
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: 'rgba(155, 155, 155, 0.7) transparent'
+                    scrollbarWidth: 'auto',
+                    scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)',
+                    overflowX: 'auto',
+                    display: 'block'
                   }}>
                     <Table className="min-w-[800px]">
                       <TableHeader>
