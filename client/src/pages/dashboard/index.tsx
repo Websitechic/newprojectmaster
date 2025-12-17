@@ -614,19 +614,21 @@ export default function Dashboard() {
 
               {/* Full Task List */}
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 w-full">
-                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
+                <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="flex items-center gap-2 w-full sm:w-auto max-w-full">
-                    <Input
-                      type="text"
-                      placeholder="Search tasks..."
-                      className="w-full sm:w-48 md:w-64 min-w-0"
-                      value={taskSearchQuery}
-                      onChange={(e) => setTaskSearchQuery(e.target.value)}
-                    />
-                    <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex items-center gap-2 w-full max-w-full">
+                    <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
+                      <Input
+                        type="text"
+                        placeholder="Search tasks..."
+                        className="w-full pr-8"
+                        value={taskSearchQuery}
+                        onChange={(e) => setTaskSearchQuery(e.target.value)}
+                      />
+                      <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    </div>
                   </div>
                 </div>
 
@@ -1289,19 +1291,21 @@ export default function Dashboard() {
               )}
 
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 w-full">
-                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
+                <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="flex items-center gap-2 w-full sm:w-auto max-w-full">
-                    <Input
-                      type="text"
-                      placeholder="Search tasks..."
-                      className="w-full sm:w-48 md:w-64 min-w-0"
-                      value={taskSearchQuery}
-                      onChange={(e) => setTaskSearchQuery(e.target.value)}
-                    />
-                    <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex items-center gap-2 w-full max-w-full">
+                    <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
+                      <Input
+                        type="text"
+                        placeholder="Search tasks..."
+                        className="w-full pr-8"
+                        value={taskSearchQuery}
+                        onChange={(e) => setTaskSearchQuery(e.target.value)}
+                      />
+                      <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    </div>
                   </div>
                 </div>
 

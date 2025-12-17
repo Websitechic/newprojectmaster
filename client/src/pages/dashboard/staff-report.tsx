@@ -406,19 +406,19 @@ export default function StaffReport() {
         <Header />
         <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-full">
           <div className="flex flex-col space-y-4 sm:space-y-6 w-full max-w-full">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Staff Report</h1>
-            <p className="text-muted-foreground mt-1">
+        <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">Staff Report</h1>
+            <p className="text-muted-foreground mt-1 text-xs sm:text-sm truncate">
               Real-time monitoring of staff activity and task status
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
             <Select
               value={filterSpecialization || "all"}
               onValueChange={(value) => setFilterSpecialization(value === "all" ? null : value)}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px] min-w-0">
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
@@ -433,18 +433,20 @@ export default function StaffReport() {
             <Button
               onClick={() => handleExport('csv')}
               variant="outline"
-              className="flex items-center"
+              className="flex items-center justify-center w-full sm:w-auto flex-shrink-0"
             >
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Export CSV</span>
+              <FileSpreadsheet className="mr-2 h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline truncate">Export CSV</span>
+              <span className="sm:hidden truncate">CSV</span>
             </Button>
             <Button
               onClick={() => handleExport('json')}
               variant="outline"
-              className="flex items-center"
+              className="flex items-center justify-center w-full sm:w-auto flex-shrink-0"
             >
-              <FileText className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Export JSON</span>
+              <FileText className="mr-2 h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline truncate">Export JSON</span>
+              <span className="sm:hidden truncate">JSON</span>
             </Button>
           </div>
         </div>

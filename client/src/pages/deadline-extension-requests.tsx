@@ -194,20 +194,20 @@ export default function DeadlineExtensionRequestsPage() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full max-w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold">Deadline Extension Requests</h1>
-              <p className="text-gray-600 mt-1">Review and manage deadline extension requests from your team</p>
+        <div className="flex-1 overflow-auto p-3 sm:p-4 md:p-6 w-full max-w-full">
+          <div className="flex flex-col gap-3 mb-6 w-full max-w-full overflow-hidden">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">Deadline Extension Requests</h1>
+              <p className="text-gray-600 mt-1 text-xs sm:text-sm md:text-base truncate">Review and manage deadline extension requests from your team</p>
             </div>
-            <div className="flex gap-2">
-              <Badge variant="outline" className="flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {pendingRequests.length} Pending
+            <div className="flex gap-2 w-full">
+              <Badge variant="outline" className="flex items-center gap-1 flex-shrink-0">
+                <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{pendingRequests.length} Pending</span>
               </Badge>
             </div>
           </div>

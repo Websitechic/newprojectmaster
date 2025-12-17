@@ -284,27 +284,28 @@ export default function TechnicalManagementPage() {
   const highCount = requests.filter(r => r.priority === 'high').length;
 
   return (
-    <div className="container mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:ml-64 xl:ml-72 w-full max-w-full overflow-hidden">
+    <div className="w-full max-w-full overflow-hidden">
+      <div className="container mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:ml-64 xl:ml-72 w-full max-w-full min-w-0">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold">Technical Management</h1>
+      <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">Technical Management</h1>
           {isProjectManager && (
-            <p className="text-gray-600 text-sm">View technical support requests (Read-only)</p>
+            <p className="text-gray-600 text-xs sm:text-sm truncate">View technical support requests (Read-only)</p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+        <div className="flex flex-wrap gap-2 w-full">
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex-shrink-0">
             {urgentCount} Urgent
           </Badge>
-          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 flex-shrink-0">
             {highCount} High Priority
           </Badge>
-          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 flex-shrink-0">
             {pendingCount} Pending
           </Badge>
           {!isProjectManager && (
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex-shrink-0">
               {myRequestsCount} Assigned to Me
             </Badge>
           )}
@@ -916,6 +917,7 @@ export default function TechnicalManagementPage() {
           </Form>
         </DialogContent>
       </Dialog>
+    </div>
     </div>
   );
 }
