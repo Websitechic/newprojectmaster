@@ -224,15 +224,8 @@ export default function DeadlineExtensionRequestsPage() {
                   <CardDescription>Requests awaiting your decision</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="w-full overflow-hidden">
-                    <div className="overflow-x-auto w-full" style={{ 
-                      WebkitOverflowScrolling: 'touch',
-                      scrollbarWidth: 'auto',
-                      scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)',
-                      overflowX: 'auto',
-                      display: 'block'
-                    }}>
-                      <Table className="min-w-[800px]">
+                  <div className="overflow-x-auto w-full -webkit-overflow-scrolling-touch" style={{ scrollbarWidth: 'thin' }}>
+                    <Table className="min-w-[800px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
@@ -302,7 +295,6 @@ export default function DeadlineExtensionRequestsPage() {
                         ))}
                       </TableBody>
                     </Table>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -322,15 +314,8 @@ export default function DeadlineExtensionRequestsPage() {
                     No extension requests found.
                   </div>
                 ) : (
-                  <div className="w-full overflow-hidden">
-                    <div className="rounded-md border overflow-x-auto w-full" style={{ 
-                      WebkitOverflowScrolling: 'touch',
-                      scrollbarWidth: 'auto',
-                      scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)',
-                      overflowX: 'auto',
-                      display: 'block'
-                    }}>
-                      <Table className="min-w-[800px]">
+                  <div className="overflow-x-auto w-full -webkit-overflow-scrolling-touch" style={{ scrollbarWidth: 'thin' }}>
+                    <Table className="min-w-[800px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
@@ -468,7 +453,6 @@ export default function DeadlineExtensionRequestsPage() {
                         ))}
                       </TableBody>
                     </Table>
-                    </div>
                   </div>
                 )}
               </CardContent>

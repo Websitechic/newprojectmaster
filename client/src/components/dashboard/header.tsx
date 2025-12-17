@@ -328,7 +328,7 @@ export function Header() {
               </p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-xs sm:text-sm">
+            <DropdownMenuItem className="text-xs sm:text-sm" onClick={() => setLocation("/dashboard/profile")}>
               <User className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
