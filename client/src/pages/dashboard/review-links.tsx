@@ -352,95 +352,119 @@ export default function ReviewLinks() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {reviewLinks.map((link: any) => (
-                    <div
-                      key={link.id}
-                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-semibold text-lg">{link.title}</h3>
-                            <Badge
-                              variant={link.status === "reviewed" ? "default" : "secondary"}
-                              className={
-                                link.status === "reviewed"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-yellow-100 text-yellow-700"
-                              }
-                            >
-                              {link.status === "reviewed" ? "Reviewed" : "Pending"}
-                            </Badge>
+                  {reviewLinks.map((link: any) => {
+                    const [isExpanded, setIsExpanded] = useState(false);
+                    const maxDescriptionLength = 150;
+                    const shouldTruncate = link.description && link.description.length > maxDescriptionLength;
+                    const displayDescription = shouldTruncate && !isExpanded
+                      ? link.description.substring(0, maxDescriptionLength) + "..."
+                      : link.description;
+
+                    return (
+                      <div
+                        key={link.id}
+                        className="border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-0 sm:justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <h3 className="font-semibold text-base sm:text-lg break-words">{link.title}</h3>
+                              <Badge
+                                variant={link.status === "reviewed" ? "default" : "secondary"}
+                                className={
+                                  link.status === "reviewed"
+                                    ? "bg-green-100 text-green-700 flex-shrink-0"
+                                    : "bg-yellow-100 text-yellow-700 flex-shrink-0"
+                                }
+                              >
+                                {link.status === "reviewed" ? "Reviewed" : "Pending"}
+                              </Badge>
+                            </div>
+                            {link.description && (
+                              <div className="mb-3">
+                                <p className="text-sm text-gray-600 break-words">{displayDescription}</p>
+                                {shouldTruncate && (
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    onClick={() => setIsExpanded(!isExpanded)}
+                                    className="p-0 h-auto text-blue-600 hover:text-blue-800 mt-1"
+                                  >
+                                    {isExpanded ? "Show less" : "Show more"}
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500">
+                              <span className="break-words">
+                                {isProjectManager
+                                  ? `Assigned to: ${link.assigneeName || "Unknown"}`
+                                  : `Sent by: ${link.senderName || "Unknown"}`}
+                              </span>
+                              <span className="hidden sm:inline">•</span>
+                              <span className="whitespace-nowrap">{new Date(link.createdAt).toLocaleDateString()}</span>
+                              {link.reviewedAt && (
+                                <>
+                                  <span className="hidden sm:inline">•</span>
+                                  <span className="whitespace-nowrap">Reviewed: {new Date(link.reviewedAt).toLocaleDateString()}</span>
+                                </>
+                              )}
+                            </div>
                           </div>
-                          {link.description && (
-                            <p className="text-sm text-gray-600 mb-3">{link.description}</p>
-                          )}
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <span>
-                              {isProjectManager
-                                ? `Assigned to: ${link.assigneeName || "Unknown"}`
-                                : `Sent by: ${link.senderName || "Unknown"}`}
-                            </span>
-                            <span>•</span>
-                            <span>{new Date(link.createdAt).toLocaleDateString()}</span>
-                            {link.reviewedAt && (
-                              <>
-                                <span>•</span>
-                                <span>Reviewed: {new Date(link.reviewedAt).toLocaleDateString()}</span>
-                              </>
+                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:ml-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(link.linkUrl, "_blank")}
+                              className="flex-shrink-0"
+                            >
+                              <ExternalLink className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">Open Link</span>
+                              <span className="sm:hidden">Open</span>
+                            </Button>
+                            {isTeamLead && link.status === "pending" && (
+                              <Button
+                                size="sm"
+                                onClick={() => markReviewedMutation.mutate(link.id)}
+                                disabled={markReviewedMutation.isPending}
+                                className="bg-green-600 hover:bg-green-700 flex-shrink-0"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                <span className="hidden sm:inline">Mark Reviewed</span>
+                                <span className="sm:hidden">Review</span>
+                              </Button>
+                            )}
+                            {isProjectManager && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="flex-shrink-0">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Review Link?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this review link? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteLinkMutation.mutate(link.id)}
+                                      disabled={deleteLinkMutation.isPending}
+                                    >
+                                      {deleteLinkMutation.isPending ? "Deleting..." : "Delete"}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 ml-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(link.linkUrl, "_blank")}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Open Link
-                          </Button>
-                          {isTeamLead && link.status === "pending" && (
-                            <Button
-                              size="sm"
-                              onClick={() => markReviewedMutation.mutate(link.id)}
-                              disabled={markReviewedMutation.isPending}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Mark Reviewed
-                            </Button>
-                          )}
-                          {isProjectManager && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Review Link?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete this review link? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteLinkMutation.mutate(link.id)}
-                                    disabled={deleteLinkMutation.isPending}
-                                  >
-                                    {deleteLinkMutation.isPending ? "Deleting..." : "Delete"}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
