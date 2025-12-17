@@ -334,12 +334,12 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background w-full max-w-full overflow-hidden">
       <Sidebar currentPath={location} />
 
-      <div className="flex-1 flex flex-col lg:pl-64">
+      <div className="flex-1 flex flex-col lg:pl-64 min-w-0 max-w-full">
         <Header />
-        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
+        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full max-w-full">
           <BookingAlert />
           {user?.role === "staff" ||
           (user?.role === "client" &&

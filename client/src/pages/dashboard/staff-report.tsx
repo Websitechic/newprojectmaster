@@ -400,11 +400,11 @@ export default function StaffReport() {
   }) || [];
 
   return (
-    <div className="flex min-h-screen w-full overflow-hidden">
+    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72 min-w-0">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72 min-w-0 max-w-full overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-full">
           <div className="flex flex-col space-y-4 sm:space-y-6 w-full max-w-full">
         <div className="flex items-center justify-between">
           <div>

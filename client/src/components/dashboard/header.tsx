@@ -221,9 +221,9 @@ export function Header() {
   const totalUnread = unreadMessages.reduce((sum, msg) => sum + msg.unreadCount, 0);
 
   return (
-    <header className="h-16 sm:h-18 bg-background border-b border-border px-3 sm:px-4 lg:px-6 flex items-center justify-between w-full max-w-none">
+    <header className="h-16 sm:h-18 bg-background border-b border-border px-3 sm:px-4 lg:px-6 flex items-center justify-between w-full max-w-full overflow-hidden">
       {/* Left Section - Audio Unlock Status (hidden on mobile) */}
-      <div className="hidden md:flex flex-1 max-w-none lg:max-w-md items-center">
+      <div className="hidden md:flex flex-1 max-w-md items-center min-w-0">
         {showUnlockButton && (
           <Button
             variant="ghost"
@@ -233,7 +233,7 @@ export function Header() {
                 window.dispatchEvent(new Event('init-audio'));
               }
             }}
-            className={`text-xs ${isUnlocked ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground animate-pulse'}`}
+            className={`text-xs truncate ${isUnlocked ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground animate-pulse'}`}
           >
             {isUnlocked ? '✓ Sound Enabled' : '🔊 Click to Enable Sound'}
           </Button>
@@ -241,10 +241,10 @@ export function Header() {
       </div>
 
       {/* Mobile spacer to push items to right */}
-      <div className="flex-1 md:hidden ml-12 sm:ml-14"></div>
+      <div className="flex-1 md:hidden ml-12 sm:ml-14 min-w-0"></div>
 
       {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}
-      <div className="flex items-center justify-center gap-2 sm:gap-3 md:gap-3">
+      <div className="flex items-center justify-end gap-2 sm:gap-3 flex-shrink-0">
         {/* Theme Toggle */}
         <div className="hidden sm:block">
           <ThemeToggle />
