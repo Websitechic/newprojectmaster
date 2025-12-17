@@ -556,7 +556,7 @@ export default function ClientAccounts() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto w-full -webkit-overflow-scrolling-touch">
+          <div className="overflow-x-auto w-full -webkit-overflow-scrolling-touch" style={{ scrollbarWidth: 'thin' }}>
             <table className="w-full min-w-[1200px]">
               <thead>
                 <tr className="border-b bg-muted/50">

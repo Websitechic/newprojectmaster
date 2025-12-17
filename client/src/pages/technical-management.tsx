@@ -287,25 +287,25 @@ export default function TechnicalManagementPage() {
     <div className="w-full max-w-full overflow-hidden">
       <div className="container mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:ml-64 xl:ml-72 w-full max-w-full min-w-0">
       {/* Header */}
-      <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">Technical Management</h1>
+      <div className="flex flex-col gap-2 sm:gap-3 w-full max-w-full">
+        <div className="min-w-0 max-w-full">
+          <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold break-words">Technical Management</h1>
           {isProjectManager && (
-            <p className="text-gray-600 text-xs sm:text-sm truncate">View technical support requests (Read-only)</p>
+            <p className="text-gray-600 text-xs sm:text-sm mt-1 break-words">View technical support requests (Read-only)</p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2 w-full">
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex-shrink-0">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 w-full max-w-full">
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs whitespace-nowrap">
             {urgentCount} Urgent
           </Badge>
-          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 flex-shrink-0">
+          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap">
             {highCount} High Priority
           </Badge>
-          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 flex-shrink-0">
+          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs whitespace-nowrap">
             {pendingCount} Pending
           </Badge>
           {!isProjectManager && (
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex-shrink-0">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs whitespace-nowrap">
               {myRequestsCount} Assigned to Me
             </Badge>
           )}
@@ -387,7 +387,7 @@ export default function TechnicalManagementPage() {
           </CardHeader>
           <CardContent className="p-0">
             {/* Desktop Table View - Optimized for High Volume */}
-            <div className="hidden lg:block overflow-x-auto w-full -webkit-overflow-scrolling-touch">
+            <div className="hidden lg:block overflow-x-auto w-full -webkit-overflow-scrolling-touch" style={{ scrollbarWidth: 'thin' }}>
                 <table className="w-full text-sm min-w-[1000px]">
                   <thead className="bg-gray-50 border-b sticky top-0 z-10">
                     <tr>

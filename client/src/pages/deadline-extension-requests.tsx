@@ -223,8 +223,8 @@ export default function DeadlineExtensionRequestsPage() {
                   </CardTitle>
                   <CardDescription>Requests awaiting your decision</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="rounded-md border overflow-x-auto">
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
                     <div className="min-w-full overflow-x-auto">
                     <Table className="min-w-[800px]">
                       <TableHeader>
@@ -308,7 +308,7 @@ export default function DeadlineExtensionRequestsPage() {
                 <CardTitle>All Extension Requests</CardTitle>
                 <CardDescription>Complete history of deadline extension requests</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {isLoading ? (
                   <div className="text-center py-4">Loading...</div>
                 ) : requests.length === 0 ? (
@@ -317,7 +317,7 @@ export default function DeadlineExtensionRequestsPage() {
                   </div>
                 ) : (
                   <div className="rounded-md border overflow-x-auto">
-                    <div className="min-w-full overflow-x-auto">
+                    <div className="min-w-full overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
                     <Table className="min-w-[800px]">
                       <TableHeader>
                         <TableRow>
