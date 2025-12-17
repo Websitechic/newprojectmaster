@@ -224,8 +224,11 @@ export default function DeadlineExtensionRequestsPage() {
                   <CardDescription>Requests awaiting your decision</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
-                    <div className="min-w-full overflow-x-auto">
+                  <div className="overflow-x-auto w-full" style={{ 
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(155, 155, 155, 0.7) transparent'
+                  }}>
                     <Table className="min-w-[800px]">
                       <TableHeader>
                         <TableRow>
@@ -296,7 +299,6 @@ export default function DeadlineExtensionRequestsPage() {
                         ))}
                       </TableBody>
                     </Table>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -316,8 +318,11 @@ export default function DeadlineExtensionRequestsPage() {
                     No extension requests found.
                   </div>
                 ) : (
-                  <div className="rounded-md border overflow-x-auto">
-                    <div className="min-w-full overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+                  <div className="rounded-md border overflow-x-auto w-full" style={{ 
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(155, 155, 155, 0.7) transparent'
+                  }}>
                     <Table className="min-w-[800px]">
                       <TableHeader>
                         <TableRow>
@@ -456,7 +461,6 @@ export default function DeadlineExtensionRequestsPage() {
                         ))}
                       </TableBody>
                     </Table>
-                    </div>
                   </div>
                 )}
               </CardContent>
