@@ -168,11 +168,20 @@
   /* Header spacing fix for all screen sizes */
   header.h-14,
   header.sm\:h-16 {
-    @apply mt-0 pt-2 sm:pt-3;
+    margin-top: 0;
+    padding-top: 0.5rem;
+  }
+  
+  @media (min-width: 640px) {
+    header.h-14,
+    header.sm\:h-16 {
+      padding-top: 0.75rem;
+    }
   }
 
   header .flex.items-center.gap-1\.5 {
-    @apply items-center justify-center;
+    align-items: center;
+    justify-content: center;
   }
 
   /* Fix sidebar overlap - ensure main content has proper left margin on desktop */
@@ -584,11 +593,6 @@
   .grid-cols-4 {
     grid-template-columns: repeat(3, 1fr) !important;
   }
-}
-
-/* Add desktop specific rules for screens larger than laptops */
-@media (min-width: 1280px) {
-  /* Desktop devices - Full width utilization */
 }
 
 /* Force full width layout for all PC screens */
