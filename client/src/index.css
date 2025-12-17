@@ -607,7 +607,6 @@
   }
 
   .flex-row { flex-direction: column; }
-  .items-center { align-items: stretch; }
 
   .w-auto { width: 100%; }
   .max-w-xs, .max-w-sm { max-width: 100%; }
