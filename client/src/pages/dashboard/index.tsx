@@ -350,7 +350,7 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full overflow-hidden">
                 {/* Tasks in Progress */}
-                <Card className="w-full">
+                <Card className="w-full min-w-0">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                     <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
@@ -396,7 +396,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Pending Tasks (paused timer) */}
-                <Card className="w-full">
+                <Card className="w-full min-w-0">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                     <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
@@ -442,7 +442,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Todo Tasks */}
-                <Card className="w-full">
+                <Card className="w-full min-w-0">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                     <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
@@ -502,7 +502,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Tasks in Review */}
-                <Card className="w-full">
+                <Card className="w-full min-w-0">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                     <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
@@ -546,7 +546,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Technical Support */}
-                <Card className="w-full">
+                <Card className="w-full min-w-0">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                     <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
@@ -614,15 +614,15 @@ export default function Dashboard() {
 
               {/* Full Task List */}
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 w-full">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="flex items-center gap-2 w-full sm:w-auto max-w-full">
                     <Input
                       type="text"
                       placeholder="Search tasks..."
-                      className="w-full sm:w-48 md:w-64"
+                      className="w-full sm:w-48 md:w-64 min-w-0"
                       value={taskSearchQuery}
                       onChange={(e) => setTaskSearchQuery(e.target.value)}
                     />
@@ -653,7 +653,7 @@ export default function Dashboard() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full overflow-hidden">
                   {/* Active Projects */}
 
-                  <Card className="w-full">
+                  <Card className="w-full min-w-0">
                     <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                       <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                         <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
@@ -760,7 +760,7 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Pending Projects */}
-                  <Card className="w-full">
+                  <Card className="w-full min-w-0">
                     <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                       <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                         <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
@@ -888,7 +888,7 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Completed Projects */}
-                  <Card className="w-full">
+                  <Card className="w-full min-w-0">
                     <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                       <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                         <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
@@ -973,7 +973,7 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full overflow-hidden">
                 {/* Tasks in Progress */}
-                <Card className="w-full">
+                <Card className="w-full min-w-0">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                     <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
@@ -1019,7 +1019,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Pending Tasks (paused timer) */}
-                <Card className="w-full">
+                <Card className="w-full min-w-0">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                     <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
@@ -1065,7 +1065,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Todo Tasks */}
-                <Card className="w-full">
+                <Card className="w-full min-w-0">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                     <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
@@ -1125,7 +1125,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Tasks in Review */}
-                <Card className="w-full">
+                <Card className="w-full min-w-0">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                     <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
@@ -1169,7 +1169,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Technical Support */}
-                <Card className="w-full">
+                <Card className="w-full min-w-0">
                   <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                     <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
@@ -1289,15 +1289,15 @@ export default function Dashboard() {
               )}
 
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 w-full">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="flex items-center gap-2 w-full sm:w-auto max-w-full">
                     <Input
                       type="text"
                       placeholder="Search tasks..."
-                      className="w-full sm:w-48 md:w-64"
+                      className="w-full sm:w-48 md:w-64 min-w-0"
                       value={taskSearchQuery}
                       onChange={(e) => setTaskSearchQuery(e.target.value)}
                     />
