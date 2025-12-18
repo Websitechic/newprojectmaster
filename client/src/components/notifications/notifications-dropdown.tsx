@@ -216,7 +216,7 @@ export function NotificationsDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-0">
+      <DropdownMenuContent align="end" className="w-80 p-0 mr-2 sm:mr-4">
         {uniqueNotifications.length === 0 ? (
           <div className="p-3">
             <span className="text-sm text-muted-foreground">No notifications</span>

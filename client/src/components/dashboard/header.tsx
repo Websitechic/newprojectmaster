@@ -265,7 +265,7 @@ export function Header() {
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64 sm:w-72 p-0 mr-2">
+          <DropdownMenuContent align="end" className="w-64 sm:w-72 p-0 mr-2 sm:mr-4">
             <div className="px-3 py-2 text-xs sm:text-sm font-semibold border-b">
               Unread Messages
             </div>
@@ -317,7 +317,7 @@ export function Header() {
               </div>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-48 sm:w-56 mr-2" align="end" forceMount>
+          <DropdownMenuContent className="w-48 sm:w-56 mr-2 sm:mr-4" align="end" forceMount>
             <div className="flex flex-col space-y-1 p-2">
               <p className="text-xs sm:text-sm font-medium leading-none truncate">{user?.name}</p>
               <p className="text-xs leading-none text-muted-foreground capitalize truncate">

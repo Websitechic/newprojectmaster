@@ -319,13 +319,13 @@ export default function DeadlineExtensionRequestsPage() {
                     No extension requests found.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto w-full" style={{ 
+                  <div className="overflow-x-auto w-full -mx-4 sm:mx-0 px-4 sm:px-0" style={{ 
                     WebkitOverflowScrolling: 'touch',
                     overflowX: 'auto',
                     scrollbarWidth: 'thin',
                     scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)'
                   }}>
-                    <Table className="min-w-[900px]">
+                    <Table className="min-w-[1100px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
