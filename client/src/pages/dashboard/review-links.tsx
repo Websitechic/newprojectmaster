@@ -48,6 +48,14 @@ export default function ReviewLinks() {
   const [linkUrl, setLinkUrl] = useState("");
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
+  const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
+
+  const toggleCardExpansion = (linkId: number) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [linkId]: !prev[linkId]
+    }));
+  };
 
   const isProjectManager = user?.role === "project_manager";
   const isTeamLead = user?.role === "team_lead";
@@ -353,13 +361,9 @@ export default function ReviewLinks() {
               ) : (
                 <div className="space-y-4 overflow-x-auto">
                   {reviewLinks.map((link: any) => {
-                    // Moved useState outside the map loop to fix "Rendered more hooks than during the previous render" error.
-                    // This state will now be managed for each link individually.
-                    const [isExpanded, setIsExpanded] = useState(false);
-
                     const maxDescriptionLength = 150;
                     const shouldTruncate = link.description && link.description.length > maxDescriptionLength;
-                    const displayDescription = shouldTruncate && !isExpanded
+                    const displayDescription = shouldTruncate && !expandedCards[link.id]
                       ? link.description.substring(0, maxDescriptionLength) + "..."
                       : link.description;
 
@@ -390,10 +394,10 @@ export default function ReviewLinks() {
                                   <Button
                                     variant="link"
                                     size="sm"
-                                    onClick={() => setIsExpanded(!isExpanded)}
+                                    onClick={() => toggleCardExpansion(link.id)}
                                     className="p-0 h-auto text-blue-600 hover:text-blue-800 mt-1"
                                   >
-                                    {isExpanded ? "Show less" : "Show more"}
+                                    {expandedCards[link.id] ? "Show less" : "Show more"}
                                   </Button>
                                 )}
                               </div>

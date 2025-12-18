@@ -226,7 +226,9 @@ export default function DeadlineExtensionRequestsPage() {
                 <CardContent className="p-0">
                   <div className="overflow-x-auto w-full" style={{ 
                     WebkitOverflowScrolling: 'touch',
-                    overflowX: 'auto'
+                    overflowX: 'auto',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)'
                   }}>
                     <Table className="min-w-[900px]">
                       <TableHeader>
@@ -319,7 +321,9 @@ export default function DeadlineExtensionRequestsPage() {
                 ) : (
                   <div className="overflow-x-auto w-full" style={{ 
                     WebkitOverflowScrolling: 'touch',
-                    overflowX: 'auto'
+                    overflowX: 'auto',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)'
                   }}>
                     <Table className="min-w-[900px]">
                       <TableHeader>
