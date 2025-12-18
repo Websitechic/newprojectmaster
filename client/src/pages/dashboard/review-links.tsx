@@ -209,7 +209,7 @@ export default function ReviewLinks() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72 min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-full">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full">
           <div className="mb-6">
             <div className="flex justify-between items-center">
               <div>
@@ -351,7 +351,7 @@ export default function ReviewLinks() {
                   <p className="text-gray-500">No review links found</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 overflow-x-auto">
                   {reviewLinks.map((link: any) => {
                     const [isExpanded, setIsExpanded] = useState(false);
                     const maxDescriptionLength = 150;
@@ -363,7 +363,7 @@ export default function ReviewLinks() {
                     return (
                       <div
                         key={link.id}
-                        className="border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
+                        className="border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow min-w-[300px]"
                       >
                         <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-0 sm:justify-between">
                           <div className="flex-1 min-w-0">

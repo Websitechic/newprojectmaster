@@ -173,7 +173,7 @@ export default function SendComplaint() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-full min-w-0">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full min-w-0">
           <div className="w-full max-w-6xl mx-auto space-y-4 sm:space-y-6 min-w-0">
       <div className="mb-4 sm:mb-6 lg:mb-8 w-full max-w-full">
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 break-words">
@@ -391,14 +391,8 @@ function ComplaintHistoryTable() {
   }
 
   return (
-    <div className="overflow-x-auto w-full max-w-full" style={{ 
-      WebkitOverflowScrolling: 'touch',
-      scrollbarWidth: 'auto',
-      scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)',
-      overflowX: 'auto',
-      display: 'block'
-    }}>
-      <table className="w-full border-collapse border border-gray-200 min-w-[800px]">
+    <div className="overflow-x-auto w-full max-w-full">
+      <table className="w-full border-collapse border border-gray-200 min-w-[800px] table-auto">
         <thead>
           <tr className="bg-gray-50">
             <th className="border border-gray-200 px-2 sm:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-900 whitespace-nowrap">
@@ -488,7 +482,7 @@ function ComplaintHistoryTable() {
                   </Dialog>
                 </div>
               </td>
-              
+
             </tr>
           ))}
         </tbody>

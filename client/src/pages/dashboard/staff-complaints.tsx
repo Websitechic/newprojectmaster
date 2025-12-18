@@ -120,7 +120,7 @@ export default function StaffComplaints() {
       reviewed: { variant: "default" as const, label: "Reviewed" },
       resolved: { variant: "secondary" as const, label: "Resolved" },
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
@@ -147,7 +147,7 @@ export default function StaffComplaints() {
         <Sidebar currentPath={location} />
         <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none">
           <Header />
-          <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none">
+          <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-none">
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-10">
                 <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
@@ -172,7 +172,7 @@ export default function StaffComplaints() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-full min-w-0">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full min-w-0">
           <div className="mb-4 sm:mb-6 lg:mb-8 w-full max-w-full min-w-0">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 break-words">Staff Complaints Management</h1>
             <p className="text-sm sm:text-base text-gray-600 break-words">
@@ -216,7 +216,7 @@ export default function StaffComplaints() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6">
+            <div className="grid gap-6 overflow-x-auto pb-4">
               {pendingComplaints.map((complaint) => (
                 <ComplaintCard
                   key={complaint.id}
@@ -242,7 +242,7 @@ export default function StaffComplaints() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6">
+            <div className="grid gap-6 overflow-x-auto pb-4">
               {reviewedComplaints.map((complaint) => (
                 <ComplaintCard
                   key={complaint.id}
@@ -268,7 +268,7 @@ export default function StaffComplaints() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6">
+            <div className="grid gap-6 overflow-x-auto pb-4">
               {resolvedComplaints.map((complaint) => (
                 <ComplaintCard
                   key={complaint.id}
@@ -405,7 +405,7 @@ function ComplaintCard({
               {complaint.detailedExplanation}
             </p>
           </div>
-          
+
           {complaint.screenshotUrl && (
             <div className="flex items-center gap-2 text-sm text-blue-600">
               <Image className="w-4 h-4" />

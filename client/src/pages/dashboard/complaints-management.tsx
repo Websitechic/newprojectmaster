@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -143,7 +142,7 @@ export default function ComplaintsManagement() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-full min-w-0">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full">
           <div className="w-full max-w-full space-y-4 lg:space-y-6 min-w-0">
             <div className="flex flex-col gap-2 w-full max-w-full min-w-0">
               <div className="w-full max-w-full min-w-0">
@@ -186,8 +185,8 @@ export default function ComplaintsManagement() {
                           </Badge>
                           <Dialog>
                             <DialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 size="sm"
                                 onClick={() => {
                                   setSelectedComplaint(complaint);
@@ -257,9 +256,9 @@ export default function ComplaintsManagement() {
                                     <div>
                                       <Label className="font-medium">Screenshot</Label>
                                       <div className="mt-2">
-                                        <img 
-                                          src={selectedComplaint.screenshotUrl} 
-                                          alt="Complaint screenshot" 
+                                        <img
+                                          src={selectedComplaint.screenshotUrl}
+                                          alt="Complaint screenshot"
                                           className="max-w-full h-auto rounded-lg border"
                                         />
                                       </div>
@@ -297,7 +296,7 @@ export default function ComplaintsManagement() {
                                           rows={4}
                                         />
                                       </div>
-                                      <Button 
+                                      <Button
                                         onClick={handleReviewSubmit}
                                         disabled={updateComplaint.isPending}
                                         className="w-full"

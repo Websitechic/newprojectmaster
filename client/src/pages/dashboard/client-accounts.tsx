@@ -318,7 +318,7 @@ export default function ClientAccounts() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72 min-w-0 max-w-full overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto space-y-6 p-3 sm:p-4 md:p-6 w-full max-w-full">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full">
           {/* Header Section */}
       <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
         <div className="min-w-0">

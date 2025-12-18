@@ -198,7 +198,7 @@ export default function DeadlineExtensionRequestsPage() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 md:p-6 w-full max-w-full">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full">
           <div className="flex flex-col gap-3 mb-6 w-full max-w-full overflow-hidden">
             <div className="min-w-0">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">Deadline Extension Requests</h1>
@@ -224,8 +224,11 @@ export default function DeadlineExtensionRequestsPage() {
                   <CardDescription>Requests awaiting your decision</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto w-full -webkit-overflow-scrolling-touch" style={{ scrollbarWidth: 'thin' }}>
-                    <Table className="min-w-[800px]">
+                  <div className="overflow-x-auto w-full" style={{ 
+                    WebkitOverflowScrolling: 'touch',
+                    overflowX: 'auto'
+                  }}>
+                    <Table className="min-w-[900px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
@@ -314,8 +317,11 @@ export default function DeadlineExtensionRequestsPage() {
                     No extension requests found.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto w-full -webkit-overflow-scrolling-touch" style={{ scrollbarWidth: 'thin' }}>
-                    <Table className="min-w-[800px]">
+                  <div className="overflow-x-auto w-full" style={{ 
+                    WebkitOverflowScrolling: 'touch',
+                    overflowX: 'auto'
+                  }}>
+                    <Table className="min-w-[900px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
