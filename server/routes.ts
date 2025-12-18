@@ -57,6 +57,12 @@ import { sendOneSignalNotification } from "./onesignal";
 // Helper function to create notifications
 async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
   try {
+    // Only create notifications if the type is not 'message', 'reply', or 'general_channel_message'
+    if (type === 'message' || type === 'reply' || type === 'general_channel_message') {
+      console.log(`ℹ️ Notification of type "${type}" skipped for user ${userId} as per requirements.`);
+      return;
+    }
+
     const [newNotification] = await db
       .insert(notifications)
       .values({
@@ -5372,8 +5378,7 @@ End of Report
   // Get messages between authenticated user and specific user
   app.get("/api/direct-messages/:userId", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+      return res.status(401).json({ error: "Not authenticated"    }
 
     const user = req.user!;
     const otherUserId = parseInt(req.params.userId);
@@ -5646,7 +5651,7 @@ End of Report
         console.log(`✅ ONESIGNAL PUSH SENT SUCCESSFULLY`);
         console.log(`   - Result:`, result);
       } catch (error) {
-        console.error(`\n❌ ONESIGNAL PUSH FAILED:`);
+        console.error(`❌ ONESIGNAL PUSH FAILED:`);
         console.error(`   - Error Type: ${error instanceof Error ? error.constructor.name : typeof error}`);
         console.error(`   - Error Message: ${error instanceof Error ? error.message : error}`);
         console.error(`   - Error Stack:`, error instanceof Error ? error.stack : 'No stack trace');
@@ -8954,7 +8959,7 @@ End of Report
       res.json({ success: true, project: updatedProject });
     } catch (error) {
       console.error("Error updating project:", error);
-      res.status(500).json({ error: "Failed to update project" });
+      res.status(500).json({ error: "Failed to update project"});
     }
   });
 

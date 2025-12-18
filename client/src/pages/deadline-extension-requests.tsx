@@ -215,7 +215,7 @@ export default function DeadlineExtensionRequestsPage() {
           <div className="grid gap-6">
             {/* Pending Requests */}
             {pendingRequests.length > 0 && (
-              <Card>
+              <Card className="overflow-hidden">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -223,14 +223,13 @@ export default function DeadlineExtensionRequestsPage() {
                   </CardTitle>
                   <CardDescription>Requests awaiting your decision</CardDescription>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto w-full" style={{ 
+                <CardContent className="p-0 overflow-x-auto">
+                  <div className="w-full overflow-x-auto" style={{ 
                     WebkitOverflowScrolling: 'touch',
-                    overflowX: 'auto',
                     scrollbarWidth: 'thin',
                     scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)'
                   }}>
-                    <Table className="min-w-[900px]">
+                    <Table className="min-w-[900px] w-full">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
@@ -306,12 +305,12 @@ export default function DeadlineExtensionRequestsPage() {
             )}
 
             {/* All Requests */}
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle>All Extension Requests</CardTitle>
                 <CardDescription>Complete history of deadline extension requests</CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 overflow-x-auto">
                 {isLoading ? (
                   <div className="text-center py-4">Loading...</div>
                 ) : requests.length === 0 ? (
@@ -319,14 +318,12 @@ export default function DeadlineExtensionRequestsPage() {
                     No extension requests found.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto w-full" style={{ 
+                  <div className="w-full overflow-x-auto" style={{ 
                     WebkitOverflowScrolling: 'touch',
-                    overflowX: 'scroll',
                     scrollbarWidth: 'thin',
-                    scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)',
-                    maxWidth: '100%'
+                    scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)'
                   }}>
-                    <Table className="min-w-[1200px]">
+                    <Table className="min-w-[1200px] w-full">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
