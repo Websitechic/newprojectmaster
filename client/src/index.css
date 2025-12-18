@@ -218,6 +218,20 @@
     @apply flex-1 flex flex-col min-h-screen w-full min-w-0 max-w-none;
   }
 
+  /* Consistent mobile padding for all pages */
+  @media (max-width: 768px) {
+    .flex-1.overflow-auto {
+      padding: 1rem !important;
+    }
+    
+    /* Ensure all dashboard main content areas have consistent padding on mobile */
+    .dashboard-main,
+    .flex-1 > .overflow-auto,
+    main.flex-1 {
+      padding: 1rem !important;
+    }
+  }
+
   /* Header spacing fix for all screen sizes */
   header.h-14,
   header.sm\:h-16 {
@@ -268,7 +282,26 @@
   }
 
   .dashboard-main {
-    @apply flex-1 overflow-auto p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-none;
+    @apply flex-1 overflow-auto w-full max-w-none;
+    padding: 1rem;
+  }
+  
+  @media (min-width: 640px) {
+    .dashboard-main {
+      padding: 1rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .dashboard-main {
+      padding: 1rem;
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .dashboard-main {
+      padding: 1.5rem;
+    }
   }
 
   /* Global fix for all pages with sidebar */
@@ -378,11 +411,41 @@
   }
 
   .padding-responsive {
-    @apply p-3 sm:p-4 md:p-5 lg:p-6;
+    padding: 1rem;
+  }
+  
+  @media (min-width: 640px) {
+    .padding-responsive {
+      padding: 1rem;
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .padding-responsive {
+      padding: 1.25rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .padding-responsive {
+      padding: 1.5rem;
+    }
   }
 
   .padding-responsive-sm {
-    @apply p-2 sm:p-3 md:p-4;
+    padding: 1rem;
+  }
+  
+  @media (min-width: 640px) {
+    .padding-responsive-sm {
+      padding: 0.75rem;
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .padding-responsive-sm {
+      padding: 1rem;
+    }
   }
 
   /* Responsive flexbox utilities */
@@ -423,6 +486,25 @@
   /* Force content to fit viewport */
   .viewport-fit {
     @apply w-full max-w-full overflow-hidden;
+  }
+
+  /* Global mobile padding - applies to all page content areas */
+  @media (max-width: 768px) {
+    /* Main content wrappers */
+    .flex-1.flex.flex-col.overflow-hidden > .flex-1.overflow-auto,
+    .flex-1.flex.flex-col.overflow-hidden > main,
+    .flex-1.flex.flex-col > .flex-1.overflow-auto,
+    div[class*="flex-1"][class*="overflow-auto"] {
+      padding: 1rem !important;
+    }
+    
+    /* Card containers on mobile */
+    .space-y-6,
+    .space-y-4,
+    .space-y-3 {
+      padding-left: 0;
+      padding-right: 0;
+    }
   }
 
   /* Responsive chart containers */
