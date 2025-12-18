@@ -49,27 +49,24 @@ export function useBrowserNotification() {
     }
     
     setPermission(Notification.permission);
-      
-      // If permission already granted, unlock audio
-      if (Notification.permission === 'granted') {
-        unlockAudio();
-      }
-      // Request permission if not set
-      else if (Notification.permission === 'default') {
-        Notification.requestPermission().then(async (result) => {
-          setPermission(result);
-          console.log('📬 Notification permission:', result);
-          
-          // Use the permission grant as a user gesture to unlock audio
-          if (result === 'granted') {
-            await unlockAudio();
-          }
-        }).catch((error) => {
-          console.error('❌ Error requesting notification permission:', error);
-        });
-      }
-    } else {
-      console.warn('⚠️ Browser notifications not supported');
+    
+    // If permission already granted, unlock audio
+    if (Notification.permission === 'granted') {
+      unlockAudio();
+    }
+    // Request permission if not set
+    else if (Notification.permission === 'default') {
+      Notification.requestPermission().then(async (result) => {
+        setPermission(result);
+        console.log('📬 Notification permission:', result);
+        
+        // Use the permission grant as a user gesture to unlock audio
+        if (result === 'granted') {
+          await unlockAudio();
+        }
+      }).catch((error) => {
+        console.error('❌ Error requesting notification permission:', error);
+      });
     }
   }, []);
 
