@@ -43,8 +43,12 @@ export function useBrowserNotification() {
 
   // Request notification permission on mount and unlock audio
   useEffect(() => {
-    if ('Notification' in window) {
-      setPermission(Notification.permission);
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      console.warn('⚠️ Browser notifications not supported');
+      return;
+    }
+    
+    setPermission(Notification.permission);
       
       // If permission already granted, unlock audio
       if (Notification.permission === 'granted') {
@@ -72,7 +76,8 @@ export function useBrowserNotification() {
   // Also unlock audio on any user interaction (backup)
   useEffect(() => {
     const handleInteraction = () => {
-      if (!(window as any).__audioUnlocked && Notification.permission === 'granted') {
+      if (typeof window !== 'undefined' && 'Notification' in window && 
+          !(window as any).__audioUnlocked && Notification.permission === 'granted') {
         unlockAudio();
       }
     };
@@ -93,7 +98,7 @@ export function useBrowserNotification() {
     try {
       console.log('📬 showNotification called:', title);
       
-      if (!('Notification' in window)) {
+      if (typeof window === 'undefined' || !('Notification' in window)) {
         console.warn('⚠️ Browser notifications not supported');
         return;
       }

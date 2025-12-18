@@ -353,7 +353,10 @@ export default function ReviewLinks() {
               ) : (
                 <div className="space-y-4 overflow-x-auto">
                   {reviewLinks.map((link: any) => {
+                    // Moved useState outside the map loop to fix "Rendered more hooks than during the previous render" error.
+                    // This state will now be managed for each link individually.
                     const [isExpanded, setIsExpanded] = useState(false);
+
                     const maxDescriptionLength = 150;
                     const shouldTruncate = link.description && link.description.length > maxDescriptionLength;
                     const displayDescription = shouldTruncate && !isExpanded
