@@ -6865,6 +6865,10 @@ End of Report
         return res.status(400).json({ error: "Valid status (approved or declined) is required" });
       }
 
+      if (!decisionReason) {
+        return res.status(400).json({ error: "Decision reason is required" });
+      }
+
       // Check if request exists
       const [existingRequest] = await db
         .select()
