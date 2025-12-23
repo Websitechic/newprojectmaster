@@ -6,6 +6,7 @@ let initPromise: Promise<void> | null = null;
 
 export function useOneSignal(userId?: number) {
   const hasSubscribed = useRef(false);
+  const initializationAttempted = useRef(false);
 
   useEffect(() => {
     const appId = (import.meta.env.VITE_ONESIGNAL_APP_ID as string) || '';
@@ -24,14 +25,29 @@ export function useOneSignal(userId?: number) {
       return;
     }
 
+    // Prevent multiple initialization attempts for the same user
+    if (initializationAttempted.current) {
+      console.log('[OneSignal] ⏸️ Initialization already attempted for this user');
+      return;
+    }
+
     const initializeOneSignal = async () => {
       try {
+        initializationAttempted.current = true;
         console.log('[OneSignal] 🚀 Starting initialization process...');
         
         // Wait for OneSignal to be available on window
+        let retries = 0;
+        while (typeof window.OneSignalDeferred === 'undefined' && retries < 10) {
+          console.log('[OneSignal] ⏳ Waiting for OneSignal SDK to load... (attempt', retries + 1, ')');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          retries++;
+        }
+        
         if (typeof window.OneSignalDeferred === 'undefined') {
-          console.log('[OneSignal] ⏳ Waiting for OneSignal SDK to load...');
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.error('[OneSignal] ❌ OneSignal SDK failed to load after 5 seconds');
+          initializationAttempted.current = false;
+          return;
         }
         
         if (!isInitialized && !initPromise) {
@@ -54,6 +70,7 @@ export function useOneSignal(userId?: number) {
                 resolve();
               } catch (error) {
                 console.error('[OneSignal] ❌ Initialization failed:', error);
+                initializationAttempted.current = false;
                 reject(error);
               }
             });
@@ -71,8 +88,8 @@ export function useOneSignal(userId?: number) {
           return;
         }
         
-        // Use the global OneSignal instance
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait a bit longer to ensure user is fully authenticated
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         window.OneSignalDeferred.push(async (OneSignal: any) => {
           try {
@@ -87,37 +104,32 @@ export function useOneSignal(userId?: number) {
             
             if (!isPushSupported) {
               console.warn('[OneSignal] ⚠️ Push notifications not supported on this browser');
+              hasSubscribed.current = true; // Mark as processed to avoid retries
               return;
             }
             
             // Check current permission state
-            const permission = await OneSignal.Notifications.permissionNative;
-            console.log('[OneSignal] 🔐 Native permission:', permission);
+            let permission;
+            try {
+              permission = await OneSignal.Notifications.permissionNative;
+              console.log('[OneSignal] 🔐 Native permission:', permission);
+            } catch (permError) {
+              console.error('[OneSignal] ❌ Error getting permission:', permError);
+              return;
+            }
             
             // Handle permission states
             if (permission === 'default') {
-              // Permission not yet requested - show prompt
-              console.log('[OneSignal] 🔔 Requesting notification permission...');
+              // Permission not yet requested - DON'T auto-prompt
+              console.log('[OneSignal] 🔔 Permission not yet requested');
+              console.log('[OneSignal] 💡 User can enable notifications from their profile or settings');
+              hasSubscribed.current = true; // Mark as processed
               
+              // Store that we can prompt later if needed
               try {
-                await OneSignal.Slidedown.promptPush();
-                console.log('[OneSignal] 📊 Permission prompt shown');
-                
-                // Wait for user interaction
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                // Check permission again after prompt
-                const newPermission = await OneSignal.Notifications.permissionNative;
-                console.log('[OneSignal] 🔐 Permission after prompt:', newPermission);
-                
-                if (newPermission === 'granted') {
-                  console.log('[OneSignal] ✅ Permission granted by user!');
-                  await OneSignal.User.PushSubscription.optIn();
-                  console.log('[OneSignal] ✅ User opted in successfully');
-                  hasSubscribed.current = true;
-                }
-              } catch (promptError) {
-                console.error('[OneSignal] ❌ Error with permission prompt:', promptError);
+                localStorage.setItem(`onesignal_can_prompt_${userId}`, 'true');
+              } catch (e) {
+                console.warn('[OneSignal] Could not set localStorage');
               }
             } else if (permission === 'granted') {
               // Permission already granted - ensure subscription is active
@@ -138,10 +150,12 @@ export function useOneSignal(userId?: number) {
                 hasSubscribed.current = true;
               } catch (optInError) {
                 console.error('[OneSignal] ❌ Error opting in user:', optInError);
+                // Don't mark as subscribed if opt-in failed
               }
             } else if (permission === 'denied') {
               console.warn('[OneSignal] ⛔ Notifications blocked by user - cannot subscribe');
               console.warn('[OneSignal] 💡 User needs to enable notifications in browser settings');
+              hasSubscribed.current = true; // Mark as processed to avoid retries
             }
             
             // Log final subscription status
@@ -155,11 +169,22 @@ export function useOneSignal(userId?: number) {
               console.log('   - Subscription ID:', subscriptionId ? subscriptionId.substring(0, 8) + '...' : 'None');
               console.log('   - Has Token:', !!token);
               console.log('   - Opted In:', optedIn);
+              
+              // Store subscription status
+              if (optedIn && subscriptionId) {
+                try {
+                  localStorage.setItem(`onesignal_subscribed_${userId}`, 'true');
+                } catch (e) {
+                  console.warn('[OneSignal] Could not set localStorage');
+                }
+              }
             } catch (err) {
               console.log('[OneSignal] ℹ️ Could not get final status:', err);
             }
           } catch (error) {
             console.error('[OneSignal] ❌ Setup error:', error);
+            hasSubscribed.current = false; // Allow retry on next mount
+            initializationAttempted.current = false;
           }
         });
         
@@ -169,11 +194,17 @@ export function useOneSignal(userId?: number) {
           message: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined
         });
+        hasSubscribed.current = false; // Allow retry
+        initializationAttempted.current = false;
       }
     };
 
     initializeOneSignal();
     
+    // Cleanup function
+    return () => {
+      console.log('[OneSignal] Hook cleanup for user:', userId);
+    };
   }, [userId]);
 }
 
