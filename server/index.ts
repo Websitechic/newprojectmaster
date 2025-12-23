@@ -100,7 +100,7 @@ let emailServiceInitialized = false;
     // Test database connection first
     try {
       log("Testing database connection...");
-      await db.execute({ sql: "SELECT 1 as test" });
+      await db.execute("SELECT 1 as test");
       log("✅ Database connection successful");
     } catch (error: any) {
       console.error("❌ FATAL: Cannot connect to database!");

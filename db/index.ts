@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
-import ws from "ws";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "@db/schema";
 
 // Support both development (Replit) and production (VPS) database URLs
@@ -15,8 +15,5 @@ if (!databaseUrl) {
 
 console.log(`Connecting to ${process.env.NODE_ENV === 'production' ? 'PRODUCTION' : 'DEVELOPMENT'} database`);
 
-export const db = drizzle({
-  connection: databaseUrl,
-  schema,
-  ws: ws,
-});
+const client = postgres(databaseUrl);
+export const db = drizzle({ client, schema });

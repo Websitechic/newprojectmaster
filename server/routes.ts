@@ -938,12 +938,12 @@ export function registerRoutes(app: Express): Server {
       );
     }
 
-    const query = db
+    const staffAndCustomerSupportOfficers = await db
       .select()
       .from(users)
-      .where(whereCondition);
+      .where(whereCondition)
+      .orderBy(desc(users.lastActive));
 
-    const staffAndCustomerSupportOfficers = await query.orderBy(desc(users.lastActive));
     res.json(staffAndCustomerSupportOfficers);
   });
 
@@ -5377,7 +5377,8 @@ End of Report
   // Get messages between authenticated user and specific user
   app.get("/api/direct-messages/:userId", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated"    }
+      return res.status(401).json({ error: "Not authenticated" });
+    }
 
     const user = req.user!;
     const otherUserId = parseInt(req.params.userId);
