@@ -85,13 +85,40 @@ let emailServiceInitialized = false;
 (async () => {
   try {
     log("Starting server initialization...");
+    log("Environment:", app.get("env"));
+    log("Node version:", process.version);
 
-    // Auto-migrate database on startup
+    // Check for required environment variables
+    if (!process.env.DATABASE_URL) {
+      console.error("❌ FATAL: DATABASE_URL environment variable is not set!");
+      console.error("Please set your database connection string in the Secrets tab");
+      process.exit(1);
+    }
+
+    log("Database URL configured:", process.env.DATABASE_URL.substring(0, 20) + "...");
+
+    // Test database connection first
     try {
-      await migrate(db, { migrationsFolder: "./migrations" });
-      console.log("Database migrations completed successfully");
+      log("Testing database connection...");
+      await db.execute({ sql: "SELECT 1 as test" });
+      log("✅ Database connection successful");
     } catch (error: any) {
-      console.error("Database migration error:", error.message || error);
+      console.error("❌ FATAL: Cannot connect to database!");
+      console.error("Error:", error.message || error);
+      console.error("Please check your DATABASE_URL in the Secrets tab");
+      process.exit(1);
+    }
+
+    // Auto-migrate database on startup with better error handling
+    try {
+      log("Starting database migrations...");
+      await migrate(db, { migrationsFolder: "./migrations" });
+      log("✅ Database migrations completed successfully");
+    } catch (error: any) {
+      console.error("⚠️ Database migration error:", error.message || error);
+      console.error("Error code:", error.code);
+      console.error("Full error:", error);
+      
       // Only continue if it's a duplicate column/constraint error (already applied)
       const isDuplicateError = error.message && (
         error.message.includes('already exists') || 
@@ -101,14 +128,15 @@ let emailServiceInitialized = false;
       );
       
       if (!isDuplicateError) {
-        console.error("Critical migration error, exiting...");
+        console.error("❌ CRITICAL migration error - cannot continue");
+        console.error("To fix: Check your database connection and schema");
         process.exit(1);
       } else {
-        console.log("Migration skipped - schema already up to date");
+        log("⚠️ Migration skipped - schema already up to date");
       }
     }
 
-    // Initialize email service with timeout
+    // Initialize email service with timeout (non-critical)
     try {
       log("Initializing email service...");
       await Promise.race([
@@ -118,21 +146,37 @@ let emailServiceInitialized = false;
         )
       ]);
       emailServiceInitialized = true;
-      log("Email service initialized successfully");
-    } catch (error) {
-      log("Warning: Email service initialization failed - continuing without email service");
-      console.error("Email service error:", error);
+      log("✅ Email service initialized successfully");
+    } catch (error: any) {
+      log("⚠️ Warning: Email service initialization failed - continuing without email service");
+      console.error("Email service error:", error.message || error);
+      // Non-critical, continue
     }
 
     log("Setting up routes and server...");
-    const server = registerRoutes(app);
+    let server;
+    try {
+      server = registerRoutes(app);
+      log("✅ Routes registered successfully");
+    } catch (error: any) {
+      console.error("❌ FATAL: Failed to register routes:", error.message || error);
+      console.error("Stack:", error.stack);
+      process.exit(1);
+    }
 
     // Setup WebSocket server with separate path from Vite HMR
-    log("Setting up WebSocket...");
-    const wss = new WebSocketServer({
-      noServer: true,
-      path: "/api/ws"
-    });
+    log("Setting up WebSocket server...");
+    let wss;
+    try {
+      wss = new WebSocketServer({
+        noServer: true,
+        path: "/api/ws"
+      });
+      log("✅ WebSocket server created");
+    } catch (error: any) {
+      console.error("❌ FATAL: Failed to create WebSocket server:", error.message || error);
+      process.exit(1);
+    }
 
     // Session parser middleware for WebSocket upgrades
     const sessionParser = (req: any, res: any, next: any) => {
@@ -227,19 +271,54 @@ let emailServiceInitialized = false;
       serveStatic(app);
     }
 
-    // Start the server
+    // Start the server with error handling
     const port = 5000;
+    log(`Attempting to start server on port ${port}...`);
+    
     server.listen(port, "0.0.0.0", () => {
-      console.log(`Server running on port ${port}`);
+      console.log("\n" + "=".repeat(50));
+      console.log(`✅ Server successfully started!`);
+      console.log(`🌐 Server running on http://0.0.0.0:${port}`);
+      console.log(`📝 Environment: ${app.get("env")}`);
+      console.log("=".repeat(50) + "\n");
 
       // Start the break scheduler
-      breakScheduler.start();
+      try {
+        breakScheduler.start();
+        log("✅ Break scheduler started");
+      } catch (error: any) {
+        console.error("⚠️ Break scheduler failed to start:", error.message);
+      }
 
       // Initialize communication monitor
-      communicationMonitor.start();
+      try {
+        communicationMonitor.start();
+        log("✅ Communication monitor started");
+      } catch (error: any) {
+        console.error("⚠️ Communication monitor failed to start:", error.message);
+      }
     });
-  } catch (error) {
-    console.error("Fatal server initialization error:", error);
+
+    // Handle server errors
+    server.on('error', (error: any) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ FATAL: Port ${port} is already in use!`);
+        console.error("Please stop any other processes using this port and try again.");
+        process.exit(1);
+      } else {
+        console.error("❌ FATAL: Server error:", error.message || error);
+        console.error("Stack:", error.stack);
+        process.exit(1);
+      }
+    });
+
+  } catch (error: any) {
+    console.error("\n" + "=".repeat(50));
+    console.error("❌ FATAL SERVER INITIALIZATION ERROR");
+    console.error("=".repeat(50));
+    console.error("Error:", error.message || error);
+    console.error("Stack:", error.stack);
+    console.error("=".repeat(50) + "\n");
     process.exit(1);
   }
 })();
