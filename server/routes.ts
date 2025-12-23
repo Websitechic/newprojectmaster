@@ -6190,7 +6190,8 @@ End of Report
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const user = req.user!;    const bookingId = parseInt(req.params.id);
+    const user = req.user!;
+    const bookingId = parseInt(req.params.id);
 
     try {
       // Check if booking exists
@@ -6217,7 +6218,8 @@ End of Report
         .where(eq(bookings.id, bookingId));
 
       // Broadcast to all participants via SSE
-      if (global.sseClients && booking.participants && Array.isArray(booking.participants)) {        booking.participants.forEach((participantId: number) => {
+      if (global.sseClients && booking.participants && Array.isArray(booking.participants)) {
+        booking.participants.forEach((participantId: number) => {
           const client = global.sseClients.get(participantId);
           if (client && !client.writableEnded) {
             try {
