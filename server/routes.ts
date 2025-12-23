@@ -6901,7 +6901,7 @@ End of Report
           decidedBy: user.id,
           decidedAt: new Date(),
         })
-        .where(eq(existingRequest.id, requestId))
+        .where(eq(deadlineExtensionRequests.id, requestId))
         .returning();
 
       // If approved, update the task
