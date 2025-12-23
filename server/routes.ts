@@ -4792,8 +4792,7 @@ End of Report
       );
 
       res.json(updatedApplication);
-    } catch (error) {
-      console.error("Error reviewing leave application:", error);
+    } catch (error) {console.error("Error reviewing leave application:", error);
       res.status(500).json({ error: "Failed to review leave application" });
     }
   });
@@ -4909,16 +4908,16 @@ End of Report
           ));
 
         for (const manager of operationsManagers) {
-          await createNotification(
-            manager.id,
-            "task_assigned",
-            `New staff complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
-            newComplaint.id,
-            "project"
-          );
+          await db
+            .insert(notifications)
+            .values({
+              userId: manager.id,
+              type: "task_assigned", // Using existing type
+              content: `New staff complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
+              referenceId: newComplaint.id,
+              referenceType: "project",
+            });
         }
-
-        console.log(`Notifications sent to ${operationsManagers.length} operations managers`);
       } catch (notificationError) {
         console.error("Error creating staff complaint notifications:", notificationError);
       }
@@ -6866,10 +6865,6 @@ End of Report
         return res.status(400).json({ error: "Valid status (approved or declined) is required" });
       }
 
-      if (!decisionReason) {
-        return res.status(400).json({ error: "Decision reason is required" });
-      }
-
       // Check if request exists
       const [existingRequest] = await db
         .select()
@@ -8577,7 +8572,7 @@ End of Report
         .orderBy(desc(projectPlans.createdAt));
 
       res.json(plans);
-    } catch (error) {
+    } catch (error){
       console.error("Error fetching project plans:", error);
       res.status(500).json({ error: "Failed to fetch project plans" });
     }
