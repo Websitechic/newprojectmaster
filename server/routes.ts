@@ -6869,7 +6869,7 @@ End of Report
       const [existingRequest] = await db
         .select()
         .from(deadlineExtensionRequests)
-        .where(eq(existingRequest.id, requestId))
+        .where(eq(deadlineExtensionRequests.id, requestId))
         .limit(1);
 
       if (!existingRequest) {
