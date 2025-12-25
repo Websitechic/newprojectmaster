@@ -87,17 +87,7 @@ export async function sendOneSignalNotification(
     const notification: OneSignalNotification = {
       headings: { en: title },
       contents: { en: message },
-      include_external_user_ids: validUserIds.map(id => id.toString()),
-      // Target only Android and iOS devices
-      filters: [
-        {
-          operator: "OR",
-          filters: [
-            { field: "device_type", relation: "=", value: "1" }, // iOS
-            { field: "device_type", relation: "=", value: "2" }  // Android
-          ]
-        }
-      ]
+      include_external_user_ids: validUserIds.map(id => id.toString())
     };
 
     if (url) {
