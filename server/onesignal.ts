@@ -40,7 +40,7 @@ export async function sendOneSignalNotification(
   message: string,
   url?: string,
   data?: any
-): Promise<void> {
+): Promise<any> {
   console.log('\n╔════════════════════════════════════════════════════════════════╗');
   console.log('║           ONESIGNAL NOTIFICATION SERVICE CALLED                ║');
   console.log('╚════════════════════════════════════════════════════════════════╝');
@@ -165,13 +165,13 @@ export async function sendOneSignalNotification(
         console.log('   - Attempted User IDs:', validUserIds);
         console.log('   - Errors:', result.errors);
         console.log('═══════════════════════════════════════════════════════════════\n');
-        return; // Don't throw error for no subscribers
+        return result; // Return result even for no subscribers
       } else {
         console.error('\n❌❌❌ ONESIGNAL API ERROR ❌❌❌');
         console.error('   - Errors:', result.errors);
         console.error('   - User IDs:', validUserIds);
         console.error('═══════════════════════════════════════════════════════════════\n');
-        return;
+        return result;
       }
     }
     
@@ -180,6 +180,8 @@ export async function sendOneSignalNotification(
     console.log('   - Recipients Count:', result.recipients);
     console.log('   - User IDs:', validUserIds);
     console.log('═══════════════════════════════════════════════════════════════\n');
+    
+    return result;
   } catch (error) {
     console.error('\n❌❌❌ ONESIGNAL SERVICE EXCEPTION ❌❌❌');
     console.error('   - Error Type:', error instanceof Error ? error.constructor.name : typeof error);
