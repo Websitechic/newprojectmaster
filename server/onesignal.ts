@@ -40,7 +40,7 @@ export async function sendOneSignalNotification(
   message: string,
   url?: string,
   data?: any
-): Promise<any> {
+): Promise<void> {
   console.log('\n╔════════════════════════════════════════════════════════════════╗');
   console.log('║           ONESIGNAL NOTIFICATION SERVICE CALLED                ║');
   console.log('╚════════════════════════════════════════════════════════════════╝');
@@ -87,7 +87,17 @@ export async function sendOneSignalNotification(
     const notification: OneSignalNotification = {
       headings: { en: title },
       contents: { en: message },
-      include_external_user_ids: validUserIds.map(id => id.toString())
+      include_external_user_ids: validUserIds.map(id => id.toString()),
+      // Target only Android and iOS devices
+      filters: [
+        {
+          operator: "OR",
+          filters: [
+            { field: "device_type", relation: "=", value: "1" }, // iOS
+            { field: "device_type", relation: "=", value: "2" }  // Android
+          ]
+        }
+      ]
     };
 
     if (url) {
@@ -165,13 +175,13 @@ export async function sendOneSignalNotification(
         console.log('   - Attempted User IDs:', validUserIds);
         console.log('   - Errors:', result.errors);
         console.log('═══════════════════════════════════════════════════════════════\n');
-        return result; // Return result even for no subscribers
+        return; // Don't throw error for no subscribers
       } else {
         console.error('\n❌❌❌ ONESIGNAL API ERROR ❌❌❌');
         console.error('   - Errors:', result.errors);
         console.error('   - User IDs:', validUserIds);
         console.error('═══════════════════════════════════════════════════════════════\n');
-        return result;
+        return;
       }
     }
     
@@ -180,8 +190,6 @@ export async function sendOneSignalNotification(
     console.log('   - Recipients Count:', result.recipients);
     console.log('   - User IDs:', validUserIds);
     console.log('═══════════════════════════════════════════════════════════════\n');
-    
-    return result;
   } catch (error) {
     console.error('\n❌❌❌ ONESIGNAL SERVICE EXCEPTION ❌❌❌');
     console.error('   - Error Type:', error instanceof Error ? error.constructor.name : typeof error);

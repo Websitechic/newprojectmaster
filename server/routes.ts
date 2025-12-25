@@ -3753,31 +3753,20 @@ End of Report
           .from(users)
           .where(ne(users.id, user.id));
 
-        const recipientIds = allUsers.map(u => u.id).filter(id => id !== null && id !== undefined);
-        console.log(`📧 Target recipients: ${recipientIds.length} users (excluding sender ID: ${user.id})`);
-        console.log(`📧 Recipient IDs:`, recipientIds);
+        const recipientIds = allUsers.map(u => u.id);
+        console.log(`📧 Target recipients: ${recipientIds.length} users`);
 
         if (recipientIds.length > 0) {
-          console.log(`📧 Calling sendOneSignalNotification with ${recipientIds.length} recipient IDs...`);
-          
           // Send OneSignal push to all recipients
-          const result = await sendOneSignalNotification(
+          await sendOneSignalNotification(
             recipientIds,
             `General Channel: ${sender.name}`,
             content.substring(0, 100) + (content.length > 100 ? '...' : '')
           );
-          
-          console.log(`✅ OneSignal push completed for ${recipientIds.length} users`);
-          console.log(`✅ Result:`, result);
-        } else {
-          console.log(`⚠️ No recipients found to send OneSignal notification`);
+          console.log(`✅ OneSignal push sent to ${recipientIds.length} users`);
         }
       } catch (oneSignalError) {
         console.error(`❌ OneSignal general channel notification failed:`, oneSignalError);
-        console.error(`❌ Error details:`, {
-          message: oneSignalError instanceof Error ? oneSignalError.message : String(oneSignalError),
-          stack: oneSignalError instanceof Error ? oneSignalError.stack : undefined
-        });
       }
       console.log(`========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW END ==========\n`);
 
