@@ -57,6 +57,7 @@ import { useOneSignal } from "@/hooks/use-onesignal";
 import GeneralChannelPage from "@/pages/dashboard/general-channel";
 import ReviewLinks from "@/pages/dashboard/review-links";
 import ProjectBriefing from "@/pages/dashboard/project-briefing";
+import { EnableNotificationsPrompt } from "./components/notifications/enable-notifications-prompt";
 
 // Lazy load OneSignalTest component
 const OneSignalTest = lazy(() => import("@/pages/dashboard/onesignal-test"));
@@ -545,6 +546,8 @@ function App() {
         <AuthProvider>
           <Router />
           <Toaster />
+          <GlobalNotificationListener />
+          <EnableNotificationsPrompt />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

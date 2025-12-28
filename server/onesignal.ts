@@ -59,17 +59,21 @@ export async function sendOneSignalNotification(
   console.log(`   - App ID Exists: ${!!ONESIGNAL_APP_ID}`);
   console.log(`   - App ID Valid: ${ONESIGNAL_APP_ID !== 'YOUR_ONESIGNAL_APP_ID'}`);
   console.log(`   - App ID Preview: ${ONESIGNAL_APP_ID ? ONESIGNAL_APP_ID.substring(0, 8) + '...' : 'NOT SET'}`);
+  console.log(`   - App ID Length: ${ONESIGNAL_APP_ID?.length || 0}`);
   console.log(`   - REST API Key Exists: ${!!ONESIGNAL_REST_API_KEY}`);
   console.log(`   - REST API Key Valid: ${ONESIGNAL_REST_API_KEY !== 'YOUR_ONESIGNAL_REST_API_KEY'}`);
   console.log(`   - REST API Key Preview: ${ONESIGNAL_REST_API_KEY ? ONESIGNAL_REST_API_KEY.substring(0, 12) + '...' : 'NOT SET'}`);
+  console.log(`   - REST API Key Length: ${ONESIGNAL_REST_API_KEY?.length || 0}`);
   
   if (!ONESIGNAL_APP_ID || ONESIGNAL_APP_ID === 'YOUR_ONESIGNAL_APP_ID') {
     console.error('❌ OneSignal App ID not configured - ABORTING');
+    console.error('   Please set ONESIGNAL_APP_ID in Replit Secrets');
     return;
   }
   
   if (!ONESIGNAL_REST_API_KEY || ONESIGNAL_REST_API_KEY === 'YOUR_ONESIGNAL_REST_API_KEY') {
     console.error('❌ OneSignal REST API Key not configured - ABORTING');
+    console.error('   Please set ONESIGNAL_REST_API_KEY in Replit Secrets');
     return;
   }
   
@@ -121,10 +125,12 @@ export async function sendOneSignalNotification(
     };
 
     console.log('\n📤 Preparing OneSignal API Request:');
-    console.log('   - Target User IDs:', userIds);
+    console.log('   - Target User IDs:', validUserIds);
     console.log('   - Title:', title);
     console.log('   - Message Preview:', message.substring(0, 50) + '...');
     console.log('   - Payload Keys:', Object.keys(payload));
+    console.log('   - Include Aliases:', JSON.stringify(notification.include_aliases));
+    console.log('   - Target Channel:', notification.target_channel);
     console.log('   - Full Payload:', JSON.stringify(payload, null, 2));
 
     console.log('\n🌐 Making HTTP Request to OneSignal API...');
