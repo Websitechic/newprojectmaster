@@ -5618,48 +5618,24 @@ End of Report
 
       // Only send notifications if receiver is different from sender
       if (parseInt(receiverId) !== senderId) {
-        // Create notification for receiver - use 'message' type to trigger sound
-        console.log(`\n========== DIRECT MESSAGE NOTIFICATION FLOW START ==========`);
+        // Send direct OneSignal push for direct messages
+        console.log(`\n========== DIRECT MESSAGE ONESIGNAL NOTIFICATION FLOW ==========`);
         console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
         console.log(`📧 Receiver ID: ${receiverId}`);
         console.log(`📧 Message Content: ${messageContent.substring(0, 50)}...`);
-        console.log(`📧 Creating database notification...`);
 
         try {
-          await createNotification(
-            parseInt(receiverId),
-            "message",
-            `New message from ${user.name}`,
-            newMessage.id,
-            "direct_message"
-          );
-          console.log(`✅ Database notification created successfully`);
-        } catch (notifError) {
-          console.error(`❌ Error creating database notification:`, notifError);
-        }
-
-        // Send direct OneSignal push for direct messages
-        console.log(`\n📧 DIRECT ONESIGNAL PUSH ATTEMPT:`);
-        console.log(`   - Target User ID: ${receiverId}`);
-        console.log(`   - Title: "${user.name} sent you a message"`);
-        console.log(`   - Message Preview: "${messageContent.substring(0, 100)}"`);
-
-        try {
-          const result = await sendOneSignalNotification(
+          await sendOneSignalNotification(
             parseInt(receiverId),
             `${user.name} sent you a message`,
-            messageContent.substring(0, 100)
+            messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : '')
           );
-          console.log(`✅ ONESIGNAL PUSH SENT SUCCESSFULLY`);
-          console.log(`   - Result:`, result);
+          console.log(`✅ OneSignal push sent successfully`);
         } catch (error) {
-          console.error(`❌ ONESIGNAL PUSH FAILED:`);
-          console.error(`   - Error Type: ${error instanceof Error ? error.constructor.name : typeof error}`);
-          console.error(`   - Error Message: ${error instanceof Error ? error.message : error}`);
-          console.error(`   - Error Stack:`, error instanceof Error ? error.stack : 'No stack trace');
+          console.error(`❌ OneSignal push failed:`, error);
         }
 
-        console.log(`========== DIRECT MESSAGE NOTIFICATION FLOW END ==========\n`);
+        console.log(`========== DIRECT MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);
       } else {
         console.log(`⏸️ Skipping notification - sender and receiver are the same user`);
       }
@@ -8173,6 +8149,41 @@ End of Report
           isEdited: false,
         })
         .returning();
+
+      // Send OneSignal push notifications to all project members (except sender)
+      console.log(`\n========== TEAM CHAT ONESIGNAL NOTIFICATION FLOW ==========`);
+      console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
+      console.log(`📧 Project: ${project.name} (ID: ${projectId})`);
+      console.log(`📧 Message: ${content.substring(0, 50)}...`);
+
+      try {
+        // Get all project members except the sender
+        const allMembers = await db
+          .select({ userId: projectMembers.userId })
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              ne(projectMembers.userId, user.id)
+            )
+          );
+
+        const recipientIds = allMembers.map(m => m.userId);
+        console.log(`📧 Target recipients: ${recipientIds.length} members`);
+
+        if (recipientIds.length > 0) {
+          // Send OneSignal push to all project members except sender
+          await sendOneSignalNotification(
+            recipientIds,
+            `Team Chat: ${project.name}`,
+            `${user.name}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`
+          );
+          console.log(`✅ OneSignal push sent to ${recipientIds.length} project members`);
+        }
+      } catch (oneSignalError) {
+        console.error(`❌ OneSignal team chat notification failed:`, oneSignalError);
+      }
+      console.log(`========== TEAM CHAT ONESIGNAL NOTIFICATION FLOW END ==========\n`);
 
       // Check for @mentions in the message - improved regex to handle spaces
       const mentionRegex = /@([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
