@@ -88,16 +88,9 @@ export async function sendOneSignalNotification(
       headings: { en: title },
       contents: { en: message },
       include_external_user_ids: validUserIds.map(id => id.toString()),
-      // Target only Android and iOS devices
-      filters: [
-        {
-          operator: "OR",
-          filters: [
-            { field: "device_type", relation: "=", value: "1" }, // iOS
-            { field: "device_type", relation: "=", value: "2" }  // Android
-          ]
-        }
-      ]
+      // No device type filter - allows web push on all supported browsers
+      // Device types: 1=iOS native, 2=Android native, 5=Chrome/Firefox/Edge web push
+      // Note: iOS browsers don't support web push (Apple limitation)
     };
 
     if (url) {
