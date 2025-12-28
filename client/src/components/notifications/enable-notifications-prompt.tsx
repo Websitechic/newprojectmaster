@@ -28,17 +28,35 @@ export function EnableNotificationsPrompt() {
     try {
       if (typeof window.OneSignalDeferred !== 'undefined') {
         window.OneSignalDeferred.push(async (OneSignal: any) => {
-          await OneSignal.Slidedown.promptPush();
-          
-          // Check permission after prompt
-          setTimeout(() => {
-            if ("Notification" in window) {
-              setPermission(Notification.permission);
-              if (Notification.permission === "granted") {
-                setShow(false);
-              }
+          try {
+            // First check if push is supported
+            const isPushSupported = OneSignal.Notifications.isPushSupported();
+            if (!isPushSupported) {
+              console.error("Push notifications are not supported on this browser");
+              return;
             }
-          }, 1000);
+
+            // Show the native prompt
+            await OneSignal.Slidedown.promptPush();
+            
+            // Wait a bit for user to respond
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Check permission after prompt
+            const permission = await OneSignal.Notifications.permissionNative;
+            console.log('Permission after prompt:', permission);
+            
+            if (permission === 'granted') {
+              // Ensure user is opted in
+              await OneSignal.User.PushSubscription.optIn();
+              console.log('User opted in successfully');
+              setShow(false);
+            }
+            
+            setPermission(permission);
+          } catch (innerError) {
+            console.error("Error in OneSignal prompt:", innerError);
+          }
         });
       }
     } catch (error) {
