@@ -5630,12 +5630,14 @@ End of Report
         console.log(`📧 Message Content: ${messageContent.substring(0, 50)}...`);
 
         try {
+          // Pass as array to match general channel implementation
+          const recipientId = parseInt(receiverId);
           await sendOneSignalNotification(
-            parseInt(receiverId),
+            [recipientId],
             `${user.name} sent you a message`,
             messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : '')
           );
-          console.log(`✅ OneSignal push sent successfully`);
+          console.log(`✅ OneSignal push sent to recipient ${recipientId}`);
         } catch (error) {
           console.error(`❌ OneSignal push failed:`, error);
         }
