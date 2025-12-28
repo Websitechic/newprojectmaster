@@ -78,15 +78,24 @@ export async function sendOneSignalNotification(
   try {
     const userIds = Array.isArray(userId) ? userId : [userId];
     
-    // Filter out invalid user IDs
-    const validUserIds = userIds.filter(id => id && !isNaN(Number(id)) && Number(id) > 0);
+    console.log('📊 Processing user IDs:');
+    console.log('   - Input:', userIds);
+    console.log('   - Input types:', userIds.map(id => typeof id));
+    
+    // Filter out invalid user IDs and ensure they're numbers
+    const validUserIds = userIds
+      .filter(id => id && !isNaN(Number(id)) && Number(id) > 0)
+      .map(id => Number(id));
     
     if (validUserIds.length === 0) {
       console.error('❌ No valid user IDs provided');
+      console.error('   - Original input:', userIds);
+      console.error('   - After filtering:', validUserIds);
       return;
     }
     
     console.log('✓ Valid user IDs:', validUserIds.length, 'out of', userIds.length);
+    console.log('✓ Valid user IDs array:', validUserIds);
     
     const notification: OneSignalNotification = {
       headings: { en: title },
