@@ -95,10 +95,7 @@ export async function sendOneSignalNotification(
       include_aliases: {
         external_id: validUserIds.map(id => id.toString())
       },
-      target_channel: 'push',
-      // No device type filter - allows web push on all supported browsers
-      // Device types: 1=iOS native, 2=Android native, 5=Chrome/Firefox/Edge web push
-      // Note: iOS browsers don't support web push (Apple limitation)
+      target_channel: 'push'
     };
 
     if (url) {
@@ -145,19 +142,27 @@ export async function sendOneSignalNotification(
 
     const responseText = await response.text();
     console.log('\n📄 Response Body:');
-    console.log(responseText.substring(0, 1000));
+    console.log(responseText);
 
     if (!response.ok) {
       console.error('\n❌❌❌ ONESIGNAL API ERROR ❌❌❌');
       console.error('   - HTTP Status:', response.status);
       console.error('   - Status Text:', response.statusText);
       console.error('   - Response Body:', responseText);
-      console.error('   - User IDs Attempted:', userIds);
+      console.error('   - User IDs Attempted:', validUserIds);
+      console.error('   - Payload Sent:', JSON.stringify(payload, null, 2));
       console.error('═══════════════════════════════════════════════════════════════\n');
       throw new Error(`OneSignal API error: ${response.status} - ${responseText}`);
     }
 
-    const result = JSON.parse(responseText);
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('\n❌ Failed to parse OneSignal response:', parseError);
+      console.error('   - Response text:', responseText);
+      throw new Error('Invalid JSON response from OneSignal');
+    }
     
     // Check if there are errors
     if (result.errors && result.errors.length > 0) {

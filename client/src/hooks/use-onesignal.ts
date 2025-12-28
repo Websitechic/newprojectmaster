@@ -93,17 +93,26 @@ export function useOneSignal(userId?: number) {
         
         window.OneSignalDeferred.push(async (OneSignal: any) => {
           try {
-            // Set external user ID for this user - using setExternalUserId for better compatibility
+            // Set external user ID for this user using the recommended login method
             console.log('[OneSignal] 👤 Setting external user ID:', userId);
             
-            // Try both methods for maximum compatibility
+            // Use login method which handles aliases automatically
             try {
               await OneSignal.login(userId.toString());
               console.log('[OneSignal] ✅ Login method succeeded');
-            } catch (loginError) {
-              console.warn('[OneSignal] ⚠️ Login method failed, trying setExternalUserId:', loginError);
+              
+              // Ensure the alias is properly set
               await OneSignal.User.addAlias("external_id", userId.toString());
-              console.log('[OneSignal] ✅ setExternalUserId method succeeded');
+              console.log('[OneSignal] ✅ External ID alias added');
+            } catch (loginError) {
+              console.warn('[OneSignal] ⚠️ Login failed, trying direct alias:', loginError);
+              try {
+                await OneSignal.User.addAlias("external_id", userId.toString());
+                console.log('[OneSignal] ✅ External ID alias set successfully');
+              } catch (aliasError) {
+                console.error('[OneSignal] ❌ Failed to set external ID:', aliasError);
+                throw aliasError;
+              }
             }
             
             console.log('[OneSignal] ✅ External user ID set successfully');
