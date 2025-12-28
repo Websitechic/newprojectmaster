@@ -85,13 +85,17 @@ The application follows a modern full-stack architecture with clear separation b
 6. SSE notifications trigger immediately with sound and browser notifications
 7. Audio context resumed automatically when suspended from page navigation
 
-### Notification System (Latest Fix - Dec 4, 2025)
+### Notification System (Latest Fix - Dec 28, 2025)
 - **Sound Playback**: Simplified to play immediately without delays
 - **Audio Context**: Automatically resumes from suspended state
 - **Browser Notifications**: Shows on all pages, minimized state, and different tabs
 - **Volume**: Optimized to 0.7 (audible but not jarring)
 - **Files**: `use-notification-sound.ts` manages audio generation and playback
 - **Centralized Handler**: App.tsx SSE handler manages all notifications to prevent duplicates
+- **OneSignal Push Notifications**: Integrated for direct messages and team chat
+  - **Direct Messages**: WebSocket handler in `server/websocket.ts` sends OneSignal notifications when users receive direct messages
+  - **Team Chat Messages**: WebSocket handler broadcasts OneSignal notifications to all project members when team messages are sent
+  - **Implementation**: Messages are sent via WebSocket (not HTTP POST), so OneSignal calls are in the WebSocket message handlers at lines 245-261 (team) and 284-299 (direct)
 
 ## External Dependencies
 

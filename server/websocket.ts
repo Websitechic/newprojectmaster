@@ -2,7 +2,9 @@ import { WebSocketServer, WebSocket } from "ws";
 import type { Session } from "express-session";
 import type { Message } from "@db/schema";
 import { db } from "@db";
-import { messages } from "@db/schema";
+import { messages, users } from "@db/schema";
+import { sendOneSignalNotification } from "./onesignal";
+import { eq } from "drizzle-orm";
 
 interface ExtendedWebSocket extends WebSocket {
   userId?: number;
@@ -196,7 +198,7 @@ export function setupWebSocket(wss: WebSocketServer) {
       };
 
       // Handle messages
-      const handleMainMessages = (data: Buffer) => {
+      const handleMainMessages = async (data: Buffer) => {
         try {
           const message = JSON.parse(data.toString());
           console.log('Received WebSocket message from authenticated user:', message);
@@ -213,9 +215,12 @@ export function setupWebSocket(wss: WebSocketServer) {
             if (message.type === 'project_message' && message.projectId && message.content && userId) {
               const projectId = message.projectId;
               const senderUserId = userId;
+              const recipientIds: number[] = [];
+              
               if (global.connectedClients) {
                 global.connectedClients.forEach((client, clientId) => {
                   if (client.userId === senderUserId) return; // Don't send back to sender
+                  recipientIds.push(clientId as number);
                   if (client.readyState === WebSocket.OPEN) {
                     try {
                       client.send(JSON.stringify({
@@ -232,6 +237,24 @@ export function setupWebSocket(wss: WebSocketServer) {
                     }
                   }
                 });
+              }
+              
+              // Send OneSignal notifications for WebSocket project messages
+              if (recipientIds.length > 0) {
+                try {
+                  const senderUser = await db.select().from(users).where(eq(users.id, senderUserId)).limit(1);
+                  const senderName = senderUser[0]?.name || 'Team Member';
+                  
+                  console.log(`\n🔵 WebSocket TEAM MESSAGE OneSignal:`, { projectId, recipientIds: recipientIds.length });
+                  await sendOneSignalNotification(
+                    recipientIds,
+                    `Team Chat Message`,
+                    `${senderName}: ${message.content.substring(0, 100)}`
+                  );
+                  console.log(`✅ WebSocket team message OneSignal sent to ${recipientIds.length} users`);
+                } catch (oneSignalError) {
+                  console.error(`❌ WebSocket team message OneSignal failed:`, oneSignalError);
+                }
               }
             }
             
@@ -253,6 +276,22 @@ export function setupWebSocket(wss: WebSocketServer) {
                 } catch (sendError) {
                   console.error(`Error sending direct message to user ${receiverId}:`, sendError);
                 }
+              }
+              
+              // Send OneSignal notification for WebSocket direct messages
+              try {
+                const senderUser = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+                const senderName = senderUser[0]?.name || 'Team Member';
+                
+                console.log(`\n🔴 WebSocket DIRECT MESSAGE OneSignal:`, { receiverId, senderId: userId });
+                await sendOneSignalNotification(
+                  receiverId,
+                  `${senderName} sent you a message`,
+                  message.content.substring(0, 100)
+                );
+                console.log(`✅ WebSocket direct message OneSignal sent to ${receiverId}`);
+              } catch (oneSignalError) {
+                console.error(`❌ WebSocket direct message OneSignal failed:`, oneSignalError);
               }
             }
             

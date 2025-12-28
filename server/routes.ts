@@ -5562,7 +5562,11 @@ End of Report
 
   // Send direct message
   app.post("/api/direct-messages", async (req, res) => {
+    console.log('\n🔴🔴🔴 POST /api/direct-messages CALLED 🔴🔴🔴');
+    console.log('Request body:', req.body);
+    
     if (!req.isAuthenticated()) {
+      console.log('❌ User not authenticated');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
@@ -5572,6 +5576,7 @@ End of Report
 
     try {
       if (!receiverId || !content || !content.trim()) {
+        console.log('❌ Missing receiverId or content');
         return res.status(400).json({ error: "Receiver ID and content are required" });
       }
 
@@ -8092,7 +8097,12 @@ End of Report
 
   // Send team message
   app.post("/api/projects/:projectId/team-messages", async (req, res) => {
+    console.log('\n🔵🔵🔵 POST /api/projects/:projectId/team-messages CALLED 🔵🔵🔵');
+    console.log('Project ID:', req.params.projectId);
+    console.log('Request body:', req.body);
+    
     if (!req.isAuthenticated()) {
+      console.log('❌ User not authenticated');
       return res.status(401).send("Not authenticated");
     }
 
@@ -8102,6 +8112,7 @@ End of Report
 
     try {
       if (!content || !content.trim()) {
+        console.log('❌ Missing content');
         return res.status(400).json({ error: "Message content is required" });
       }
 
