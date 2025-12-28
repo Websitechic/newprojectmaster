@@ -22,6 +22,9 @@ interface OneSignalNotification {
   headings: { en: string };
   contents: { en: string };
   include_external_user_ids?: string[];
+  include_aliases?: {
+    external_id: string[];
+  };
   include_player_ids?: string[];
   url?: string;
   data?: any;
@@ -87,7 +90,11 @@ export async function sendOneSignalNotification(
     const notification: OneSignalNotification = {
       headings: { en: title },
       contents: { en: message },
+      // Use both methods for maximum compatibility with OneSignal Web SDK
       include_external_user_ids: validUserIds.map(id => id.toString()),
+      include_aliases: {
+        external_id: validUserIds.map(id => id.toString())
+      },
       // No device type filter - allows web push on all supported browsers
       // Device types: 1=iOS native, 2=Android native, 5=Chrome/Firefox/Edge web push
       // Note: iOS browsers don't support web push (Apple limitation)

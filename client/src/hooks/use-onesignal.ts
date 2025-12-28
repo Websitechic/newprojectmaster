@@ -93,9 +93,19 @@ export function useOneSignal(userId?: number) {
         
         window.OneSignalDeferred.push(async (OneSignal: any) => {
           try {
-            // Set external user ID for this user
+            // Set external user ID for this user - using setExternalUserId for better compatibility
             console.log('[OneSignal] 👤 Setting external user ID:', userId);
-            await OneSignal.login(userId.toString());
+            
+            // Try both methods for maximum compatibility
+            try {
+              await OneSignal.login(userId.toString());
+              console.log('[OneSignal] ✅ Login method succeeded');
+            } catch (loginError) {
+              console.warn('[OneSignal] ⚠️ Login method failed, trying setExternalUserId:', loginError);
+              await OneSignal.User.addAlias("external_id", userId.toString());
+              console.log('[OneSignal] ✅ setExternalUserId method succeeded');
+            }
+            
             console.log('[OneSignal] ✅ External user ID set successfully');
             
             // Check if push is supported
