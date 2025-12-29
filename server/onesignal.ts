@@ -88,7 +88,7 @@ export async function sendOneSignalNotification(
     
     // Filter out invalid user IDs and ensure they're numbers
     const validUserIds = userIds
-      .filter(id => id && !isNaN(Number(id)) && Number(id) > 0)
+      .filter(id => id !== null && id !== undefined && !isNaN(Number(id)) && Number(id) > 0)
       .map(id => Number(id));
     
     if (validUserIds.length === 0) {
@@ -113,10 +113,12 @@ export async function sendOneSignalNotification(
 
     if (url) {
       notification.url = url;
+      console.log('   - URL set:', url);
     }
 
     if (data) {
       notification.data = data;
+      console.log('   - Data set:', JSON.stringify(data));
     }
 
     const payload = {
