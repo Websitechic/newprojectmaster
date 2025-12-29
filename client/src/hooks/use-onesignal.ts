@@ -96,10 +96,24 @@ export function useOneSignal(userId?: number) {
             // Set external user ID for this user using the recommended login method
             console.log('[OneSignal] 👤 Setting external user ID:', userId);
             
+            // First, ensure any previous user is logged out
+            try {
+              await OneSignal.logout();
+              console.log('[OneSignal] 🔄 Logged out any previous user');
+            } catch (logoutError) {
+              console.log('[OneSignal] ℹ️ No previous user to logout or logout failed:', logoutError);
+            }
+            
+            // Wait a bit for logout to complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             // Use login method which handles aliases automatically
             try {
               await OneSignal.login(userId.toString());
               console.log('[OneSignal] ✅ Login method succeeded');
+              
+              // Wait for login to fully process
+              await new Promise(resolve => setTimeout(resolve, 500));
               
               // Ensure the alias is properly set
               await OneSignal.User.addAlias("external_id", userId.toString());
@@ -223,6 +237,20 @@ export function useOneSignal(userId?: number) {
     // Cleanup function
     return () => {
       console.log('[OneSignal] Hook cleanup for user:', userId);
+      
+      // When user changes, logout from OneSignal to remove the old user association
+      if (typeof window.OneSignalDeferred !== 'undefined' && userId) {
+        window.OneSignalDeferred.push(async (OneSignal: any) => {
+          try {
+            console.log('[OneSignal] Logging out previous user:', userId);
+            await OneSignal.logout();
+            console.log('[OneSignal] Previous user logged out successfully');
+          } catch (error) {
+            console.warn('[OneSignal] Error logging out previous user:', error);
+          }
+        });
+      }
+      
       // Reset flags when user changes
       hasSubscribed.current = false;
       initializationAttempted.current = false;

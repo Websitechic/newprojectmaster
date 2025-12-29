@@ -79,14 +79,22 @@ export function useUser() {
       // Logout from OneSignal if needed
       if (data.logoutOneSignal && typeof window.OneSignalDeferred !== 'undefined') {
         try {
-          window.OneSignalDeferred.push(async (OneSignal: any) => {
-            try {
-              await OneSignal.logout();
-              console.log('[OneSignal] User logged out successfully');
-            } catch (error) {
-              console.error('[OneSignal] Logout error:', error);
-            }
+          await new Promise<void>((resolve) => {
+            window.OneSignalDeferred.push(async (OneSignal: any) => {
+              try {
+                console.log('[OneSignal] 🚪 Logging out user from OneSignal...');
+                await OneSignal.logout();
+                console.log('[OneSignal] ✅ User logged out successfully from OneSignal');
+                resolve();
+              } catch (error) {
+                console.error('[OneSignal] ❌ Logout error:', error);
+                resolve(); // Resolve anyway to not block logout
+              }
+            });
           });
+          
+          // Wait a bit to ensure logout completes
+          await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
           console.error('[OneSignal] Failed to logout:', error);
         }
