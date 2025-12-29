@@ -104,9 +104,9 @@ export function useOneSignal(userId?: number) {
               console.log('[OneSignal] ℹ️ No previous user to logout or logout failed:', logoutError);
             }
             
-            // CRITICAL: Wait longer for logout to fully complete before login
-            console.log('[OneSignal] ⏳ Waiting 1.5 seconds for logout to complete...');
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // CRITICAL: Wait even longer for logout to fully complete before login
+            console.log('[OneSignal] ⏳ Waiting 2.5 seconds for logout to complete...');
+            await new Promise(resolve => setTimeout(resolve, 2500));
             
             // Use login method which handles aliases automatically
             try {
@@ -243,24 +243,27 @@ export function useOneSignal(userId?: number) {
       if (typeof window.OneSignalDeferred !== 'undefined' && userId) {
         window.OneSignalDeferred.push(async (OneSignal: any) => {
           try {
-            console.log('[OneSignal] 🔄 Logging out previous user:', userId);
+            console.log('[OneSignal] 🔄 Cleanup - Logging out previous user:', userId);
             
-            // Logout to dissociate user
-            await OneSignal.logout();
-            console.log('[OneSignal] ✅ Previous user logged out');
-            
-            // Also opt out from push
+            // First opt out from push
             try {
               await OneSignal.User.PushSubscription.optOut();
-              console.log('[OneSignal] ✅ Opted out from push');
+              console.log('[OneSignal] ✅ Cleanup - Opted out from push');
             } catch (optOutError) {
-              console.log('[OneSignal] ℹ️ OptOut not needed:', optOutError);
+              console.log('[OneSignal] ℹ️ Cleanup - OptOut not needed:', optOutError);
             }
             
-            // Small delay to ensure logout processes
+            // Wait for opt out to process
             await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Then logout to dissociate user
+            await OneSignal.logout();
+            console.log('[OneSignal] ✅ Cleanup - Previous user logged out');
+            
+            // Longer delay to ensure cleanup completes
+            await new Promise(resolve => setTimeout(resolve, 1000));
           } catch (error) {
-            console.warn('[OneSignal] ⚠️ Error logging out previous user:', error);
+            console.warn('[OneSignal] ⚠️ Error in cleanup logout:', error);
           }
         });
       }

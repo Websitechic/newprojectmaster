@@ -84,16 +84,31 @@ export function useUser() {
               try {
                 console.log('[OneSignal] 🚪 Logging out user from OneSignal...');
                 
-                // First logout to dissociate the user
-                await OneSignal.logout();
-                console.log('[OneSignal] ✅ User logged out from OneSignal');
+                // Get current user info before logout
+                const currentUserId = await OneSignal.User.getExternalId();
+                console.log('[OneSignal] 📋 Current External User ID:', currentUserId);
                 
-                // Also opt out from push to remove device subscription
+                // First opt out from push to remove device subscription
                 try {
                   await OneSignal.User.PushSubscription.optOut();
                   console.log('[OneSignal] ✅ Opted out from push notifications');
                 } catch (optOutError) {
                   console.log('[OneSignal] ℹ️ OptOut not needed or already done:', optOutError);
+                }
+                
+                // Small delay to let opt out process
+                await new Promise(r => setTimeout(r, 500));
+                
+                // Then logout to dissociate the user completely
+                await OneSignal.logout();
+                console.log('[OneSignal] ✅ User logged out from OneSignal');
+                
+                // Verify logout
+                try {
+                  const afterLogoutId = await OneSignal.User.getExternalId();
+                  console.log('[OneSignal] 📋 External User ID after logout:', afterLogoutId);
+                } catch (e) {
+                  console.log('[OneSignal] ✅ External ID successfully cleared');
                 }
                 
                 resolve();
@@ -105,8 +120,8 @@ export function useUser() {
           });
           
           // Critical delay to ensure OneSignal fully processes the logout
-          console.log('[OneSignal] ⏳ Waiting 2 seconds for logout to complete...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log('[OneSignal] ⏳ Waiting 3 seconds for logout to complete...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
           console.log('[OneSignal] ✅ Logout complete, proceeding with navigation');
         } catch (error) {
           console.error('[OneSignal] Failed to logout:', error);
