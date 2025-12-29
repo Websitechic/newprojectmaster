@@ -223,6 +223,9 @@ export function useOneSignal(userId?: number) {
     // Cleanup function
     return () => {
       console.log('[OneSignal] Hook cleanup for user:', userId);
+      // Reset flags when user changes
+      hasSubscribed.current = false;
+      initializationAttempted.current = false;
     };
   }, [userId]);
 }

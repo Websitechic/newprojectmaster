@@ -75,8 +75,25 @@ export function useUser() {
 
   const logoutMutation = useMutation<RequestResult, Error>({
     mutationFn: () => handleRequest('/api/logout', 'POST'),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+    onSuccess: async (data) => {
+      // Logout from OneSignal if needed
+      if (data.logoutOneSignal && typeof window.OneSignalDeferred !== 'undefined') {
+        try {
+          window.OneSignalDeferred.push(async (OneSignal: any) => {
+            try {
+              await OneSignal.logout();
+              console.log('[OneSignal] User logged out successfully');
+            } catch (error) {
+              console.error('[OneSignal] Logout error:', error);
+            }
+          });
+        } catch (error) {
+          console.error('[OneSignal] Failed to logout:', error);
+        }
+      }
+
+      queryClient.setQueryData(["user"], null);
+      window.location.href = "/";
     },
   });
 

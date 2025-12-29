@@ -81,10 +81,10 @@ const registerSchema = z.object({
 
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
-  
+
   // Always trust proxy for Replit deployments
   app.set("trust proxy", 1);
-  
+
   const sessionSettings: session.SessionOptions = {
     secret: process.env.REPL_ID || process.env.SESSION_SECRET || "fallback-secret-key-change-in-production",
     resave: false,
@@ -183,7 +183,7 @@ export function setupAuth(app: Express) {
             console.error('Session save error:', saveErr);
             return next(saveErr);
           }
-          
+
           return res.json({
             message: "Login successful",
             user: {
@@ -227,7 +227,8 @@ export function setupAuth(app: Express) {
           return res.status(500).json({ message: "Logout failed" });
         }
         res.clearCookie("connect.sid");
-        return res.json({ message: "Logout successful" });
+        // Instruct client to logout from OneSignal as well
+        return res.json({ message: "Logout successful", logoutOneSignal: true });
       });
     });
   });
