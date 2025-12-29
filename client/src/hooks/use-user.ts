@@ -84,6 +84,10 @@ export function useUser() {
               try {
                 console.log('[OneSignal] 🚪 Logging out user from OneSignal...');
                 
+                // Detect if on mobile device
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                console.log('[OneSignal] 📱 Is Mobile Device:', isMobile);
+                
                 // Get current user info before logout
                 const currentUserId = await OneSignal.User.getExternalId();
                 console.log('[OneSignal] 📋 Current External User ID:', currentUserId);
@@ -92,8 +96,26 @@ export function useUser() {
                 try {
                   await OneSignal.User.PushSubscription.optOut();
                   console.log('[OneSignal] ✅ Opted out from push notifications');
+                  
+                  // Extra delay for mobile devices to ensure opt-out processes
+                  if (isMobile) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    console.log('[OneSignal] 📱 Mobile opt-out delay completed');
+                  }
                 } catch (optOutError) {
                   console.log('[OneSignal] ℹ️ OptOut not needed or already done:', optOutError);
+                }
+                
+                // Additional step for mobile: Remove all external user IDs/aliases
+                if (isMobile) {
+                  try {
+                    console.log('[OneSignal] 📱 Removing external user ID alias for mobile...');
+                    await OneSignal.User.removeAlias("external_id");
+                    console.log('[OneSignal] ✅ External ID alias removed');
+                    await new Promise(r => setTimeout(r, 500));
+                  } catch (aliasError) {
+                    console.log('[OneSignal] ℹ️ Alias removal not needed:', aliasError);
+                  }
                 }
                 
                 // Small delay to let opt out process
@@ -102,6 +124,26 @@ export function useUser() {
                 // Then logout to dissociate the user completely
                 await OneSignal.logout();
                 console.log('[OneSignal] ✅ User logged out from OneSignal');
+                
+                // Extra verification and cleanup for mobile
+                if (isMobile) {
+                  await new Promise(r => setTimeout(r, 1000));
+                  
+                  // Try to verify the subscription was removed
+                  try {
+                    const isOptedIn = await OneSignal.User.PushSubscription.optedIn;
+                    console.log('[OneSignal] 📱 Mobile subscription status after logout:', isOptedIn);
+                    
+                    // If still opted in on mobile, force opt-out again
+                    if (isOptedIn) {
+                      console.log('[OneSignal] 📱 Force opt-out on mobile device');
+                      await OneSignal.User.PushSubscription.optOut();
+                      await new Promise(r => setTimeout(r, 1000));
+                    }
+                  } catch (e) {
+                    console.log('[OneSignal] ℹ️ Cannot verify mobile subscription status:', e);
+                  }
+                }
                 
                 // Verify logout
                 try {
@@ -120,8 +162,11 @@ export function useUser() {
           });
           
           // Critical delay to ensure OneSignal fully processes the logout
-          console.log('[OneSignal] ⏳ Waiting 3 seconds for logout to complete...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          // Longer delay for mobile devices
+          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          const delay = isMobile ? 4000 : 3000;
+          console.log(`[OneSignal] ⏳ Waiting ${delay/1000} seconds for logout to complete...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
           console.log('[OneSignal] ✅ Logout complete, proceeding with navigation');
         } catch (error) {
           console.error('[OneSignal] Failed to logout:', error);

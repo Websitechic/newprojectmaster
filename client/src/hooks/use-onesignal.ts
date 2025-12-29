@@ -245,12 +245,32 @@ export function useOneSignal(userId?: number) {
           try {
             console.log('[OneSignal] 🔄 Cleanup - Logging out previous user:', userId);
             
+            // Detect mobile device
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            console.log('[OneSignal] 📱 Cleanup on mobile:', isMobile);
+            
             // First opt out from push
             try {
               await OneSignal.User.PushSubscription.optOut();
               console.log('[OneSignal] ✅ Cleanup - Opted out from push');
+              
+              // Extra delay for mobile
+              if (isMobile) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
             } catch (optOutError) {
               console.log('[OneSignal] ℹ️ Cleanup - OptOut not needed:', optOutError);
+            }
+            
+            // For mobile, also remove aliases
+            if (isMobile) {
+              try {
+                await OneSignal.User.removeAlias("external_id");
+                console.log('[OneSignal] 📱 Cleanup - Removed external ID alias');
+                await new Promise(resolve => setTimeout(resolve, 500));
+              } catch (aliasError) {
+                console.log('[OneSignal] ℹ️ Cleanup - Alias removal not needed:', aliasError);
+              }
             }
             
             // Wait for opt out to process
@@ -260,8 +280,9 @@ export function useOneSignal(userId?: number) {
             await OneSignal.logout();
             console.log('[OneSignal] ✅ Cleanup - Previous user logged out');
             
-            // Longer delay to ensure cleanup completes
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Longer delay for mobile to ensure cleanup completes
+            const cleanupDelay = isMobile ? 1500 : 1000;
+            await new Promise(resolve => setTimeout(resolve, cleanupDelay));
           } catch (error) {
             console.warn('[OneSignal] ⚠️ Error in cleanup logout:', error);
           }
