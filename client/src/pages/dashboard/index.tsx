@@ -85,8 +85,8 @@ export default function Dashboard() {
     refetchInterval: 10000, // Refresh every 10 seconds
   });
 
-  // Alias for compatibility
-  const allUsers = staff;
+  // Alias for compatibility - always ensure it's an array
+  const allUsers = staff || [];
 
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -252,10 +252,10 @@ export default function Dashboard() {
 
   // Apply search filter to tasks (works for both staff and managers)
   const filteredTasks = user?.role === "staff" || user?.role === "intern"
-    ? staffTasks?.filter((task) =>
+    ? (staffTasks || []).filter((task) =>
         taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
       )
-    : tasks?.filter((task) =>
+    : (tasks || []).filter((task) =>
         taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
       );
 
@@ -335,8 +335,8 @@ export default function Dashboard() {
 
   // Apply search filter to tasks for rendering
   const searchFilteredTasks = (user?.role === "staff" || user?.role === "intern"
-    ? staffTasks
-    : tasks || []
+    ? (staffTasks || [])
+    : (tasks || [])
   ).filter((task) =>
     taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
   );
