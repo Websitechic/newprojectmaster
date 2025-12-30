@@ -20,6 +20,7 @@ export function StopGapCard() {
   });
 
   const formatTime = (minutes: number) => {
+    if (!minutes || isNaN(minutes)) return "0m";
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
@@ -50,8 +51,10 @@ export function StopGapCard() {
     return null;
   }
 
-  const remainingMinutes = allocation.remainingHours;
-  const totalMinutes = allocation.totalHours * 60;
+  // All values are already in minutes from the database
+  const remainingMinutes = allocation.remainingHours || 0;
+  const usedMinutes = allocation.usedHours || 0;
+  const totalMinutes = (allocation.totalHours || 5) * 60; // totalHours is the only one stored as hours
   const percentage = Math.round((remainingMinutes / totalMinutes) * 100);
 
   return (
@@ -79,7 +82,7 @@ export function StopGapCard() {
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Used this month</span>
-            <span className="font-medium">{formatTime(allocation.usedHours)}</span>
+            <span className="font-medium">{formatTime(usedMinutes)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Total allocation</span>

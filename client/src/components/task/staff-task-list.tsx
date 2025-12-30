@@ -566,7 +566,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                     {stopGapAssignments[task.id] ? (
                       <div className="space-y-1">
                         <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
-                          +{Math.floor(stopGapAssignments[task.id].stopGapHours / 60)}h {stopGapAssignments[task.id].stopGapHours % 60}m
+                          +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
                         </Badge>
                         <div className="text-xs text-muted-foreground">Applied</div>
                       </div>
@@ -686,7 +686,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
               </div>
             </div>
             <div className="text-sm text-muted-foreground">
-              Total to apply: {stopGapHours}h {stopGapMinutes}m
+              Total to apply: {parseInt(stopGapHours) || 0}h {parseInt(stopGapMinutes) || 0}m
             </div>
           </div>
           <DialogFooter>
