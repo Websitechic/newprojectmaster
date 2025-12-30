@@ -93,6 +93,90 @@ const formatTime = (hours: number) => {
   return `${h}h ${m}m`;
 };
 
+function PenaltiesSection({ 
+  selectedStaff, 
+  dateRange, 
+  useCustomRange, 
+  customStartDate, 
+  customEndDate 
+}: { 
+  selectedStaff: string;
+  dateRange: number;
+  useCustomRange: boolean;
+  customStartDate: Date | undefined;
+  customEndDate: Date | undefined;
+}) {
+  const { data: penalties, isLoading } = useQuery({
+    queryKey: ["/api/memos", selectedStaff, dateRange, customStartDate, customEndDate, useCustomRange],
+    queryFn: async () => {
+      if (!selectedStaff) return [];
+      
+      let endDate: Date;
+      let startDate: Date;
+
+      if (useCustomRange && customStartDate && customEndDate) {
+        startDate = customStartDate;
+        endDate = customEndDate;
+      } else {
+        endDate = new Date();
+        startDate = subDays(endDate, dateRange);
+      }
+
+      const response = await fetch(
+        `/api/memos?staffId=${selectedStaff}&type=penalty&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+      );
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch penalties");
+      }
+      
+      return response.json();
+    },
+    enabled: !!selectedStaff,
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="border-b pb-2">
+        <h3 className="text-lg font-semibold text-gray-900">Penalties</h3>
+      </div>
+
+      {isLoading ? (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <p className="text-sm text-gray-600">Loading penalties...</p>
+        </div>
+      ) : penalties && penalties.length > 0 ? (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead>Issued By</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {penalties.map((penalty: any) => (
+                <TableRow key={penalty.id}>
+                  <TableCell>{format(new Date(penalty.createdAt), 'MMM dd, yyyy')}</TableCell>
+                  <TableCell>{penalty.content || 'N/A'}</TableCell>
+                  <TableCell>{penalty.authorName || 'N/A'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <p className="text-sm text-gray-600">
+            No penalties recorded for this period.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DailyProductivityRow({ day }: { day: DailyProductivity }) {
   const [showAllTasks, setShowAllTasks] = useState(false);
 
@@ -1502,8 +1586,16 @@ export default function KPIReportPage() {
                               <span className="text-sm font-medium text-gray-600">Average Hours Worked:</span>
                               <span className="text-sm font-semibold text-gray-900">
                                 {formatTimeForExport((() => {
-                                  const totalMinutes = productivityData.dailyData.reduce((sum, day) => sum + (day.totalSpanHours * 60), 0);
-                                  return totalMinutes / productivityData.summary.totalDays / 60;
+                                  // Filter out days with excessive hours (> 9 hours = 540 minutes)
+                                  const validDays = productivityData.dailyData.filter(day => {
+                                    const totalMinutes = day.actualWorkHours * 60;
+                                    return totalMinutes <= 540;
+                                  });
+                                  
+                                  if (validDays.length === 0) return 0;
+                                  
+                                  const totalMinutes = validDays.reduce((sum, day) => sum + (day.actualWorkHours * 60), 0);
+                                  return totalMinutes / validDays.length / 60;
                                 })())}/day
                               </span>
                             </div>
@@ -1578,16 +1670,12 @@ export default function KPIReportPage() {
                                 <TableHead>Assigned Time</TableHead>
                                 <TableHead>Actual Time</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Efficiency</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {Array.from(allTasks.values()).map((task: any) => {
                                 const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
                                 const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
-                                const efficiency = assignedMinutes > 0 && actualMinutes > 0
-                                  ? Math.round((assignedMinutes / actualMinutes) * 100)
-                                  : 0;
 
                                 return (
                                   <TableRow key={task.id}>
@@ -1601,15 +1689,6 @@ export default function KPIReportPage() {
                                         {task.status || 'N/A'}
                                       </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                      <span className={`font-semibold ${
-                                        efficiency >= 100 ? 'text-green-600' :
-                                        efficiency >= 80 ? 'text-yellow-600' :
-                                        'text-red-600'
-                                      }`}>
-                                        {efficiency}%
-                                      </span>
-                                    </TableCell>
                                   </TableRow>
                                 );
                               })}
@@ -1619,17 +1698,13 @@ export default function KPIReportPage() {
                       </div>
 
                       {/* Penalties Section */}
-                      <div className="space-y-4">
-                        <div className="border-b pb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">Penalties</h3>
-                        </div>
-
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <p className="text-sm text-gray-600">
-                            No penalties recorded for this period.
-                          </p>
-                        </div>
-                      </div>
+                      <PenaltiesSection 
+                        selectedStaff={selectedStaff}
+                        dateRange={dateRange}
+                        useCustomRange={useCustomRange}
+                        customStartDate={customStartDate}
+                        customEndDate={customEndDate}
+                      />
                     </CardContent>
                   </Card>
                 </TabsContent>
