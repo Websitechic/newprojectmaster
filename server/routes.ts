@@ -1234,18 +1234,24 @@ export function registerRoutes(app: Express): Server {
           sql`${taskSessions.startTime} <= ${end.toISOString()}` // Ensure end date is correctly handled
         ));
 
-      // Get tasks that have sessions AND fall within the date range based on startDate
-      const taskIdsFromSessions = [...new Set(allSessions.map(s => s.taskId).filter(Boolean))];
-      const allTasksWorkedOn = taskIdsFromSessions.length > 0 ? await db
+      // For Productivity Score tab: Get tasks based on startDate within date range
+      const tasksByStartDate = await db
         .select()
         .from(tasks)
         .where(
           and(
-            inArray(tasks.id, taskIdsFromSessions),
+            eq(tasks.assigneeId, staffIdNum),
             gte(tasks.startDate, start),
             sql`${tasks.startDate} <= ${end.toISOString()}`
           )
-        ) : [];
+        );
+
+      // For Daily Details tab: Get tasks that were actually worked on (have sessions)
+      const taskIdsFromSessions = [...new Set(allSessions.map(s => s.taskId).filter(Boolean))];
+      const allTasksWorkedOn = taskIdsFromSessions.length > 0 ? await db
+        .select()
+        .from(tasks)
+        .where(inArray(tasks.id, taskIdsFromSessions)) : [];
 
       // Process daily productivity data
       const dailyMap = new Map();
@@ -1273,10 +1279,10 @@ export function registerRoutes(app: Express): Server {
         });
       });
 
-      // Build taskDetails from all tasks worked on using task.timeSpent
+      // Build taskDetails for Productivity Score from tasks filtered by startDate
       const taskDetailsMap = new Map();
 
-      allTasksWorkedOn.forEach(task => {
+      tasksByStartDate.forEach(task => {
         taskDetailsMap.set(task.id, {
           id: task.id,
           title: task.title,
@@ -1288,6 +1294,7 @@ export function registerRoutes(app: Express): Server {
 
       // Group sessions by date for daily breakdown - get tasks worked on each specific day
       // This matches exactly how the Productivity Tracking page shows tasks
+      // This is for Daily Productivity Details tab only
       allSessions.forEach(session => {
         if (!session.startTime || !session.taskId) return;
 
@@ -1311,14 +1318,6 @@ export function registerRoutes(app: Express): Server {
       dailyMap.forEach((dailyData) => {
         dailyData.taskCount = dailyData.tasks.length;
       });
-
-      console.log('Daily task data after session processing:',
-        Array.from(dailyMap.entries()).map(([date, data]) => ({
-          date,
-          taskCount: data.taskCount,
-          tasks: data.tasks
-        }))
-      );
 
       // Calculate total actual work hours per day from sessions
       allSessions.forEach(session => {
