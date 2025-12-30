@@ -227,6 +227,9 @@ export default function Dashboard() {
       ? tasks?.filter((task) => task.assigneeId === user?.id) || []
       : tasks || [];
 
+  // Categorize tasks - moved before userTasks to avoid dependency issues
+  const activeTask = staffTasks.find((task) => task.isTimerRunning);
+
   // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
   const userTasks =
     user?.role === "staff" || user?.role === "intern"
@@ -244,8 +247,15 @@ export default function Dashboard() {
               ? tasks || []
               : tasks || [];
 
-  // Categorize tasks
-  const activeTask = staffTasks.find((task) => task.isTimerRunning);
+  // Apply search filter to tasks (works for both staff and managers)
+  const filteredTasks = user?.role === "staff" || user?.role === "intern"
+    ? staffTasks?.filter((task) =>
+        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
+      )
+    : tasks?.filter((task) =>
+        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
+      );
+
   const tasksInProgress = userTasks.filter(
     (task) => task.status === "in_progress"
   );
@@ -677,7 +687,7 @@ export default function Dashboard() {
                                     (task.status === "in_progress" || task.isTimerRunning)
                                 );
 
-                                // Check for recent team chat messages or resources (last 24 hours)
+                                // Check for recent team chat messages and resources (last 24 hours)
                                 const activity = projectActivity?.[project.id];
                                 const hasRecentActivity = activity && (activity.hasMessages || activity.hasResources);
 
