@@ -227,15 +227,6 @@ export default function Dashboard() {
       ? tasks?.filter((task) => task.assigneeId === user?.id) || []
       : tasks || [];
 
-  // Apply search filter to tasks (works for both staff and managers)
-  const filteredTasks = user?.role === "staff" || user?.role === "intern"
-    ? staffTasks?.filter((task) =>
-        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
-      )
-    : tasks?.filter((task) =>
-        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
-      );
-
   // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
   const userTasks =
     user?.role === "staff" || user?.role === "intern"
@@ -252,6 +243,15 @@ export default function Dashboard() {
             : user?.role === "product_owner"
               ? tasks || []
               : tasks || [];
+
+  // Apply search filter to tasks (works for both staff and managers)
+  const filteredTasks = user?.role === "staff" || user?.role === "intern"
+    ? staffTasks?.filter((task) =>
+        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
+      )
+    : tasks?.filter((task) =>
+        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
+      );
 
   // Categorize tasks
   const activeTask = staffTasks.find((task) => task.isTimerRunning);
