@@ -227,51 +227,51 @@ export default function Dashboard() {
   // Filter tasks for staff/intern user or all tasks for managers and support maintenance clients
   const staffTasks =
     user?.role === "staff" || user?.role === "intern"
-      ? (tasks?.filter((task) => task.assigneeId === user?.id) || [])
-      : (tasks || []);
+      ? (tasks?.filter((task) => task.assigneeId === user?.id) ?? [])
+      : (tasks ?? []);
 
   // Categorize tasks - moved before userTasks to avoid dependency issues
-  const activeTask = staffTasks?.find((task) => task.isTimerRunning);
+  const activeTask = (staffTasks ?? []).find((task) => task.isTimerRunning);
 
   // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
   const userTasks =
     user?.role === "staff" || user?.role === "intern"
-      ? (staffTasks || [])
+      ? (staffTasks ?? [])
       : user?.role === "client" &&
           user?.clientType === "support_maintenance_client"
-        ? (tasks || [])
+        ? (tasks ?? [])
         : user?.role === "operations_manager" ||
             user?.specialization === "operations_manager" ||
             user?.role === "team_lead"
-          ? (tasks || [])
+          ? (tasks ?? [])
           : user?.role === "project_manager"
-            ? (tasks || [])
+            ? (tasks ?? [])
             : user?.role === "product_owner"
-              ? (tasks || [])
-              : (tasks || []);
+              ? (tasks ?? [])
+              : (tasks ?? []);
 
   // Apply search filter to tasks (works for both staff and managers)
   const filteredTasks = user?.role === "staff" || user?.role === "intern"
-    ? (staffTasks || []).filter((task) =>
+    ? (staffTasks ?? []).filter((task) =>
         taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
       )
-    : (tasks || []).filter((task) =>
+    : (tasks ?? []).filter((task) =>
         taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
       );
 
-  const tasksInProgress = (userTasks || []).filter(
+  const tasksInProgress = (userTasks ?? []).filter(
     (task) => task.status === "in_progress"
   );
-  const pendingTasks = (userTasks || []).filter((task) => task.status === "pending"); // Changed to filter for 'pending' status
-  const todoTasks = (userTasks || []).filter((task) => task.status === "todo"); // Added filtering for 'todo' status
-  const tasksInReview = (userTasks || []).filter((task) => task.status === "review");
-  const technicalSupportTasks = (userTasks || []).filter(
+  const pendingTasks = (userTasks ?? []).filter((task) => task.status === "pending"); // Changed to filter for 'pending' status
+  const todoTasks = (userTasks ?? []).filter((task) => task.status === "todo"); // Added filtering for 'todo' status
+  const tasksInReview = (userTasks ?? []).filter((task) => task.status === "review");
+  const technicalSupportTasks = (userTasks ?? []).filter(
     (task) => task.status === "technical_support",
   );
 
   // Calculate overall progress
-  const totalTasks = (userTasks || []).length;
-  const completedTasks = (userTasks || []).filter(
+  const totalTasks = (userTasks ?? []).length;
+  const completedTasks = (userTasks ?? []).filter(
     (task) => task.status === "completed",
   ).length;
   const overallProgress =
@@ -335,8 +335,8 @@ export default function Dashboard() {
 
   // Apply search filter to tasks for rendering
   const searchFilteredTasks = (user?.role === "staff" || user?.role === "intern"
-    ? (staffTasks || [])
-    : (tasks || [])
+    ? (staffTasks ?? [])
+    : (tasks ?? [])
   ).filter((task) =>
     taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
   );
