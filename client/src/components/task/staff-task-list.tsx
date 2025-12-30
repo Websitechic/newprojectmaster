@@ -419,14 +419,14 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[180px]">Task & Project</TableHead>
-              <TableHead className="min-w-[250px]">Description</TableHead>
-              <TableHead className="min-w-[130px]">Assigned By</TableHead>
-              <TableHead className="w-[160px] max-w-[160px]">Status</TableHead>
-              <TableHead className="w-[150px] max-w-[150px]">Timer</TableHead>
-              <TableHead className="w-[120px] max-w-[120px]">Deadline</TableHead>
-              <TableHead className="w-[180px] max-w-[180px]">Stop Gap</TableHead>
-              <TableHead className="text-right w-[180px] max-w-[180px]">Actions</TableHead>
+              <TableHead className="w-[200px]">Task & Project</TableHead>
+              <TableHead className="w-[280px]">Description</TableHead>
+              <TableHead className="w-[140px]">Assigned By</TableHead>
+              <TableHead className="w-[180px]">Status</TableHead>
+              <TableHead className="w-[180px]">Timer</TableHead>
+              <TableHead className="w-[140px]">Deadline</TableHead>
+              <TableHead className="w-[200px]">Stop Gap</TableHead>
+              <TableHead className="text-right w-[200px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -440,7 +440,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
               return (
                 <TableRow key={task.id}>
-                  <TableCell className="min-w-[180px]">
+                  <TableCell className="w-[200px]">
                     <div className="space-y-1">
                       <div className="font-medium text-sm">{task.title}</div>
                       <div className="text-xs text-muted-foreground">
@@ -448,7 +448,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[250px]">
+                  <TableCell className="w-[280px]">
                     <div className="space-y-1">
                       <div className="text-sm text-gray-700">
                         {isLongDescription && !isExpanded
@@ -481,7 +481,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[130px]">
+                  <TableCell className="w-[140px]">
                     <div className="text-sm leading-tight">
                       {task.assignedBy
                         ? (allUsers?.find(u => u.id === task.assignedBy)?.name || "Unknown").split(' ').map((word, idx) => (
@@ -490,7 +490,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         : "Not specified"}
                     </div>
                   </TableCell>
-                  <TableCell className="w-[160px] max-w-[160px]">
+                  <TableCell className="w-[180px]">
                     <Select
                       value={task.status || 'todo'}
                       onValueChange={(status) => {
@@ -509,7 +509,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       }}
                       disabled={updateTaskStatus.isPending || pauseTimer.isPending || startTimer.isPending}
                     >
-                      <SelectTrigger className="w-full h-7 text-[10px] px-2">
+                      <SelectTrigger className="w-full h-8 text-xs px-2">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -524,7 +524,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="w-[150px] max-w-[150px]">
+                  <TableCell className="w-[180px]">
                     <div className="space-y-1">
                       <div className={`flex items-center gap-1 text-sm ${getTimerColor(task, currentTime)}`}>
                         <Clock className="h-3.5 w-3.5 flex-shrink-0" />
@@ -557,7 +557,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="w-[120px] max-w-[120px]">
+                  <TableCell className="w-[140px]">
                     {task.deadline ? (
                       <div className="text-xs whitespace-nowrap">
                         <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
@@ -565,16 +565,16 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       </div>
                     ) : <span className="text-muted-foreground text-xs">None</span>}
                   </TableCell>
-                  <TableCell className="w-[180px] max-w-[180px]">
+                  <TableCell className="w-[200px]">
                     {stopGapAssignments[task.id] ? (
                       <div className="space-y-1">
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-[10px] whitespace-nowrap">
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs whitespace-nowrap">
                           +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
                         </Badge>
-                        <div className="text-[10px] text-muted-foreground">Applied</div>
+                        <div className="text-xs text-muted-foreground">Applied</div>
                       </div>
                     ) : stopGapAllocation && stopGapAllocation.remainingHours === 0 ? (
-                      <Badge variant="destructive" className="text-[10px] whitespace-nowrap">
+                      <Badge variant="destructive" className="text-xs whitespace-nowrap">
                         Exhausted
                       </Badge>
                     ) : (
@@ -589,7 +589,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                               setSelectedTaskForStopGap(task.id);
                               setStopGapHours(e.target.value);
                             }}
-                            className="h-6 w-12 text-[10px] px-1"
+                            className="h-7 w-14 text-xs px-1"
                             disabled={task.status === 'completed' || task.status === 'review'}
                           />
                           <Input
@@ -602,7 +602,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                               setSelectedTaskForStopGap(task.id);
                               setStopGapMinutes(e.target.value);
                             }}
-                            className="h-6 w-12 text-[10px] px-1"
+                            className="h-7 w-14 text-xs px-1"
                             disabled={task.status === 'completed' || task.status === 'review'}
                           />
                         </div>
@@ -626,14 +626,14 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                             (parseInt(stopGapHours) === 0 && parseInt(stopGapMinutes) === 0) ||
                             selectedTaskForStopGap !== task.id
                           }
-                          className="h-6 text-[10px] w-full px-2"
+                          className="h-7 text-xs w-full px-2"
                         >
                           Apply
                         </Button>
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-right w-[180px] max-w-[180px]">
+                  <TableCell className="text-right w-[200px]">
                     <div className="flex justify-end gap-2 flex-wrap">
                       {task.status !== 'review' && task.status !== 'completed' && task.status !== 'technical_support' && (
                         <>
