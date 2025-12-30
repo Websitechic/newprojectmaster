@@ -35,19 +35,28 @@ export function useOneSignal(userId?: number) {
         isProcessing.current = true;
         console.log('[OneSignal] 🚀 Starting subscription process for user:', userId);
         
-        // Wait for OneSignal to be available on window
+        // Detect mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        console.log('[OneSignal] 📱 Mobile device detected:', isMobile);
+        
+        // Wait for OneSignal to be available on window - longer wait for mobile
+        const maxRetries = isMobile ? 20 : 10;
+        const retryDelay = isMobile ? 1000 : 500;
         let retries = 0;
-        while (typeof window.OneSignalDeferred === 'undefined' && retries < 10) {
-          console.log('[OneSignal] ⏳ Waiting for OneSignal SDK to load... (attempt', retries + 1, ')');
-          await new Promise(resolve => setTimeout(resolve, 500));
+        
+        while (typeof window.OneSignalDeferred === 'undefined' && retries < maxRetries) {
+          console.log('[OneSignal] ⏳ Waiting for OneSignal SDK to load... (attempt', retries + 1, 'of', maxRetries, ')');
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
           retries++;
         }
         
         if (typeof window.OneSignalDeferred === 'undefined') {
-          console.error('[OneSignal] ❌ OneSignal SDK failed to load after 5 seconds');
+          console.error('[OneSignal] ❌ OneSignal SDK failed to load after', maxRetries * retryDelay / 1000, 'seconds');
           isProcessing.current = false;
           return;
         }
+        
+        console.log('[OneSignal] ✅ OneSignal SDK loaded successfully after', retries, 'retries');
         
         if (!isInitialized && !initPromise) {
           console.log('[OneSignal] 📦 Initializing SDK...');
@@ -81,8 +90,10 @@ export function useOneSignal(userId?: number) {
           await initPromise;
         }
         
-        // Wait for user to be fully authenticated
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait for user to be fully authenticated - longer wait for mobile
+        const authWaitTime = isMobile ? 2000 : 1000;
+        console.log('[OneSignal] ⏳ Waiting', authWaitTime, 'ms for authentication to stabilize...');
+        await new Promise(resolve => setTimeout(resolve, authWaitTime));
         
         window.OneSignalDeferred.push(async (OneSignal: any) => {
           try {
