@@ -1,51 +1,66 @@
+
 # Project Instructions
 
-## Error Fix: "useToast is not defined" in task-list.tsx
+## Error Fix: "searchTerm is not defined" in task-list.tsx
 
 ### Problem Analysis
-The error occurs in `client/src/components/task/task-list.tsx` where `useToast` hook is being called but not properly imported.
+The error occurs in `client/src/components/task/task-list.tsx` where the `searchTerm` variable is being used in the filtering logic but is never declared as a state variable.
 
 ### Root Cause
-The file is missing the import statement for the `useToast` hook from `@/hooks/use-toast`.
+The component references `searchTerm` in the `filteredTasks` computation (around line 404-413) without declaring it. The variable is used to filter tasks by name and assignee name, but the React state variable and its setter function are missing.
 
 ### Files Affected
 - `client/src/components/task/task-list.tsx`
 
 ### Solution Steps
 
-1. **Add Missing Import**
-   - Add `import { useToast } from "@/hooks/use-toast";` to the imports section of `task-list.tsx`
-   - This import should be added near the top of the file with other hook imports
+1. **Add Missing State Declaration**
+   - Add `const [searchTerm, setSearchTerm] = useState("");` to the component
+   - This should be added with other state declarations near the top of the component (after line 61)
 
-2. **Verification**
-   - Confirm that the hook is used correctly: `const { toast } = useToast();`
-   - Ensure all toast notifications in the file use the `toast()` function properly
+2. **Add Search Input UI**
+   - The component also needs a search input field in the UI
+   - This should be added before the table, similar to how it's implemented in `staff-task-list.tsx`
+   - Include a label indicating users can search by task name or assignee name
 
-3. **Testing**
-   - Test task creation, update, and deletion to ensure toast notifications work
-   - Verify no console errors related to useToast
+3. **Verify Filtering Logic**
+   - The filtering logic that uses `searchTerm` is already present
+   - It filters by task title and assignee name
+   - No changes needed to the filtering logic itself
 
 ### Implementation Details
 
-The import should be added to the file at approximately line 3-4, along with other imports from hooks:
-
+**State Declaration (add after line 61):**
 ```typescript
-import { useToast } from "@/hooks/use-toast";
+const [searchTerm, setSearchTerm] = useState("");
 ```
 
-The hook is already being called correctly in the component:
+**Search Input UI (add before the table section, around line 430):**
 ```typescript
-const { toast } = useToast();
-```
-
-And it's being used throughout for notifications like:
-```typescript
-toast({
-  title: "Success",
-  description: "Task created successfully",
-});
+<div className="space-y-2 mb-4">
+  <div className="flex items-center space-x-2">
+    <Input
+      placeholder="Search tasks..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="max-w-sm"
+    />
+  </div>
+  <p className="text-xs text-muted-foreground">
+    Search by task name or assignee name
+  </p>
+</div>
 ```
 
 ### Related Files
-- `client/src/hooks/use-toast.ts` - The hook definition (no changes needed)
-- `client/src/components/task/staff-task-list.tsx` - Reference implementation that correctly imports useToast
+- `client/src/components/task/staff-task-list.tsx` - Reference implementation with correct search functionality (line 45 and lines 70-80)
+
+### Testing Checklist
+After implementing fixes:
+- [ ] Component loads without errors
+- [ ] Search input is visible in the UI
+- [ ] Searching by task name filters tasks correctly
+- [ ] Searching by assignee name filters tasks correctly
+- [ ] Search is case-insensitive
+- [ ] Clearing search shows all tasks
+- [ ] No console errors about undefined variables

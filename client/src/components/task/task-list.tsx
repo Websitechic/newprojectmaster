@@ -61,6 +61,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   // State for managing expanded descriptions
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
+  
+  // State for search functionality
+  const [searchTerm, setSearchTerm] = useState("");
 
   const toggleDescription = (taskId: number) => {
     setExpandedDescriptions((prev) => ({
@@ -414,6 +417,22 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   return (
     <div>
+      {!isStaffView && (
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center space-x-2">
+            <Input
+              placeholder="Search tasks..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Search by task name or assignee name
+          </p>
+        </div>
+      )}
+      
       <div className="flex justify-end mb-4">
         { !isStaffView && showNewTaskButton && (user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "customer_support_officer" || user?.role === "team_lead" || (user?.role === "staff" && user?.specialization === "technical_support")) && (
           <Button onClick={handleNewTask}>
