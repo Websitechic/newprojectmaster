@@ -39,6 +39,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import type { Project, Task } from "@db/schema";
 import { StopGapCard } from "@/components/dashboard/stop-gap-card";
 
@@ -629,7 +635,7 @@ export default function Dashboard() {
                 {/* Active Tasks Card */}
               </div>
 
-              {/* Full Task List */}
+              {/* Full Task List with Completed Tab */}
               <div className="space-y-6">
                 <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
@@ -649,13 +655,38 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {staffTasks && staffTasks.length > 0 ? (
-                  <StaffTaskList tasks={searchFilteredTasks} projectId={undefined} />
-                ) : (
-                  <div className="text-center text-muted-foreground mt-8">
-                    No tasks assigned to you yet.
-                  </div>
-                )}
+                <Tabs defaultValue="active" className="w-full">
+                  <TabsList className="grid w-full max-w-md grid-cols-2">
+                    <TabsTrigger value="active">Active Tasks</TabsTrigger>
+                    <TabsTrigger value="completed">Completed</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="active" className="mt-4">
+                    {staffTasks && staffTasks.filter(t => t.status !== 'completed').length > 0 ? (
+                      <StaffTaskList 
+                        tasks={searchFilteredTasks.filter(t => t.status !== 'completed')} 
+                        projectId={undefined} 
+                      />
+                    ) : (
+                      <div className="text-center text-muted-foreground mt-8">
+                        No active tasks assigned to you yet.
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="completed" className="mt-4">
+                    {staffTasks && staffTasks.filter(t => t.status === 'completed').length > 0 ? (
+                      <StaffTaskList 
+                        tasks={searchFilteredTasks.filter(t => t.status === 'completed')} 
+                        projectId={undefined} 
+                      />
+                    ) : (
+                      <div className="text-center text-muted-foreground mt-8">
+                        No completed tasks yet.
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </div>
             </>
           ) : (
@@ -1331,21 +1362,52 @@ export default function Dashboard() {
                     Loading tasks...
                   </div>
                 ) : (tasks ?? []).length > 0 ? (
-                  <TaskList
-                    tasks={
-                      user?.role === "staff" || user?.role === "intern"
-                        ? (tasks ?? []).filter((task) =>
-                            task?.assigneeId === user?.id &&
-                            (!taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()))
-                          )
-                        : (tasks ?? []).filter((task) =>
-                            !taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase())
-                          )
-                    }
-                    projectId={undefined}
-                    showNewTaskButton={false}
-                    showProjectInfo={true}
-                  />
+                  <Tabs defaultValue="active" className="w-full">
+                    <TabsList className="grid w-full max-w-md grid-cols-2">
+                      <TabsTrigger value="active">Active Tasks</TabsTrigger>
+                      <TabsTrigger value="completed">Completed</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="active" className="mt-4">
+                      <TaskList
+                        tasks={
+                          user?.role === "staff" || user?.role === "intern"
+                            ? (tasks ?? []).filter((task) =>
+                                task?.assigneeId === user?.id &&
+                                task?.status !== 'completed' &&
+                                (!taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+                              )
+                            : (tasks ?? []).filter((task) =>
+                                task?.status !== 'completed' &&
+                                (!taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+                              )
+                        }
+                        projectId={undefined}
+                        showNewTaskButton={false}
+                        showProjectInfo={true}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="completed" className="mt-4">
+                      <TaskList
+                        tasks={
+                          user?.role === "staff" || user?.role === "intern"
+                            ? (tasks ?? []).filter((task) =>
+                                task?.assigneeId === user?.id &&
+                                task?.status === 'completed' &&
+                                (!taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+                              )
+                            : (tasks ?? []).filter((task) =>
+                                task?.status === 'completed' &&
+                                (!taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+                              )
+                        }
+                        projectId={undefined}
+                        showNewTaskButton={false}
+                        showProjectInfo={true}
+                      />
+                    </TabsContent>
+                  </Tabs>
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
                     No tasks available. Tasks from all projects will appear here.
