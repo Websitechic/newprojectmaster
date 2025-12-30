@@ -419,7 +419,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
               <TableHead className="min-w-[180px]">Task & Project</TableHead>
               <TableHead className="min-w-[250px]">Description</TableHead>
               <TableHead className="min-w-[130px]">Assigned By</TableHead>
-              <TableHead className="min-w-[160px]">Status</TableHead>
+              <TableHead className="min-w-[200px]">Status</TableHead>
               <TableHead className="min-w-[150px]">Timer</TableHead>
               <TableHead className="min-w-[120px]">Deadline</TableHead>
               <TableHead className="min-w-[140px]">Stop Gap</TableHead>
@@ -487,7 +487,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         : "Not specified"}
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[160px]">
+                  <TableCell className="min-w-[200px]">
                     <Select
                       value={task.status || 'todo'}
                       onValueChange={(status) => {
