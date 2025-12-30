@@ -48,10 +48,9 @@ interface TaskListProps {
   isStaffView?: boolean;
   showNewTaskButton?: boolean;
   showProjectInfo?: boolean;
-  users: User[]; // Assuming users prop is passed for assignee names
 }
 
-export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true, showProjectInfo = false, users }: TaskListProps) {
+export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true, showProjectInfo = false }: TaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -375,7 +374,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     ? tasks.filter((task) => task.assigneeId === user?.staffId)
     : tasks.filter(task => {
       const taskNameMatch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const assigneeName = users.find(u => u.id === task.assigneeId)?.name || "";
+      const assigneeName = (staff ?? []).find(s => s?.id === task.assigneeId)?.name || "";
       const assigneeMatch = assigneeName.toLowerCase().includes(searchTerm.toLowerCase());
       return taskNameMatch || assigneeMatch;
     });
