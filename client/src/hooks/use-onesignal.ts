@@ -5,8 +5,7 @@ let isInitialized = false;
 let initPromise: Promise<void> | null = null;
 
 export function useOneSignal(userId?: number) {
-  const hasSubscribed = useRef(false);
-  const initializationAttempted = useRef(false);
+  const isProcessing = useRef(false);
 
   useEffect(() => {
     const appId = (import.meta.env.VITE_ONESIGNAL_APP_ID as string) || '';
@@ -25,16 +24,16 @@ export function useOneSignal(userId?: number) {
       return;
     }
 
-    // Prevent multiple initialization attempts for the same user
-    if (initializationAttempted.current) {
-      console.log('[OneSignal] ⏸️ Initialization already attempted for this user');
+    // Prevent concurrent processing but allow re-processing on new login
+    if (isProcessing.current) {
+      console.log('[OneSignal] ⏸️ Already processing, skipping...');
       return;
     }
 
     const initializeOneSignal = async () => {
       try {
-        initializationAttempted.current = true;
-        console.log('[OneSignal] 🚀 Starting initialization process...');
+        isProcessing.current = true;
+        console.log('[OneSignal] 🚀 Starting subscription process for user:', userId);
         
         // Wait for OneSignal to be available on window
         let retries = 0;
@@ -46,7 +45,7 @@ export function useOneSignal(userId?: number) {
         
         if (typeof window.OneSignalDeferred === 'undefined') {
           console.error('[OneSignal] ❌ OneSignal SDK failed to load after 5 seconds');
-          initializationAttempted.current = false;
+          isProcessing.current = false;
           return;
         }
         
@@ -70,7 +69,7 @@ export function useOneSignal(userId?: number) {
                 resolve();
               } catch (error) {
                 console.error('[OneSignal] ❌ Initialization failed:', error);
-                initializationAttempted.current = false;
+                isProcessing.current = false;
                 reject(error);
               }
             });
@@ -82,13 +81,7 @@ export function useOneSignal(userId?: number) {
           await initPromise;
         }
         
-        // Check if we've already processed this user
-        if (hasSubscribed.current) {
-          console.log('[OneSignal] ✓ User already processed in this session');
-          return;
-        }
-        
-        // Wait a bit longer to ensure user is fully authenticated
+        // Wait for user to be fully authenticated
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         window.OneSignalDeferred.push(async (OneSignal: any) => {
@@ -157,7 +150,6 @@ export function useOneSignal(userId?: number) {
               // Permission not yet requested - DON'T auto-prompt
               console.log('[OneSignal] 🔔 Permission not yet requested');
               console.log('[OneSignal] 💡 User can enable notifications from their profile or settings');
-              hasSubscribed.current = true; // Mark as processed
               
               // Store that we can prompt later if needed
               try {
@@ -166,30 +158,20 @@ export function useOneSignal(userId?: number) {
                 console.warn('[OneSignal] Could not set localStorage');
               }
             } else if (permission === 'granted') {
-              // Permission already granted - ensure subscription is active
-              console.log('[OneSignal] ✅ Permission already granted');
+              // Permission already granted - ALWAYS ensure subscription is active on login
+              console.log('[OneSignal] ✅ Permission granted - ensuring subscription...');
               
               try {
-                const optedIn = await OneSignal.User.PushSubscription.optedIn;
-                console.log('[OneSignal] 📊 Current opt-in status:', optedIn);
-                
-                if (!optedIn) {
-                  console.log('[OneSignal] 🔄 Opting in user...');
-                  await OneSignal.User.PushSubscription.optIn();
-                  console.log('[OneSignal] ✅ User opted in successfully');
-                } else {
-                  console.log('[OneSignal] ✅ User already opted in');
-                }
-                
-                hasSubscribed.current = true;
+                // Always opt in on login to ensure fresh subscription
+                console.log('[OneSignal] 🔄 Opting in user for this session...');
+                await OneSignal.User.PushSubscription.optIn();
+                console.log('[OneSignal] ✅ User opted in successfully');
               } catch (optInError) {
                 console.error('[OneSignal] ❌ Error opting in user:', optInError);
-                // Don't mark as subscribed if opt-in failed
               }
             } else if (permission === 'denied') {
               console.warn('[OneSignal] ⛔ Notifications blocked by user - cannot subscribe');
               console.warn('[OneSignal] 💡 User needs to enable notifications in browser settings');
-              hasSubscribed.current = true; // Mark as processed to avoid retries
             }
             
             // Log final subscription status
@@ -217,8 +199,8 @@ export function useOneSignal(userId?: number) {
             }
           } catch (error) {
             console.error('[OneSignal] ❌ Setup error:', error);
-            hasSubscribed.current = false; // Allow retry on next mount
-            initializationAttempted.current = false;
+          } finally {
+            isProcessing.current = false;
           }
         });
         
@@ -228,8 +210,7 @@ export function useOneSignal(userId?: number) {
           message: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined
         });
-        hasSubscribed.current = false; // Allow retry
-        initializationAttempted.current = false;
+        isProcessing.current = false;
       }
     };
 
@@ -289,9 +270,8 @@ export function useOneSignal(userId?: number) {
         });
       }
       
-      // Reset flags when user changes
-      hasSubscribed.current = false;
-      initializationAttempted.current = false;
+      // Reset processing flag when user changes
+      isProcessing.current = false;
     };
   }, [userId]);
 }

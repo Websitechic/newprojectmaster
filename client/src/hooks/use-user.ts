@@ -76,8 +76,8 @@ export function useUser() {
   const logoutMutation = useMutation<RequestResult, Error>({
     mutationFn: () => handleRequest('/api/logout', 'POST'),
     onSuccess: async (data) => {
-      // Logout from OneSignal if needed
-      if (data.logoutOneSignal && typeof window.OneSignalDeferred !== 'undefined') {
+      // Logout from OneSignal - ALWAYS opt out and remove External User ID
+      if (typeof window.OneSignalDeferred !== 'undefined') {
         try {
           await new Promise<void>((resolve) => {
             window.OneSignalDeferred.push(async (OneSignal: any) => {
@@ -89,13 +89,18 @@ export function useUser() {
                 console.log('[OneSignal] 📱 Is Mobile Device:', isMobile);
                 
                 // Get current user info before logout
-                const currentUserId = await OneSignal.User.getExternalId();
-                console.log('[OneSignal] 📋 Current External User ID:', currentUserId);
-                
-                // First opt out from push to remove device subscription
                 try {
+                  const currentUserId = await OneSignal.User.getExternalId();
+                  console.log('[OneSignal] 📋 Current External User ID:', currentUserId);
+                } catch (e) {
+                  console.log('[OneSignal] ℹ️ No external ID to log');
+                }
+                
+                // CRITICAL: First opt out from push to stop receiving notifications
+                try {
+                  console.log('[OneSignal] 🔕 Opting out from push notifications...');
                   await OneSignal.User.PushSubscription.optOut();
-                  console.log('[OneSignal] ✅ Opted out from push notifications');
+                  console.log('[OneSignal] ✅ Successfully opted out from push notifications');
                   
                   // Extra delay for mobile devices to ensure opt-out processes
                   if (isMobile) {
