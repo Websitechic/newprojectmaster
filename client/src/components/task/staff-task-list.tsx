@@ -90,6 +90,17 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     enabled: filteredTasks.length > 0,
   });
 
+  // Fetch all users to display names for task assigners
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      const response = await fetch("/api/users");
+      if (!response.ok) throw new Error("Failed to fetch users");
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
   // Create a map of project IDs to project names
   const projectMap = projects?.reduce((acc, project) => {
     acc[project.id] = project.name;
