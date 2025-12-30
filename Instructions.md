@@ -1,66 +1,96 @@
 
 # Project Instructions
 
-## Error Fix: "searchTerm is not defined" in task-list.tsx
+## Error Fix: "Cannot read properties of undefined (reading 'find')"
 
 ### Problem Analysis
-The error occurs in `client/src/components/task/task-list.tsx` where the `searchTerm` variable is being used in the filtering logic but is never declared as a state variable.
+The error occurs in `client/src/pages/dashboard/index.tsx` where the code attempts to call `.find()` on arrays that may be undefined during initial component render before data is fetched.
 
 ### Root Cause
-The component references `searchTerm` in the `filteredTasks` computation (around line 404-413) without declaring it. The variable is used to filter tasks by name and assignee name, but the React state variable and its setter function are missing.
+1. **Location**: Dashboard component (`client/src/pages/dashboard/index.tsx`)
+2. **Issue**: Several array operations (`.find()`, `.filter()`) are performed on data from React Query hooks that may be undefined during initial render
+3. **Specific Problems**:
+   - `staffTasks.find()` is called without checking if `staffTasks` is defined (around line 238)
+   - `tasks` array from useQuery can be undefined before data loads
+   - `staff` array from useQuery can be undefined before data loads
 
 ### Files Affected
-- `client/src/components/task/task-list.tsx`
+- `client/src/pages/dashboard/index.tsx`
 
 ### Solution Steps
 
-1. **Add Missing State Declaration**
-   - Add `const [searchTerm, setSearchTerm] = useState("");` to the component
-   - This should be added with other state declarations near the top of the component (after line 61)
+1. **Add Null/Undefined Checks for staffTasks**
+   - Ensure `staffTasks` is always an array (never undefined)
+   - Update line ~160 where `staffTasks` is defined to use fallback empty array
+   - Use optional chaining or null coalescing for all array operations
 
-2. **Add Search Input UI**
-   - The component also needs a search input field in the UI
-   - This should be added before the table, similar to how it's implemented in `staff-task-list.tsx`
-   - Include a label indicating users can search by task name or assignee name
+2. **Add Null/Undefined Checks for activeTask**
+   - Line ~238: `const activeTask = staffTasks.find((task) => task.isTimerRunning);`
+   - Should be: `const activeTask = staffTasks?.find((task) => task.isTimerRunning);`
 
-3. **Verify Filtering Logic**
-   - The filtering logic that uses `searchTerm` is already present
-   - It filters by task title and assignee name
-   - No changes needed to the filtering logic itself
+3. **Ensure Consistent Array Initialization**
+   - `staffTasks` should always be an array, even if empty
+   - Use `|| []` fallback after all filter operations
 
-### Implementation Details
+4. **Add Loading States**
+   - While data is loading, ensure all derived arrays have safe defaults
+   - Consider showing loading state UI when `tasksLoading` or `staffLoading` is true
 
-**State Declaration (add after line 61):**
+### Implementation Plan
+
+**Step 1**: Fix staffTasks initialization (line ~160)
 ```typescript
-const [searchTerm, setSearchTerm] = useState("");
+const staffTasks =
+  user?.role === "staff" || user?.role === "intern"
+    ? (tasks?.filter((task) => task.assigneeId === user?.id) || [])
+    : (tasks || []);
 ```
 
-**Search Input UI (add before the table section, around line 430):**
+**Step 2**: Add optional chaining to activeTask (line ~238)
 ```typescript
-<div className="space-y-2 mb-4">
-  <div className="flex items-center space-x-2">
-    <Input
-      placeholder="Search tasks..."
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-      className="max-w-sm"
-    />
-  </div>
-  <p className="text-xs text-muted-foreground">
-    Search by task name or assignee name
-  </p>
-</div>
+const activeTask = staffTasks?.find((task) => task.isTimerRunning);
 ```
 
-### Related Files
-- `client/src/components/task/staff-task-list.tsx` - Reference implementation with correct search functionality (line 45 and lines 70-80)
+**Step 3**: Ensure userTasks has safe fallback (line ~241+)
+```typescript
+const userTasks =
+  user?.role === "staff" || user?.role === "intern"
+    ? staffTasks || []
+    : user?.role === "client" &&
+        user?.clientType === "support_maintenance_client"
+      ? tasks || []
+      : // ... rest of conditions
+```
+
+**Step 4**: Add safety to filteredTasks (line ~254+)
+```typescript
+const filteredTasks = user?.role === "staff" || user?.role === "intern"
+  ? (staffTasks || []).filter((task) =>
+      taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
+    )
+  : (tasks || []).filter((task) =>
+      taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
+    );
+```
+
+**Step 5**: Add safety to all task categorizations (line ~271+)
+```typescript
+const tasksInProgress = (userTasks || []).filter(
+  (task) => task.status === "in_progress"
+);
+const pendingTasks = (userTasks || []).filter((task) => task.status === "pending");
+const todoTasks = (userTasks || []).filter((task) => task.status === "todo");
+const tasksInReview = (userTasks || []).filter((task) => task.status === "review");
+const technicalSupportTasks = (userTasks || []).filter(
+  (task) => task.status === "technical_support",
+);
+```
 
 ### Testing Checklist
-After implementing fixes:
-- [ ] Component loads without errors
-- [ ] Search input is visible in the UI
-- [ ] Searching by task name filters tasks correctly
-- [ ] Searching by assignee name filters tasks correctly
-- [ ] Search is case-insensitive
-- [ ] Clearing search shows all tasks
-- [ ] No console errors about undefined variables
+- [ ] Dashboard loads without errors
+- [ ] Dashboard shows correct data after loading
+- [ ] Staff/Intern view works correctly
+- [ ] Manager/Admin view works correctly
+- [ ] All task filters work properly
+- [ ] No console errors during initial load
+- [ ] Page refresh doesn't cause errors
