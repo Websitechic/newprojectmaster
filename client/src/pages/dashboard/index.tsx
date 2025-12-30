@@ -102,7 +102,7 @@ export default function Dashboard() {
   // Function to handle task status changes, including auto-pausing timer
   const handleTaskStatusChange = async (taskId: number, newStatus: string, projectId?: number) => {
     const statusToPauseTimer = ["review", "completed", "technical_support"];
-    let taskToUpdate = tasks?.find(task => task.id === taskId);
+    let taskToUpdate = (tasks ?? []).find(task => task?.id === taskId);
 
     if (!taskToUpdate) return;
 
@@ -145,8 +145,8 @@ export default function Dashboard() {
       console.error("Error updating task status:", error);
       // Revert optimistic update if error occurs
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) =>
-        oldTasks?.map(task =>
-          task.id === taskId ? { ...tasks?.find(t => t.id === taskId), status: originalStatus, isTimerRunning: originalIsTimerRunning } : task
+        (oldTasks ?? []).map(task =>
+          task?.id === taskId ? { ...(tasks ?? []).find(t => t?.id === taskId), status: originalStatus, isTimerRunning: originalIsTimerRunning } : task
         )
       );
     }
@@ -227,11 +227,11 @@ export default function Dashboard() {
   // Filter tasks for staff/intern user or all tasks for managers and support maintenance clients
   const staffTasks =
     user?.role === "staff" || user?.role === "intern"
-      ? (tasks?.filter((task) => task.assigneeId === user?.id) ?? [])
+      ? ((tasks ?? []).filter((task) => task.assigneeId === user?.id))
       : (tasks ?? []);
 
   // Categorize tasks - moved before userTasks to avoid dependency issues
-  const activeTask = (staffTasks ?? []).find((task) => task.isTimerRunning);
+  const activeTask = (staffTasks ?? []).find((task) => task?.isTimerRunning);
 
   // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
   const userTasks =
@@ -704,18 +704,18 @@ export default function Dashboard() {
                     <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 max-h-48 overflow-y-auto">
                       {(() => {
                         const activeProjects =
-                          projects?.filter((project) => {
-                            const hasActiveTasks = tasks?.some(
+                          (projects ?? []).filter((project) => {
+                            const hasActiveTasks = (tasks ?? []).some(
                               (task) =>
-                                task.projectId === project.id &&
-                                (task.status === "in_progress" || task.isTimerRunning)
+                                task?.projectId === project?.id &&
+                                (task?.status === "in_progress" || task?.isTimerRunning)
                             );
 
-                            const activity = projectActivity?.[project.id];
+                            const activity = projectActivity?.[project?.id];
                             const hasRecentActivity = activity && (activity.hasMessages || activity.hasResources);
 
                             return hasActiveTasks || hasRecentActivity;
-                          }) || [];
+                          });
 
                         if (activeProjects.length === 0) {
                           return (
@@ -728,13 +728,13 @@ export default function Dashboard() {
                         return (
                           <div className="space-y-2">
                             {activeProjects.map((project) => {
-                              const hasRunningTimer = tasks?.some(
+                              const hasRunningTimer = (tasks ?? []).some(
                                 (task) =>
-                                  task.projectId === project.id && task.isTimerRunning
+                                  task?.projectId === project?.id && task?.isTimerRunning
                               );
-                              const hasInProgress = tasks?.some(
+                              const hasInProgress = (tasks ?? []).some(
                                 (task) =>
-                                  task.projectId === project.id && task.status === "in_progress"
+                                  task?.projectId === project?.id && task?.status === "in_progress"
                               );
 
                               const activity = projectActivity?.[project.id];
@@ -830,10 +830,10 @@ export default function Dashboard() {
                         const oneWeekAgo = new Date();
                         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-                        const pendingProjects = projects?.filter((project) => {
-                          const projectTasks = tasks?.filter(
-                            (task) => task.projectId === project.id
-                          ) || [];
+                        const pendingProjects = (projects ?? []).filter((project) => {
+                          const projectTasks = (tasks ?? []).filter(
+                            (task) => task?.projectId === project?.id
+                          );
 
                           // If no tasks, it's pending
                           if (projectTasks.length === 0) {
@@ -843,21 +843,21 @@ export default function Dashboard() {
                           // If has tasks, check if any has been worked on in the last week
                           const hasRecentWork = projectTasks.some((task) => {
                             // Check if task has been started and worked on recently
-                            if (task.hasBeenStarted && task.timerStartTime) {
+                            if (task?.hasBeenStarted && task?.timerStartTime) {
                               const lastWorked = new Date(task.timerStartTime);
                               return lastWorked >= oneWeekAgo;
                             }
                             // Also check updatedAt for recent activity
-                            if (task.updatedAt) {
+                            if (task?.updatedAt) {
                               const lastUpdated = new Date(task.updatedAt);
-                              return lastUpdated >= oneWeekAgo && (task.hasBeenStarted || task.status !== 'todo');
+                              return lastUpdated >= oneWeekAgo && (task?.hasBeenStarted || task?.status !== 'todo');
                             }
                             return false;
                           });
 
                           // If no recent work, it's pending
                           return !hasRecentWork;
-                        }) || [];
+                        });
 
                         if (pendingProjects.length === 0) {
                           return (
@@ -870,9 +870,9 @@ export default function Dashboard() {
                         return (
                           <div className="space-y-2">
                             {pendingProjects.map((project) => {
-                              const projectTasks = tasks?.filter(
-                                (task) => task.projectId === project.id
-                              ) || [];
+                              const projectTasks = (tasks ?? []).filter(
+                                (task) => task?.projectId === project?.id
+                              );
 
                               const reasonText = projectTasks.length === 0
                                 ? "No tasks assigned"
@@ -920,15 +920,15 @@ export default function Dashboard() {
                             oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
                             return (
-                              projects?.filter((project) => {
+                              (projects ?? []).filter((project) => {
                                 // Projects completed in the last month
                                 return (
-                                  project.status === "completed" ||
-                                  (project.progress === 100 &&
-                                    project.updatedAt &&
+                                  project?.status === "completed" ||
+                                  (project?.progress === 100 &&
+                                    project?.updatedAt &&
                                     new Date(project.updatedAt) >= oneMonthAgo)
                                 );
-                              }).length || 0
+                              }).length
                             );
                           })()}
                         </Badge>
@@ -940,14 +940,14 @@ export default function Dashboard() {
                         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
                         const completedProjects =
-                          projects?.filter((project) => {
+                          (projects ?? []).filter((project) => {
                             return (
-                              project.status === "completed" ||
-                              (project.progress === 100 &&
-                                project.updatedAt &&
+                              project?.status === "completed" ||
+                              (project?.progress === 100 &&
+                                project?.updatedAt &&
                                 new Date(project.updatedAt) >= oneMonthAgo)
                             );
-                          }) || [];
+                          });
 
                         if (completedProjects.length === 0) {
                           return (
@@ -1294,9 +1294,9 @@ export default function Dashboard() {
                     </p>
                   </div>
 
-                  {tasks && tasks.filter(task => task.assigneeId === user.id).length > 0 ? (
+                  {(tasks ?? []).filter(task => task?.assigneeId === user?.id).length > 0 ? (
                     <StaffTaskList
-                      tasks={tasks.filter(task => task.assigneeId === user.id)}
+                      tasks={(tasks ?? []).filter(task => task?.assigneeId === user?.id)}
                       projectId={undefined}
                     />
                   ) : (
@@ -1330,16 +1330,16 @@ export default function Dashboard() {
                   <div className="text-center text-muted-foreground mt-8">
                     Loading tasks...
                   </div>
-                ) : tasks && tasks.length > 0 ? (
+                ) : (tasks ?? []).length > 0 ? (
                   <TaskList
                     tasks={
                       user?.role === "staff" || user?.role === "intern"
-                        ? tasks.filter((task) =>
-                            task.assigneeId === user?.id &&
-                            (!taskSearchQuery || task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+                        ? (tasks ?? []).filter((task) =>
+                            task?.assigneeId === user?.id &&
+                            (!taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()))
                           )
-                        : tasks.filter((task) =>
-                            !taskSearchQuery || task.title.toLowerCase().includes(taskSearchQuery.toLowerCase())
+                        : (tasks ?? []).filter((task) =>
+                            !taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase())
                           )
                     }
                     projectId={undefined}
