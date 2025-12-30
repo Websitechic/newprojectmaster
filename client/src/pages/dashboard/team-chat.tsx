@@ -139,10 +139,10 @@ export default function TeamChat() {
       try {
         const allUsersResponse = await fetch('/api/users');
         if (allUsersResponse.ok) {
-          const allUsers = await allUsersResponse.json();
+          const teamLeadsAndManagers = await allUsersResponse.json();
 
           // Add team leads and operations managers
-          allUsers.forEach((u: any) => {
+          teamLeadsAndManagers.forEach((u: any) => {
             const isTeamLead = u.role === 'team_lead';
             const isOperationsManager = u.role === 'operations_manager' || u.specialization === 'operations_manager';
 
