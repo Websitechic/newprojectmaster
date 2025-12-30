@@ -5350,7 +5350,7 @@ End of Report
         deptConditions.push(sql`${memos.recipients} @> ${JSON.stringify([user.specialization])}`);
       }
 
-      If (user.role === 'project_manager') {
+      if (user.role === 'project_manager') {
         deptConditions.push(sql`${memos.recipients} @> ${JSON.stringify(["project_managers"])}`);
       }
 
