@@ -35,28 +35,125 @@ export function useOneSignal(userId?: number) {
         isProcessing.current = true;
         console.log('[OneSignal] 🚀 Starting subscription process for user:', userId);
         
-        // Detect mobile device
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        console.log('[OneSignal] 📱 Mobile device detected:', isMobile);
+        // Enhanced mobile and browser detection
+        const userAgent = navigator.userAgent;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+        const isSafari = /Safari/i.test(userAgent) && !/Chrome/i.test(userAgent);
+        const isAndroid = /Android/i.test(userAgent);
         
-        // Wait for OneSignal to be available on window - longer wait for mobile
-        const maxRetries = isMobile ? 20 : 10;
-        const retryDelay = isMobile ? 1000 : 500;
+        console.log('[OneSignal] 📱 Device Info:', {
+          isMobile,
+          isIOS,
+          isSafari,
+          isAndroid,
+          userAgent: userAgent.substring(0, 50) + '...'
+        });
+        
+        // Check network connectivity
+        if (!navigator.onLine) {
+          console.warn('[OneSignal] 🌐 Device is offline, waiting for connection...');
+          await new Promise(resolve => {
+            const onlineHandler = () => {
+              console.log('[OneSignal] 🌐 Device is now online');
+              window.removeEventListener('online', onlineHandler);
+              resolve(undefined);
+            };
+            window.addEventListener('online', onlineHandler);
+            // Timeout after 30 seconds
+            setTimeout(() => {
+              window.removeEventListener('online', onlineHandler);
+              resolve(undefined);
+            }, 30000);
+          });
+        }
+        
+        console.log('[OneSignal] 🌐 Network status:', navigator.onLine ? 'online' : 'offline');
+        
+        // iOS Safari specific handling
+        if (isIOS && isSafari) {
+          console.log('[OneSignal] 🍎 iOS Safari detected - checking compatibility');
+          
+          // Check iOS version
+          const iOSVersionMatch = userAgent.match(/OS (\d+)_/);
+          if (iOSVersionMatch) {
+            const iOSVersion = parseInt(iOSVersionMatch[1]);
+            console.log('[OneSignal] 🍎 iOS Version:', iOSVersion);
+            
+            if (iOSVersion < 16) {
+              console.error('[OneSignal] ❌ iOS version', iOSVersion, '< 16. Push notifications require iOS 16.4+');
+              console.error('[OneSignal] 💡 Please update to iOS 16.4 or later for push notification support');
+              isProcessing.current = false;
+              return;
+            }
+          }
+        }
+        
+        // Check service worker support
+        if ('serviceWorker' in navigator) {
+          try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            console.log('[OneSignal] 👷 Service Worker status:', registration ? 'registered' : 'not registered');
+            
+            if (!registration) {
+              console.log('[OneSignal] 👷 Attempting to register service worker...');
+              try {
+                await navigator.serviceWorker.register('/OneSignalSDKWorker.js');
+                console.log('[OneSignal] ✅ Service worker registered successfully');
+              } catch (swRegError) {
+                console.warn('[OneSignal] ⚠️ Service worker registration failed:', swRegError);
+                // Continue anyway, OneSignal will handle this
+              }
+            }
+          } catch (swError) {
+            console.warn('[OneSignal] ⚠️ Service worker check error:', swError);
+          }
+        } else {
+          console.error('[OneSignal] ❌ Service workers not supported in this browser');
+          if (isIOS && !isSafari) {
+            console.error('[OneSignal] 💡 iOS Chrome/Firefox use Safari WebView. Try Safari browser instead.');
+          }
+        }
+        
+        // Wait for OneSignal to be available - adaptive retry strategy
+        const maxRetries = isMobile ? (isIOS ? 40 : 30) : 10;
+        const baseRetryDelay = isMobile ? (isIOS ? 1500 : 1000) : 500;
         let retries = 0;
+        let currentDelay = baseRetryDelay;
+        
+        console.log('[OneSignal] ⏳ Waiting for OneSignal SDK (max', maxRetries, 'attempts, base delay', baseRetryDelay, 'ms)');
         
         while (typeof window.OneSignalDeferred === 'undefined' && retries < maxRetries) {
-          console.log('[OneSignal] ⏳ Waiting for OneSignal SDK to load... (attempt', retries + 1, 'of', maxRetries, ')');
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          console.log('[OneSignal] ⏳ Waiting for OneSignal SDK to load... (attempt', retries + 1, 'of', maxRetries, ', delay:', currentDelay, 'ms)');
+          await new Promise(resolve => setTimeout(resolve, currentDelay));
+          
+          // Exponential backoff with cap
+          currentDelay = Math.min(currentDelay * 1.2, 3000);
           retries++;
         }
         
         if (typeof window.OneSignalDeferred === 'undefined') {
-          console.error('[OneSignal] ❌ OneSignal SDK failed to load after', maxRetries * retryDelay / 1000, 'seconds');
+          const totalWaitTime = (maxRetries * baseRetryDelay) / 1000;
+          console.error('[OneSignal] ❌ OneSignal SDK failed to load after', maxRetries, 'attempts (~', totalWaitTime, 'seconds)');
+          console.error('[OneSignal] 💡 Possible causes:');
+          console.error('[OneSignal]    - Network connectivity issues');
+          console.error('[OneSignal]    - Script blocked by ad blocker or firewall');
+          console.error('[OneSignal]    - CDN unavailable');
+          console.error('[OneSignal]    - Browser compatibility issues');
+          
+          // Store failure in localStorage for debugging
+          try {
+            localStorage.setItem('onesignal_load_failed', Date.now().toString());
+            localStorage.setItem('onesignal_load_failed_device', isMobile ? (isIOS ? 'iOS' : 'Android') : 'Desktop');
+          } catch (e) {
+            // Ignore localStorage errors
+          }
+          
           isProcessing.current = false;
           return;
         }
         
-        console.log('[OneSignal] ✅ OneSignal SDK loaded successfully after', retries, 'retries');
+        console.log('[OneSignal] ✅ OneSignal SDK loaded successfully after', retries, 'retries', '(total wait:', Math.round(retries * baseRetryDelay / 1000), 'seconds)');
         
         if (!isInitialized && !initPromise) {
           console.log('[OneSignal] 📦 Initializing SDK...');
