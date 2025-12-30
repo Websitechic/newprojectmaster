@@ -85,6 +85,9 @@ export default function Dashboard() {
     refetchInterval: 10000, // Refresh every 10 seconds
   });
 
+  // Alias for compatibility
+  const allUsers = staff;
+
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
