@@ -425,7 +425,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
               <TableHead className="min-w-[200px]">Status</TableHead>
               <TableHead className="min-w-[150px]">Timer</TableHead>
               <TableHead className="min-w-[120px]">Deadline</TableHead>
-              <TableHead className="min-w-[140px]">Stop Gap</TableHead>
+              <TableHead className="min-w-[200px]">Stop Gap</TableHead>
               <TableHead className="text-right min-w-[200px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -565,7 +565,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       </div>
                     ) : <span className="text-muted-foreground text-xs">None</span>}
                   </TableCell>
-                  <TableCell className="min-w-[140px]">
+                  <TableCell className="min-w-[200px]">
                     {stopGapAssignments[task.id] ? (
                       <div className="space-y-1">
                         <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
@@ -578,18 +578,59 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         Stop Gap Exhausted
                       </Badge>
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTaskForStopGap(task.id);
-                          setStopGapDialogOpen(true);
-                        }}
-                        disabled={task.status === 'completed' || task.status === 'review'}
-                        className="h-7 text-xs whitespace-nowrap"
-                      >
-                        Apply Stop Gap
-                      </Button>
+                      <div className="space-y-2">
+                        <div className="flex gap-1">
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="Hrs"
+                            value={selectedTaskForStopGap === task.id ? stopGapHours : "0"}
+                            onChange={(e) => {
+                              setSelectedTaskForStopGap(task.id);
+                              setStopGapHours(e.target.value);
+                            }}
+                            className="h-7 w-16 text-xs"
+                            disabled={task.status === 'completed' || task.status === 'review'}
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            max="59"
+                            placeholder="Mins"
+                            value={selectedTaskForStopGap === task.id ? stopGapMinutes : "0"}
+                            onChange={(e) => {
+                              setSelectedTaskForStopGap(task.id);
+                              setStopGapMinutes(e.target.value);
+                            }}
+                            className="h-7 w-16 text-xs"
+                            disabled={task.status === 'completed' || task.status === 'review'}
+                          />
+                        </div>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            applyStopGap.mutate({
+                              taskId: task.id,
+                              hours: parseInt(stopGapHours) || 0,
+                              minutes: parseInt(stopGapMinutes) || 0,
+                            });
+                            setStopGapHours("0");
+                            setStopGapMinutes("0");
+                            setSelectedTaskForStopGap(null);
+                          }}
+                          disabled={
+                            applyStopGap.isPending || 
+                            task.status === 'completed' || 
+                            task.status === 'review' ||
+                            (parseInt(stopGapHours) === 0 && parseInt(stopGapMinutes) === 0) ||
+                            selectedTaskForStopGap !== task.id
+                          }
+                          className="h-7 text-xs w-full"
+                        >
+                          Apply
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                   <TableCell className="text-right min-w-[200px]">
