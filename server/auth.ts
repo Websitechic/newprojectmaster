@@ -97,7 +97,7 @@ export function setupAuth(app: Express) {
       secure: false, // Set to false for Replit's proxy setup
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 60 * 60 * 1000, // 1 hour of inactivity
+      maxAge: 14 * 24 * 60 * 60 * 1000, // 2 weeks of inactivity
       path: '/'
     },
     name: 'connect.sid' // Explicit session cookie name

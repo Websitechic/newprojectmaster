@@ -47,7 +47,7 @@ const sessionMiddleware = session({
     secure: false, // Set to false for development
     httpOnly: true,
     sameSite: "lax",
-    maxAge: 60 * 60 * 1000, // 1 hour of inactivity
+    maxAge: 14 * 24 * 60 * 60 * 1000, // 2 weeks of inactivity
     path: "/"
   },
   name: "session_id" // Custom session cookie name
