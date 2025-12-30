@@ -1,6 +1,5 @@
 
 import { useEffect, useRef } from 'react';
-import { isMedianApp, setMedianExternalUserId } from '@/lib/median-onesignal';
 
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
@@ -14,18 +13,6 @@ export function useOneSignal(userId?: number) {
     console.log('[OneSignal] Hook triggered');
     console.log('[OneSignal] User ID:', userId);
     console.log('[OneSignal] App ID configured:', !!appId && appId !== 'YOUR_ONESIGNAL_APP_ID');
-    
-    // Detect if running in Median or other WebView wrapper
-    if (isMedianApp()) {
-      console.log('[OneSignal] 📱 Running in Median/WebView - using native integration');
-      console.log('[OneSignal] 💡 Make sure OneSignal is configured in Median dashboard');
-      
-      if (userId) {
-        setMedianExternalUserId(userId);
-      }
-      
-      return;
-    }
     
     if (!appId || appId === 'YOUR_ONESIGNAL_APP_ID') {
       console.error('[OneSignal] ❌ App ID not configured');
