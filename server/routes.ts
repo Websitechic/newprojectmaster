@@ -4532,9 +4532,11 @@ End of Report
     const user = req.user!;
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
     const isProjectManager = user.role === "project_manager";
+    const isTeamLead = user.role === "team_lead";
+    const isCustomerSupportOfficer = user.role === "customer_support_officer";
 
     try {
-      // All users (operations managers, project managers, and staff) see all queries
+      // All users (operations managers, project managers, team leads, customer support officers, and staff) see all queries
       const queries = await db
         .select()
         .from(staffQueries)

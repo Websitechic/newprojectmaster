@@ -327,6 +327,13 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/technical-management",
       hasUpdate: indicators.technicalManagement,
       key: "technical-management",
+    },
+    {
+      icon: <MessageSquare size={20} />,
+      label: "Penalty",
+      href: "/dashboard/staff-queries",
+      hasUpdate: indicators.myQueries,
+      key: "staff-queries-pm",
     }
   ] : [];
 
@@ -353,7 +360,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
     {
       icon: <FileText size={20} />,
-      label: "My Queries",
+      label: "Received Penalties",
       href: "/dashboard/staff-queries",
       hasUpdate: indicators.myQueries,
       key: "staff-queries",
@@ -378,13 +385,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "Client Accounts",
       href: "/dashboard/client-accounts",
       key: "client-accounts",
-    },
-    {
-      icon: <FileText size={20} />,
-      label: "My Queries",
-      href: "/dashboard/staff-queries",
-      hasUpdate: indicators.myQueries,
-      key: "customer-support-officer-queries",
     }
   ] : [];
 
@@ -488,7 +488,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
     {
       icon: <MessageSquare size={20} />,
-      label: "Staff Queries",
+      label: "Penalty",
       href: "/dashboard/staff-queries",
       hasUpdate: indicators.myQueries,
       key: "operations-staff-queries",
@@ -581,7 +581,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
     {
       icon: <MessageSquare size={20} />,
-      label: "Staff Queries",
+      label: "Penalty",
       href: "/dashboard/staff-queries",
       hasUpdate: indicators.myQueries,
       key: "team-lead-staff-queries",

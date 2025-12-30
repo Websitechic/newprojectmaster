@@ -199,6 +199,7 @@ export default function StaffQueries() {
   const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
   const isProjectManager = user?.role === "project_manager";
   const isTeamLead = user?.role === "team_lead";
+  const isCustomerSupportOfficer = user?.role === "customer_support_officer";
 
   if (isLoading) {
     return (
@@ -223,28 +224,28 @@ export default function StaffQueries() {
           <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {(isOperationsManager || isProjectManager || isTeamLead) ? "Staff Queries Management" : "Staff Queries"}
+            {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) ? "Penalty Management" : "Received Penalties"}
           </h1>
           <p className="text-gray-600">
-            {(isOperationsManager || isProjectManager || isTeamLead)
-              ? "Send and manage staff queries and disciplinary actions"
-              : "View all staff queries and disciplinary actions"
+            {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer)
+              ? "Send and manage penalties and disciplinary actions"
+              : "View all penalties and disciplinary actions"
             }
           </p>
         </div>
-        {(isOperationsManager || isProjectManager || isTeamLead) && (
+        {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) && (
           <Button onClick={() => setShowForm(true)} className="flex items-center gap-2">
             <Send size={16} />
-            Send New Query
+            Send New Penalty
           </Button>
         )}
       </div>
 
       {/* Create Query Form */}
-      {showForm && (isOperationsManager || isProjectManager || isTeamLead) && (
+      {showForm && (isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) && (
         <Card>
           <CardHeader>
-            <CardTitle>Send Staff Query</CardTitle>
+            <CardTitle>Send Penalty</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -364,7 +365,7 @@ export default function StaffQueries() {
 
               <div className="flex gap-2">
                 <Button type="submit" disabled={createQueryMutation.isPending}>
-                  {createQueryMutation.isPending ? "Sending..." : "Send Query"}
+                  {createQueryMutation.isPending ? "Sending..." : "Send Penalty"}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                   Cancel
@@ -382,12 +383,12 @@ export default function StaffQueries() {
             <CardContent className="text-center py-8">
               <FileText className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
-                {(isOperationsManager || isProjectManager || isTeamLead) ? "No queries sent" : "No queries available"}
+                {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) ? "No penalties sent" : "No penalties received"}
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                {(isOperationsManager || isProjectManager || isTeamLead)
-                  ? "You haven't sent any staff queries yet."
-                  : "No staff queries have been issued yet."
+                {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer)
+                  ? "You haven't sent any penalties yet."
+                  : "No penalties have been issued yet."
                 }
               </p>
             </CardContent>
@@ -456,7 +457,7 @@ export default function StaffQueries() {
                   </div>
                 )}
 
-                {!(isOperationsManager || isProjectManager || isTeamLead) && query.status === "pending" && query.staffId === user?.id && (
+                {!(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) && query.status === "pending" && query.staffId === user?.id && (
                   <div className="flex gap-2 pt-4 border-t">
                     <Button
                       size="sm"
@@ -476,9 +477,9 @@ export default function StaffQueries() {
                   </div>
                 )}
 
-                {(isOperationsManager || isProjectManager || isTeamLead) && (
+                {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) && (
                   <div className="text-xs text-gray-500 pt-2 border-t">
-                    Query ID: {query.id}
+                    Penalty ID: {query.id}
                   </div>
                 )}
               </CardContent>
