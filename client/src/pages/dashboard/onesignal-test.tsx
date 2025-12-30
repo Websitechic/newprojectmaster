@@ -5,9 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
+import { ArrowLeft } from "lucide-react";
 
 export default function OneSignalTest() {
   const { user } = useUser();
+  const [, setLocation] = useLocation();
   
   // Initialize OneSignal for this user
   useOneSignal(user?.id);
@@ -108,6 +111,14 @@ export default function OneSignalTest() {
   return (
     <div className="space-y-6">
       <div>
+        <Button
+          variant="ghost"
+          onClick={() => setLocation("/dashboard")}
+          className="mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Button>
         <h1 className="text-3xl font-bold">OneSignal Test & Debug</h1>
         <p className="text-muted-foreground">
           Check OneSignal subscription status and debug issues

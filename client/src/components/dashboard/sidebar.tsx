@@ -764,6 +764,15 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
             );
           })}
 
+          {/* OneSignal Test - Available to all users */}
+          <SidebarItem
+            icon={<Bell size={20} />}
+            label="OneSignal Test"
+            href="/dashboard/onesignal-test"
+            onClick={() => handleMenuItemClick("/dashboard/onesignal-test")}
+            active={currentPath === "/dashboard/onesignal-test"}
+          />
+
           {/* Report Issues - Available to all users */}
           <SidebarItem
             icon={<Bug size={20} />}
