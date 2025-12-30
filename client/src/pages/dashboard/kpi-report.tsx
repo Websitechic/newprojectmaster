@@ -16,7 +16,7 @@ import { Download, FileText, FileSpreadsheet, FileDown, Calendar, User, Building
 import { format, subDays, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 interface StaffMember {
   id: number;
@@ -664,13 +664,12 @@ export default function KPIReportPage() {
   };
   const allTasks = getAllTasks();
 
-  const handleExportStaffSummaryPDF = () => {
+  const handleExportStaffSummaryPDF = async () => {
     if (!selectedStaffMember || !productivityData) return;
 
     const doc = new jsPDF();
-
     const pageHeight = doc.internal.pageSize.getHeight();
-    let y = 15; // Initial y position
+    let y = 15;
 
     // Header
     doc.setFontSize(18);
@@ -686,12 +685,18 @@ export default function KPIReportPage() {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
 
+    // Calculate average hours (same as "Avg Hours" - excluding excessive hours)
+    const validDays = productivityData.dailyData.filter(day => {
+      const totalMinutes = day.actualWorkHours * 60;
+      return totalMinutes <= 540; // Exclude if > 9 hours
+    });
+    const avgHours = validDays.length > 0
+      ? validDays.reduce((sum, day) => sum + (day.actualWorkHours * 60), 0) / validDays.length / 60
+      : 0;
+
     const staffInfoData = [
       ['Name:', selectedStaffMember.name || 'N/A'],
-      ['Average Hours Worked:', formatTimeForExport((() => {
-        const totalMinutes = productivityData.dailyData.reduce((sum, day) => sum + (day.totalSpanHours * 60), 0);
-        return totalMinutes / productivityData.summary.totalDays / 60;
-      })()) + '/day'],
+      ['Average Hours Worked:', formatTimeForExport(avgHours) + '/day'],
       ['Productivity Score:', (() => {
         const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
           sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
@@ -704,11 +709,11 @@ export default function KPIReportPage() {
     staffInfoData.forEach(row => {
       doc.text(row[0], 15, y);
       doc.setFont('helvetica', 'bold');
-      doc.text(row[1], 75, y); // Adjust x position for value
+      doc.text(row[1], 75, y);
       doc.setFont('helvetica', 'normal');
       y += 7;
     });
-    y += 5; // Spacing
+    y += 5;
 
     // Performance Breakdown
     doc.setFontSize(14);
@@ -727,77 +732,118 @@ export default function KPIReportPage() {
     performanceData.forEach(row => {
       doc.text(row[0], 15, y);
       doc.setFont('helvetica', 'bold');
-      doc.text(String(row[1]), 75, y); // Adjust x position for value
+      doc.text(String(row[1]), 75, y);
       doc.setFont('helvetica', 'normal');
       y += 7;
     });
     y += 10;
 
-    // Tasks List
+    // Tasks List - All tasks worked on within date range
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(`List of Tasks Performed (${allTasks.size} tasks)`, 15, y);
     y += 7;
 
-    const taskTableHeaders = ['Task Name', 'Assigned Time', 'Actual Time', 'Status', 'Efficiency'];
+    const taskTableHeaders = ['Task Name', 'Assigned Time', 'Actual Time', 'Status'];
     const taskTableData = Array.from(allTasks.values()).map((task: any) => {
       const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
       const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
-      const efficiency = assignedMinutes > 0 && actualMinutes > 0
-        ? Math.round((assignedMinutes / actualMinutes) * 100)
-        : 0;
 
       return [
         task.title || 'Untitled Task',
         formatMinutesForExport(assignedMinutes),
         formatMinutesForExport(actualMinutes),
-        task.status || 'N/A',
-        `${efficiency}%`
+        task.status || 'N/A'
       ];
     });
 
-    // Check if the current y position plus the table height exceeds the page height
-    const tableHeight = taskTableData.length * 5 + 10; // Approximate height
-    if (y + tableHeight > pageHeight - 15) { // Leave some margin at the bottom
+    if (y + 20 > pageHeight - 15) {
       doc.addPage();
-      y = 15; // Reset y for new page
+      y = 15;
     }
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [taskTableHeaders],
       body: taskTableData,
       theme: 'striped',
-      headStyles: { fillColor: [229, 231, 235], textColor: [17, 24, 39], fontStyle: 'bold' }, // gray-200
-      bodyStyles: { textColor: [75, 85, 99] }, // gray-700
+      headStyles: { fillColor: [229, 231, 235], textColor: [17, 24, 39], fontStyle: 'bold' },
+      bodyStyles: { textColor: [75, 85, 99] },
       columnStyles: {
-        0: { cellWidth: 60 }, // Task Name
-        1: { cellWidth: 30 }, // Assigned Time
-        2: { cellWidth: 30 }, // Actual Time
-        3: { cellWidth: 30 }, // Status
-        4: { cellWidth: 30, halign: 'right' } // Efficiency
+        0: { cellWidth: 70 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 40 }
       },
       margin: { left: 15, right: 15 },
     });
 
-    y = (doc as any).autoTable.previous.finalY || y; // Update y position after table
-    y += 10;
+    y = (doc as any).lastAutoTable.finalY + 10;
 
-    // Penalties Section
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Penalties', 15, y);
-    y += 7;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
+    // Fetch and display penalties
+    try {
+      let endDate: Date;
+      let startDate: Date;
 
-    if (y + 15 > pageHeight - 15) { // Check if adding penalty text exceeds page
-      doc.addPage();
-      y = 15;
+      if (useCustomRange && customStartDate && customEndDate) {
+        startDate = customStartDate;
+        endDate = customEndDate;
+      } else {
+        endDate = new Date();
+        startDate = subDays(endDate, dateRange);
+      }
+
+      const penaltiesResponse = await fetch(
+        `/api/memos?staffId=${selectedStaff}&type=penalty&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+      );
+
+      if (penaltiesResponse.ok) {
+        const penalties = await penaltiesResponse.json();
+
+        if (y + 20 > pageHeight - 15) {
+          doc.addPage();
+          y = 15;
+        }
+
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Penalties', 15, y);
+        y += 7;
+
+        if (penalties.length > 0) {
+          const penaltyTableHeaders = ['Date', 'Reason', 'Issued By'];
+          const penaltyTableData = penalties.map((penalty: any) => [
+            format(new Date(penalty.createdAt), 'MMM dd, yyyy'),
+            penalty.content || 'N/A',
+            penalty.authorName || 'N/A'
+          ]);
+
+          autoTable(doc, {
+            startY: y,
+            head: [penaltyTableHeaders],
+            body: penaltyTableData,
+            theme: 'striped',
+            headStyles: { fillColor: [229, 231, 235], textColor: [17, 24, 39], fontStyle: 'bold' },
+            bodyStyles: { textColor: [75, 85, 99] },
+            columnStyles: {
+              0: { cellWidth: 40 },
+              1: { cellWidth: 90 },
+              2: { cellWidth: 50 }
+            },
+            margin: { left: 15, right: 15 },
+          });
+        } else {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+          doc.text('No penalties recorded for this period.', 15, y);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching penalties:', error);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text('Error loading penalties.', 15, y);
     }
-    doc.text('No penalties recorded for this period.', 15, y);
-    y += 7;
-
 
     doc.save(`Staff-Summary-Report-${selectedStaffMember.name.replace(/\s+/g, '-')}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };

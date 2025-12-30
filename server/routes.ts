@@ -5244,7 +5244,7 @@ End of Report
 
     try {
       if (isOperationsManager) {
-        // Operations managers see all memos they sent
+        // Operations managers can see all memos they sent
         const sentMemos = await db
           .select({
             id: memos.id,
@@ -9180,7 +9180,7 @@ End of Report
         }
       }
 
-      res.json({ success: true, project: updatedProject });
+      res.json({ success: true,      project: updatedProject });
     } catch (error) {
       console.error("Error updating project:", error);
       res.status(500).json({ error: "Failed to update project"});
