@@ -244,15 +244,6 @@ export default function Dashboard() {
               ? tasks || []
               : tasks || [];
 
-  // Apply search filter to tasks (works for both staff and managers)
-  const filteredTasks = user?.role === "staff" || user?.role === "intern"
-    ? staffTasks?.filter((task) =>
-        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
-      )
-    : tasks?.filter((task) =>
-        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
-      );
-
   // Categorize tasks
   const activeTask = staffTasks.find((task) => task.isTimerRunning);
   const tasksInProgress = userTasks.filter(
@@ -329,8 +320,11 @@ export default function Dashboard() {
     </div>
   );
 
-  // Filter tasks for staff/intern role based on search query
-  const filteredStaffTasks = staffTasks.filter((task) =>
+  // Apply search filter to tasks for rendering
+  const searchFilteredTasks = (user?.role === "staff" || user?.role === "intern"
+    ? staffTasks
+    : tasks || []
+  ).filter((task) =>
     taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
   );
 
@@ -643,7 +637,7 @@ export default function Dashboard() {
                 </div>
 
                 {staffTasks && staffTasks.length > 0 ? (
-                  <StaffTaskList tasks={filteredTasks || staffTasks} projectId={undefined} />
+                  <StaffTaskList tasks={searchFilteredTasks} projectId={undefined} />
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
                     No tasks assigned to you yet.

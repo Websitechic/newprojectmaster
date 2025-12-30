@@ -1,5 +1,159 @@
-
 # Fix Plan: Direct Messages Real-time Updates & 400 Bad Request Errors
+
+## Current Critical Issue: filteredTasks Initialization Error
+
+### Error Analysis (December 30, 2025)
+
+**Error Message:** `[plugin:runtime-error-plugin] Cannot access 'filteredTasks' before initialization`
+
+### Root Cause Identification
+
+After deep research across the codebase, the following issues were identified:
+
+#### 1. **Variable Naming Conflict in `client/src/pages/dashboard/index.tsx`**
+
+**Location:** Lines 110-127
+
+**Problem:** The variable `filteredTasks` is declared twice in the same scope:
+- First declaration at line 110: `const filteredTasks = user?.role === "staff" || user?.role === "intern" ? staffTasks?.filter(...) : tasks?.filter(...)`
+- Second usage in line 127: Inside the `filteredTasks` variable itself, creating a circular reference
+
+**Code Snippet:**
+```javascript
+// Line 110 - First declaration
+const filteredTasks = user?.role === "staff" || user?.role === "intern"
+  ? staffTasks?.filter((task) =>
+      taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
+    )
+  : tasks?.filter((task) =>
+      taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
+    );
+
+// Line 127 - Categorize tasks uses staffTasks
+const activeTask = staffTasks.find((task) => task.isTimerRunning);
+```
+
+#### 2. **Variable Redeclaration in `client/src/components/task/staff-task-list.tsx`**
+
+**Location:** Lines 33-41 and later usage
+
+**Problem:** The component declares `filteredTasks` as a computed value, but then tries to use it in the same expression:
+
+```javascript
+// Filter tasks to show only those assigned to the current staff member
+const filteredTasks = tasks
+  .filter((task) => task.assigneeId === user?.id)
+  .filter(task => task.title.toLowerCase().includes(searchTerm.toLowerCase()))
+  .sort((a, b) => a.id - b.id);
+```
+
+Then later attempts to use `filteredTasks` in query keys before it's fully initialized.
+
+### Fix Plan
+
+#### Phase 1: Fix `client/src/pages/dashboard/index.tsx`
+
+**Action Items:**
+1. Remove the duplicate `filteredTasks` declaration (line 110-116)
+2. Rename the search-filtered tasks to `searchFilteredTasks` to avoid confusion
+3. Use `searchFilteredTasks` only where search functionality is needed
+4. Keep `staffTasks` and `userTasks` as the primary task arrays for categorization
+5. Update all references to use the correct variable
+
+**Affected Code Sections:**
+- Lines 110-127: Variable declarations
+- Lines 350-360: Staff task list rendering
+- Lines 800+: Manager task list rendering
+
+#### Phase 2: Fix `client/src/components/task/staff-task-list.tsx`
+
+**Action Items:**
+1. Move the `filteredTasks` declaration before any usage in hooks
+2. Ensure `filteredTasks` is not referenced in its own filter chain
+3. Update query keys to use task IDs array instead of full filtered tasks
+
+**Affected Code Sections:**
+- Lines 13-22: Query hooks that reference filteredTasks
+- Lines 33-41: filteredTasks declaration
+- Line 50+: Component rendering
+
+#### Phase 3: Verification Steps
+
+1. **Check for Hoisting Issues:**
+   - Verify no temporal dead zone violations
+   - Ensure all variables are declared before use
+   - Check that const declarations don't have circular dependencies
+
+2. **Test Scenarios:**
+   - Staff user login → Dashboard load
+   - Intern user login → Dashboard load
+   - Manager user login → Dashboard load
+   - Task search functionality
+   - Task filtering by status
+
+3. **Console Validation:**
+   - No initialization errors
+   - WebSocket connections stable
+   - Task queries successful
+
+### Implementation Priority
+
+**High Priority (Fix Immediately):**
+- Remove duplicate `filteredTasks` in dashboard/index.tsx
+- Rename variables to avoid conflicts
+- Fix staff-task-list.tsx query dependencies
+
+**Medium Priority:**
+- Add error boundaries around task lists
+- Implement fallback UI for failed queries
+
+**Low Priority:**
+- Refactor task filtering logic into custom hook
+- Add comprehensive error logging
+
+### Related Files
+
+The following files are directly involved in this error:
+
+1. **Primary:**
+   - `client/src/pages/dashboard/index.tsx` (Main dashboard)
+   - `client/src/components/task/staff-task-list.tsx` (Task list component)
+
+2. **Secondary (May need review):**
+   - `client/src/components/task/task-list.tsx` (Generic task list)
+   - `client/src/pages/dashboard/tasks.tsx` (Tasks page)
+   - `client/src/pages/technical-support.tsx` (Technical support page)
+
+3. **Backend (No changes needed):**
+   - `server/routes.ts` (Task API endpoints - working correctly)
+
+### Code Quality Improvements
+
+After fixing the immediate error, consider:
+
+1. **Variable Naming Convention:**
+   - Use descriptive names: `searchFilteredTasks`, `assigneeFilteredTasks`, `statusFilteredTasks`
+   - Avoid generic names like `filteredTasks` when multiple filters exist
+
+2. **Separation of Concerns:**
+   - Extract filtering logic into utility functions
+   - Create custom hooks for complex filtering scenarios
+
+3. **Type Safety:**
+   - Add explicit types to filtered arrays
+   - Use TypeScript's const assertions where appropriate
+
+### Next Steps
+
+1. Apply the fixes to `client/src/pages/dashboard/index.tsx`
+2. Apply the fixes to `client/src/components/task/staff-task-list.tsx`
+3. Test all user roles (staff, intern, manager, team lead)
+4. Monitor console for any remaining errors
+5. Mark this issue as resolved in documentation
+
+---
+
+## Previous Instructions
 
 ## Root Cause Analysis
 
@@ -10,7 +164,7 @@
 **Root Causes**:
 1. The endpoint checks `req.isAuthenticated()` and `req.user` but requests are being made before session is fully established
 2. Multiple hooks/components are polling this endpoint simultaneously (sidebar, use-unread-messages hook)
-3. No graceful handling when user is not yet authenticated
+3. No graceful handling when user is not authenticated
 4. The endpoint returns 400 instead of 401 for unauthenticated requests
 
 **Evidence from logs**:
@@ -32,7 +186,7 @@ Multiple rapid-fire 400 errors happening consistently.
    - Server sends: `{ type: 'direct_message', data: messageData }`
    - Client GlobalNotificationListener expects this and dispatches `direct-message-received` event
    - But the event is dispatched AFTER queries are invalidated, causing race conditions
-
+   
 2. **WebSocket Session Issues**:
    - WebSocket connections are failing to authenticate: `WebSocket connection without authenticated session`
    - Session data not accessible in WebSocket upgrade handler

@@ -49,21 +49,18 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const [stopGapHours, setStopGapHours] = useState("0");
   const [stopGapMinutes, setStopGapMinutes] = useState("0");
 
-  // Get all projects to display project names for each task
+  // Filter tasks to show only those assigned to the current staff member
+  // Sort by ID to maintain consistent positioning regardless of timer state
+  const filteredTasks = tasks
+    .filter((task) => task.assigneeId === user?.id)
+    .filter(task => task.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => a.id - b.id);
+
+  // Fetch projects to display project names
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     queryFn: () => fetch("/api/projects").then(res => {
       if (!res.ok) throw new Error('Failed to fetch projects');
-      return res.json();
-    }),
-    enabled: !!user,
-  });
-
-  // Get all users to display who assigned each task
-  const { data: allUsers } = useQuery<{ id: number; name: string; email: string }[]>({
-    queryKey: ["/api/users"],
-    queryFn: () => fetch("/api/users").then(res => {
-      if (!res.ok) throw new Error('Failed to fetch users');
       return res.json();
     }),
     enabled: !!user,
@@ -98,13 +95,6 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     acc[project.id] = project.name;
     return acc;
   }, {} as Record<number, string>) || {};
-
-  // Filter tasks to show only those assigned to the current staff member
-  // Sort by ID to maintain consistent positioning regardless of timer state
-  const filteredTasks = tasks
-    .filter((task) => task.assigneeId === user?.id)
-    .filter(task => task.title.toLowerCase().includes(searchTerm.toLowerCase()))
-    .sort((a, b) => a.id - b.id);
 
   // Debug: Check if we have all projects for the tasks
   const missingProjects = filteredTasks.filter(task => !projectMap[task.projectId]);
@@ -272,7 +262,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
       // Auto-pause timer if status is changing to review, completed, or technical_support
       const task = tasks.find(t => t.id === taskId);
-      if (task && task.isTimerRunning && 
+      if (task && task.isTimerRunning &&
           (status === 'review' || status === 'completed' || status === 'technical_support')) {
         try {
           await fetch(`/api/tasks/${taskId}/pause-timer`, {
@@ -652,7 +642,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
           <DialogHeader>
             <DialogTitle>Apply Stop Gap Time</DialogTitle>
             <DialogDescription>
-              Add stop gap time to extend this task's allocated time. 
+              Add stop gap time to extend this task's allocated time.
               {stopGapAllocation && (
                 <span className="block mt-2 font-medium">
                   Available: {Math.floor(stopGapAllocation.remainingHours / 60)}h {stopGapAllocation.remainingHours % 60}m
