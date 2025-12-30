@@ -422,11 +422,11 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
               <TableHead className="min-w-[180px]">Task & Project</TableHead>
               <TableHead className="min-w-[250px]">Description</TableHead>
               <TableHead className="min-w-[130px]">Assigned By</TableHead>
-              <TableHead className="min-w-[200px]">Status</TableHead>
-              <TableHead className="min-w-[150px]">Timer</TableHead>
-              <TableHead className="min-w-[120px]">Deadline</TableHead>
-              <TableHead className="min-w-[200px]">Stop Gap</TableHead>
-              <TableHead className="text-right min-w-[200px]">Actions</TableHead>
+              <TableHead className="w-[160px] max-w-[160px]">Status</TableHead>
+              <TableHead className="w-[150px] max-w-[150px]">Timer</TableHead>
+              <TableHead className="w-[120px] max-w-[120px]">Deadline</TableHead>
+              <TableHead className="w-[180px] max-w-[180px]">Stop Gap</TableHead>
+              <TableHead className="text-right w-[180px] max-w-[180px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -490,7 +490,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         : "Not specified"}
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[200px]">
+                  <TableCell className="w-[160px] max-w-[160px]">
                     <Select
                       value={task.status || 'todo'}
                       onValueChange={(status) => {
@@ -509,7 +509,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       }}
                       disabled={updateTaskStatus.isPending || pauseTimer.isPending || startTimer.isPending}
                     >
-                      <SelectTrigger className="w-full h-7 text-[11px] px-2">
+                      <SelectTrigger className="w-full h-7 text-[10px] px-2">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -524,7 +524,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="min-w-[150px]">
+                  <TableCell className="w-[150px] max-w-[150px]">
                     <div className="space-y-1">
                       <div className={`flex items-center gap-1 text-sm ${getTimerColor(task, currentTime)}`}>
                         <Clock className="h-3.5 w-3.5 flex-shrink-0" />
@@ -557,7 +557,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[120px]">
+                  <TableCell className="w-[120px] max-w-[120px]">
                     {task.deadline ? (
                       <div className="text-xs whitespace-nowrap">
                         <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
@@ -565,44 +565,44 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       </div>
                     ) : <span className="text-muted-foreground text-xs">None</span>}
                   </TableCell>
-                  <TableCell className="min-w-[200px]">
+                  <TableCell className="w-[180px] max-w-[180px]">
                     {stopGapAssignments[task.id] ? (
                       <div className="space-y-1">
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-[10px] whitespace-nowrap">
                           +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
                         </Badge>
-                        <div className="text-xs text-muted-foreground">Applied</div>
+                        <div className="text-[10px] text-muted-foreground">Applied</div>
                       </div>
                     ) : stopGapAllocation && stopGapAllocation.remainingHours === 0 ? (
-                      <Badge variant="destructive" className="text-xs">
-                        Stop Gap Exhausted
+                      <Badge variant="destructive" className="text-[10px] whitespace-nowrap">
+                        Exhausted
                       </Badge>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <div className="flex gap-1">
                           <Input
                             type="number"
                             min="0"
-                            placeholder="Hrs"
+                            placeholder="H"
                             value={selectedTaskForStopGap === task.id ? stopGapHours : "0"}
                             onChange={(e) => {
                               setSelectedTaskForStopGap(task.id);
                               setStopGapHours(e.target.value);
                             }}
-                            className="h-7 w-16 text-xs"
+                            className="h-6 w-12 text-[10px] px-1"
                             disabled={task.status === 'completed' || task.status === 'review'}
                           />
                           <Input
                             type="number"
                             min="0"
                             max="59"
-                            placeholder="Mins"
+                            placeholder="M"
                             value={selectedTaskForStopGap === task.id ? stopGapMinutes : "0"}
                             onChange={(e) => {
                               setSelectedTaskForStopGap(task.id);
                               setStopGapMinutes(e.target.value);
                             }}
-                            className="h-7 w-16 text-xs"
+                            className="h-6 w-12 text-[10px] px-1"
                             disabled={task.status === 'completed' || task.status === 'review'}
                           />
                         </div>
@@ -626,14 +626,14 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                             (parseInt(stopGapHours) === 0 && parseInt(stopGapMinutes) === 0) ||
                             selectedTaskForStopGap !== task.id
                           }
-                          className="h-7 text-xs w-full"
+                          className="h-6 text-[10px] w-full px-2"
                         >
                           Apply
                         </Button>
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-right min-w-[200px]">
+                  <TableCell className="text-right w-[180px] max-w-[180px]">
                     <div className="flex justify-end gap-2 flex-wrap">
                       {task.status !== 'review' && task.status !== 'completed' && task.status !== 'technical_support' && (
                         <>
