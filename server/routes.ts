@@ -1234,13 +1234,18 @@ export function registerRoutes(app: Express): Server {
           sql`${taskSessions.startTime} <= ${end.toISOString()}` // Ensure end date is correctly handled
         ));
 
-      // Get ALL tasks that have sessions (not filtered by date range)
-      // This ensures we show all tasks worked on each day, regardless of when they were created
+      // Get tasks that have sessions AND fall within the date range based on startDate
       const taskIdsFromSessions = [...new Set(allSessions.map(s => s.taskId).filter(Boolean))];
       const allTasksWorkedOn = taskIdsFromSessions.length > 0 ? await db
         .select()
         .from(tasks)
-        .where(inArray(tasks.id, taskIdsFromSessions)) : [];
+        .where(
+          and(
+            inArray(tasks.id, taskIdsFromSessions),
+            gte(tasks.startDate, start),
+            sql`${tasks.startDate} <= ${end.toISOString()}`
+          )
+        ) : [];
 
       // Process daily productivity data
       const dailyMap = new Map();

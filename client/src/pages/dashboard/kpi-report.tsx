@@ -107,10 +107,19 @@ function PenaltiesSection({
   customEndDate: Date | undefined;
 }) {
   const { data: penalties, isLoading } = useQuery({
-    queryKey: ["/api/memos", selectedStaff, dateRange, customStartDate, customEndDate, useCustomRange],
+    queryKey: ["/api/staff-queries", selectedStaff, dateRange, customStartDate, customEndDate, useCustomRange],
     queryFn: async () => {
       if (!selectedStaff) return [];
       
+      const response = await fetch('/api/staff-queries');
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch penalties");
+      }
+      
+      const allQueries = await response.json();
+      
+      // Filter by staff ID and date range
       let endDate: Date;
       let startDate: Date;
 
@@ -121,19 +130,20 @@ function PenaltiesSection({
         endDate = new Date();
         startDate = subDays(endDate, dateRange);
       }
-
-      const response = await fetch(
-        `/api/memos?staffId=${selectedStaff}&type=penalty&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
-      );
       
-      if (!response.ok) {
-        throw new Error("Failed to fetch penalties");
-      }
-      
-      return response.json();
+      return allQueries.filter((query: any) => {
+        const queryDate = new Date(query.createdAt);
+        return query.staffId === parseInt(selectedStaff) && 
+               queryDate >= startDate && 
+               queryDate <= endDate;
+      });
     },
     enabled: !!selectedStaff,
   });
+
+  const formatReason = (reason: string) => {
+    return reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
 
   return (
     <div className="space-y-4">
@@ -150,17 +160,21 @@ function PenaltiesSection({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
                 <TableHead>Reason</TableHead>
-                <TableHead>Issued By</TableHead>
+                <TableHead>Likely Penalty</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {penalties.map((penalty: any) => (
                 <TableRow key={penalty.id}>
-                  <TableCell>{format(new Date(penalty.createdAt), 'MMM dd, yyyy')}</TableCell>
-                  <TableCell>{penalty.content || 'N/A'}</TableCell>
-                  <TableCell>{penalty.authorName || 'N/A'}</TableCell>
+                  <TableCell>{formatReason(penalty.reason)}</TableCell>
+                  <TableCell>{penalty.likelyPenalty || 'N/A'}</TableCell>
+                  <TableCell>
+                    <Badge variant={penalty.status === 'resolved' ? 'default' : penalty.status === 'acknowledged' ? 'secondary' : 'outline'}>
+                      {penalty.status.charAt(0).toUpperCase() + penalty.status.slice(1)}
+                    </Badge>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -877,12 +891,18 @@ export default function KPIReportPage() {
         startDate = subDays(endDate, dateRange);
       }
 
-      const penaltiesResponse = await fetch(
-        `/api/memos?staffId=${selectedStaff}&type=penalty&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
-      );
+      const penaltiesResponse = await fetch('/api/staff-queries');
 
       if (penaltiesResponse.ok) {
-        const penalties = await penaltiesResponse.json();
+        const allQueries = await penaltiesResponse.json();
+        
+        // Filter by staff ID and date range
+        const penalties = allQueries.filter((query: any) => {
+          const queryDate = new Date(query.createdAt);
+          return query.staffId === parseInt(selectedStaff) && 
+                 queryDate >= startDate && 
+                 queryDate <= endDate;
+        });
 
         if (y + 20 > pageHeight - 15) {
           doc.addPage();
@@ -895,11 +915,15 @@ export default function KPIReportPage() {
         y += 7;
 
         if (penalties.length > 0) {
-          const penaltyTableHeaders = ['Date', 'Reason', 'Issued By'];
+          const formatReason = (reason: string) => {
+            return reason.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+          };
+
+          const penaltyTableHeaders = ['Reason', 'Likely Penalty', 'Status'];
           const penaltyTableData = penalties.map((penalty: any) => [
-            format(new Date(penalty.createdAt), 'MMM dd, yyyy'),
-            penalty.content || 'N/A',
-            penalty.authorName || 'N/A'
+            formatReason(penalty.reason),
+            penalty.likelyPenalty || 'N/A',
+            penalty.status.charAt(0).toUpperCase() + penalty.status.slice(1)
           ]);
 
           autoTable(doc, {
@@ -910,8 +934,8 @@ export default function KPIReportPage() {
             headStyles: { fillColor: [229, 231, 235], textColor: [17, 24, 39], fontStyle: 'bold' },
             bodyStyles: { textColor: [75, 85, 99] },
             columnStyles: {
-              0: { cellWidth: 40 },
-              1: { cellWidth: 90 },
+              0: { cellWidth: 60 },
+              1: { cellWidth: 70 },
               2: { cellWidth: 50 }
             },
             margin: { left: 15, right: 15 },
