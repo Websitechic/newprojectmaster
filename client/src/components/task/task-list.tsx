@@ -18,7 +18,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash, Plus, Clock } from "lucide-react";
 import type { Task, Project } from "@db/schema";
-import { useToast } from "@/hooks/use-toast";
 
 interface TaskFormData {
   title: string;
@@ -48,9 +47,10 @@ interface TaskListProps {
   isStaffView?: boolean;
   showNewTaskButton?: boolean;
   showProjectInfo?: boolean;
+  users: User[]; // Assuming users prop is passed for assignee names
 }
 
-export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true, showProjectInfo = false }: TaskListProps) {
+export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true, showProjectInfo = false, users }: TaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -129,8 +129,24 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     return acc;
   }, {} as Record<number, string>) || {};
 
-  // Removed WebSocket listeners to prevent infinite re-render loop
-  // Optimistic updates in mutations handle immediate UI updates
+  // Get stop gap assignments for tasks
+  const { data: stopGapAssignments = {} } = useQuery({
+    queryKey: ["/api/stop-gap/assignments", tasks.map(t => t.id)],
+    queryFn: async () => {
+      const assignments: Record<number, any> = {};
+      for (const task of tasks) {
+        const res = await fetch(`/api/stop-gap/task/${task.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.id) {
+            assignments[task.id] = data;
+          }
+        }
+      }
+      return assignments;
+    },
+    enabled: tasks.length > 0,
+  });
 
   const handleEditClick = (task: Task) => {
     setEditTask(task);
@@ -226,7 +242,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       const minutes = parseInt(data.workingMinutes || '0') || 0;
 
       // Auto-pause timer if status is changing to review, completed, or technical_support
-      if ((data.status === 'review' || data.status === 'completed' || data.status === 'technical_support') && 
+      if ((data.status === 'review' || data.status === 'completed' || data.status === 'technical_support') &&
           editTask.isTimerRunning) {
         try {
           await fetch(`/api/tasks/${editTask.id}/pause-timer`, {
@@ -353,7 +369,13 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   // Filter tasks for staff view to only show tasks assigned to the current user
   const filteredTasks = isStaffView
     ? tasks.filter((task) => task.assigneeId === user?.staffId)
-    : tasks;
+    : tasks.filter(task => {
+      const taskNameMatch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const assigneeName = users.find(u => u.id === task.assigneeId)?.name || "";
+      const assigneeMatch = assigneeName.toLowerCase().includes(searchTerm.toLowerCase());
+      return taskNameMatch || assigneeMatch;
+    });
+
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -456,11 +478,18 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 )}
                 {showProjectInfo && (
                   <TableCell>
-                    <div className={`flex items-center gap-1 ${task.isTimerRunning ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
-                      <Clock className="h-4 w-4" />
-                      <span>{formatTime(localTimers[task.id] || task.timeSpent || 0)}</span>
-                      {task.isTimerRunning && (
-                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
+                    <div className="space-y-1">
+                      <div className={`flex items-center gap-1 ${task.isTimerRunning ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
+                        <Clock className="h-4 w-4" />
+                        <span>{formatTime(localTimers[task.id] || task.timeSpent || 0)}</span>
+                        {task.isTimerRunning && (
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
+                        )}
+                      </div>
+                      {stopGapAssignments[task.id] && (
+                        <div className="text-xs text-blue-600 font-medium">
+                          Stop Gap: +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
+                        </div>
                       )}
                     </div>
                   </TableCell>

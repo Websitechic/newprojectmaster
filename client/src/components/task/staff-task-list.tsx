@@ -407,13 +407,18 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center space-x-2">
-        <Input
-          placeholder="Search tasks..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
+      <div className="space-y-2">
+        <div className="flex items-center space-x-2">
+          <Input
+            placeholder="Search tasks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Search by task name or assignee name
+        </p>
       </div>
       <div className="rounded-md border overflow-x-auto">
         <Table>
