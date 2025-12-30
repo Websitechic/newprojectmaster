@@ -1231,7 +1231,7 @@ export function registerRoutes(app: Express): Server {
         .where(and(
           eq(taskSessions.userId, staffIdNum),
           gte(taskSessions.startTime, start),
-          sql`${taskSessions.startTime} <= ${end}`
+          sql`${taskSessions.startTime} <= ${end.toISOString()}` // Ensure end date is correctly handled
         ));
 
       // Get ALL tasks that have sessions (not filtered by date range)
@@ -1405,7 +1405,7 @@ export function registerRoutes(app: Express): Server {
           performanceColor: day.performanceColor,
           taskCount: validTasks.length, // Count of unique tasks worked on that day
           tasks: validTasks, // Only include valid task titles
-          taskBreakdown: Array.from(taskDetailsMap.values()),
+          taskDetails: Array.from(taskDetailsMap.values()), // Include all task details
           workdayStart: day.workdayStart,
           workdayEnd: day.workdayEnd
         };
@@ -1422,7 +1422,7 @@ export function registerRoutes(app: Express): Server {
             day: dateKey,
             dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()],
             hours: dayData.actualWorkHours,
-            totalSpanHours: dayData.actualWorkHours,
+            totalSpanHours: dayData.actualWorkHours, // This seems to be a typo, should be totalSpanHours if that's what it represents
             performanceStatus: dayData.performanceStatus,
             performanceColor: dayData.performanceColor,
             taskCount: dayData.taskCount
@@ -1544,7 +1544,7 @@ export function registerRoutes(app: Express): Server {
         .where(and(
           eq(taskSessions.userId, user.id),
           gte(taskSessions.startTime, startOfDay),
-          sql`${taskSessions.startTime} <= ${endOfDay}`
+          sql`${taskSessions.startTime} <= ${endOfDay.toISOString()}` // Ensure end date is correctly handled
         ));
 
       // Process today's data with session-based calculation
@@ -1615,7 +1615,7 @@ export function registerRoutes(app: Express): Server {
         .where(and(
           eq(taskSessions.userId, user.id),
           gte(taskSessions.startTime, weekStart),
-          sql`${taskSessions.startTime} <= ${weekEnd}`
+          sql`${taskSessions.startTime} <= ${weekEnd.toISOString()}` // Ensure end date is correctly handled
         ));
 
       for (let i = 0; i < 7; i++) {
@@ -1874,8 +1874,8 @@ export function registerRoutes(app: Express): Server {
 
       // Check if enough stop gap time remaining
       if (allocation.remainingHours < stopGapMinutes) {
-        return res.status(400).json({ 
-          error: `Insufficient stop gap time. Available: ${Math.floor(allocation.remainingHours / 60)}h ${allocation.remainingHours % 60}m` 
+        return res.status(400).json({
+          error: `Insufficient stop gap time. Available: ${Math.floor(allocation.remainingHours / 60)}h ${allocation.remainingHours % 60}m`
         });
       }
 
@@ -1921,8 +1921,8 @@ export function registerRoutes(app: Express): Server {
         .where(eq(stopGapAllocations.id, allocation.id))
         .limit(1);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         allocation: updatedAllocation,
         message: `Stop gap time applied: ${hours || 0}h ${minutes || 0}m`
       });
@@ -5187,7 +5187,7 @@ End of Report
       const [existingComplaint] = await db
         .select()
         .from(staffComplaints)
-        .where(eq(staffComplaints.id, complaintId))
+        .where(eq(existingComplaint.id, complaintId))
         .limit(1);
 
       if (!existingComplaint) {
@@ -5350,7 +5350,7 @@ End of Report
         deptConditions.push(sql`${memos.recipients} @> ${JSON.stringify([user.specialization])}`);
       }
 
-      if (user.role === 'project_manager') {
+      If (user.role === 'project_manager') {
         deptConditions.push(sql`${memos.recipients} @> ${JSON.stringify(["project_managers"])}`);
       }
 
@@ -5789,7 +5789,7 @@ End of Report
   app.post("/api/direct-messages", async (req, res) => {
     console.log('\n🔴🔴🔴 POST /api/direct-messages CALLED 🔴🔴🔴');
     console.log('Request body:', req.body);
-    
+
     if (!req.isAuthenticated()) {
       console.log('❌ User not authenticated');
       return res.status(401).json({ error: "Not authenticated" });
@@ -8329,7 +8329,7 @@ End of Report
     console.log('\n🔵🔵🔵 POST /api/projects/:projectId/team-messages CALLED 🔵🔵🔵');
     console.log('Project ID:', req.params.projectId);
     console.log('Request body:', req.body);
-    
+
     if (!req.isAuthenticated()) {
       console.log('❌ User not authenticated');
       return res.status(401).send("Not authenticated");
@@ -8391,14 +8391,13 @@ End of Report
         .returning();
 
       // Send OneSignal push notifications to all project members (except sender)
-      console.log(`\n========== TEAM CHAT ONESIGNAL NOTIFICATION FLOW ==========`);
+      console.log(`\n========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW ==========`);
       console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
       console.log(`📧 Project: ${project.name} (ID: ${projectId})`);
-      console.log(`📧 Message: ${content.substring(0, 50)}...`);
 
       try {
         // Get all project members except the sender
-        const allMembers = await db
+        const projectMembersList = await db
           .select({ userId: projectMembers.userId })
           .from(projectMembers)
           .where(
@@ -8408,25 +8407,32 @@ End of Report
             )
           );
 
-        const recipientIds = allMembers.map(m => m.userId);
-        console.log(`📧 Target recipients: ${recipientIds.length} members`);
+        // Also include project manager if not the sender
+        const recipientIds: number[] = projectMembersList.map(m => m.userId);
+        if (project.managerId && project.managerId !== user.id && !recipientIds.includes(project.managerId)) {
+          recipientIds.push(project.managerId);
+        }
+
+        console.log(`📧 Target recipients: ${recipientIds.length} members - [${recipientIds.join(', ')}]`);
 
         if (recipientIds.length > 0) {
-          // Send OneSignal push to all project members except sender
+          // Send OneSignal push to all recipients
           await sendOneSignalNotification(
             recipientIds,
-            `Team Chat: ${project.name}`,
+            `New message in ${project.name}`,
             `${user.name}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`
           );
-          console.log(`✅ OneSignal push sent to ${recipientIds.length} project members`);
+          console.log(`✅ OneSignal push sent to ${recipientIds.length} team members`);
+        } else {
+          console.log(`⚠️ No recipients to notify (sender is the only member)`);
         }
       } catch (oneSignalError) {
-        console.error(`❌ OneSignal team chat notification failed:`, oneSignalError);
+        console.error(`❌ OneSignal team message notification failed:`, oneSignalError);
       }
-      console.log(`========== TEAM CHAT ONESIGNAL NOTIFICATION FLOW END ==========\n`);
+      console.log(`========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);
 
       // Check for @mentions in the message - improved regex to handle spaces
-      const mentionRegex = /@([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
+      const mentionRegex =/([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
       const mentions = [...content.matchAll(mentionRegex)];
 
       if (mentions.length > 0) {
@@ -8538,47 +8544,6 @@ End of Report
         console.log('⚠️ No connected SSE clients to broadcast to');
       }
 
-      // Send OneSignal push notifications to all project members (except sender)
-      console.log(`\n========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW ==========`);
-      console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
-      console.log(`📧 Project: ${project.name} (ID: ${projectId})`);
-
-      try {
-        // Get all project members except the sender
-        const projectMembersList = await db
-          .select({ userId: projectMembers.userId })
-          .from(projectMembers)
-          .where(
-            and(
-              eq(projectMembers.projectId, projectId),
-              ne(projectMembers.userId, user.id)
-            )
-          );
-
-        // Also include project manager if not the sender
-        const recipientIds: number[] = projectMembersList.map(m => m.userId);
-        if (project.managerId && project.managerId !== user.id && !recipientIds.includes(project.managerId)) {
-          recipientIds.push(project.managerId);
-        }
-
-        console.log(`📧 Target recipients: ${recipientIds.length} users - [${recipientIds.join(', ')}]`);
-
-        if (recipientIds.length > 0) {
-          // Send OneSignal push to all recipients
-          await sendOneSignalNotification(
-            recipientIds,
-            `New message in ${project.name}`,
-            `${user.name}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`
-          );
-          console.log(`✅ OneSignal push sent to ${recipientIds.length} team members`);
-        } else {
-          console.log(`⚠️ No recipients to notify (sender is the only member)`);
-        }
-      } catch (oneSignalError) {
-        console.error(`❌ OneSignal team message notification failed:`, oneSignalError);
-      }
-      console.log(`========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);
-
       // Construct message with sender info for response
       const messageWithSender = {
         ...newMessage,
@@ -8637,7 +8602,8 @@ End of Report
       const [updatedMessage] = await db
         .update(projectMessages)
         .set({
-          content: content.trim(),          updatedAt: new Date(),
+          content: content.trim(),
+          updatedAt: new Date(),
           isEdited: true,
         })
         .where(and(
@@ -8647,7 +8613,7 @@ End of Report
         .returning();
 
       // Note: Message updates are handled via query invalidation on the client
-      // No need for WebSocket broadcast here as the      client will refetch
+      // No need for WebSocket broadcast here as the client will refetch
       res.json({ success: true, message: updatedMessage });
     } catch (error) {
       console.error("Error editing team message:", error);
