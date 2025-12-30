@@ -82,7 +82,10 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
         const res = await fetch(`/api/stop-gap/task/${task.id}`);
         if (res.ok) {
           const data = await res.json();
-          if (data) assignments[task.id] = data;
+          // Only add to assignments if data exists and is not null
+          if (data && data.id) {
+            assignments[task.id] = data;
+          }
         }
       }
       return assignments;
@@ -570,6 +573,10 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         </Badge>
                         <div className="text-xs text-muted-foreground">Applied</div>
                       </div>
+                    ) : stopGapAllocation && stopGapAllocation.remainingHours === 0 ? (
+                      <Badge variant="destructive" className="text-xs">
+                        Stop Gap Exhausted
+                      </Badge>
                     ) : (
                       <Button
                         variant="outline"

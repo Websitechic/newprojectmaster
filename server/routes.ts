@@ -1947,7 +1947,12 @@ export function registerRoutes(app: Express): Server {
         .where(eq(stopGapTaskAssignments.taskId, taskId))
         .limit(1);
 
-      res.json(assignment || null);
+      // Return null if no assignment exists
+      if (!assignment) {
+        return res.json(null);
+      }
+
+      res.json(assignment);
     } catch (error) {
       console.error("Error fetching stop gap assignment:", error);
       res.status(500).json({ error: "Failed to fetch stop gap assignment" });
