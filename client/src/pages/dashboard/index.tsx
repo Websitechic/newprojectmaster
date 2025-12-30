@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import type { Project, Task } from "@db/schema";
+import { StopGapCard } from "@/components/dashboard/stop-gap-card";
 
 export default function Dashboard() {
   const [location, setLocation] = useLocation();
@@ -545,71 +546,80 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Technical Support */}
-                <Card className="w-full min-w-0">
-                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
-                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
-                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                        <HelpCircle className="h-5 w-5" />
-                        Technical Support
-                      </div>
-                      <Badge variant="secondary">
-                        {technicalSupportTasks.length}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-                    {technicalSupportTasks.length > 0 ? (
-                      <div className="space-y-3">
-                        <Select>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a support task..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {technicalSupportTasks.map((task) => (
-                              <SelectItem
-                                key={task.id}
-                                value={task.id.toString()}
+                {/* Technical Support Card - Only for staff and interns */}
+                {(user.role === "staff" || user.role === "intern") && user.specialization !== "technical_support" && (
+                  <Card className="w-full min-w-0">
+                    <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                      <CardTitle className="flex items-center justify-between text-sm sm:text-base">
+                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                          <HelpCircle className="h-5 w-5" />
+                          Technical Support
+                        </div>
+                        <Badge variant="secondary">
+                          {technicalSupportTasks.length}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                      {technicalSupportTasks.length > 0 ? (
+                        <div className="space-y-3">
+                          <Select>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select a support task..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {technicalSupportTasks.map((task) => (
+                                <SelectItem
+                                  key={task.id}
+                                  value={task.id.toString()}
+                                >
+                                  <div className="flex flex-col items-start">
+                                    <span className="font-medium text-sm text-foreground">{task.title}</span>
+                                    <span className="text-xs text-muted-foreground truncate">{task.description?.substring(0, 50)}...</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Collapsible
+                            open={openSections.technical}
+                            onOpenChange={() => toggleSection("technical")}
+                          >
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-between"
                               >
-                                <div className="flex flex-col items-start">
-                                  <span className="font-medium text-sm text-foreground">{task.title}</span>
-                                  <span className="text-xs text-muted-foreground truncate">{task.description?.substring(0, 50)}...</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Collapsible
-                          open={openSections.technical}
-                          onOpenChange={() => toggleSection("technical")}
-                        >
-                          <CollapsibleTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full justify-between"
-                            >
-                              View All
-                              {openSections.technical ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="space-y-2 mt-3">
-                            {technicalSupportTasks.map((task) => (
-                              <TaskCard key={task.id} task={task} />
-                            ))}
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </div>
-                    ) : (
-                      <div className="text-center text-muted-foreground py-4">
-                        <p className="text-sm">No technical support tasks</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                                View All
+                                {openSections.technical ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="space-y-2 mt-3">
+                              {technicalSupportTasks.map((task) => (
+                                <TaskCard key={task.id} task={task} />
+                              ))}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </div>
+                      ) : (
+                        <div className="text-center text-muted-foreground py-4">
+                          <p className="text-sm">No technical support tasks</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Stop Gap Card - Only for staff and interns */}
+                {(user.role === "staff" || user.role === "intern") && (
+                  <StopGapCard />
+                )}
+
+                {/* Active Tasks Card */}
               </div>
 
               {/* Full Task List */}

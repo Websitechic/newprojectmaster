@@ -2,6 +2,14 @@ import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -36,6 +44,10 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
+  const [stopGapDialogOpen, setStopGapDialogOpen] = useState(false);
+  const [selectedTaskForStopGap, setSelectedTaskForStopGap] = useState<number | null>(null);
+  const [stopGapHours, setStopGapHours] = useState("0");
+  const [stopGapMinutes, setStopGapMinutes] = useState("0");
 
   // Get all projects to display project names for each task
   const { data: projects } = useQuery<Project[]>({
@@ -55,6 +67,30 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
       return res.json();
     }),
     enabled: !!user,
+  });
+
+  // Get current stop gap allocation
+  const { data: stopGapAllocation } = useQuery({
+    queryKey: ["/api/stop-gap/current"],
+    enabled: !!user && (user.role === "staff" || user.role === "intern"),
+    refetchInterval: 10000,
+  });
+
+  // Get stop gap assignments for tasks
+  const { data: stopGapAssignments = {} } = useQuery({
+    queryKey: ["/api/stop-gap/assignments", filteredTasks.map(t => t.id)],
+    queryFn: async () => {
+      const assignments: Record<number, any> = {};
+      for (const task of filteredTasks) {
+        const res = await fetch(`/api/stop-gap/task/${task.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data) assignments[task.id] = data;
+        }
+      }
+      return assignments;
+    },
+    enabled: filteredTasks.length > 0,
   });
 
   // Create a map of project IDs to project names
@@ -183,6 +219,44 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
       toast({
         title: "Task Submitted",
         description: "Task has been submitted for review",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const applyStopGap = useMutation({
+    mutationFn: async ({ taskId, hours, minutes }: { taskId: number; hours: number; minutes: number }) => {
+      const response = await fetch("/api/stop-gap/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ taskId, hours, minutes }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to apply stop gap");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stop-gap/current"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stop-gap/assignments"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+      }
+      setStopGapDialogOpen(false);
+      setStopGapHours("0");
+      setStopGapMinutes("0");
+      toast({
+        title: "Stop Gap Applied",
+        description: "Stop gap time has been added to the task",
       });
     },
     onError: (error: Error) => {
@@ -347,6 +421,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
               <TableHead className="min-w-[160px]">Status</TableHead>
               <TableHead className="min-w-[150px]">Timer</TableHead>
               <TableHead className="min-w-[120px]">Deadline</TableHead>
+              <TableHead className="min-w-[140px]">Stop Gap</TableHead>
               <TableHead className="text-right min-w-[200px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -466,6 +541,11 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                           return "Not set";
                         })() : "Not set"}
                       </div>
+                      {stopGapAssignments[task.id] && (
+                        <div className="text-xs text-blue-600 font-medium">
+                          Stop Gap: +{Math.floor(stopGapAssignments[task.id].stopGapHours / 60)}h {stopGapAssignments[task.id].stopGapHours % 60}m
+                        </div>
+                      )}
                       {timeOverLimit && (
                         <div className="text-xs text-red-600 font-medium">
                           Over limit!
@@ -480,6 +560,29 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         <div className="text-muted-foreground">{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     ) : <span className="text-muted-foreground text-xs">None</span>}
+                  </TableCell>
+                  <TableCell className="min-w-[140px]">
+                    {stopGapAssignments[task.id] ? (
+                      <div className="space-y-1">
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
+                          +{Math.floor(stopGapAssignments[task.id].stopGapHours / 60)}h {stopGapAssignments[task.id].stopGapHours % 60}m
+                        </Badge>
+                        <div className="text-xs text-muted-foreground">Applied</div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTaskForStopGap(task.id);
+                          setStopGapDialogOpen(true);
+                        }}
+                        disabled={task.status === 'completed' || task.status === 'review'}
+                        className="h-7 text-xs whitespace-nowrap"
+                      >
+                        Apply Stop Gap
+                      </Button>
+                    )}
                   </TableCell>
                   <TableCell className="text-right min-w-[200px]">
                     <div className="flex justify-end gap-2 flex-wrap">
@@ -542,6 +645,70 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
           </TableBody>
         </Table>
       </div>
+
+      {/* Stop Gap Dialog */}
+      <Dialog open={stopGapDialogOpen} onOpenChange={setStopGapDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Apply Stop Gap Time</DialogTitle>
+            <DialogDescription>
+              Add stop gap time to extend this task's allocated time. 
+              {stopGapAllocation && (
+                <span className="block mt-2 font-medium">
+                  Available: {Math.floor(stopGapAllocation.remainingHours / 60)}h {stopGapAllocation.remainingHours % 60}m
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="stopgap-hours">Hours</Label>
+                <Input
+                  id="stopgap-hours"
+                  type="number"
+                  min="0"
+                  value={stopGapHours}
+                  onChange={(e) => setStopGapHours(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="stopgap-minutes">Minutes</Label>
+                <Input
+                  id="stopgap-minutes"
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={stopGapMinutes}
+                  onChange={(e) => setStopGapMinutes(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Total to apply: {stopGapHours}h {stopGapMinutes}m
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStopGapDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedTaskForStopGap) {
+                  applyStopGap.mutate({
+                    taskId: selectedTaskForStopGap,
+                    hours: parseInt(stopGapHours) || 0,
+                    minutes: parseInt(stopGapMinutes) || 0,
+                  });
+                }
+              }}
+              disabled={applyStopGap.isPending || (parseInt(stopGapHours) === 0 && parseInt(stopGapMinutes) === 0)}
+            >
+              Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

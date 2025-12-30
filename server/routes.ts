@@ -47,6 +47,8 @@ import {
   generalChannelReadReceipts,
   reviewLinks,
   projectBriefings, // Import the new schema
+  stopGapAllocations,
+  stopGapTaskAssignments,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull, relations } from "drizzle-orm";
 import WebSocket from "ws";
@@ -1735,6 +1737,220 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching productivity data:", error);
       res.status(500).json({ error: "Failed to fetch productivity data" });
+    }
+  });
+
+  // Stop Gap API Routes
+
+  // Get current month's stop gap allocation for authenticated user
+  app.get("/api/stop-gap/current", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    // Only staff and interns can access stop gap
+    if (user.role !== "staff" && user.role !== "intern") {
+      return res.status(403).json({ error: "Only staff and interns have stop gap allocations" });
+    }
+
+    try {
+      const now = new Date();
+      const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      // Get or create allocation for current month
+      let [allocation] = await db
+        .select()
+        .from(stopGapAllocations)
+        .where(
+          and(
+            eq(stopGapAllocations.userId, user.id),
+            eq(stopGapAllocations.monthYear, monthYear)
+          )
+        )
+        .limit(1);
+
+      if (!allocation) {
+        // Create new allocation for this month
+        [allocation] = await db
+          .insert(stopGapAllocations)
+          .values({
+            userId: user.id,
+            monthYear,
+            totalHours: 5,
+            usedHours: 0,
+            remainingHours: 300, // 5 hours in minutes
+          })
+          .returning();
+      }
+
+      res.json(allocation);
+    } catch (error) {
+      console.error("Error fetching stop gap allocation:", error);
+      res.status(500).json({ error: "Failed to fetch stop gap allocation" });
+    }
+  });
+
+  // Apply stop gap time to a task
+  app.post("/api/stop-gap/apply", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    if (user.role !== "staff" && user.role !== "intern") {
+      return res.status(403).json({ error: "Only staff and interns can use stop gap" });
+    }
+
+    try {
+      const { taskId, hours, minutes } = req.body;
+
+      if (!taskId || (hours === undefined && minutes === undefined)) {
+        return res.status(400).json({ error: "Task ID and time are required" });
+      }
+
+      const stopGapMinutes = (hours || 0) * 60 + (minutes || 0);
+
+      if (stopGapMinutes <= 0) {
+        return res.status(400).json({ error: "Stop gap time must be greater than 0" });
+      }
+
+      const now = new Date();
+      const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      // Check if task exists and is assigned to user
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.id, taskId),
+            eq(tasks.assigneeId, user.id)
+          )
+        )
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found or not assigned to you" });
+      }
+
+      // Check if stop gap already applied to this task
+      const [existingAssignment] = await db
+        .select()
+        .from(stopGapTaskAssignments)
+        .where(eq(stopGapTaskAssignments.taskId, taskId))
+        .limit(1);
+
+      if (existingAssignment) {
+        return res.status(400).json({ error: "Stop gap time already applied to this task" });
+      }
+
+      // Get current month's allocation
+      let [allocation] = await db
+        .select()
+        .from(stopGapAllocations)
+        .where(
+          and(
+            eq(stopGapAllocations.userId, user.id),
+            eq(stopGapAllocations.monthYear, monthYear)
+          )
+        )
+        .limit(1);
+
+      if (!allocation) {
+        [allocation] = await db
+          .insert(stopGapAllocations)
+          .values({
+            userId: user.id,
+            monthYear,
+            totalHours: 5,
+            usedHours: 0,
+            remainingHours: 300,
+          })
+          .returning();
+      }
+
+      // Check if enough stop gap time remaining
+      if (allocation.remainingHours < stopGapMinutes) {
+        return res.status(400).json({ 
+          error: `Insufficient stop gap time. Available: ${Math.floor(allocation.remainingHours / 60)}h ${allocation.remainingHours % 60}m` 
+        });
+      }
+
+      // Apply stop gap to task
+      await db.transaction(async (tx) => {
+        // Create task assignment
+        await tx.insert(stopGapTaskAssignments).values({
+          taskId,
+          userId: user.id,
+          stopGapHours: stopGapMinutes,
+          monthYear,
+        });
+
+        // Update allocation
+        await tx
+          .update(stopGapAllocations)
+          .set({
+            usedHours: allocation.usedHours + stopGapMinutes,
+            remainingHours: allocation.remainingHours - stopGapMinutes,
+            updatedAt: new Date(),
+          })
+          .where(eq(stopGapAllocations.id, allocation.id));
+
+        // Update task working time
+        const newWorkingMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0) + stopGapMinutes;
+        const newHours = Math.floor(newWorkingMinutes / 60);
+        const newMinutes = newWorkingMinutes % 60;
+
+        await tx
+          .update(tasks)
+          .set({
+            workingHours: newHours,
+            workingMinutes: newMinutes,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, taskId));
+      });
+
+      // Get updated allocation
+      const [updatedAllocation] = await db
+        .select()
+        .from(stopGapAllocations)
+        .where(eq(stopGapAllocations.id, allocation.id))
+        .limit(1);
+
+      res.json({ 
+        success: true, 
+        allocation: updatedAllocation,
+        message: `Stop gap time applied: ${hours || 0}h ${minutes || 0}m`
+      });
+    } catch (error) {
+      console.error("Error applying stop gap:", error);
+      res.status(500).json({ error: "Failed to apply stop gap time" });
+    }
+  });
+
+  // Get stop gap assignment for a specific task
+  app.get("/api/stop-gap/task/:taskId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const taskId = parseInt(req.params.taskId);
+
+      const [assignment] = await db
+        .select()
+        .from(stopGapTaskAssignments)
+        .where(eq(stopGapTaskAssignments.taskId, taskId))
+        .limit(1);
+
+      res.json(assignment || null);
+    } catch (error) {
+      console.error("Error fetching stop gap assignment:", error);
+      res.status(500).json({ error: "Failed to fetch stop gap assignment" });
     }
   });
 

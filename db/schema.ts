@@ -1006,3 +1006,53 @@ export const projectBriefingsRelations = relations(projectBriefings, ({ one }) =
 export type ProjectBriefing = typeof projectBriefings.$inferSelect;
 export const insertProjectBriefingSchema = createInsertSchema(projectBriefings);
 export const selectProjectBriefingSchema = createSelectSchema(projectBriefings);
+
+// Stop Gap System Tables
+export const stopGapAllocations = pgTable("stop_gap_allocations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  monthYear: text("month_year").notNull(), // Format: "YYYY-MM"
+  totalHours: integer("total_hours").notNull().default(5),
+  usedHours: integer("used_hours").notNull().default(0), // Store in minutes for precision
+  remainingHours: integer("remaining_hours").notNull().default(300), // 5 hours = 300 minutes
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueUserMonth: unique().on(table.userId, table.monthYear),
+}));
+
+export const stopGapTaskAssignments = pgTable("stop_gap_task_assignments", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stopGapHours: integer("stop_gap_hours").notNull(), // Store in minutes
+  monthYear: text("month_year").notNull(),
+  appliedAt: timestamp("applied_at").defaultNow(),
+}, (table) => ({
+  uniqueTask: unique().on(table.taskId),
+}));
+
+export const stopGapAllocationsRelations = relations(stopGapAllocations, ({ one }) => ({
+  user: one(users, {
+    fields: [stopGapAllocations.userId],
+    references: [users.id],
+  }),
+}));
+
+export const stopGapTaskAssignmentsRelations = relations(stopGapTaskAssignments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [stopGapTaskAssignments.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [stopGapTaskAssignments.userId],
+    references: [users.id],
+  }),
+}));
+
+export type StopGapAllocation = typeof stopGapAllocations.$inferSelect;
+export type StopGapTaskAssignment = typeof stopGapTaskAssignments.$inferSelect;
+export const insertStopGapAllocationSchema = createInsertSchema(stopGapAllocations);
+export const selectStopGapAllocationSchema = createSelectSchema(stopGapAllocations);
+export const insertStopGapTaskAssignmentSchema = createInsertSchema(stopGapTaskAssignments);
+export const selectStopGapTaskAssignmentSchema = createSelectSchema(stopGapTaskAssignments);
