@@ -91,6 +91,7 @@ export const users = pgTable("users", {
     enum: ["project_client", "support_maintenance_client"]
   }),
   lastActive: timestamp("last_active").defaultNow(),
+  lastSeen: timestamp("last_seen").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -899,6 +900,7 @@ export const generalChannelMessages = pgTable("general_channel_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at"),
   isEdited: boolean("is_edited").default(false),
+  isPinned: boolean("is_pinned").default(false),
 });
 
 export const generalChannelReadReceipts = pgTable("general_channel_read_receipts", {

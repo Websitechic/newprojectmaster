@@ -612,11 +612,12 @@ export function registerRoutes(app: Express): Server {
     try {
       const user = req.user!;
 
-      // Update last active timestamp
+      // Update last active and last seen timestamps
       await db
         .update(users)
         .set({
           lastActive: new Date(),
+          lastSeen: new Date(),
         })
         .where(eq(users.id, user.id));
 
@@ -3493,6 +3494,97 @@ End of Report
     } catch (error) {
       console.error("Error fetching review links:", error);
       res.status(500).json({ error: "Failed to fetch review links" });
+    }
+  });
+
+
+  // Get read receipt counts for direct messages
+  app.get("/api/direct-messages/:messageId/read-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const messageId = parseInt(req.params.messageId);
+
+      const readReceipts = await db
+        .select()
+        .from(messageReadReceipts)
+        .where(eq(messageReadReceipts.messageId, messageId));
+
+      res.json({ count: readReceipts.length });
+    } catch (error) {
+      console.error("Error fetching read count:", error);
+      res.status(500).json({ error: "Failed to fetch read count" });
+    }
+  });
+
+  // Get read receipt counts for team messages
+  app.get("/api/projects/:projectId/team-messages/:messageId/read-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const messageId = parseInt(req.params.messageId);
+
+      const readReceipts = await db
+        .select()
+        .from(messageReadReceipts)
+        .where(eq(messageReadReceipts.messageId, messageId));
+
+      res.json({ count: readReceipts.length });
+    } catch (error) {
+      console.error("Error fetching read count:", error);
+      res.status(500).json({ error: "Failed to fetch read count" });
+    }
+  });
+
+  // Get read receipt counts for general channel messages
+  app.get("/api/general-channel/messages/:messageId/read-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const messageId = parseInt(req.params.messageId);
+
+      const readReceipts = await db
+        .select()
+        .from(generalChannelReadReceipts)
+        .where(eq(generalChannelReadReceipts.messageId, messageId));
+
+      res.json({ count: readReceipts.length });
+    } catch (error) {
+      console.error("Error fetching read count:", error);
+      res.status(500).json({ error: "Failed to fetch read count" });
+    }
+  });
+
+  // Pin/Unpin general channel message
+  app.post("/api/general-channel/messages/:messageId/pin", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers and team leads can pin messages" });
+    }
+
+    try {
+      const messageId = parseInt(req.params.messageId);
+      const { isPinned } = req.body;
+
+      await db
+        .update(generalChannelMessages)
+        .set({ isPinned })
+        .where(eq(generalChannelMessages.id, messageId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error pinning message:", error);
+      res.status(500).json({ error: "Failed to pin message" });
     }
   });
 

@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy, Reply, Forward } from "lucide-react";
+import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy, Reply, Forward, CheckCheck } from "lucide-react";
+import { OnlineStatus } from "@/components/ui/online-status";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -72,6 +73,8 @@ export function DirectMessages() {
   const [forwardingMessage, setForwardingMessage] = useState<DirectMessage | null>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
+  const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [readCounts, setReadCounts] = useState<Record<number, number>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
@@ -121,8 +124,26 @@ export function DirectMessages() {
   useEffect(() => {
     if (fetchedMessages) {
       setMessages(fetchedMessages);
+      
+      // Fetch read counts for each message
+      fetchedMessages.forEach(async (msg) => {
+        try {
+          const response = await fetch(`/api/direct-messages/${msg.id}/read-count`);
+          if (response.ok) {
+            const data = await response.json();
+            setReadCounts(prev => ({ ...prev, [msg.id]: data.count }));
+          }
+        } catch (error) {
+          console.error("Error fetching read count:", error);
+        }
+      });
     }
   }, [fetchedMessages]);
+
+  // Filter messages by search query
+  const filteredMessages = messages.filter(msg =>
+    msg.content.toLowerCase().includes(messageSearchQuery.toLowerCase())
+  );
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -548,6 +569,288 @@ export function DirectMessages() {
     }
   };
 
+  const renderMessageContent = (message: DirectMessage) => {
+    const maxLength = 100;
+    let quotedContent = "";
+    let quotedSenderName = "";
+    let actualMessageContent = message.content;
+
+    if (message.replyToMessageId && message.content.startsWith('> Replying to')) {
+      const parts = message.content.split('\n\n');
+      const replyToLine = parts[0];
+      const originalMessage = parts.slice(1).join('\n\n');
+
+      const replyToMatch = replyToLine.match(/^> Replying to (.*?):/);
+      if (replyToMatch && replyToMatch[1]) {
+        quotedSenderName = replyToMatch[1];
+      }
+
+      if (originalMessage.length > maxLength) {
+        quotedContent = originalMessage.substring(0, maxLength) + "...";
+      } else {
+        quotedContent = originalMessage;
+      }
+      actualMessageContent = parts.slice(1).join('\n\n');
+    }
+
+    const isOwnMessage = message.senderId === user?.id;
+    const readCount = readCounts[message.id] || 0;
+
+    return (
+      <div
+        className={cn(
+          "rounded-lg p-3 relative",
+          isOwnMessage
+            ? "bg-primary text-primary-foreground"
+            : "bg-secondary"
+        )}
+      >
+        {message.replyToMessageId && quotedContent && (
+          <div
+            className={cn(
+              "mb-2 p-2 rounded-md text-sm break-words whitespace-pre-wrap cursor-pointer hover:bg-muted/30 transition-all",
+              isOwnMessage
+                ? "bg-primary/20"
+                : "bg-secondary/50"
+            )}
+            onClick={() => {
+              if (message.replyToMessageId) {
+                handleClickRepliedMessage(message.replyToMessageId);
+              }
+            }}
+          >
+            <p className="font-semibold text-xs">
+              Replying to {quotedSenderName}
+            </p>
+            <p className="text-xs">
+              {quotedContent}
+            </p>
+          </div>
+        )}
+        {editingMessageId === message.id ? (
+          <div className="space-y-2">
+            <Textarea
+              value={editingContent}
+              onChange={(e) => setEditingContent(e.target.value)}
+              className="min-h-[60px] text-sm text-black dark:text-white bg-white dark:bg-gray-800"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleEditMessage(message.id)}
+              >
+                <Check className="h-4 w-4 mr-1" />
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setEditingMessageId(null);
+                  setEditingContent("");
+                }}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="text-sm break-words whitespace-pre-wrap">
+              {message.content.startsWith('🔄 Forwarded:\n') ? (
+                <div>
+                  <p className="text-xs italic text-muted-foreground mb-1">Forwarded</p>
+                  {message.content.replace('🔄 Forwarded:\n', '').split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                    if (/^https?:\/\/[^\s]+$/.test(part)) {
+                      return (
+                        <a
+                          key={index}
+                          href={part}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "underline hover:opacity-80 break-all",
+                            isOwnMessage
+                              ? "text-primary-foreground"
+                              : "text-blue-600"
+                          )}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {part}
+                        </a>
+                      );
+                    }
+                    return part;
+                  })}
+                </div>
+              ) : message.content.startsWith('> Replying to') ? (
+                <div>
+                  {message.content.split('\n\n').slice(1).map((part, idx) => (
+                    <div key={idx}>
+                      {part.split(/(https?:\/\/[^\s]+)/g).map((urlPart, urlIdx) => {
+                        if (/^https?:\/\/[^\s]+$/.test(urlPart)) {
+                          return (
+                            <a
+                              key={urlIdx}
+                              href={urlPart}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={cn(
+                                "underline hover:opacity-80 break-all",
+                                isOwnMessage
+                                  ? "text-primary-foreground"
+                                  : "text-blue-600"
+                              )}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {urlPart}
+                            </a>
+                          );
+                        }
+                        return urlPart;
+                      })}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                  if (/^https?:\/\/[^\s]+$/.test(part)) {
+                    return (
+                      <a
+                        key={index}
+                        href={part}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "underline hover:opacity-80 break-all",
+                          isOwnMessage
+                            ? "text-primary-foreground"
+                            : "text-blue-600"
+                        )}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {part}
+                      </a>
+                    );
+                  }
+                  return part;
+                })
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs opacity-70">
+                {new Date(message.createdAt).toLocaleTimeString()}
+                {message.updatedAt && message.updatedAt !== message.createdAt && (
+                  <span className="italic ml-1">• edited</span>
+                )}
+              </p>
+              {isOwnMessage && readCount > 0 && (
+                <CheckCheck className="h-3 w-3 text-blue-500" title={`Read by ${readCount} user(s)`} />
+              )}
+            </div>
+          </>
+        )}
+
+        {message.senderId === user?.id && editingMessageId !== message.id && (
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  navigator.clipboard.writeText(message.content);
+                  toast({
+                    title: "Copied",
+                    description: "Message copied to clipboard",
+                  });
+                }}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </DropdownMenuItem>
+                {!message.content.startsWith('🔄 Forwarded:\n') && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setEditingMessageId(message.id);
+                      if (message.content.startsWith('> Replying to')) {
+                        const parts = message.content.split('\n\n');
+                        setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : '');
+                      } else {
+                        setEditingContent(message.content);
+                      }
+                    }}
+                  >
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  onClick={() => handleDeleteMessage(message.id)}
+                  className="text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
+                  <CornerUpLeft className="h-4 w-4 mr-2" />
+                  Reply
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setForwardingMessage(message)}>
+                  <Forward className="h-4 w-4 mr-2" />
+                  Forward
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+        {message.senderId !== user?.id && (
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  navigator.clipboard.writeText(message.content);
+                  toast({
+                    title: "Copied",
+                    description: "Message copied to clipboard",
+                  });
+                }}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
+                  <CornerUpLeft className="h-4 w-4 mr-2" />
+                  Reply
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setForwardingMessage(message)}>
+                  <Forward className="h-4 w-4 mr-2" />
+                  Forward
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const handleCancelReply = () => {
     setReplyingTo(null);
   };
@@ -655,7 +958,7 @@ export function DirectMessages() {
   if (selectedUser) {
     return (
       <Card className="h-[600px] flex flex-col">
-        <CardHeader className="border-b">
+        <CardHeader className="border-b space-y-2">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -669,17 +972,72 @@ export function DirectMessages() {
                 {selectedUser.name.split(' ').map(n => n[0]).join('').toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="flex-1">
               <h3 className="font-semibold">{selectedUser.name}</h3>
-              <p className="text-sm text-muted-foreground capitalize">{selectedUser.role}</p>
+              <OnlineStatus 
+                status={selectedUser.status} 
+                lastActive={selectedUser.lastActive}
+                showText={true}
+                size="sm"
+              />
             </div>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search messages..."
+              className="pl-8"
+              value={messageSearchQuery}
+              onChange={(e) => setMessageSearchQuery(e.target.value)}
+            />
           </div>
         </CardHeader>
 
         <CardContent className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full p-4">
             <div className="space-y-4">
-              {messages.map((message) => {
+              {filteredMessages.map((message, index) => {
+                // Check if we need to show a date separator
+                const currentDate = new Date(message.createdAt).toDateString();
+                const previousDate = index > 0 ? new Date(filteredMessages[index - 1].createdAt).toDateString() : null;
+                const showDateSeparator = currentDate !== previousDate;
+                
+                return (
+                  <div key={message.id}>
+                    {showDateSeparator && (
+                      <div className="flex items-center justify-center my-4">
+                        <div className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
+                          {new Date(message.createdAt).toLocaleDateString('en-US', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "flex items-start gap-2 group transition-all duration-300",
+                        message.senderId === user?.id ? "flex-row-reverse" : ""
+                      )}
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>
+                          {message.senderName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 max-w-[70%]">
+                        {renderMessageContent(message)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+        </CardContent>
                 const maxLength = 100; // Max length for quoted preview
                 let quotedContent = "";
                 let quotedSenderName = "";
