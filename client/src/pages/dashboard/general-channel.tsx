@@ -365,14 +365,14 @@ export default function GeneralChannel() {
 
     let messageToSend = message.trim();
     
-    // Replace @all or @everyone with mentions of all users (excluding self)
-    if (messageToSend.includes('@all') || messageToSend.includes('@everyone')) {
+    // Replace @all or @everyone with mentions of all users (excluding self) - case insensitive
+    if (messageToSend.toLowerCase().includes('@everyone') || messageToSend.toLowerCase().includes('@all')) {
       const allUserNames = allUsers
         .filter((u: any) => u.id !== user?.id && u.role !== 'client')
         .map((u: any) => `@${u.name}`)
         .join(' ');
       
-      messageToSend = messageToSend.replace(/@all|@everyone/g, allUserNames);
+      messageToSend = messageToSend.replace(/@everyone|@all/gi, allUserNames);
     }
     
     if (replyingTo) {
@@ -575,49 +575,18 @@ export default function GeneralChannel() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <div className="flex-1 flex flex-col overflow-hidden p-6">
-          <div className="flex items-center justify-between gap-4 mb-4 flex-shrink-0">
-            <div>
-              <h1 className="text-2xl font-bold">General Channel</h1>
-              <p className="text-muted-foreground">Platform-wide communication for all users</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 flex-shrink-0">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold truncate">General Channel</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">Platform-wide communication for all users</p>
             </div>
-            <div className="flex items-center gap-2">
-              {showMessageSearch ? (
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search messages..."
-                    className="pl-8 w-48"
-                    value={messageSearchQuery}
-                    onChange={(e) => setMessageSearchQuery(e.target.value)}
-                    autoFocus
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1 h-6 w-6 p-0"
-                    onClick={() => {
-                      setShowMessageSearch(false);
-                      setMessageSearchQuery("");
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowMessageSearch(true)}
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
-              )}
+            <div className="flex items-center gap-2 flex-wrap">
               {pinnedMessages.length > 0 && (
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Pin className="h-5 w-5" />
+                  <Pin className="h-4 w-4 sm:h-5 sm:w-5" />
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="text-sm hover:underline">
-                      {pinnedMessages.length} pinned message{pinnedMessages.length !== 1 ? 's' : ''}
+                    <DropdownMenuTrigger className="text-xs sm:text-sm hover:underline whitespace-nowrap">
+                      {pinnedMessages.length} pinned
                     </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
                     {pinnedMessages.map((msg) => (
@@ -642,20 +611,53 @@ export default function GeneralChannel() {
           </div>
 
           <Card className="flex-1 flex flex-col min-h-0">
-            <CardHeader className="flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+            <CardHeader className="flex-shrink-0 p-3 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
                     General Discussion
                     {pinnedMessages.length > 0 && <Pin className="h-4 w-4 text-blue-500" />}
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                     Open channel for all platform users
                   </p>
                 </div>
-                <Badge variant="outline" className="text-xs">
-                  {messages.length} message{messages.length !== 1 ? 's' : ''}
-                </Badge>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {showMessageSearch ? (
+                    <div className="relative flex-1 sm:flex-initial">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search messages..."
+                        className="pl-8 w-full sm:w-48"
+                        value={messageSearchQuery}
+                        onChange={(e) => setMessageSearchQuery(e.target.value)}
+                        autoFocus
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1 h-6 w-6 p-0"
+                        onClick={() => {
+                          setShowMessageSearch(false);
+                          setMessageSearchQuery("");
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowMessageSearch(true)}
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Badge variant="outline" className="text-xs whitespace-nowrap">
+                    {messages.length} msg{messages.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
 

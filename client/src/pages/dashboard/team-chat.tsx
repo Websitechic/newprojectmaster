@@ -535,13 +535,13 @@ export default function TeamChat() {
     let messageToSend = message.trim();
     
     // Replace @all or @everyone with mentions of all team members
-    if (messageToSend.includes('@all') || messageToSend.includes('@everyone')) {
+    if (messageToSend.toLowerCase().includes('@everyone') || messageToSend.toLowerCase().includes('@all')) {
       const allMemberNames = projectMembers
         .filter((m: any) => m.id !== user?.id)
         .map((m: any) => `@${m.name || m.userName}`)
         .join(' ');
       
-      messageToSend = messageToSend.replace(/@all|@everyone/g, allMemberNames);
+      messageToSend = messageToSend.replace(/@everyone|@all/gi, allMemberNames);
     }
     
     if (replyingTo) {
@@ -820,19 +820,20 @@ export default function TeamChat() {
         <Header />
         <div className="flex-1 flex flex-col overflow-hidden p-6">
           {/* Header */}
-          <div className="flex items-center gap-4 mb-4 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 flex-shrink-0">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocation(`/dashboard/projects/${projectId}`)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 self-start"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Project
+              <span className="hidden sm:inline">Back to Project</span>
+              <span className="sm:hidden">Back</span>
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Team Chat</h1>
-              <p className="text-muted-foreground">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold truncate">Team Chat</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">
                 {project?.name} - Internal team communication
               </p>
             </div>
@@ -840,14 +841,14 @@ export default function TeamChat() {
 
           {/* Chat Area */}
           <Card className="flex-1 flex flex-col min-h-0">
-            <CardHeader className="flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Users className="h-5 w-5" />
+            <CardHeader className="flex-shrink-0 p-3 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                     Team Discussion
                   </h3>
-                  <div className="text-sm text-muted-foreground mt-1">
+                  <div className="text-xs sm:text-sm text-muted-foreground mt-1">
                     {membersLoading ? (
                       <span>Loading team members...</span>
                     ) : projectMembers.length === 0 ? (
@@ -883,13 +884,13 @@ export default function TeamChat() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {showMessageSearch ? (
-                    <div className="relative">
+                    <div className="relative flex-1 sm:flex-initial">
                       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder="Search messages..."
-                        className="pl-8 w-48"
+                        className="pl-8 w-full sm:w-48"
                         value={messageSearchQuery}
                         onChange={(e) => setMessageSearchQuery(e.target.value)}
                         autoFocus
@@ -922,10 +923,10 @@ export default function TeamChat() {
                     className="flex items-center gap-2"
                   >
                     <FileText className="h-4 w-4" />
-                    Resources
+                    <span className="hidden sm:inline">Resources</span>
                   </Button>
-                  <Badge variant="outline" className="text-xs">
-                    {messages.length} message{messages.length !== 1 ? 's' : ''}
+                  <Badge variant="outline" className="text-xs whitespace-nowrap">
+                    {messages.length} msg{messages.length !== 1 ? 's' : ''}
                   </Badge>
                 </div>
               </div>
