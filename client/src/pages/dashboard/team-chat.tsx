@@ -970,7 +970,6 @@ export default function TeamChat() {
                         </div>
                       )}
                       {/* Message */}
-                      <div key={msg.id} id={`message-${msg.id}`} className="flex gap-3 group transition-all duration-300">
                     <div key={msg.id} id={`message-${msg.id}`} className="flex gap-3 group transition-all duration-300">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">
