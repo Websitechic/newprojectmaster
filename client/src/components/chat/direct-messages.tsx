@@ -486,6 +486,22 @@ export function DirectMessages() {
         messageContent = `> Replying to ${replyingTo.senderName}:\n> ${replyingTo.content}\n\n${messageToSend}`;
       }
 
+      // Create optimistic message for immediate UI update
+      const optimisticMessage: DirectMessage = {
+        id: Date.now(), // Temporary ID
+        content: messageContent,
+        senderId: user!.id,
+        receiverId: selectedUser.id,
+        read: false,
+        createdAt: new Date().toISOString(),
+        senderName: user!.name,
+        replyToMessageId: replyingTo?.id,
+        replyToSenderName: replyingTo?.senderName,
+      };
+
+      // Add message to UI immediately (optimistic update)
+      setMessages(prev => [...prev, optimisticMessage]);
+
       // Clear input immediately for better UX
       setNewMessage("");
       setReplyingTo(null);
@@ -509,16 +525,12 @@ export function DirectMessages() {
         const sentMessage = await response.json();
         console.log("Message sent successfully:", sentMessage);
 
-        // Add sent message to UI immediately
-        setMessages(prev => {
-          const exists = prev.some(m => m.id === sentMessage.id);
-          if (!exists) {
-            return [...prev, sentMessage];
-          }
-          return prev;
-        });
+        // Replace optimistic message with real message from server
+        setMessages(prev => 
+          prev.map(m => m.id === optimisticMessage.id ? sentMessage : m)
+        );
 
-        // Update conversations list immediately
+        // Update conversations list
         setConversations(prev => {
           const updated = [...prev];
           const existingIndex = updated.findIndex(conv => conv.user.id === selectedUser.id);
@@ -559,12 +571,18 @@ export function DirectMessages() {
       } else {
         const errorText = await response.text();
         console.error("Failed to send message:", response.status, errorText);
+        // Remove optimistic message on failure
+        setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
         // Restore the message if sending failed
         setNewMessage(messageToSend);
         throw new Error(`Failed to send message: ${response.status}`);
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+      // Restore input
+      setNewMessage(messageToSend);
       toast({
         title: "Error",
         description: "Failed to send message. Please try again.",
