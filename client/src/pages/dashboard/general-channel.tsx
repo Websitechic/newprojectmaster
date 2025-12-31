@@ -574,53 +574,38 @@ export default function GeneralChannel() {
       <Sidebar currentPath="/dashboard/general-channel" />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <div className="flex-1 flex flex-col overflow-hidden p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 flex-shrink-0">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold truncate">General Channel</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground truncate">Platform-wide communication for all users</p>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {pinnedMessages.length > 0 && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Pin className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="text-xs sm:text-sm hover:underline whitespace-nowrap">
-                      {pinnedMessages.length} pinned
-                    </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
-                    {pinnedMessages.map((msg) => (
-                      <DropdownMenuItem key={msg.id} onClick={() => {
-                        const element = document.getElementById(`gc-message-${msg.id}`);
-                        if (element) {
-                          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          element.classList.add('highlight-flash');
-                          setTimeout(() => element.classList.remove('highlight-flash'), 2000);
-                        }
-                      }}>
-                        <span className="line-clamp-1 text-sm">
-                          {msg.content.length > 50 ? `${msg.content.substring(0, 50)}...` : msg.content}
-                        </span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
-          </div>
-          </div>
-
+        <div className="flex-1 flex flex-col overflow-hidden p-3 sm:p-4 lg:p-6">
           <Card className="flex-1 flex flex-col min-h-0">
-            <CardHeader className="flex-shrink-0 p-3 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+            <CardHeader className="flex-shrink-0 p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <h3 className="text-sm sm:text-base font-semibold truncate">
                     General Discussion
-                    {pinnedMessages.length > 0 && <Pin className="h-4 w-4 text-blue-500" />}
                   </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    Open channel for all platform users
-                  </p>
+                  {pinnedMessages.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:underline whitespace-nowrap">
+                        <Pin className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
+                        <span className="hidden sm:inline">{pinnedMessages.length}</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+                        {pinnedMessages.map((msg) => (
+                          <DropdownMenuItem key={msg.id} onClick={() => {
+                            const element = document.getElementById(`gc-message-${msg.id}`);
+                            if (element) {
+                              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              element.classList.add('highlight-flash');
+                              setTimeout(() => element.classList.remove('highlight-flash'), 2000);
+                            }
+                          }}>
+                            <span className="line-clamp-1 text-sm">
+                              {msg.content.length > 50 ? `${msg.content.substring(0, 50)}...` : msg.content}
+                            </span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {showMessageSearch ? (

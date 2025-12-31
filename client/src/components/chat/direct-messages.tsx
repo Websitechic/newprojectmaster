@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy, Forward, CheckCheck } from "lucide-react";
+import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy, Forward, CheckCheck, Reply } from "lucide-react";
 import { OnlineStatus } from "@/components/ui/online-status";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
@@ -196,7 +196,7 @@ export function DirectMessages() {
 
       // If viewing a conversation, check if message is part of it
       if (selectedUser) {
-        const isMessageInConversation = 
+        const isMessageInConversation =
           (messageData.senderId === selectedUser.id && messageData.receiverId === user.id) ||
           (messageData.senderId === user.id && messageData.receiverId === selectedUser.id);
 
@@ -975,8 +975,8 @@ export function DirectMessages() {
             </Avatar>
             <div className="flex-1">
               <h3 className="font-semibold">{selectedUser.name}</h3>
-              <OnlineStatus 
-                status={selectedUser.status} 
+              <OnlineStatus
+                status={selectedUser.status}
                 lastActive={selectedUser.lastActive}
                 showText={true}
                 size="sm"
@@ -1008,11 +1008,11 @@ export function DirectMessages() {
                     {showDateSeparator && (
                       <div className="flex items-center justify-center my-4">
                         <div className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
-                          {new Date(message.createdAt).toLocaleDateString('en-US', { 
-                            weekday: 'long', 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
+                          {new Date(message.createdAt).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
                           })}
                         </div>
                       </div>
@@ -1163,62 +1163,59 @@ export function DirectMessages() {
 
   return (
     <Card className="h-[600px] flex flex-col">
-      <CardHeader className="border-b">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold">Direct Messages</h3>
-          <div className="flex items-center gap-2">
+      <CardHeader className="border-b p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <Button
               variant={view === "conversations" ? "default" : "ghost"}
               size="sm"
               onClick={() => setView("conversations")}
             >
-              <MessageCircle className="h-4 w-4 mr-1" />
-              Chats
+              <MessageCircle className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Chats</span>
             </Button>
             <Button
               variant={view === "new" ? "default" : "ghost"}
               size="sm"
               onClick={() => setView("new")}
             >
-              <Users className="h-4 w-4 mr-1" />
-              Users
+              <Users className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Users</span>
             </Button>
           </div>
-        </div>
-        {showSearch ? (
-          <div className="relative mt-4">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search conversations..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute right-1 top-1 h-6 w-6 p-0"
-              onClick={() => {
-                setShowSearch(false);
-                setSearchQuery("");
-              }}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-end mt-4">
+          {showSearch ? (
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                className="pl-8 pr-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1 h-6 w-6 p-0"
+                onClick={() => {
+                  setShowSearch(false);
+                  setSearchQuery("");
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowSearch(true)}
-              className="h-8 px-2"
+              className="h-8 w-8 p-0"
             >
               <Search className="h-4 w-4" />
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className="flex-1 overflow-hidden p-0">

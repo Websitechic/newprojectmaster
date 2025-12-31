@@ -818,70 +818,61 @@ export default function TeamChat() {
       <Sidebar currentPath={`/dashboard/projects/${projectId}/team-chat`} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <div className="flex-1 flex flex-col overflow-hidden p-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 flex-shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation(`/dashboard/projects/${projectId}`)}
-              className="flex items-center gap-2 self-start"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to Project</span>
-              <span className="sm:hidden">Back</span>
-            </Button>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold truncate">Team Chat</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                {project?.name} - Internal team communication
-              </p>
-            </div>
-          </div>
-
+        <div className="flex-1 flex flex-col overflow-hidden p-3 sm:p-4 lg:p-6">
           {/* Chat Area */}
           <Card className="flex-1 flex flex-col min-h-0">
-            <CardHeader className="flex-shrink-0 p-3 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                    <Users className="h-4 w-4 sm:h-5 sm:w-5" />
-                    Team Discussion
-                  </h3>
-                  <div className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    {membersLoading ? (
-                      <span>Loading team members...</span>
-                    ) : projectMembers.length === 0 ? (
-                      <span>No team members</span>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="flex flex-wrap gap-1 items-center hover:bg-muted/50 p-1 rounded-md transition-colors">
-                            <span className="font-medium">{projectMembers.length} member{projectMembers.length !== 1 ? 's' : ''}</span>
-                            <span className="text-xs opacity-70">(click to view all)</span>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
-                          {projectMembers.map((member: any) => (
-                            <DropdownMenuItem key={member.id || member.userId} className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarFallback className="text-xs">
-                                  {getUserInitials(member.name || member.userName || 'Unknown')}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm truncate">
-                                  {member.name || member.userName || 'Unknown'}
-                                </div>
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {member.specialization || member.role || 'Team Member'}
-                                </div>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+            <CardHeader className="flex-shrink-0 p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLocation(`/dashboard/projects/${projectId}`)}
+                    className="flex items-center gap-1 px-2 h-8 flex-shrink-0"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm sm:text-base font-semibold truncate">
+                        {project?.name || 'Team Discussion'}
+                      </h3>
+                      <div className="text-xs text-muted-foreground">
+                        {membersLoading ? (
+                          <span>Loading...</span>
+                        ) : projectMembers.length === 0 ? (
+                          <span>No members</span>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="flex items-center gap-1 hover:bg-muted/50 px-1 rounded transition-colors">
+                                <span className="font-medium">{projectMembers.length} member{projectMembers.length !== 1 ? 's' : ''}</span>
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
+                              {projectMembers.map((member: any) => (
+                                <DropdownMenuItem key={member.id || member.userId} className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarFallback className="text-xs">
+                                      {getUserInitials(member.name || member.userName || 'Unknown')}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm truncate">
+                                      {member.name || member.userName || 'Unknown'}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground truncate">
+                                      {member.specialization || member.role || 'Team Member'}
+                                    </div>
+                                  </div>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
