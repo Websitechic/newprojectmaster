@@ -76,7 +76,9 @@ export function DirectMessages() {
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
   const [readCounts, setReadCounts] = useState<Record<number, number>>({});
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -148,8 +150,22 @@ export function DirectMessages() {
 
   // Scroll to bottom when messages change
   useEffect(() => {
+    if (!showScrollButton) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, showScrollButton]);
+
+  // Detect scroll position
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
+  };
+
+  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    setShowScrollButton(false);
+  };
 
   // Listen for real-time message updates via SSE and custom events
   useEffect(() => {
@@ -994,8 +1010,8 @@ export function DirectMessages() {
           </div>
         </CardHeader>
 
-        <CardContent className="flex-1 overflow-hidden p-0">
-          <ScrollArea className="h-full p-4">
+        <CardContent className="flex-1 overflow-hidden p-0 relative">
+          <ScrollArea className="h-full p-4" ref={scrollAreaRef} onScrollCapture={handleScroll}>
             <div className="space-y-4">
               {filteredMessages.map((message, index) => {
                 // Check if we need to show a date separator
@@ -1038,6 +1054,19 @@ export function DirectMessages() {
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
+          
+          {/* Scroll to Bottom Button */}
+          {showScrollButton && (
+            <Button
+              onClick={scrollToBottom}
+              className="absolute bottom-4 right-4 rounded-full h-10 w-10 p-0 shadow-lg z-10"
+              size="icon"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </Button>
+          )}
         </CardContent>
 
         {/* Forward Message Dialog */}
@@ -1162,7 +1191,7 @@ export function DirectMessages() {
   }
 
   return (
-    <Card className="h-[600px] flex flex-col">
+    <Card className="h-[calc(100vh-12rem)] flex flex-col">
       <CardHeader className="border-b p-3 sm:p-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-1">

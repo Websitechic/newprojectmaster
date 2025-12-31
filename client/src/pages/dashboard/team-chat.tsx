@@ -63,7 +63,9 @@ export default function TeamChat() {
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [readCounts, setReadCounts] = useState<Record<number, number>>({});
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const projectId = parseInt(id!);
   const [pinnedMessage, setPinnedMessage] = useState<MessageWithSender | null>(() => {
@@ -282,8 +284,22 @@ export default function TeamChat() {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
+    if (!showScrollButton) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, showScrollButton]);
+
+  // Detect scroll position
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
+  };
+
+  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    setShowScrollButton(false);
+  };
 
   // Mark team messages as read when user views them
   useEffect(() => {
@@ -535,13 +551,14 @@ export default function TeamChat() {
     let messageToSend = message.trim();
     
     // Replace @all or @everyone with mentions of all team members
-    if (messageToSend.toLowerCase().includes('@everyone') || messageToSend.toLowerCase().includes('@all')) {
+    const everyoneRegex = /@(everyone|all)\b/gi;
+    if (everyoneRegex.test(messageToSend)) {
       const allMemberNames = projectMembers
         .filter((m: any) => m.id !== user?.id)
         .map((m: any) => `@${m.name || m.userName}`)
         .join(' ');
       
-      messageToSend = messageToSend.replace(/@everyone|@all/gi, allMemberNames);
+      messageToSend = messageToSend.replace(/@(everyone|all)\b/gi, allMemberNames);
     }
     
     if (replyingTo) {
@@ -968,7 +985,7 @@ export default function TeamChat() {
               )}
 
               {/* Messages Container */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 relative" onScroll={handleScroll}>
                 {messages.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-muted-foreground">
@@ -1191,6 +1208,19 @@ export default function TeamChat() {
                   ))
                 )}
                 <div ref={messagesEndRef} />
+                
+                {/* Scroll to Bottom Button */}
+                {showScrollButton && (
+                  <Button
+                    onClick={scrollToBottom}
+                    className="absolute bottom-4 right-4 rounded-full h-10 w-10 p-0 shadow-lg z-10"
+                    size="icon"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </Button>
+                )}
               </div>
 
               {/* Forward Message Dialog */}
