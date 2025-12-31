@@ -636,7 +636,7 @@ export default function Dashboard() {
               </div>
 
               {/* Full Task List with Completed Tab */}
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
@@ -656,14 +656,12 @@ export default function Dashboard() {
                 </div>
 
                 <Tabs defaultValue="active" className="w-full">
-                  <div className="mb-4">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="active">Active Tasks</TabsTrigger>
-                      <TabsTrigger value="completed">Completed</TabsTrigger>
-                    </TabsList>
-                  </div>
+                  <TabsList className="grid w-full grid-cols-2 border-2 border-blue-500">
+                    <TabsTrigger value="active" className="data-[state=active]:border-2 data-[state=active]:border-blue-500">Active Tasks</TabsTrigger>
+                    <TabsTrigger value="completed" className="data-[state=active]:border-2 data-[state=active]:border-blue-500">Completed</TabsTrigger>
+                  </TabsList>
 
-                  <TabsContent value="active" className="mt-4">
+                  <TabsContent value="active" className="mt-0">
                     {staffTasks && staffTasks.filter(t => t.status !== 'completed').length > 0 ? (
                       <StaffTaskList
                         tasks={searchFilteredTasks.filter(t => t.status !== 'completed')}
@@ -676,7 +674,7 @@ export default function Dashboard() {
                     )}
                   </TabsContent>
 
-                  <TabsContent value="completed" className="mt-4">
+                  <TabsContent value="completed" className="mt-0">
                     {staffTasks && staffTasks.filter(t => t.status === 'completed').length > 0 ? (
                       <StaffTaskList
                         tasks={searchFilteredTasks.filter(t => t.status === 'completed')}
@@ -1365,14 +1363,12 @@ export default function Dashboard() {
                   </div>
                 ) : (tasks ?? []).length > 0 ? (
                   <Tabs defaultValue="active" className="w-full">
-                    <div className="mb-4">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="active">Active Tasks</TabsTrigger>
-                        <TabsTrigger value="completed">Completed</TabsTrigger>
-                      </TabsList>
-                    </div>
+                    <TabsList className="grid w-full grid-cols-2 border-2 border-blue-500">
+                      <TabsTrigger value="active" className="data-[state=active]:border-2 data-[state=active]:border-blue-500">Active Tasks</TabsTrigger>
+                      <TabsTrigger value="completed" className="data-[state=active]:border-2 data-[state=active]:border-blue-500">Completed</TabsTrigger>
+                    </TabsList>
 
-                    <TabsContent value="active" className="mt-4">
+                    <TabsContent value="active" className="mt-0">
                       <TaskList
                         tasks={
                           user?.role === "staff" || user?.role === "intern"
@@ -1392,7 +1388,7 @@ export default function Dashboard() {
                       />
                     </TabsContent>
 
-                    <TabsContent value="completed" className="mt-4">
+                    <TabsContent value="completed" className="mt-0">
                       <TaskList
                         tasks={
                           user?.role === "staff" || user?.role === "intern"

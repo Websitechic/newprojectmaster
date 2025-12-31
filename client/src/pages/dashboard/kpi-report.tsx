@@ -141,6 +141,16 @@ function PenaltiesSection({
     enabled: !!selectedStaff,
   });
 
+  // Fetch all users to get sender names
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      const response = await fetch("/api/users");
+      if (!response.ok) throw new Error("Failed to fetch users");
+      return response.json();
+    },
+  });
+
   const formatReason = (reason: string) => {
     return reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
@@ -162,6 +172,7 @@ function PenaltiesSection({
               <TableRow>
                 <TableHead>Reason</TableHead>
                 <TableHead>Likely Penalty</TableHead>
+                <TableHead>Sent By</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -170,6 +181,11 @@ function PenaltiesSection({
                 <TableRow key={penalty.id}>
                   <TableCell>{formatReason(penalty.reason)}</TableCell>
                   <TableCell>{penalty.likelyPenalty || 'N/A'}</TableCell>
+                  <TableCell>
+                    {penalty.senderId 
+                      ? (allUsers.find((u: any) => u.id === penalty.senderId)?.name || 'Unknown')
+                      : 'N/A'}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={penalty.status === 'resolved' ? 'default' : penalty.status === 'acknowledged' ? 'secondary' : 'outline'}>
                       {penalty.status.charAt(0).toUpperCase() + penalty.status.slice(1)}
@@ -892,9 +908,11 @@ export default function KPIReportPage() {
       }
 
       const penaltiesResponse = await fetch('/api/staff-queries');
+      const usersResponse = await fetch('/api/users');
 
-      if (penaltiesResponse.ok) {
+      if (penaltiesResponse.ok && usersResponse.ok) {
         const allQueries = await penaltiesResponse.json();
+        const allUsers = await usersResponse.json();
         
         // Filter by staff ID and date range
         const penalties = allQueries.filter((query: any) => {
@@ -919,10 +937,13 @@ export default function KPIReportPage() {
             return reason.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
           };
 
-          const penaltyTableHeaders = ['Reason', 'Likely Penalty', 'Status'];
+          const penaltyTableHeaders = ['Reason', 'Likely Penalty', 'Sent By', 'Status'];
           const penaltyTableData = penalties.map((penalty: any) => [
             formatReason(penalty.reason),
             penalty.likelyPenalty || 'N/A',
+            penalty.senderId 
+              ? (allUsers.find((u: any) => u.id === penalty.senderId)?.name || 'Unknown')
+              : 'N/A',
             penalty.status.charAt(0).toUpperCase() + penalty.status.slice(1)
           ]);
 
@@ -934,9 +955,10 @@ export default function KPIReportPage() {
             headStyles: { fillColor: [229, 231, 235], textColor: [17, 24, 39], fontStyle: 'bold' },
             bodyStyles: { textColor: [75, 85, 99] },
             columnStyles: {
-              0: { cellWidth: 60 },
-              1: { cellWidth: 70 },
-              2: { cellWidth: 50 }
+              0: { cellWidth: 50 },
+              1: { cellWidth: 50 },
+              2: { cellWidth: 45 },
+              3: { cellWidth: 35 }
             },
             margin: { left: 15, right: 15 },
           });
