@@ -574,6 +574,7 @@ export default function GeneralChannel() {
               </div>
             )}
           </div>
+          </div>
 
           <Card className="flex-1 flex flex-col min-h-0">
             <CardHeader className="flex-shrink-0">
