@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, Pin, Search, FileText } from "lucide-react";
+import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, Pin, Search, FileText, CheckCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +60,8 @@ export default function TeamChat() {
   const [forwardingMessage, setForwardingMessage] = useState<MessageWithSender | null>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
+  const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [readCounts, setReadCounts] = useState<Record<number, number>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const projectId = parseInt(id!);
@@ -556,6 +558,54 @@ export default function TeamChat() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  const shouldShowDateSeparator = (currentMsg: MessageWithSender, previousMsg?: MessageWithSender) => {
+    if (!previousMsg) return true;
+    
+    const currentDate = new Date(currentMsg.createdAt).toDateString();
+    const previousDate = new Date(previousMsg.createdAt).toDateString();
+    
+    return currentDate !== previousDate;
+  };
+
+  const formatDateSeparator = (date: string | Date) => {
+    const messageDate = new Date(date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const messageDateString = messageDate.toDateString();
+    const todayString = today.toDateString();
+    const yesterdayString = yesterday.toDateString();
+    
+    if (messageDateString === todayString) return "Today";
+    if (messageDateString === yesterdayString) return "Yesterday";
+    
+    return messageDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
+  // Fetch read counts for messages
+  useEffect(() => {
+    const fetchReadCounts = async () => {
+      if (!messages.length) return;
+      
+      const counts: Record<number, number> = {};
+      for (const msg of messages) {
+        try {
+          const response = await fetch(`/api/projects/${projectId}/team-messages/${msg.id}/read-count`);
+          if (response.ok) {
+            const data = await response.json();
+            counts[msg.id] = data.count || 0;
+          }
+        } catch (error) {
+          console.error(`Error fetching read count for message ${msg.id}:`, error);
+        }
+      }
+      setReadCounts(counts);
+    };
+
+    fetchReadCounts();
+  }, [messages, projectId]);
+
   // Handle mention detection in input
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -568,8 +618,16 @@ export default function TeamChat() {
       setCursorPosition(position);
     }, 0);
 
-    // Check for @ mentions - allow spaces and handle partial names
+    // Check for @all or @everyone
     const beforeCursor = value.substring(0, position);
+    if (beforeCursor.endsWith('@all') || beforeCursor.endsWith('@everyone')) {
+      // Don't show suggestions for @all or @everyone
+      setShowMentionSuggestions(false);
+      setMentionQuery("");
+      return;
+    }
+
+    // Check for @ mentions - allow spaces and handle partial names
     const mentionMatch = beforeCursor.match(/@([a-zA-Z0-9_\s]*)$/);
 
     if (mentionMatch) {
@@ -814,6 +872,15 @@ export default function TeamChat() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search messages..."
+                      className="pl-8 w-48"
+                      value={messageSearchQuery}
+                      onChange={(e) => setMessageSearchQuery(e.target.value)}
+                    />
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
@@ -884,7 +951,26 @@ export default function TeamChat() {
                     </div>
                   </div>
                 ) : (
-                  messages.map((msg) => (
+                  messages
+                    .filter(msg => 
+                      !messageSearchQuery || 
+                      msg.content.toLowerCase().includes(messageSearchQuery.toLowerCase()) ||
+                      msg.sender?.name.toLowerCase().includes(messageSearchQuery.toLowerCase())
+                    )
+                    .map((msg, index, filteredMessages) => (
+                    <div key={`msg-wrapper-${msg.id}`}>
+                      {/* Date Separator */}
+                      {shouldShowDateSeparator(msg, filteredMessages[index - 1]) && (
+                        <div className="flex items-center gap-4 my-4">
+                          <div className="flex-1 border-t"></div>
+                          <span className="text-xs text-muted-foreground font-medium px-2">
+                            {formatDateSeparator(msg.createdAt)}
+                          </span>
+                          <div className="flex-1 border-t"></div>
+                        </div>
+                      )}
+                      {/* Message */}
+                      <div key={msg.id} id={`message-${msg.id}`} className="flex gap-3 group transition-all duration-300">
                     <div key={msg.id} id={`message-${msg.id}`} className="flex gap-3 group transition-all duration-300">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">
@@ -998,6 +1084,13 @@ export default function TeamChat() {
                             {msg.isEdited && (
                               <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>
                             )}
+                            {/* Read Receipt */}
+                            {msg.senderId === user?.id && readCounts[msg.id] > 0 && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <CheckCheck className="h-3 w-3 text-blue-500" />
+                                <span className="text-xs text-muted-foreground">{readCounts[msg.id]}</span>
+                              </div>
+                            )}
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -1068,6 +1161,7 @@ export default function TeamChat() {
                           </div>
                         )}
                       </div>
+                    </div>
                     </div>
                   ))
                 )}

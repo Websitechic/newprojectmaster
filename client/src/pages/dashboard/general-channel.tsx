@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/dashboard/header";
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward } from "lucide-react";
+import { Send, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, CheckCheck, Pin } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +34,7 @@ style.textContent = `
     0%, 100% { background-color: transparent; }
     50% { background-color: rgba(59, 130, 246, 0.3); }
   }
-  
+
   .highlight-flash {
     animation: highlight-flash 2s ease-in-out;
   }
@@ -51,6 +50,7 @@ interface GeneralChannelMessage {
   createdAt: string;
   updatedAt?: string;
   isEdited?: boolean;
+  isPinned?: boolean;
 }
 
 export default function GeneralChannel() {
@@ -67,6 +67,8 @@ export default function GeneralChannel() {
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
   const [mentionSearchQuery, setMentionSearchQuery] = useState("");
   const [mentionCursorPosition, setMentionCursorPosition] = useState(0);
+  const [readCounts, setReadCounts] = useState<{ [key: number]: number }>({});
+  const [pinnedMessages, setPinnedMessages] = useState<GeneralChannelMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -74,6 +76,19 @@ export default function GeneralChannel() {
     queryKey: ["/api/general-channel/messages"],
     refetchInterval: 2000,
     enabled: !!user,
+    onSuccess: (fetchedMessages) => {
+      // Process read receipts
+      const initialReadCounts: { [key: number]: number } = {};
+      fetchedMessages.forEach(msg => {
+        if (msg.senderId !== user?.id) {
+          initialReadCounts[msg.id] = 0; // Initialize count, will be updated by backend
+        }
+      });
+      setReadCounts(initialReadCounts);
+
+      // Filter pinned messages
+      setPinnedMessages(fetchedMessages.filter(msg => msg.isPinned));
+    }
   });
 
   const { data: allUsers = [] } = useQuery({
@@ -100,6 +115,42 @@ export default function GeneralChannel() {
     },
     onError: (error: Error) => {
       toast({ title: "Failed to send message", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const pinMessageMutation = useMutation({
+    mutationFn: async (messageId: number) => {
+      const response = await fetch(`/api/general-channel/messages/${messageId}/pin`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to pin message");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
+      toast({ title: "Success", description: "Message pinned successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to pin message", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const unpinMessageMutation = useMutation({
+    mutationFn: async (messageId: number) => {
+      const response = await fetch(`/api/general-channel/messages/${messageId}/unpin`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to unpin message");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
+      toast({ title: "Success", description: "Message unpinned successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to unpin message", description: error.message, variant: "destructive" });
     },
   });
 
@@ -135,12 +186,16 @@ export default function GeneralChannel() {
       if (messageIdsToMarkRead.length === 0) return;
 
       try {
-        await fetch("/api/general-channel/mark-read", {
+        const response = await fetch("/api/general-channel/mark-read", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ messageIds: messageIdsToMarkRead }),
         });
+        if (response.ok) {
+          const data = await response.json();
+          setReadCounts(prevCounts => ({ ...prevCounts, ...data.readCounts }));
+        }
       } catch (error) {
         console.error("Error marking messages as read:", error);
       }
@@ -270,14 +325,14 @@ export default function GeneralChannel() {
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     const cursorPos = e.target.selectionStart;
-    
+
     setMessage(value);
     setMentionCursorPosition(cursorPos);
 
     // Check for @ mention
     const textBeforeCursor = value.substring(0, cursorPos);
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-    
+
     if (lastAtIndex !== -1) {
       const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
       // Check if there's a space after @ (which would end the mention)
@@ -287,7 +342,7 @@ export default function GeneralChannel() {
         return;
       }
     }
-    
+
     setShowMentionSuggestions(false);
   };
 
@@ -295,16 +350,16 @@ export default function GeneralChannel() {
     const textBeforeCursor = message.substring(0, mentionCursorPosition);
     const textAfterCursor = message.substring(mentionCursorPosition);
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-    
+
     if (lastAtIndex !== -1) {
       const newMessage = 
         message.substring(0, lastAtIndex) + 
         `@${userName} ` + 
         textAfterCursor;
-      
+
       setMessage(newMessage);
       setShowMentionSuggestions(false);
-      
+
       // Focus back on input
       setTimeout(() => {
         if (inputRef.current) {
@@ -342,7 +397,7 @@ export default function GeneralChannel() {
   const renderMessageContent = (content: string) => {
     // Combined regex for URLs and mentions
     const combinedRegex = /(https?:\/\/[^\s]+)|(@[a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
-    
+
     return content.split(combinedRegex).filter(Boolean).map((part, index) => {
       // Check if it's a URL
       if (/^https?:\/\/[^\s]+$/.test(part)) {
@@ -359,11 +414,11 @@ export default function GeneralChannel() {
           </a>
         );
       }
-      
+
       // Check if it's a mention
       if (/^@[a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*$/.test(part)) {
         const mentionedName = part.substring(1).trim();
-        
+
         // Find the mentioned user
         const mentionedUser = allUsers.find((u: any) => 
           u.name && (
@@ -371,10 +426,10 @@ export default function GeneralChannel() {
             u.name.toLowerCase().startsWith(mentionedName.toLowerCase())
           )
         );
-        
+
         if (mentionedUser) {
           const isSelfMention = mentionedUser.id === user?.id;
-          
+
           return (
             <span 
               key={`mention-${index}`}
@@ -389,7 +444,7 @@ export default function GeneralChannel() {
           );
         }
       }
-      
+
       return <span key={`text-${index}`}>{part}</span>;
     });
   };
@@ -399,14 +454,14 @@ export default function GeneralChannel() {
     const originalMsg = messages.find(m => {
       // Check if message content matches exactly
       if (m.content === quotedContent) return true;
-      
+
       // Check if it's in a reply chain
       if (m.content.startsWith('> Replying to')) {
         const parts = m.content.split('\n\n');
         const actualContent = parts.slice(1).join('\n\n');
         return actualContent === quotedContent;
       }
-      
+
       // Partial match for truncated content
       return m.content.includes(quotedContent);
     });
@@ -428,6 +483,14 @@ export default function GeneralChannel() {
     }
   };
 
+  const handlePinMessage = (message: GeneralChannelMessage) => {
+    if (message.isPinned) {
+      unpinMessageMutation.mutate(message.id);
+    } else {
+      pinMessageMutation.mutate(message.id);
+    }
+  };
+
   return (
     <div className="flex h-screen">
       <Sidebar currentPath="/dashboard/general-channel" />
@@ -439,6 +502,32 @@ export default function GeneralChannel() {
               <h1 className="text-2xl font-bold">General Channel</h1>
               <p className="text-muted-foreground">Platform-wide communication for all users</p>
             </div>
+            {pinnedMessages.length > 0 && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Pin className="h-5 w-5" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="text-sm hover:underline">
+                    {pinnedMessages.length} pinned message{pinnedMessages.length !== 1 ? 's' : ''}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+                    {pinnedMessages.map((msg) => (
+                      <DropdownMenuItem key={msg.id} onClick={() => {
+                        const element = document.getElementById(`gc-message-${msg.id}`);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          element.classList.add('highlight-flash');
+                          setTimeout(() => element.classList.remove('highlight-flash'), 2000);
+                        }
+                      }}>
+                        <span className="line-clamp-1 text-sm">
+                          {msg.content.length > 50 ? `${msg.content.substring(0, 50)}...` : msg.content}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
 
           <Card className="flex-1 flex flex-col min-h-0">
@@ -447,6 +536,7 @@ export default function GeneralChannel() {
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
                     General Discussion
+                    {pinnedMessages.length > 0 && <Pin className="h-4 w-4 text-blue-500" />}
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
                     Open channel for all platform users
@@ -479,6 +569,7 @@ export default function GeneralChannel() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm">{msg.senderName || "Unknown User"}</span>
                           <span className="text-xs text-muted-foreground">{formatMessageTime(msg.createdAt || new Date())}</span>
+                          {msg.isPinned && <Pin className="h-4 w-4 text-blue-500" />}
                         </div>
                         {editingMessageId === msg.id ? (
                           <div className="space-y-2">
@@ -509,7 +600,7 @@ export default function GeneralChannel() {
                                       // Extract quoted content for navigation
                                       const replyLines = part.split('\n');
                                       const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
-                                      
+
                                       return (
                                         <div 
                                           key={idx} 
@@ -530,6 +621,13 @@ export default function GeneralChannel() {
                               )}
                             </div>
                             {msg.isEdited && <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>}
+                            {/* Read Receipt */}
+                            {msg.senderId === user?.id && readCounts[msg.id] > 0 && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <CheckCheck className="h-3 w-3 text-blue-500" />
+                                <span className="text-xs text-muted-foreground">{readCounts[msg.id]}</span>
+                              </div>
+                            )}
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -552,6 +650,19 @@ export default function GeneralChannel() {
                                   </DropdownMenuItem>
                                   {msg.senderId === user?.id && (
                                     <>
+                                      <DropdownMenuItem onClick={() => handlePinMessage(msg)}>
+                                        {msg.isPinned ? (
+                                          <>
+                                            <Pin className="h-4 w-4 mr-2" />
+                                            Unpin
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Pin className="h-4 w-4 mr-2" />
+                                            Pin
+                                          </>
+                                        )}
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => { 
                                         setEditingMessageId(msg.id); 
                                         // Extract only the actual message content, not the quoted part
