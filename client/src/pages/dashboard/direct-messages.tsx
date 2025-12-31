@@ -13,15 +13,17 @@ export default function DirectMessagesPage() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
         <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full">
-          <div className="flex flex-col space-y-4 lg:space-y-6 w-full">
-            <div>
+          <div className="flex flex-col h-full w-full">
+            <div className="mb-4">
               <h1 className="text-2xl font-bold">Direct Messages</h1>
               <p className="text-muted-foreground mt-1">
                 Send private messages to other users
               </p>
             </div>
 
-            <DirectMessages />
+            <div className="flex-1 min-h-0">
+              <DirectMessages />
+            </div>
           </div>
         </div>
       </div>

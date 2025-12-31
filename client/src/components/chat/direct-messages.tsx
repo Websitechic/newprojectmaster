@@ -974,8 +974,8 @@ export function DirectMessages() {
 
   if (selectedUser) {
     return (
-      <Card className="h-[600px] flex flex-col">
-        <CardHeader className="border-b space-y-2">
+      <Card className="h-[calc(100vh-12rem)] flex flex-col">
+        <CardHeader className="border-b space-y-2 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -1054,7 +1054,7 @@ export function DirectMessages() {
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
-          
+
           {/* Scroll to Bottom Button */}
           {showScrollButton && (
             <Button
@@ -1192,7 +1192,7 @@ export function DirectMessages() {
 
   return (
     <Card className="h-[calc(100vh-12rem)] flex flex-col">
-      <CardHeader className="border-b p-3 sm:p-4">
+      <CardHeader className="border-b p-3 sm:p-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-1">
             <Button
