@@ -12,7 +12,7 @@ export default function DirectMessagesPage() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full">
+        <div className="flex-1 overflow-auto p-2 sm:p-3 lg:p-4 w-full">
           <div className="flex flex-col h-full w-full">
             <div className="flex-1 min-h-0">
               <DirectMessages />

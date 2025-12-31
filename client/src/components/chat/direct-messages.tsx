@@ -974,7 +974,7 @@ export function DirectMessages() {
 
   if (selectedUser) {
     return (
-      <Card className="h-[calc(100vh-12rem)] flex flex-col">
+      <Card className="h-[calc(100vh-8rem)] flex flex-col">
         <CardHeader className="border-b space-y-2 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Button
@@ -1191,7 +1191,7 @@ export function DirectMessages() {
   }
 
   return (
-    <Card className="h-[calc(100vh-12rem)] flex flex-col">
+    <Card className="h-[calc(100vh-8rem)] flex flex-col">
       <CardHeader className="border-b p-3 sm:p-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-1">
