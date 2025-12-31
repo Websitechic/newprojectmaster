@@ -41,6 +41,37 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// Helper function to check if we should show a date separator
+const shouldShowDateSeparator = (currentMsg: any, previousMsg: any): boolean => {
+  if (!previousMsg) return true;
+  
+  const currentDate = new Date(currentMsg.createdAt);
+  const previousDate = new Date(previousMsg.createdAt);
+  
+  return currentDate.toDateString() !== previousDate.toDateString();
+};
+
+// Helper function to format the date separator
+const formatDateSeparator = (date: string | Date): string => {
+  const messageDate = new Date(date);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  if (messageDate.toDateString() === today.toDateString()) {
+    return 'Today';
+  } else if (messageDate.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  } else {
+    return messageDate.toLocaleDateString([], { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  }
+};
+
 interface GeneralChannelMessage {
   id: number;
   content: string;
@@ -78,20 +109,37 @@ export default function GeneralChannel() {
     queryKey: ["/api/general-channel/messages"],
     refetchInterval: 2000,
     enabled: !!user,
-    onSuccess: (fetchedMessages) => {
-      // Process read receipts
-      const initialReadCounts: { [key: number]: number } = {};
-      fetchedMessages.forEach(msg => {
-        if (msg.senderId !== user?.id) {
-          initialReadCounts[msg.id] = 0; // Initialize count, will be updated by backend
-        }
-      });
-      setReadCounts(initialReadCounts);
-
-      // Filter pinned messages
-      setPinnedMessages(fetchedMessages.filter(msg => msg.isPinned));
-    }
   });
+
+  // Fetch read counts for all messages
+  useEffect(() => {
+    if (!messages.length || !user?.id) return;
+
+    const fetchReadCounts = async () => {
+      const counts: { [key: number]: number } = {};
+      
+      for (const msg of messages) {
+        if (msg.senderId === user.id) {
+          try {
+            const response = await fetch(`/api/general-channel/messages/${msg.id}/read-count`);
+            if (response.ok) {
+              const data = await response.json();
+              counts[msg.id] = data.count || 0;
+            }
+          } catch (error) {
+            console.error(`Error fetching read count for message ${msg.id}:`, error);
+          }
+        }
+      }
+      
+      setReadCounts(counts);
+    };
+
+    fetchReadCounts();
+
+    // Filter pinned messages
+    setPinnedMessages(messages.filter(msg => msg.isPinned));
+  }, [messages, user?.id]);
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users"],
@@ -496,11 +544,28 @@ export default function GeneralChannel() {
     }
   };
 
-  const handlePinMessage = (message: GeneralChannelMessage) => {
-    if (message.isPinned) {
-      unpinMessageMutation.mutate(message.id);
-    } else {
-      pinMessageMutation.mutate(message.id);
+  const handlePinMessage = async (message: GeneralChannelMessage) => {
+    try {
+      const response = await fetch(`/api/general-channel/messages/${message.id}/pin`, {
+        method: message.isPinned ? 'DELETE' : 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) throw new Error('Failed to update pin status');
+
+      // Refetch messages to update UI
+      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
+      
+      toast({ 
+        title: "Success", 
+        description: message.isPinned ? "Message unpinned" : "Message pinned successfully" 
+      });
+    } catch (error: any) {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update pin status", 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -610,7 +675,18 @@ export default function GeneralChannel() {
                       msg.content.toLowerCase().includes(messageSearchQuery.toLowerCase()) ||
                       msg.senderName.toLowerCase().includes(messageSearchQuery.toLowerCase())
                     )
-                    .map((msg) => (
+                    .map((msg, index, filteredMessages) => (
+                    <div key={`msg-wrapper-${msg.id}`}>
+                      {/* Date Separator */}
+                      {shouldShowDateSeparator(msg, filteredMessages[index - 1]) && (
+                        <div className="flex items-center gap-4 my-4">
+                          <div className="flex-1 border-t"></div>
+                          <span className="text-xs text-muted-foreground font-medium px-2">
+                            {formatDateSeparator(msg.createdAt)}
+                          </span>
+                          <div className="flex-1 border-t"></div>
+                        </div>
+                      )}
                     <div key={msg.id} id={`gc-message-${msg.id}`} className="flex gap-3 group transition-all duration-300">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">
@@ -673,11 +749,18 @@ export default function GeneralChannel() {
                               )}
                             </div>
                             {msg.isEdited && <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>}
-                            {/* Read Receipt */}
-                            {msg.senderId === user?.id && readCounts[msg.id] > 0 && (
+                            {/* Read Receipt - Show double tick if viewed by at least one user */}
+                            {msg.senderId === user?.id && (
                               <div className="flex items-center gap-1 mt-1">
-                                <CheckCheck className="h-3 w-3 text-blue-500" />
-                                <span className="text-xs text-muted-foreground">{readCounts[msg.id]}</span>
+                                <CheckCheck className={cn(
+                                  "h-3 w-3",
+                                  readCounts[msg.id] > 0 ? "text-blue-500" : "text-muted-foreground"
+                                )} />
+                                {readCounts[msg.id] > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    Seen by {readCounts[msg.id]} {readCounts[msg.id] === 1 ? 'person' : 'people'}
+                                  </span>
+                                )}
                               </div>
                             )}
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -700,20 +783,11 @@ export default function GeneralChannel() {
                                     <Forward className="h-4 w-4 mr-2" />
                                     Forward to DM
                                   </DropdownMenuItem>
-                                  {msg.senderId === user?.id && (
+                                  {(msg.senderId === user?.id || user?.role === 'operations_manager' || user?.role === 'team_lead' || user?.specialization === 'operations_manager') && (
                                     <>
                                       <DropdownMenuItem onClick={() => handlePinMessage(msg)}>
-                                        {msg.isPinned ? (
-                                          <>
-                                            <Pin className="h-4 w-4 mr-2" />
-                                            Unpin
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Pin className="h-4 w-4 mr-2" />
-                                            Pin
-                                          </>
-                                        )}
+                                        <Pin className="h-4 w-4 mr-2" />
+                                        {msg.isPinned ? 'Unpin' : 'Pin'}
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => { 
                                         setEditingMessageId(msg.id); 
@@ -740,6 +814,7 @@ export default function GeneralChannel() {
                           </div>
                         )}
                       </div>
+                    </div>
                     </div>
                   ))
                 )}

@@ -3561,7 +3561,7 @@ End of Report
     }
   });
 
-  // Pin/Unpin general channel message
+  // Pin general channel message
   app.post("/api/general-channel/messages/:messageId/pin", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -3574,17 +3574,42 @@ End of Report
 
     try {
       const messageId = parseInt(req.params.messageId);
-      const { isPinned } = req.body;
 
       await db
         .update(generalChannelMessages)
-        .set({ isPinned })
+        .set({ isPinned: true })
         .where(eq(generalChannelMessages.id, messageId));
 
       res.json({ success: true });
     } catch (error) {
       console.error("Error pinning message:", error);
       res.status(500).json({ error: "Failed to pin message" });
+    }
+  });
+
+  // Unpin general channel message
+  app.delete("/api/general-channel/messages/:messageId/pin", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers and team leads can unpin messages" });
+    }
+
+    try {
+      const messageId = parseInt(req.params.messageId);
+
+      await db
+        .update(generalChannelMessages)
+        .set({ isPinned: false })
+        .where(eq(generalChannelMessages.id, messageId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error unpinning message:", error);
+      res.status(500).json({ error: "Failed to unpin message" });
     }
   });
 
