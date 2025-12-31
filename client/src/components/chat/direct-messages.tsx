@@ -464,7 +464,12 @@ export function DirectMessages() {
     }
   };
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    // Prevent default form submission if event is provided
+    if (e) {
+      e.preventDefault();
+    }
+
     if (!newMessage.trim() || !selectedUser) {
       console.log("Cannot send message: missing content or selected user");
       return;
@@ -473,23 +478,17 @@ export function DirectMessages() {
     try {
       console.log("Sending message to user:", selectedUser.id, "Content:", newMessage);
 
-      let messageContent = newMessage.trim();
-      let quotedPreviewContent = "";
-      let quotedPreviewSenderName = "";
+      const messageToSend = newMessage.trim();
+      let messageContent = messageToSend;
 
       if (replyingTo) {
-        // Use the clean content (without nested quotes) for the new reply
-        const maxLength = 100; // Max length for quoted preview
-        let contentToQuote = replyingTo.content;
-        if (contentToQuote.length > maxLength) {
-          contentToQuote = contentToQuote.substring(0, maxLength) + "...";
-        }
-        quotedPreviewContent = contentToQuote;
-        quotedPreviewSenderName = replyingTo.senderName;
-
         // Only include the clean content in the reply, not nested quotes
-        messageContent = `> Replying to ${replyingTo.senderName}:\n> ${replyingTo.content}\n\n${messageContent}`;
+        messageContent = `> Replying to ${replyingTo.senderName}:\n> ${replyingTo.content}\n\n${messageToSend}`;
       }
+
+      // Clear input immediately for better UX
+      setNewMessage("");
+      setReplyingTo(null);
 
       const response = await fetch("/api/direct-messages", {
         method: "POST",
@@ -509,10 +508,6 @@ export function DirectMessages() {
       if (response.ok) {
         const sentMessage = await response.json();
         console.log("Message sent successfully:", sentMessage);
-
-        // Clear the input and reply state immediately
-        setNewMessage("");
-        setReplyingTo(null);
 
         // Add sent message to UI immediately
         setMessages(prev => {
@@ -564,6 +559,8 @@ export function DirectMessages() {
       } else {
         const errorText = await response.text();
         console.error("Failed to send message:", response.status, errorText);
+        // Restore the message if sending failed
+        setNewMessage(messageToSend);
         throw new Error(`Failed to send message: ${response.status}`);
       }
     } catch (error) {
@@ -1198,7 +1195,7 @@ export function DirectMessages() {
                 </div>
               </div>
             )}
-            <div className="flex gap-2 w-full items-end">
+            <form onSubmit={handleSendMessage} className="flex gap-2 w-full items-end">
               <Textarea
                 ref={inputRef}
                 placeholder="Type a message... (Shift+Enter for new line, Enter to send)"
@@ -1212,10 +1209,10 @@ export function DirectMessages() {
                 }}
                 className="min-h-[60px] max-h-[200px] resize-y"
               />
-              <Button size="icon" onClick={handleSendMessage} className="mb-1">
+              <Button type="submit" size="icon" disabled={!newMessage.trim()} className="mb-1">
                 <Send className="h-4 w-4" />
               </Button>
-            </div>
+            </form>
           </div>
         </CardFooter>
       </Card>
