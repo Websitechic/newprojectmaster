@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, CheckCheck, Pin } from "lucide-react";
+import { Send, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, CheckCheck, Pin, Search } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,6 +69,8 @@ export default function GeneralChannel() {
   const [mentionCursorPosition, setMentionCursorPosition] = useState(0);
   const [readCounts, setReadCounts] = useState<{ [key: number]: number }>({});
   const [pinnedMessages, setPinnedMessages] = useState<GeneralChannelMessage[]>([]);
+  const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [showMessageSearch, setShowMessageSearch] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -314,6 +316,17 @@ export default function GeneralChannel() {
     if (!message.trim()) return;
 
     let messageToSend = message.trim();
+    
+    // Replace @all or @everyone with mentions of all users (excluding self)
+    if (messageToSend.includes('@all') || messageToSend.includes('@everyone')) {
+      const allUserNames = allUsers
+        .filter((u: any) => u.id !== user?.id && u.role !== 'client')
+        .map((u: any) => `@${u.name}`)
+        .join(' ');
+      
+      messageToSend = messageToSend.replace(/@all|@everyone/g, allUserNames);
+    }
+    
     if (replyingTo) {
       const quotedMessage = `> Replying to ${replyingTo.senderName}:\n> ${replyingTo.content}\n\n${messageToSend}`;
       messageToSend = quotedMessage;
@@ -497,18 +510,50 @@ export default function GeneralChannel() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <div className="flex-1 flex flex-col overflow-hidden p-6">
-          <div className="flex items-center gap-4 mb-4 flex-shrink-0">
+          <div className="flex items-center justify-between gap-4 mb-4 flex-shrink-0">
             <div>
               <h1 className="text-2xl font-bold">General Channel</h1>
               <p className="text-muted-foreground">Platform-wide communication for all users</p>
             </div>
-            {pinnedMessages.length > 0 && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Pin className="h-5 w-5" />
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="text-sm hover:underline">
-                    {pinnedMessages.length} pinned message{pinnedMessages.length !== 1 ? 's' : ''}
-                  </DropdownMenuTrigger>
+            <div className="flex items-center gap-2">
+              {showMessageSearch ? (
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search messages..."
+                    className="pl-8 w-48"
+                    value={messageSearchQuery}
+                    onChange={(e) => setMessageSearchQuery(e.target.value)}
+                    autoFocus
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1 h-6 w-6 p-0"
+                    onClick={() => {
+                      setShowMessageSearch(false);
+                      setMessageSearchQuery("");
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowMessageSearch(true)}
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              )}
+              {pinnedMessages.length > 0 && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Pin className="h-5 w-5" />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="text-sm hover:underline">
+                      {pinnedMessages.length} pinned message{pinnedMessages.length !== 1 ? 's' : ''}
+                    </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
                     {pinnedMessages.map((msg) => (
                       <DropdownMenuItem key={msg.id} onClick={() => {
@@ -558,7 +603,13 @@ export default function GeneralChannel() {
                     </div>
                   </div>
                 ) : (
-                  messages.map((msg) => (
+                  messages
+                    .filter(msg => 
+                      !messageSearchQuery || 
+                      msg.content.toLowerCase().includes(messageSearchQuery.toLowerCase()) ||
+                      msg.senderName.toLowerCase().includes(messageSearchQuery.toLowerCase())
+                    )
+                    .map((msg) => (
                     <div key={msg.id} id={`gc-message-${msg.id}`} className="flex gap-3 group transition-all duration-300">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">

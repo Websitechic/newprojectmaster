@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy, Reply, Forward, CheckCheck } from "lucide-react";
+import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy, Forward, CheckCheck } from "lucide-react";
 import { OnlineStatus } from "@/components/ui/online-status";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
@@ -66,6 +66,8 @@ export function DirectMessages() {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [view, setView] = useState<"conversations" | "new">("conversations");
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState("");
@@ -73,7 +75,6 @@ export function DirectMessages() {
   const [forwardingMessage, setForwardingMessage] = useState<DirectMessage | null>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
-  const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [readCounts, setReadCounts] = useState<Record<number, number>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -124,7 +125,7 @@ export function DirectMessages() {
   useEffect(() => {
     if (fetchedMessages) {
       setMessages(fetchedMessages);
-      
+
       // Fetch read counts for each message
       fetchedMessages.forEach(async (msg) => {
         try {
@@ -198,7 +199,7 @@ export function DirectMessages() {
         const isMessageInConversation = 
           (messageData.senderId === selectedUser.id && messageData.receiverId === user.id) ||
           (messageData.senderId === user.id && messageData.receiverId === selectedUser.id);
-        
+
         if (isMessageInConversation) {
           console.log("✅ Adding message to current conversation immediately");
           setMessages(prev => {
@@ -213,7 +214,7 @@ export function DirectMessages() {
           });
         }
       }
-      
+
       // Invalidate queries to ensure fresh data on next poll
       queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
       queryClient.invalidateQueries({ queryKey: [`/api/direct-messages/${selectedUser?.id}`] });
@@ -1001,7 +1002,7 @@ export function DirectMessages() {
                 const currentDate = new Date(message.createdAt).toDateString();
                 const previousDate = index > 0 ? new Date(filteredMessages[index - 1].createdAt).toDateString() : null;
                 const showDateSeparator = currentDate !== previousDate;
-                
+
                 return (
                   <div key={message.id} id={`dm-message-${message.id}`}>
                     {showDateSeparator && (
@@ -1165,7 +1166,7 @@ export function DirectMessages() {
       <CardHeader className="border-b">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Direct Messages</h3>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Button
               variant={view === "conversations" ? "default" : "ghost"}
               size="sm"
@@ -1184,15 +1185,40 @@ export function DirectMessages() {
             </Button>
           </div>
         </div>
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+        {showSearch ? (
+          <div className="relative mt-4">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search conversations..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1 h-6 w-6 p-0"
+              onClick={() => {
+                setShowSearch(false);
+                setSearchQuery("");
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-end mt-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSearch(true)}
+              className="h-8 px-2"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="flex-1 overflow-hidden p-0">

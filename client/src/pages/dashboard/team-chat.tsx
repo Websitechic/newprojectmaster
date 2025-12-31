@@ -61,6 +61,7 @@ export default function TeamChat() {
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [readCounts, setReadCounts] = useState<Record<number, number>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -532,6 +533,17 @@ export default function TeamChat() {
     if (!message.trim()) return;
 
     let messageToSend = message.trim();
+    
+    // Replace @all or @everyone with mentions of all team members
+    if (messageToSend.includes('@all') || messageToSend.includes('@everyone')) {
+      const allMemberNames = projectMembers
+        .filter((m: any) => m.id !== user?.id)
+        .map((m: any) => `@${m.name || m.userName}`)
+        .join(' ');
+      
+      messageToSend = messageToSend.replace(/@all|@everyone/g, allMemberNames);
+    }
+    
     if (replyingTo) {
       // Use the clean content (without nested quotes) for the new reply
       const quotedMessage = `> Replying to ${replyingTo.sender?.name || "Unknown"}:\n> ${replyingTo.content}\n\n${messageToSend}`;
@@ -872,15 +884,37 @@ export default function TeamChat() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search messages..."
-                      className="pl-8 w-48"
-                      value={messageSearchQuery}
-                      onChange={(e) => setMessageSearchQuery(e.target.value)}
-                    />
-                  </div>
+                  {showMessageSearch ? (
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search messages..."
+                        className="pl-8 w-48"
+                        value={messageSearchQuery}
+                        onChange={(e) => setMessageSearchQuery(e.target.value)}
+                        autoFocus
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1 h-6 w-6 p-0"
+                        onClick={() => {
+                          setShowMessageSearch(false);
+                          setMessageSearchQuery("");
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowMessageSearch(true)}
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
