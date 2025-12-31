@@ -109,39 +109,47 @@ export default function GeneralChannel() {
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery<GeneralChannelMessage[]>({
     queryKey: ["/api/general-channel/messages"],
-    refetchInterval: 2000,
+    refetchInterval: 5000, // Poll every 5 seconds instead of 2
     enabled: !!user,
   });
 
-  // Fetch read counts for all messages
+  // Fetch read counts for recent user messages only
   useEffect(() => {
     if (!messages.length || !user?.id) return;
 
     const fetchReadCounts = async () => {
+      // Only fetch read counts for the last 20 messages from current user
+      const recentUserMessages = messages
+        .filter(msg => msg.senderId === user.id)
+        .slice(-20);
+      
+      if (recentUserMessages.length === 0) return;
+      
       const counts: { [key: number]: number } = {};
       
-      for (const msg of messages) {
-        if (msg.senderId === user.id) {
-          try {
-            const response = await fetch(`/api/general-channel/messages/${msg.id}/read-count`);
-            if (response.ok) {
-              const data = await response.json();
-              counts[msg.id] = data.count || 0;
-            }
-          } catch (error) {
-            console.error(`Error fetching read count for message ${msg.id}:`, error);
+      for (const msg of recentUserMessages) {
+        try {
+          const response = await fetch(`/api/general-channel/messages/${msg.id}/read-count`);
+          if (response.ok) {
+            const data = await response.json();
+            counts[msg.id] = data.count || 0;
           }
+        } catch (error) {
+          console.error(`Error fetching read count for message ${msg.id}:`, error);
         }
       }
       
       setReadCounts(counts);
     };
 
-    fetchReadCounts();
-
+    // Debounce the fetch
+    const timer = setTimeout(fetchReadCounts, 500);
+    
     // Filter pinned messages
     setPinnedMessages(messages.filter(msg => msg.isPinned));
-  }, [messages, user?.id]);
+    
+    return () => clearTimeout(timer);
+  }, [messages.length, user?.id]); // Only re-run when message count changes
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users"],

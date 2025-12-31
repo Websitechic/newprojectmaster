@@ -103,7 +103,7 @@ export default function TeamChat() {
       return data;
     },
     enabled: !!projectId,
-    refetchInterval: 2000, // Poll every 2 seconds for new messages
+    refetchInterval: 5000, // Poll every 5 seconds instead of 2
   });
 
   const { data: allUsers = [] } = useQuery({
@@ -612,13 +612,20 @@ export default function TeamChat() {
     return messageDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   };
 
-  // Fetch read counts for messages
+  // Fetch read counts for messages - optimized to only fetch for recent user messages
   useEffect(() => {
     const fetchReadCounts = async () => {
-      if (!messages.length) return;
+      if (!messages.length || !user?.id) return;
+      
+      // Only fetch read counts for the last 20 messages from current user
+      const recentUserMessages = messages
+        .filter(msg => msg.senderId === user.id)
+        .slice(-20);
+      
+      if (recentUserMessages.length === 0) return;
       
       const counts: Record<number, number> = {};
-      for (const msg of messages) {
+      for (const msg of recentUserMessages) {
         try {
           const response = await fetch(`/api/projects/${projectId}/team-messages/${msg.id}/read-count`);
           if (response.ok) {
@@ -632,8 +639,10 @@ export default function TeamChat() {
       setReadCounts(counts);
     };
 
-    fetchReadCounts();
-  }, [messages, projectId]);
+    // Debounce the fetch
+    const timer = setTimeout(fetchReadCounts, 500);
+    return () => clearTimeout(timer);
+  }, [messages.length, projectId, user?.id]); // Only re-run when message count changes
 
   // Handle mention detection in input
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

@@ -93,7 +93,7 @@ export function DirectMessages() {
   const { data: fetchedConversations } = useQuery({
     queryKey: ["/api/direct-messages/conversations"],
     enabled: !!user,
-    refetchInterval: 2000, // Poll every 2 seconds like team chat
+    refetchInterval: 5000, // Poll every 5 seconds instead of 2
   });
 
   // Update conversations state when data changes
@@ -117,10 +117,10 @@ export function DirectMessages() {
   }, [fetchedUsers]);
 
   // Fetch messages when a user is selected with polling backup
-  const { data: fetchedMessages } = useQuery({
+  const { data: fetchedMessages } = useQuery<DirectMessage[]>({
     queryKey: [`/api/direct-messages/${selectedUser?.id}`],
     enabled: !!selectedUser,
-    refetchInterval: 2000, // Poll every 2 seconds like team chat
+    refetchInterval: 5000, // Poll every 5 seconds instead of 2
   });
 
   // Update messages state when data changes
@@ -142,6 +142,38 @@ export function DirectMessages() {
       });
     }
   }, [fetchedMessages]);
+
+  // Fetch read counts for messages - optimized to only fetch for recent messages
+  useEffect(() => {
+    const fetchReadCounts = async () => {
+      if (!messages.length || !user?.id) return;
+
+      // Only fetch read counts for the last 20 messages from current user
+      const recentUserMessages = messages
+        .filter(msg => msg.senderId === user.id)
+        .slice(-20);
+
+      if (recentUserMessages.length === 0) return;
+
+      const counts: Record<number, number> = {};
+      for (const msg of recentUserMessages) {
+        try {
+          const response = await fetch(`/api/direct-messages/${msg.id}/read-count`);
+          if (response.ok) {
+            const data = await response.json();
+            counts[msg.id] = data.count || 0;
+          }
+        } catch (error) {
+          console.error(`Error fetching read count for message ${msg.id}:`, error);
+        }
+      }
+      setReadCounts(counts);
+    };
+
+    // Debounce the fetch to avoid excessive calls
+    const timer = setTimeout(fetchReadCounts, 500);
+    return () => clearTimeout(timer);
+  }, [messages.length, user?.id]); // Only re-run when message count changes
 
   // Filter messages by search query
   const filteredMessages = messages.filter(msg =>
