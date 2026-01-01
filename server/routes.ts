@@ -192,28 +192,6 @@ const upload = multer({
 // Middleware for authentication (assuming it's defined elsewhere and imported)
 // For demonstration purposes, we'll define a placeholder here.
 
-
-  // Session health check endpoint (for debugging)
-  app.get("/api/health/session", (req, res) => {
-    const isProduction = process.env.NODE_ENV === 'production';
-    const hasSessionSecret = !!(process.env.SESSION_SECRET || process.env.REPL_ID);
-    
-    res.json({
-      environment: process.env.NODE_ENV || 'development',
-      isProduction,
-      hasSessionSecret,
-      sessionCookieSettings: {
-        secure: req.session?.cookie?.secure,
-        httpOnly: req.session?.cookie?.httpOnly,
-        sameSite: req.session?.cookie?.sameSite,
-        maxAge: req.session?.cookie?.maxAge
-      },
-      trustProxy: app.get('trust proxy'),
-      sessionExists: !!req.session,
-      sessionID: req.session?.id
-    });
-  });
-
 // In a real application, this would likely be imported from './auth' or a similar file.
 const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   if (req.isAuthenticated() && req.user) {
@@ -250,6 +228,27 @@ export function registerRoutes(app: Express): Server {
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
+
+  // Session health check endpoint (for debugging)
+  app.get("/api/health/session", (req, res) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const hasSessionSecret = !!(process.env.SESSION_SECRET || process.env.REPL_ID);
+    
+    res.json({
+      environment: process.env.NODE_ENV || 'development',
+      isProduction,
+      hasSessionSecret,
+      sessionCookieSettings: {
+        secure: req.session?.cookie?.secure,
+        httpOnly: req.session?.cookie?.httpOnly,
+        sameSite: req.session?.cookie?.sameSite,
+        maxAge: req.session?.cookie?.maxAge
+      },
+      trustProxy: app.get('trust proxy'),
+      sessionExists: !!req.session,
+      sessionID: req.session?.id
+    });
+  });
 
   // Add middleware to ensure API routes return JSON - BEFORE static files
   app.use('/api', (req, res, next) => {
