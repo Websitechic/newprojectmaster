@@ -637,11 +637,11 @@ export default function Dashboard() {
 
               {/* Full Task List with Completed Tab */}
               <div className="space-y-4">
-                <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
+                <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden mb-8">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="flex items-center gap-2 w-full max-w-full mb-6">
+                  <div className="flex items-center gap-2 w-full max-w-full">
                     <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
                       <Input
                         type="text"
@@ -655,7 +655,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <Tabs defaultValue="active" className="w-full mt-4">
+                <Tabs defaultValue="active" className="w-full">
                   <TabsList className="grid w-full grid-cols-2 border-2 border-blue-500 gap-2 p-1">
                     <TabsTrigger value="active" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-3 py-2 whitespace-nowrap">Active Tasks</TabsTrigger>
                     <TabsTrigger value="completed" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-3 py-2 whitespace-nowrap">Completed</TabsTrigger>
@@ -1339,11 +1339,11 @@ export default function Dashboard() {
               )}
 
               <div className="space-y-6">
-                <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
+                <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden mb-8">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="flex items-center gap-2 w-full max-w-full mb-6">
+                  <div className="flex items-center gap-2 w-full max-w-full">
                     <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
                       <Input
                         type="text"
