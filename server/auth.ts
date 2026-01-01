@@ -7,7 +7,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users, type User as SelectUser, UserStatus } from "@db/schema";
 import { db } from "@db";
-import { eq, and, gt, or } from "drizzle-orm";
+import { eq, and, gt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./services/email";
 
