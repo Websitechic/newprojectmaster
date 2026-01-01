@@ -108,7 +108,7 @@ export function setupAuth(app: Express) {
     cookie: {
       secure: isProduction, // Use secure cookies in production
       httpOnly: true,
-      sameSite: isProduction ? "none" : "lax", // 'none' required for cross-site in production with secure
+      sameSite: isProduction ? "lax" : "lax", 
       maxAge: 14 * 24 * 60 * 60 * 1000, // 2 weeks of inactivity
       path: '/'
     },
@@ -123,21 +123,26 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        console.log('Authenticating user:', username);
         const [user] = await db
           .select()
           .from(users)
-          .where(eq(users.username, username))
+          .where(sql`LOWER(${users.username}) = LOWER(${username})`)
           .limit(1);
 
         if (!user) {
+          console.log('User not found:', username);
           return done(null, false, { message: "Incorrect username." });
         }
         const isMatch = await crypto.compare(password, user.password);
         if (!isMatch) {
+          console.log('Password mismatch for user:', username);
           return done(null, false, { message: "Incorrect password." });
         }
+        console.log('User authenticated successfully:', username);
         return done(null, user);
       } catch (err) {
+        console.error('LocalStrategy error:', err);
         return done(err);
       }
     })
@@ -161,53 +166,51 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    console.log('Login attempt:', { username: req.body?.username, hasPassword: !!req.body?.password });
+    console.log('Login attempt start:', { username: req.body?.username });
     
-    passport.authenticate("local", async (err: any, user: Express.User | false, info: IVerifyOptions) => {
+    passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
-        console.error('Passport authentication error:', err);
-        return res.status(500).json({ error: "Internal server error during authentication" });
+        console.error('Passport strategy execution error:', err);
+        return res.status(500).json({ error: "Internal server error during authentication strategy" });
       }
       if (!user) {
-        console.log('Authentication failed:', info.message);
-        return res.status(401).json({ message: info.message || "Authentication failed" });
+        console.log('Authentication rejected:', info?.message);
+        return res.status(401).json({ message: info?.message || "Authentication failed" });
       }
 
-      console.log('User authenticated, attempting login:', user.id);
+      console.log('User found and password matched:', user.id);
 
       // Login the user
-      req.logIn(user, async (loginErr) => {
+      req.logIn(user, (loginErr) => {
         if (loginErr) {
-          console.error('Login error:', loginErr);
-          return res.status(500).json({ error: "Internal server error during login" });
+          console.error('req.logIn execution error:', loginErr);
+          return res.status(500).json({ error: "Internal server error during session login" });
         }
 
-        console.log('User logged in successfully:', user.id);
+        console.log('req.logIn success, updating status for user:', user.id);
 
-        // Update user status to online and last active timestamp
-        try {
-          await db
-            .update(users)
-            .set({
-              status: UserStatus.ONLINE,
-              lastActive: new Date()
-            })
-            .where(eq(users.id, user.id));
+        // Update user status
+        db.update(users)
+          .set({
+            status: UserStatus.ONLINE,
+            lastActive: new Date()
+          })
+          .where(eq(users.id, user.id))
+          .then(() => {
+            console.log(`Status updated for user ${user.id}`);
+          })
+          .catch(err => {
+            console.error('Async status update failed:', err);
+          });
 
-          console.log(`User ${user.id} (${user.username}) is now online`);
-        } catch (error) {
-          console.error('Error updating user status on login:', error);
-          // Don't fail login if status update fails
-        }
-
-        // Ensure session is saved before responding
+        // Save session
         req.session.save((saveErr) => {
           if (saveErr) {
-            console.error('Session save error:', saveErr);
-            return res.status(500).json({ error: "Internal server error saving session" });
+            console.error('Session storage save error:', saveErr);
+            return res.status(500).json({ error: "Internal server error saving session storage" });
           }
 
-          console.log('Session saved successfully for user:', user.id);
+          console.log('Login fully complete for user:', user.id);
 
           return res.json({
             message: "Login successful",
