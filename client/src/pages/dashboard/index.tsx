@@ -637,7 +637,7 @@ export default function Dashboard() {
 
               {/* Full Task List with Completed Tab */}
               <div className="space-y-4">
-                <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden mb-8">
+                <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
@@ -742,7 +742,7 @@ export default function Dashboard() {
                                 (task?.status === "in_progress" || task?.isTimerRunning)
                             );
 
-                            const activity = projectActivity?.[project?.id];
+                            const activity = projectActivity?.[project.id];
                             const hasRecentActivity = activity && (activity.hasMessages || activity.hasResources);
 
                             return hasActiveTasks || hasRecentActivity;
@@ -1362,7 +1362,7 @@ export default function Dashboard() {
                     Loading tasks...
                   </div>
                 ) : (tasks ?? []).length > 0 ? (
-                  <Tabs defaultValue="active" className="w-full mt-4">
+                  <Tabs defaultValue="active" className="w-full mt-4 mb-6">
                     <TabsList className="grid w-full grid-cols-2 border-2 border-blue-500 gap-2 p-1">
                       <TabsTrigger value="active" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-3 py-2 whitespace-nowrap">Active Tasks</TabsTrigger>
                       <TabsTrigger value="completed" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-3 py-2 whitespace-nowrap">Completed</TabsTrigger>
