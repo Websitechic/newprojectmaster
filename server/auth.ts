@@ -85,8 +85,15 @@ export function setupAuth(app: Express) {
   // Always trust proxy for Replit deployments
   app.set("trust proxy", 1);
 
+  const isProduction = process.env.NODE_ENV === 'production';
+  const sessionSecret = process.env.SESSION_SECRET || process.env.REPL_ID || "fallback-secret-key-for-development-only";
+  
+  if (isProduction && (!process.env.SESSION_SECRET && !process.env.REPL_ID)) {
+    console.warn('⚠️ WARNING: Using fallback session secret in production! Set SESSION_SECRET environment variable.');
+  }
+
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID || process.env.SESSION_SECRET || "fallback-secret-key-change-in-production",
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     rolling: true, // Reset maxAge on every request
@@ -94,13 +101,14 @@ export function setupAuth(app: Express) {
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
     cookie: {
-      secure: false, // Set to false for Replit's proxy setup
+      secure: isProduction, // Use secure cookies in production
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: isProduction ? "none" : "lax", // 'none' required for cross-site in production with secure
       maxAge: 14 * 24 * 60 * 60 * 1000, // 2 weeks of inactivity
       path: '/'
     },
-    name: 'connect.sid' // Explicit session cookie name
+    name: 'connect.sid', // Explicit session cookie name
+    proxy: true // Trust first proxy
   }
 
   app.use(session(sessionSettings));

@@ -55,6 +55,7 @@ import WebSocket from "ws";
 import { format } from "date-fns";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { sendOneSignalNotification } from "./onesignal";
+import { IVerifyOptions } from "passport";
 
 // Helper function to create notifications
 async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
@@ -2014,7 +2015,7 @@ export function registerRoutes(app: Express): Server {
           ['Staff Name', staffName],
           ['Department', department],
           ['Date Range', `${dateRange} days`],
-          ['Generated At', new Date().toISOString()],
+          ['Generated At', new Date().toLocaleString()],
           [''],
           ['Summary'],
           ['Total Days', productivityData.summary.totalDays],
@@ -6457,7 +6458,7 @@ End of Report
 
       res.json(upcomingBookings);
     } catch (error) {
-      console.error("Errorfetching upcoming bookings:", error);
+      console.error("Error fetching upcoming bookings:", error);
       res.status(500).json({ error: "Failed to fetch upcoming bookings" });
     }
   });
@@ -7200,10 +7201,6 @@ End of Report
 
       if (!status || (status !== "approved" && status !== "declined")) {
         return res.status(400).json({ error: "Valid status (approved or declined) is required" });
-      }
-
-      if (!decisionReason) {
-        return res.status(400).json({ error: "Decision reason is required" });
       }
 
       // Check if request exists

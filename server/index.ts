@@ -35,8 +35,11 @@ app.use(express.urlencoded({ extended: false }));
 
 // Session middleware setup with consistent configuration
 const MemoryStore = createMemoryStore(session);
+const isProduction = process.env.NODE_ENV === 'production';
+const sessionSecret = process.env.SESSION_SECRET || process.env.REPL_ID || "your-secret-key";
+
 const sessionMiddleware = session({
-  secret: process.env.REPL_ID || "your-secret-key",
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   rolling: true, // Reset maxAge on every request
@@ -44,13 +47,14 @@ const sessionMiddleware = session({
     checkPeriod: 86400000, // prune expired entries every 24h
   }),
   cookie: {
-    secure: false, // Set to false for development
+    secure: isProduction, // Use secure cookies in production
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: isProduction ? "none" : "lax",
     maxAge: 14 * 24 * 60 * 60 * 1000, // 2 weeks of inactivity
     path: "/"
   },
-  name: "session_id" // Custom session cookie name
+  name: "connect.sid", // Match auth.ts session name
+  proxy: true // Trust first proxy
 });
 
 // Apply session middleware
@@ -73,10 +77,19 @@ app.use((req, res, next) => {
 });
 
 // Error handling middleware
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("Server Error:", err);
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  console.error("❌ Server Error:", {
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
+  
+  // Send appropriate error response
+  const isDevelopment = app.get("env") === "development";
   res.status(500).json({
-    error: app.get("env") === "development" ? err.message : "Internal Server Error"
+    error: isDevelopment ? err.message : "Internal Server Error",
+    ...(isDevelopment && { stack: err.stack })
   });
 });
 
