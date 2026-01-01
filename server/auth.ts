@@ -134,6 +134,8 @@ export function setupAuth(app: Express) {
           console.log('User not found:', username);
           return done(null, false, { message: "Incorrect username." });
         }
+        
+        console.log('User found, comparing password...');
         const isMatch = await crypto.compare(password, user.password);
         if (!isMatch) {
           console.log('Password mismatch for user:', username);
@@ -142,7 +144,7 @@ export function setupAuth(app: Express) {
         console.log('User authenticated successfully:', username);
         return done(null, user);
       } catch (err) {
-        console.error('LocalStrategy error:', err);
+        console.error('CRITICAL: LocalStrategy database error:', err);
         return done(err);
       }
     })
@@ -170,8 +172,11 @@ export function setupAuth(app: Express) {
     
     passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
-        console.error('Passport strategy execution error:', err);
-        return res.status(500).json({ error: "Internal server error during authentication strategy" });
+        console.error('CRITICAL: Passport authenticate error:', err);
+        return res.status(500).json({ 
+          error: "Internal server error during authentication",
+          details: err.message 
+        });
       }
       if (!user) {
         console.log('Authentication rejected:', info?.message);
@@ -183,8 +188,11 @@ export function setupAuth(app: Express) {
       // Login the user
       req.logIn(user, (loginErr) => {
         if (loginErr) {
-          console.error('req.logIn execution error:', loginErr);
-          return res.status(500).json({ error: "Internal server error during session login" });
+          console.error('CRITICAL: req.logIn error:', loginErr);
+          return res.status(500).json({ 
+            error: "Internal server error during session login",
+            details: loginErr.message 
+          });
         }
 
         console.log('req.logIn success, updating status for user:', user.id);
@@ -206,8 +214,11 @@ export function setupAuth(app: Express) {
         // Save session
         req.session.save((saveErr) => {
           if (saveErr) {
-            console.error('Session storage save error:', saveErr);
-            return res.status(500).json({ error: "Internal server error saving session storage" });
+            console.error('CRITICAL: Session storage save error:', saveErr);
+            return res.status(500).json({ 
+              error: "Internal server error saving session",
+              details: saveErr.message 
+            });
           }
 
           console.log('Login fully complete for user:', user.id);
