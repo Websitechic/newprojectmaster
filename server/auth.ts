@@ -61,8 +61,8 @@ declare global {
 
 // Login schema
 const loginSchema = z.object({
-  username: z.string(),
-  password: z.string()
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required")
 });
 
 // Registration validation
@@ -88,8 +88,13 @@ export function setupAuth(app: Express) {
   const isProduction = process.env.NODE_ENV === 'production';
   const sessionSecret = process.env.SESSION_SECRET || process.env.REPL_ID || "fallback-secret-key-for-development-only";
   
-  if (isProduction && (!process.env.SESSION_SECRET && !process.env.REPL_ID)) {
-    console.warn('⚠️ WARNING: Using fallback session secret in production! Set SESSION_SECRET environment variable.');
+  if (isProduction) {
+    if (!process.env.SESSION_SECRET && !process.env.REPL_ID) {
+      console.error('❌ CRITICAL: No SESSION_SECRET or REPL_ID found in production!');
+      console.error('Set SESSION_SECRET in Secrets for secure sessions.');
+    } else {
+      console.log('✅ Session secret configured from:', process.env.SESSION_SECRET ? 'SESSION_SECRET' : 'REPL_ID');
+    }
   }
 
   const sessionSettings: session.SessionOptions = {
@@ -156,19 +161,28 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
+    console.log('Login attempt:', { username: req.body?.username, hasPassword: !!req.body?.password });
+    
     passport.authenticate("local", async (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
-        return next(err);
+        console.error('Passport authentication error:', err);
+        return res.status(500).json({ error: "Internal server error during authentication" });
       }
       if (!user) {
+        console.log('Authentication failed:', info.message);
         return res.status(401).json({ message: info.message || "Authentication failed" });
       }
 
+      console.log('User authenticated, attempting login:', user.id);
+
       // Login the user
-      req.logIn(user, async (err) => {
-        if (err) {
-          return next(err);
+      req.logIn(user, async (loginErr) => {
+        if (loginErr) {
+          console.error('Login error:', loginErr);
+          return res.status(500).json({ error: "Internal server error during login" });
         }
+
+        console.log('User logged in successfully:', user.id);
 
         // Update user status to online and last active timestamp
         try {
@@ -183,14 +197,17 @@ export function setupAuth(app: Express) {
           console.log(`User ${user.id} (${user.username}) is now online`);
         } catch (error) {
           console.error('Error updating user status on login:', error);
+          // Don't fail login if status update fails
         }
 
         // Ensure session is saved before responding
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error('Session save error:', saveErr);
-            return next(saveErr);
+            return res.status(500).json({ error: "Internal server error saving session" });
           }
+
+          console.log('Session saved successfully for user:', user.id);
 
           return res.json({
             message: "Login successful",

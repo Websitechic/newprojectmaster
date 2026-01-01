@@ -6,8 +6,6 @@ import { setupVite, serveStatic, log } from "./vite";
 import { breakScheduler } from "./break-scheduler";
 import { communicationMonitor } from "./communication-monitor";
 import { setupAuth } from "./auth";
-import session from "express-session";
-import createMemoryStore from "memorystore";
 import { initializeEmailService } from "./services/email";
 import { WebSocketServer } from "ws";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -30,37 +28,14 @@ if (!global.connectedClients) {
 }
 
 const app = express();
+
+// Trust proxy - MUST be set before session middleware
+app.set("trust proxy", 1);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Session middleware setup with consistent configuration
-const MemoryStore = createMemoryStore(session);
-const isProduction = process.env.NODE_ENV === 'production';
-const sessionSecret = process.env.SESSION_SECRET || process.env.REPL_ID || "your-secret-key";
-
-const sessionMiddleware = session({
-  secret: sessionSecret,
-  resave: false,
-  saveUninitialized: false,
-  rolling: true, // Reset maxAge on every request
-  store: new MemoryStore({
-    checkPeriod: 86400000, // prune expired entries every 24h
-  }),
-  cookie: {
-    secure: isProduction, // Use secure cookies in production
-    httpOnly: true,
-    sameSite: isProduction ? "none" : "lax",
-    maxAge: 14 * 24 * 60 * 60 * 1000, // 2 weeks of inactivity
-    path: "/"
-  },
-  name: "connect.sid", // Match auth.ts session name
-  proxy: true // Trust first proxy
-});
-
-// Apply session middleware
-app.use(sessionMiddleware);
-
-// Setup authentication after session middleware
+// Setup authentication (which includes session middleware)
 setupAuth(app);
 
 // Request logging middleware

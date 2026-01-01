@@ -191,6 +191,29 @@ const upload = multer({
 
 // Middleware for authentication (assuming it's defined elsewhere and imported)
 // For demonstration purposes, we'll define a placeholder here.
+
+
+  // Session health check endpoint (for debugging)
+  app.get("/api/health/session", (req, res) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const hasSessionSecret = !!(process.env.SESSION_SECRET || process.env.REPL_ID);
+    
+    res.json({
+      environment: process.env.NODE_ENV || 'development',
+      isProduction,
+      hasSessionSecret,
+      sessionCookieSettings: {
+        secure: req.session?.cookie?.secure,
+        httpOnly: req.session?.cookie?.httpOnly,
+        sameSite: req.session?.cookie?.sameSite,
+        maxAge: req.session?.cookie?.maxAge
+      },
+      trustProxy: app.get('trust proxy'),
+      sessionExists: !!req.session,
+      sessionID: req.session?.id
+    });
+  });
+
 // In a real application, this would likely be imported from './auth' or a similar file.
 const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   if (req.isAuthenticated() && req.user) {
@@ -266,21 +289,28 @@ export function registerRoutes(app: Express): Server {
   // User endpoint for authentication
   app.get("/api/user", (req, res) => {
     try {
+      const sessionExists = !!req.session;
+      const hasPassport = !!(req.session && req.session.passport);
+      const isAuth = req.isAuthenticated();
+      
       console.log('Auth check:', {
-        isAuthenticated: req.isAuthenticated(),
+        isAuthenticated: isAuth,
         hasUser: !!req.user,
+        sessionExists,
+        hasPassport,
         sessionID: req.session?.id,
-        cookie: req.session?.cookie
+        cookieSecure: req.session?.cookie?.secure,
+        cookieSameSite: req.session?.cookie?.sameSite
       });
 
-      if (req.isAuthenticated() && req.user) {
-        res.json(req.user);
+      if (isAuth && req.user) {
+        return res.json(req.user);
       } else {
-        res.status(401).json({ error: "Not authenticated" });
+        return res.status(401).json({ error: "Not authenticated" });
       }
     } catch (error) {
       console.error("Error in /api/user:", error);
-      res.status(500).json({ error: "Internal server error" });
+      return res.status(500).json({ error: "Internal server error" });
     }
   });
 
