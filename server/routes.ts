@@ -4977,12 +4977,12 @@ End of Report
       }
 
       // Additional validation
-      if (!name.trim()) {
+      if (!staffName.trim()) {
         return res.status(400).json({ error: "Staff name cannot be empty" });
       }
 
       if (!whyQuery.trim()) {
-        return res.status(400).json({ error: "Query explanation cannot be empty" });
+        return res.status(400).json({ error: "Penalty explanation cannot be empty" });
       }
 
       if (!likelyPenalty.trim()) {

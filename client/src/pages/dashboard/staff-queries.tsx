@@ -311,12 +311,12 @@ export default function StaffQueries() {
               </div>
 
               <div>
-                <Label htmlFor="whyQuery">Why Query *</Label>
+                <Label htmlFor="whyQuery">Why Penalty *</Label>
                 <Textarea
                   id="whyQuery"
                   value={formData.whyQuery}
                   onChange={(e) => setFormData(prev => ({ ...prev, whyQuery: e.target.value }))}
-                  placeholder="Explain why this query is being issued..."
+                  placeholder="Explain why this penalty is being issued..."
                   rows={3}
                   required
                 />
@@ -432,7 +432,7 @@ export default function StaffQueries() {
                 </div>
 
                 <div>
-                  <span className="font-medium">Why Query:</span>
+                  <span className="font-medium">Why Penalty:</span>
                   <p className="text-sm text-gray-700 mt-1">{query.whyQuery}</p>
                 </div>
 
