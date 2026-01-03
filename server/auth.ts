@@ -12,6 +12,16 @@ import { z } from "zod";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./services/email";
 
 const scryptAsync = promisify(scrypt);
+
+// Extend session types for passport
+declare module 'express-session' {
+  interface SessionData {
+    passport?: {
+      user?: number;
+    };
+  }
+}
+
 const crypto = {
   hash: async (password: string) => {
     const salt = randomBytes(16).toString("hex");
@@ -19,31 +29,19 @@ const crypto = {
     return `${buf.toString("hex")}.${salt}`;
   },
   compare: async (suppliedPassword: string, storedPassword: string) => {
-    // Handle malformed password hashes
-    if (!storedPassword || typeof storedPassword !== 'string') {
-      console.error('Invalid stored password format:', storedPassword);
-      return false;
-    }
-
-    const parts = storedPassword.split(".");
-    if (parts.length !== 2) {
-      console.error('Malformed password hash - expected format: hash.salt, got:', storedPassword);
-      return false;
-    }
-
-    const [hashedPassword, salt] = parts;
-
-    if (!hashedPassword || !salt) {
-      console.error('Missing hash or salt in stored password');
-      return false;
-    }
-
     try {
-      if (!storedPassword || !suppliedPassword) {
-        console.error('Missing password input:', { hasStored: !!storedPassword, hasSupplied: !!suppliedPassword });
+      // Validate inputs
+      if (!storedPassword || typeof storedPassword !== 'string') {
+        console.error('Invalid stored password format:', typeof storedPassword);
         return false;
       }
-      
+
+      if (!suppliedPassword || typeof suppliedPassword !== 'string') {
+        console.error('Invalid supplied password format');
+        return false;
+      }
+
+      // Check password hash format (should be "hash.salt")
       const parts = storedPassword.split(".");
       if (parts.length !== 2) {
         console.error('Malformed password hash - expected format: hash.salt, got length:', parts.length);
@@ -51,12 +49,30 @@ const crypto = {
       }
 
       const [hashedPassword, salt] = parts;
+
+      if (!hashedPassword || !salt) {
+        console.error('Missing hash or salt in stored password');
+        return false;
+      }
+
+      // Verify the hash and salt have expected lengths
+      if (hashedPassword.length !== 128) {
+        console.error('Invalid hash length:', hashedPassword.length, '(expected 128)');
+        return false;
+      }
+
+      if (salt.length !== 32) {
+        console.error('Invalid salt length:', salt.length, '(expected 32)');
+        return false;
+      }
+
       const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
       const suppliedPasswordBuf = (await scryptAsync(
         suppliedPassword,
         salt,
         64
       )) as Buffer;
+      
       return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
     } catch (error) {
       console.error('Error comparing passwords:', error);
@@ -97,11 +113,14 @@ export function setupAuth(app: Express) {
   // Always trust proxy for Replit deployments
   app.set("trust proxy", 1);
 
-  const isProduction = process.env.NODE_ENV === 'production';
+  // Detect production environment - Replit sets REPLIT_DEPLOYMENT=1 for published apps
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === '1';
   const sessionSecret = process.env.SESSION_SECRET || process.env.REPL_ID || "fallback-secret-key-for-development-only";
   
   console.log('🔧 Session Configuration:');
   console.log('  - Environment:', isProduction ? 'production' : 'development');
+  console.log('  - NODE_ENV:', process.env.NODE_ENV);
+  console.log('  - REPLIT_DEPLOYMENT:', process.env.REPLIT_DEPLOYMENT);
   console.log('  - Trust proxy:', app.get("trust proxy"));
   console.log('  - Session secret source:', process.env.SESSION_SECRET ? 'SESSION_SECRET' : process.env.REPL_ID ? 'REPL_ID' : 'fallback');
   console.log('  - Cookie secure:', isProduction);
@@ -110,6 +129,10 @@ export function setupAuth(app: Express) {
     console.error('❌ CRITICAL: No SESSION_SECRET or REPL_ID found in production!');
     console.error('Set SESSION_SECRET in Secrets for secure sessions.');
   }
+  
+  // Log database connection status
+  console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? 'configured' : 'NOT SET');
+  console.log('  - PRODUCTION_DATABASE_URL:', process.env.PRODUCTION_DATABASE_URL ? 'configured' : 'NOT SET');
 
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
@@ -165,9 +188,13 @@ export function setupAuth(app: Express) {
               passwordLength: user.password?.length
             });
           }
-        } catch (dbErr) {
+        } catch (dbErr: any) {
           console.error('DATABASE ERROR during login:', dbErr);
-          return done(dbErr);
+          console.error('Error code:', dbErr?.code);
+          console.error('Error message:', dbErr?.message);
+          // Return a user-friendly error instead of propagating database errors
+          // This prevents "Internal server error during authentication strategy"
+          return done(null, false, { message: "Authentication service temporarily unavailable. Please try again." });
         }
 
         if (!user) {
@@ -194,7 +221,8 @@ export function setupAuth(app: Express) {
             stack: compareErr instanceof Error ? compareErr.stack : undefined,
             storedPassword: user.password?.substring(0, 20) + '...'
           });
-          return done(new Error('Password verification failed'));
+          // Return a user-friendly error instead of propagating internal errors
+          return done(null, false, { message: "Password verification failed. Please try again." });
         }
         
         if (!isMatch) {
@@ -210,7 +238,9 @@ export function setupAuth(app: Express) {
           message: err instanceof Error ? err.message : 'Unknown error',
           stack: err instanceof Error ? err.stack : undefined
         });
-        return done(err);
+        // Return a user-friendly error instead of propagating internal errors
+        // This prevents "Internal server error during authentication strategy"
+        return done(null, false, { message: "An unexpected error occurred. Please try again." });
       }
     })
   );
@@ -221,14 +251,26 @@ export function setupAuth(app: Express) {
 
   passport.deserializeUser(async (id: number, done) => {
     try {
+      console.log('Deserializing user with ID:', id);
       const [user] = await db
         .select()
         .from(users)
         .where(eq(users.id, id))
         .limit(1);
+      
+      if (!user) {
+        console.log('User not found during deserialization, ID:', id);
+        return done(null, false);
+      }
+      
       done(null, user);
     } catch (err) {
-      done(err);
+      console.error('Error deserializing user:', err);
+      console.error('User ID:', id);
+      console.error('Error type:', err instanceof Error ? err.constructor.name : typeof err);
+      // Don't propagate database errors as authentication failures
+      // This prevents "Internal server error" during session restoration
+      done(null, false);
     }
   });
 
