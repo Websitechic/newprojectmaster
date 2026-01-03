@@ -250,6 +250,38 @@ export function registerRoutes(app: Express): Server {
     });
   });
 
+  // Database health check endpoint (for diagnosing production issues)
+  app.get("/api/health/database", async (req, res) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    try {
+      // Test database connection
+      const result = await db.execute(sql`SELECT 1 as test, NOW() as server_time`);
+      
+      // Count users to verify table access
+      const userCount = await db.select({ count: sql`count(*)` }).from(users);
+      
+      res.json({
+        status: 'connected',
+        environment: process.env.NODE_ENV || 'development',
+        databaseType: isProduction ? 'production' : 'development',
+        hasProductionDbUrl: !!process.env.PRODUCTION_DATABASE_URL,
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        serverTime: result[0]?.server_time || 'unknown',
+        userCount: userCount[0]?.count || 0
+      });
+    } catch (error: any) {
+      console.error('Database health check failed:', error);
+      res.status(500).json({
+        status: 'error',
+        environment: process.env.NODE_ENV || 'development',
+        databaseType: isProduction ? 'production' : 'development',
+        hasProductionDbUrl: !!process.env.PRODUCTION_DATABASE_URL,
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        error: error.message
+      });
+    }
+  });
+
   // Add middleware to ensure API routes return JSON - BEFORE static files
   app.use('/api', (req, res, next) => {
     res.setHeader('Content-Type', 'application/json');
