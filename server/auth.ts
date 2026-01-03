@@ -39,6 +39,18 @@ const crypto = {
     }
 
     try {
+      if (!storedPassword || !suppliedPassword) {
+        console.error('Missing password input:', { hasStored: !!storedPassword, hasSupplied: !!suppliedPassword });
+        return false;
+      }
+      
+      const parts = storedPassword.split(".");
+      if (parts.length !== 2) {
+        console.error('Malformed password hash - expected format: hash.salt, got length:', parts.length);
+        return false;
+      }
+
+      const [hashedPassword, salt] = parts;
       const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
       const suppliedPasswordBuf = (await scryptAsync(
         suppliedPassword,
@@ -136,11 +148,27 @@ export function setupAuth(app: Express) {
         }
         
         console.log('Querying database for user:', username);
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(sql`LOWER(${users.username}) = LOWER(${username})`)
-          .limit(1);
+        let user;
+        try {
+          const result = await db
+            .select()
+            .from(users)
+            .where(sql`LOWER(${users.username}) = LOWER(${username})`)
+            .limit(1);
+          user = result[0];
+          
+          if (user) {
+            console.log('User found:', {
+              id: user.id,
+              username: user.username,
+              hasPassword: !!user.password,
+              passwordLength: user.password?.length
+            });
+          }
+        } catch (dbErr) {
+          console.error('DATABASE ERROR during login:', dbErr);
+          return done(dbErr);
+        }
 
         if (!user) {
           console.log('User not found:', username);
