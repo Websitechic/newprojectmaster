@@ -299,16 +299,20 @@ export function registerRoutes(app: Express): Server {
         hasPassport,
         sessionID: req.session?.id,
         cookieSecure: req.session?.cookie?.secure,
-        cookieSameSite: req.session?.cookie?.sameSite
+        cookieSameSite: req.session?.cookie?.sameSite,
+        host: req.headers.host,
+        protocol: req.protocol
       });
 
       if (isAuth && req.user) {
         return res.json(req.user);
       } else {
+        console.log('User not authenticated - returning 401');
         return res.status(401).json({ error: "Not authenticated" });
       }
     } catch (error) {
       console.error("Error in /api/user:", error);
+      console.error('Error stack:', error instanceof Error ? error.stack : undefined);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

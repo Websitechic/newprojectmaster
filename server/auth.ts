@@ -108,14 +108,15 @@ export function setupAuth(app: Express) {
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
     cookie: {
-      secure: isProduction, // Use secure cookies in production
+      secure: false, // Set to false for Replit - handled by proxy
       httpOnly: true,
-      sameSite: isProduction ? "lax" : "lax", 
+      sameSite: "lax", 
       maxAge: 14 * 24 * 60 * 60 * 1000, // 2 weeks of inactivity
-      path: '/'
+      path: '/',
+      domain: undefined // Let browser set automatically
     },
     name: 'connect.sid', // Explicit session cookie name
-    proxy: true // Trust first proxy
+    proxy: true // Trust first proxy (Replit handles HTTPS)
   }
 
   app.use(session(sessionSettings));
@@ -126,6 +127,13 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         console.log('Authenticating user:', username);
+        
+        // Validate inputs
+        if (!username || !password) {
+          console.log('Missing username or password');
+          return done(null, false, { message: "Username and password are required." });
+        }
+        
         const [user] = await db
           .select()
           .from(users)
@@ -138,15 +146,29 @@ export function setupAuth(app: Express) {
         }
         
         console.log('User found, comparing password...');
-        const isMatch = await crypto.compare(password, user.password);
+        
+        // Add error handling for password comparison
+        let isMatch = false;
+        try {
+          isMatch = await crypto.compare(password, user.password);
+        } catch (compareErr) {
+          console.error('Password comparison error:', compareErr);
+          return done(null, false, { message: "Authentication failed." });
+        }
+        
         if (!isMatch) {
           console.log('Password mismatch for user:', username);
           return done(null, false, { message: "Incorrect password." });
         }
+        
         console.log('User authenticated successfully:', username);
         return done(null, user);
       } catch (err) {
-        console.error('CRITICAL: LocalStrategy database error:', err);
+        console.error('CRITICAL: LocalStrategy error:', err);
+        console.error('Error details:', {
+          message: err instanceof Error ? err.message : 'Unknown error',
+          stack: err instanceof Error ? err.stack : undefined
+        });
         return done(err);
       }
     })
@@ -172,17 +194,23 @@ export function setupAuth(app: Express) {
   app.post("/api/login", (req, res, next) => {
     console.log('Login attempt start:', { username: req.body?.username });
     
+    // Validate input first
+    if (!req.body || !req.body.username || !req.body.password) {
+      console.log('Login failed: Missing credentials');
+      return res.status(400).json({ message: "Username and password are required" });
+    }
+    
     passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
         console.error('CRITICAL: Passport authenticate error:', err);
+        console.error('Error stack:', err.stack);
         return res.status(500).json({ 
-          error: "Internal server error during authentication",
-          details: err.message 
+          message: "Internal server error during authentication"
         });
       }
       if (!user) {
         console.log('Authentication rejected:', info?.message);
-        return res.status(401).json({ message: info?.message || "Authentication failed" });
+        return res.status(401).json({ message: info?.message || "Invalid username or password" });
       }
 
       console.log('User found and password matched:', user.id);
@@ -191,15 +219,15 @@ export function setupAuth(app: Express) {
       req.logIn(user, (loginErr) => {
         if (loginErr) {
           console.error('CRITICAL: req.logIn error:', loginErr);
+          console.error('Error stack:', loginErr.stack);
           return res.status(500).json({ 
-            error: "Internal server error during session login",
-            details: loginErr.message 
+            message: "Internal server error during session login"
           });
         }
 
         console.log('req.logIn success, updating status for user:', user.id);
 
-        // Update user status
+        // Update user status (non-blocking)
         db.update(users)
           .set({
             status: UserStatus.ONLINE,
@@ -213,13 +241,13 @@ export function setupAuth(app: Express) {
             console.error('Async status update failed:', err);
           });
 
-        // Save session
+        // Save session explicitly
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error('CRITICAL: Session storage save error:', saveErr);
+            console.error('Error stack:', saveErr.stack);
             return res.status(500).json({ 
-              error: "Internal server error saving session",
-              details: saveErr.message 
+              message: "Internal server error saving session"
             });
           }
 
