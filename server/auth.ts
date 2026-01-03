@@ -88,13 +88,15 @@ export function setupAuth(app: Express) {
   const isProduction = process.env.NODE_ENV === 'production';
   const sessionSecret = process.env.SESSION_SECRET || process.env.REPL_ID || "fallback-secret-key-for-development-only";
   
-  if (isProduction) {
-    if (!process.env.SESSION_SECRET && !process.env.REPL_ID) {
-      console.error('❌ CRITICAL: No SESSION_SECRET or REPL_ID found in production!');
-      console.error('Set SESSION_SECRET in Secrets for secure sessions.');
-    } else {
-      console.log('✅ Session secret configured from:', process.env.SESSION_SECRET ? 'SESSION_SECRET' : 'REPL_ID');
-    }
+  console.log('🔧 Session Configuration:');
+  console.log('  - Environment:', isProduction ? 'production' : 'development');
+  console.log('  - Trust proxy:', app.get("trust proxy"));
+  console.log('  - Session secret source:', process.env.SESSION_SECRET ? 'SESSION_SECRET' : process.env.REPL_ID ? 'REPL_ID' : 'fallback');
+  console.log('  - Cookie secure:', isProduction);
+  
+  if (isProduction && !process.env.SESSION_SECRET && !process.env.REPL_ID) {
+    console.error('❌ CRITICAL: No SESSION_SECRET or REPL_ID found in production!');
+    console.error('Set SESSION_SECRET in Secrets for secure sessions.');
   }
 
   const sessionSettings: session.SessionOptions = {

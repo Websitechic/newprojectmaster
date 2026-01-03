@@ -35,10 +35,7 @@ app.set("trust proxy", 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Setup authentication (which includes session middleware)
-setupAuth(app);
-
-// Request logging middleware
+// Request logging middleware (before auth to log all requests)
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -50,6 +47,9 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+// Setup authentication (which includes session middleware)
+setupAuth(app);
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
@@ -166,11 +166,6 @@ let emailServiceInitialized = false;
       process.exit(1);
     }
 
-    // Session parser middleware for WebSocket upgrades
-    const sessionParser = (req: any, res: any, next: any) => {
-      sessionMiddleware(req, res, next);
-    };
-
     // WebSocket upgrade handling with improved error management and path filtering
     server.on('upgrade', (request, socket, head) => {
       const url = new URL(request.url!, `http://${request.headers.host}`);
@@ -192,56 +187,21 @@ let emailServiceInitialized = false;
         }
       }, 15000);
 
-      // Parse session for WebSocket connection with improved error handling
-    sessionParser(request, {} as any, (err) => {
-      clearTimeout(upgradeTimeout);
-
-      if (err) {
-        console.error('Session parsing error during WebSocket upgrade:', err);
+      try {
+        clearTimeout(upgradeTimeout);
+        
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          console.log('WebSocket upgrade completed, emitting connection');
+          wss.emit('connection', ws, request);
+        });
+      } catch (error) {
+        clearTimeout(upgradeTimeout);
+        console.error('WebSocket upgrade error:', error);
         if (socket && !socket.destroyed) {
           socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
           socket.destroy();
         }
-        return;
       }
-
-      try {
-        console.log('Session parsed for WebSocket upgrade');
-
-        // Ensure session is properly attached to request
-        if (!request.session && request.sessionStore) {
-          console.warn('Session not properly attached to WebSocket request');
-        }
-
-        // Log session info for debugging with safe access
-        const session = request.session || null;
-        console.log('Session exists:', !!session);
-        console.log('Session passport:', !!(session && session.passport));
-        console.log('Session user:', session && session.passport && session.passport.user);
-
-          wss.handleUpgrade(request, socket, head, (ws) => {
-            console.log('WebSocket upgrade completed, emitting connection');
-            // Set a timeout for connection setup
-            setTimeout(() => {
-              try {
-                wss.emit('connection', ws, request);
-              } catch (connectionError) {
-                console.error('Error emitting WebSocket connection:', connectionError);
-                // Close the WebSocket connection gracefully
-                if (ws && ws.readyState === ws.OPEN) {
-                  ws.close(1011, 'Server error during connection setup');
-                }
-              }
-            }, 100);
-          });
-        } catch (error) {
-          console.error('WebSocket upgrade error:', error);
-          if (socket && !socket.destroyed) {
-            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-            socket.destroy();
-          }
-        }
-      });
     });
 
     try {
