@@ -135,15 +135,6 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Username and password are required." });
         }
         
-        // Test database connection
-        try {
-          await db.execute(sql`SELECT 1 as test`);
-          console.log('✅ Database connection verified');
-        } catch (dbTestErr) {
-          console.error('❌ Database connection test failed:', dbTestErr);
-          return done(new Error('Database connection failed'));
-        }
-        
         console.log('Querying database for user:', username);
         const [user] = await db
           .select()

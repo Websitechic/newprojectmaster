@@ -2,7 +2,6 @@ import { Express, Response, Request, NextFunction } from "express";
 import express from "express";
 import { createServer, Server } from "http";
 import { setupWebSocket } from "./websocket";
-import { setupAuth } from "./auth";
 import { db } from "../db";
 import { breakScheduler } from "./break-scheduler";
 import multer from "multer";
@@ -222,12 +221,10 @@ function broadcastToUser(userId: number | string, message: string) {
 }
 
 export function registerRoutes(app: Express): Server {
-  setupAuth(app);
-
   const server = createServer(app);
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+  // Note: express.json(), express.urlencoded(), and setupAuth(app) 
+  // are already configured in server/index.ts before this function is called
 
   // Session health check endpoint (for debugging)
   app.get("/api/health/session", (req, res) => {
