@@ -189,12 +189,19 @@ export function setupAuth(app: Express) {
             });
           }
         } catch (dbErr: any) {
-          console.error('DATABASE ERROR during login:', dbErr);
-          console.error('Error code:', dbErr?.code);
-          console.error('Error message:', dbErr?.message);
-          // Return a user-friendly error instead of propagating database errors
-          // This prevents "Internal server error during authentication strategy"
-          return done(null, false, { message: "Authentication service temporarily unavailable. Please try again." });
+          // Log only non-sensitive diagnostic info for debugging
+          const errorCode = dbErr?.code || 'UNKNOWN';
+          const errorName = dbErr?.name || 'Error';
+          console.error('========== DATABASE ERROR DURING LOGIN ==========');
+          console.error('Error type:', errorName);
+          console.error('Error code:', errorCode);
+          console.error('Environment:', process.env.REPLIT_DEPLOYMENT === '1' ? 'PRODUCTION' : 'DEVELOPMENT');
+          console.error('DB URL configured:', !!process.env.DATABASE_URL);
+          console.error('Prod DB URL configured:', !!process.env.PRODUCTION_DATABASE_URL);
+          console.error('=================================================');
+          
+          // Include error code in message for debugging (helps identify issue without exposing sensitive info)
+          return done(null, false, { message: `Authentication service temporarily unavailable. Please try again. (Error: DB-${errorCode})` });
         }
 
         if (!user) {

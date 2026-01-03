@@ -88,6 +88,16 @@ let emailServiceInitialized = false;
     log("Starting server initialization...");
     log("Environment:", app.get("env"));
     log("Node version:", process.version);
+    
+    // Log production environment detection
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === '1';
+    console.log('========== ENVIRONMENT DETECTION ==========');
+    console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
+    console.log('REPLIT_DEPLOYMENT:', process.env.REPLIT_DEPLOYMENT || 'not set');
+    console.log('Detected as:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
+    console.log('DATABASE_URL configured:', !!process.env.DATABASE_URL);
+    console.log('PRODUCTION_DATABASE_URL configured:', !!process.env.PRODUCTION_DATABASE_URL);
+    console.log('============================================');
 
     // Check for required environment variables
     if (!process.env.DATABASE_URL) {
