@@ -110,7 +110,7 @@ export function setupAuth(app: Express) {
     cookie: {
       secure: isProduction, // Use secure cookies in production
       httpOnly: true,
-      sameSite: isProduction ? "none" : "lax", // 'none' required for cross-origin in production
+      sameSite: "lax", 
       maxAge: 14 * 24 * 60 * 60 * 1000, // 2 weeks of inactivity
       path: '/',
       domain: undefined // Let browser set automatically
@@ -137,7 +137,7 @@ export function setupAuth(app: Express) {
         
         // Test database connection
         try {
-          await db.execute("SELECT 1 as test");
+          await db.execute(sql`SELECT 1 as test`);
           console.log('✅ Database connection verified');
         } catch (dbTestErr) {
           console.error('❌ Database connection test failed:', dbTestErr);
