@@ -90,10 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
+      console.log('🔐 Client: Starting login mutation');
+      
       if (!credentials.username || !credentials.password) {
         throw new Error("Username and password are required");
       }
 
+      console.log('🔐 Client: Sending login request for user:', credentials.username);
       const res = await fetch("/api/login", {
         method: "POST",
         headers: {
@@ -104,14 +107,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include"
       });
 
+      console.log('🔐 Client: Login response status:', res.status);
+
       if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Invalid username or password");
+        let errorMessage;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorData.error || "Login failed";
+          console.error('🔐 Client: Login error response:', errorData);
+        } catch (parseError) {
+          errorMessage = await res.text();
+          console.error('🔐 Client: Login error text:', errorMessage);
+        }
+        throw new Error(errorMessage || "Invalid username or password");
       }
 
-      return res.json();
+      const data = await res.json();
+      console.log('🔐 Client: Login successful for user:', data.user?.username);
+      return data;
     },
     onSuccess: (data) => {
+      console.log('🔐 Client: Setting user data in query cache');
       queryClient.setQueryData(["/api/user"], data.user);
       toast({
         title: "Success",
@@ -119,7 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
-      console.error("Login error:", error);
+      console.error("🔐 Client: Login error:", error);
+      console.error("🔐 Client: Error message:", error.message);
+      console.error("🔐 Client: Error stack:", error.stack);
       toast({
         title: "Login Failed",
         description: error.message || "Invalid username or password",

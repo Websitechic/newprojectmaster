@@ -108,9 +108,9 @@ export function setupAuth(app: Express) {
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
     cookie: {
-      secure: false, // Set to false for Replit - handled by proxy
+      secure: isProduction, // Use secure cookies in production
       httpOnly: true,
-      sameSite: "lax", 
+      sameSite: isProduction ? "none" : "lax", // 'none' required for cross-origin in production
       maxAge: 14 * 24 * 60 * 60 * 1000, // 2 weeks of inactivity
       path: '/',
       domain: undefined // Let browser set automatically
@@ -126,6 +126,7 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        console.log('\n--- LocalStrategy Authentication Start ---');
         console.log('Authenticating user:', username);
         
         // Validate inputs
@@ -134,6 +135,16 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Username and password are required." });
         }
         
+        // Test database connection
+        try {
+          await db.execute("SELECT 1 as test");
+          console.log('✅ Database connection verified');
+        } catch (dbTestErr) {
+          console.error('❌ Database connection test failed:', dbTestErr);
+          return done(new Error('Database connection failed'));
+        }
+        
+        console.log('Querying database for user:', username);
         const [user] = await db
           .select()
           .from(users)
@@ -146,14 +157,25 @@ export function setupAuth(app: Express) {
         }
         
         console.log('User found, comparing password...');
+        console.log('Stored password hash format:', {
+          hasPassword: !!user.password,
+          passwordLength: user.password?.length,
+          hasDot: user.password?.includes('.')
+        });
         
         // Add error handling for password comparison
         let isMatch = false;
         try {
           isMatch = await crypto.compare(password, user.password);
+          console.log('Password comparison result:', isMatch);
         } catch (compareErr) {
-          console.error('Password comparison error:', compareErr);
-          return done(null, false, { message: "Authentication failed." });
+          console.error('CRITICAL: Password comparison error:', compareErr);
+          console.error('Error details:', {
+            message: compareErr instanceof Error ? compareErr.message : 'Unknown error',
+            stack: compareErr instanceof Error ? compareErr.stack : undefined,
+            storedPassword: user.password?.substring(0, 20) + '...'
+          });
+          return done(new Error('Password verification failed'));
         }
         
         if (!isMatch) {
@@ -192,40 +214,63 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    console.log('Login attempt start:', { username: req.body?.username });
+    console.log('\n========== LOGIN ATTEMPT START ==========');
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('Request headers:', {
+      host: req.headers.host,
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      'user-agent': req.headers['user-agent']?.substring(0, 50)
+    });
+    console.log('Session info:', {
+      hasSession: !!req.session,
+      sessionID: req.session?.id,
+      hasPassport: !!(req.session && req.session.passport)
+    });
+    console.log('Login attempt for username:', req.body?.username);
     
     // Validate input first
     if (!req.body || !req.body.username || !req.body.password) {
       console.log('Login failed: Missing credentials');
+      console.log('========== LOGIN ATTEMPT END (FAILED) ==========\n');
       return res.status(400).json({ message: "Username and password are required" });
     }
     
     passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
-        console.error('CRITICAL: Passport authenticate error:', err);
+        console.error('\n❌ CRITICAL: Passport authenticate error:', err);
+        console.error('Error type:', err.constructor.name);
+        console.error('Error message:', err.message);
         console.error('Error stack:', err.stack);
+        console.log('========== LOGIN ATTEMPT END (ERROR) ==========\n');
         return res.status(500).json({ 
-          message: "Internal server error during authentication"
+          message: "Internal server error during authentication strategy",
+          error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
       }
       if (!user) {
         console.log('Authentication rejected:', info?.message);
+        console.log('========== LOGIN ATTEMPT END (REJECTED) ==========\n');
         return res.status(401).json({ message: info?.message || "Invalid username or password" });
       }
 
-      console.log('User found and password matched:', user.id);
+      console.log('✅ User authenticated successfully:', user.id);
 
       // Login the user
       req.logIn(user, (loginErr) => {
         if (loginErr) {
-          console.error('CRITICAL: req.logIn error:', loginErr);
+          console.error('\n❌ CRITICAL: req.logIn error:', loginErr);
+          console.error('Error type:', loginErr.constructor.name);
+          console.error('Error message:', loginErr.message);
           console.error('Error stack:', loginErr.stack);
+          console.log('========== LOGIN ATTEMPT END (LOGIN ERROR) ==========\n');
           return res.status(500).json({ 
-            message: "Internal server error during session login"
+            message: "Internal server error during session login",
+            error: process.env.NODE_ENV === 'development' ? loginErr.message : undefined
           });
         }
 
-        console.log('req.logIn success, updating status for user:', user.id);
+        console.log('✅ req.logIn success, updating status for user:', user.id);
 
         // Update user status (non-blocking)
         db.update(users)
@@ -235,23 +280,29 @@ export function setupAuth(app: Express) {
           })
           .where(eq(users.id, user.id))
           .then(() => {
-            console.log(`Status updated for user ${user.id}`);
+            console.log(`✅ Status updated for user ${user.id}`);
           })
           .catch(err => {
-            console.error('Async status update failed:', err);
+            console.error('⚠️ Async status update failed:', err);
           });
 
         // Save session explicitly
         req.session.save((saveErr) => {
           if (saveErr) {
-            console.error('CRITICAL: Session storage save error:', saveErr);
+            console.error('\n❌ CRITICAL: Session storage save error:', saveErr);
+            console.error('Error type:', saveErr.constructor.name);
+            console.error('Error message:', saveErr.message);
             console.error('Error stack:', saveErr.stack);
+            console.log('========== LOGIN ATTEMPT END (SESSION SAVE ERROR) ==========\n');
             return res.status(500).json({ 
-              message: "Internal server error saving session"
+              message: "Internal server error saving session",
+              error: process.env.NODE_ENV === 'development' ? saveErr.message : undefined
             });
           }
 
-          console.log('Login fully complete for user:', user.id);
+          console.log('✅ Login fully complete for user:', user.id);
+          console.log('Session saved with ID:', req.session.id);
+          console.log('========== LOGIN ATTEMPT END (SUCCESS) ==========\n');
 
           return res.json({
             message: "Login successful",

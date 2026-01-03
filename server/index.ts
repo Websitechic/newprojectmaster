@@ -39,10 +39,23 @@ app.use(express.urlencoded({ extended: false }));
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
+  
+  // Special logging for authentication endpoints
+  if (path === '/api/login' || path === '/api/user') {
+    console.log(`\n🔐 Auth Request: ${req.method} ${path}`);
+    console.log('Headers:', {
+      'content-type': req.headers['content-type'],
+      'cookie': req.headers.cookie ? 'present' : 'absent',
+      'origin': req.headers.origin,
+      'referer': req.headers.referer
+    });
+  }
+  
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
+      const logLevel = res.statusCode >= 400 ? '❌' : res.statusCode >= 300 ? '⚠️' : '✅';
+      log(`${logLevel} ${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
   next();
