@@ -96,7 +96,6 @@ let emailServiceInitialized = false;
     console.log('REPLIT_DEPLOYMENT:', process.env.REPLIT_DEPLOYMENT || 'not set');
     console.log('Detected as:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
     console.log('DATABASE_URL configured:', !!process.env.DATABASE_URL);
-    console.log('PRODUCTION_DATABASE_URL configured:', !!process.env.PRODUCTION_DATABASE_URL);
     console.log('============================================');
 
     // Check for required environment variables

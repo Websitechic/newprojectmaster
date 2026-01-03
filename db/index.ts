@@ -5,25 +5,18 @@ import * as schema from "@db/schema";
 // Detect production environment - Replit sets REPLIT_DEPLOYMENT=1 for published apps
 const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === '1';
 
-// In production, prefer PRODUCTION_DATABASE_URL, fall back to DATABASE_URL
-// In development, use DATABASE_URL
-const databaseUrl = isProduction 
-  ? (process.env.PRODUCTION_DATABASE_URL || process.env.DATABASE_URL)
-  : process.env.DATABASE_URL;
+// Use DATABASE_URL for both development and production
+// Replit's built-in database works in both environments and keeps data synchronized
+const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  const errorMsg = isProduction 
-    ? "PRODUCTION_DATABASE_URL or DATABASE_URL must be set in production!"
-    : "DATABASE_URL must be set. Did you forget to provision a database?";
+  const errorMsg = "DATABASE_URL must be set. Did you forget to provision a database?";
   console.error(`❌ Database Error: ${errorMsg}`);
   throw new Error(errorMsg);
 }
 
-// Log which database URL source we're using (without exposing the actual URL)
-const urlSource = isProduction 
-  ? (process.env.PRODUCTION_DATABASE_URL ? 'PRODUCTION_DATABASE_URL' : 'DATABASE_URL')
-  : 'DATABASE_URL';
-console.log(`🔌 Connecting to ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} database (source: ${urlSource})`);
+// Log database connection info (without exposing the actual URL)
+console.log(`🔌 Connecting to database (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} environment)`);
 
 // Create postgres client with connection options
 // Note: Neon databases require SSL, but the connection string already includes sslmode=require
