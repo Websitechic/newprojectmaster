@@ -40,6 +40,7 @@ import ClientAccounts from "@/pages/dashboard/client-accounts";
 import ClientSentiment from "@/pages/dashboard/client-sentiment";
 import ClientSentimentTracker from "@/pages/dashboard/client-sentiment-tracker";
 import ProfilePage from "@/pages/dashboard/profile";
+import AllUsersPage from "@/pages/all-users";
 
 import Memos from "@/pages/dashboard/memos";
 import StaffComplaints from "@/pages/dashboard/staff-complaints";
@@ -439,6 +440,9 @@ function Router() {
         <Switch>
           <Route path="/auth">
             {user ? <Redirect to="/dashboard" /> : <AuthPage />}
+          </Route>
+          <Route path="/all-users">
+            <AllUsersPage />
           </Route>
           <Route path="/">
             {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}

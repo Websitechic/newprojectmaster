@@ -349,23 +349,33 @@ export default function AuthPage() {
             <Button type="submit" className="w-full">
               {isLogin ? "Login" : "Register"}
             </Button>
-            <div className="flex justify-between w-full">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setIsLogin(!isLogin)}
-              >
-                {isLogin ? "Need an account? Register" : "Already have an account? Login"}
-              </Button>
-              {isLogin && (
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex justify-between w-full">
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setResetMode(true)}
+                  onClick={() => setIsLogin(!isLogin)}
                 >
-                  Forgot Password?
+                  {isLogin ? "Need an account? Register" : "Already have an account? Login"}
                 </Button>
-              )}
+                {isLogin && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setResetMode(true)}
+                  >
+                    Forgot Password?
+                  </Button>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => window.location.href = '/all-users'}
+                className="w-full"
+              >
+                View All Users
+              </Button>
             </div>
           </CardFooter>
         </form>

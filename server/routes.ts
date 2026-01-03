@@ -285,6 +285,29 @@ export function registerRoutes(app: Express): Server {
   // Static file serving AFTER API middleware
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+  // Public endpoint to get all users (no authentication required)
+  app.get("/api/public/users", async (req, res) => {
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          username: users.username,
+          role: users.role,
+          specialization: users.specialization,
+          status: users.status,
+        })
+        .from(users)
+        .orderBy(asc(users.name));
+
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
   // User endpoint for authentication
   app.get("/api/user", (req, res) => {
     try {
