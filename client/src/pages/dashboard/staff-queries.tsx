@@ -42,13 +42,13 @@ export default function StaffQueries() {
   // Fetch all users for staff selection
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users/all"],
-    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "project_manager",
+    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "project_manager" || user?.role === "team_lead" || user?.role === "customer_support_officer",
   });
 
   // Fetch all departments for department selection
   const { data: departments = [] } = useQuery({
     queryKey: ["/api/departments"],
-    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "project_manager",
+    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "project_manager" || user?.role === "team_lead" || user?.role === "customer_support_officer",
   });
 
   // Fetch staff queries
@@ -457,6 +457,7 @@ export default function StaffQueries() {
                   </div>
                 )}
 
+                {/* Staff/Interns can only acknowledge their own pending penalties */}
                 {!(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) && query.status === "pending" && query.staffId === user?.id && (
                   <div className="flex gap-2 pt-4 border-t">
                     <Button
@@ -466,6 +467,12 @@ export default function StaffQueries() {
                     >
                       Acknowledge
                     </Button>
+                  </div>
+                )}
+
+                {/* Team leads and operations managers can resolve acknowledged penalties */}
+                {(isOperationsManager || isTeamLead) && query.status === "acknowledged" && (
+                  <div className="flex gap-2 pt-4 border-t">
                     <Button
                       size="sm"
                       variant="outline"
