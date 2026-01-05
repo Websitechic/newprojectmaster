@@ -59,7 +59,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const [formData, setFormData] = useState<TaskFormData>(defaultTask);
 
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
-  const [searchTerm, setSearchTerm] = useState("");
 
   const toggleDescription = (taskId: number) => {
     setExpandedDescriptions((prev) => ({
@@ -352,12 +351,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   const filteredTasks = isStaffView
     ? tasks.filter((task) => task.assigneeId === (user as any)?.staffId)
-    : tasks.filter(task => {
-      const taskNameMatch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const assigneeName = (staff ?? []).find(s => s?.id === task.assigneeId)?.name || "";
-      const assigneeMatch = assigneeName.toLowerCase().includes(searchTerm.toLowerCase());
-      return taskNameMatch || assigneeMatch;
-    });
+    : tasks;
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -58,8 +58,6 @@ export default function Dashboard() {
     review: false,
     todo: false, // Added state for todo section
   });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [taskSearchQuery, setTaskSearchQuery] = useState(""); // State for task search
 
   // State for managing expanded descriptions
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
@@ -243,27 +241,7 @@ export default function Dashboard() {
   const userTasks =
     user?.role === "staff" || user?.role === "intern"
       ? (staffTasks ?? [])
-      : user?.role === "client" &&
-          user?.clientType === "support_maintenance_client"
-        ? (tasks ?? [])
-        : user?.role === "operations_manager" ||
-            user?.specialization === "operations_manager" ||
-            user?.role === "team_lead"
-          ? (tasks ?? [])
-          : user?.role === "project_manager"
-            ? (tasks ?? [])
-            : user?.role === "product_owner"
-              ? (tasks ?? [])
-              : (tasks ?? []);
-
-  // Apply search filter to tasks (works for both staff and managers)
-  const filteredTasks = user?.role === "staff" || user?.role === "intern"
-    ? (staffTasks ?? []).filter((task) =>
-        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
-      )
-    : (tasks ?? []).filter((task) =>
-        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
-      );
+      : (tasks ?? []);
 
   const tasksInProgress = (userTasks ?? []).filter(
     (task) => task.status === "in_progress"
@@ -337,14 +315,6 @@ export default function Dashboard() {
         )}
       </div>
     </div>
-  );
-
-  // Apply search filter to tasks for rendering
-  const searchFilteredTasks = (user?.role === "staff" || user?.role === "intern"
-    ? (staffTasks ?? [])
-    : (tasks ?? [])
-  ).filter((task) =>
-    taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
   );
 
   return (
