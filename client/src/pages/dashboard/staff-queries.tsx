@@ -470,8 +470,8 @@ export default function StaffQueries() {
                   </div>
                 )}
 
-                {/* Team leads and operations managers can resolve acknowledged penalties */}
-                {(isOperationsManager || isTeamLead) && query.status === "acknowledged" && (
+                {/* Team leads and operations managers can resolve pending or acknowledged penalties */}
+                {(isOperationsManager || isTeamLead) && (query.status === "acknowledged" || query.status === "pending") && (
                   <div className="flex gap-2 pt-4 border-t">
                     <Button
                       size="sm"
