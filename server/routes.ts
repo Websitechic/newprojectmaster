@@ -4189,9 +4189,7 @@ End of Report
           await sendOneSignalNotification(
             recipientIds,
             `General Channel: ${sender.name}`,
-            content.substring(0, 100) + (content.length > 100 ? '...' : ''),
-            '/dashboard/general-channel',
-            { type: 'general_channel', senderId: user.id }
+            content.substring(0, 100) + (content.length > 100 ? '...' : '')
           );
           console.log(`✅ OneSignal push sent to ${recipientIds.length} users`);
         }
@@ -6067,9 +6065,7 @@ End of Report
           await sendOneSignalNotification(
             recipientId,
             `${user.name} sent you a message`,
-            messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
-            `/dashboard/direct-messages`,
-            { type: 'direct_message', senderId: user.id, receiverId: recipientId }
+            messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : '')
           );
           console.log(`✅ OneSignal push sent to recipient ${recipientId}`);
         } catch (error) {
