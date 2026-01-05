@@ -610,16 +610,6 @@ export default function Dashboard() {
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
-                    <Input
-                      type="text"
-                      placeholder="Search tasks..."
-                      className="w-full pr-8"
-                      value={taskSearchQuery}
-                      onChange={(e) => setTaskSearchQuery(e.target.value)}
-                    />
-                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  </div>
                 </div>
 
                 <Tabs defaultValue="active" className="w-full">
@@ -631,7 +621,7 @@ export default function Dashboard() {
                   <TabsContent value="active" className="mt-0">
                     {staffTasks && staffTasks.filter(t => t.status !== 'completed').length > 0 ? (
                       <StaffTaskList
-                        tasks={searchFilteredTasks.filter(t => t.status !== 'completed')}
+                        tasks={staffTasks.filter(t => t.status !== 'completed')}
                         projectId={undefined}
                       />
                     ) : (
@@ -644,7 +634,7 @@ export default function Dashboard() {
                   <TabsContent value="completed" className="mt-0">
                     {staffTasks && staffTasks.filter(t => t.status === 'completed').length > 0 ? (
                       <StaffTaskList
-                        tasks={searchFilteredTasks.filter(t => t.status === 'completed')}
+                        tasks={staffTasks.filter(t => t.status === 'completed')}
                         projectId={undefined}
                       />
                     ) : (
@@ -1310,16 +1300,6 @@ export default function Dashboard() {
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
-                    <Input
-                      type="text"
-                      placeholder="Search tasks..."
-                      className="w-full pr-8"
-                      value={taskSearchQuery}
-                      onChange={(e) => setTaskSearchQuery(e.target.value)}
-                    />
-                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  </div>
                 </div>
 
                 {tasksLoading ? (
@@ -1339,12 +1319,10 @@ export default function Dashboard() {
                           user?.role === "staff" || user?.role === "intern"
                             ? (tasks ?? []).filter((task) =>
                                 task?.assigneeId === user?.id &&
-                                task?.status !== 'completed' &&
-                                (!taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+                                task?.status !== 'completed'
                               )
                             : (tasks ?? []).filter((task) =>
-                                task?.status !== 'completed' &&
-                                (!taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+                                task?.status !== 'completed'
                               )
                         }
                         projectId={undefined}
@@ -1359,12 +1337,10 @@ export default function Dashboard() {
                           user?.role === "staff" || user?.role === "intern"
                             ? (tasks ?? []).filter((task) =>
                                 task?.assigneeId === user?.id &&
-                                task?.status === 'completed' &&
-                                (!taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+                                task?.status === 'completed'
                               )
                             : (tasks ?? []).filter((task) =>
-                                task?.status === 'completed' &&
-                                (!taskSearchQuery || task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+                                task?.status === 'completed'
                               )
                         }
                         projectId={undefined}
