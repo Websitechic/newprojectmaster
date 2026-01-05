@@ -229,7 +229,7 @@ export default function Dashboard() {
     };
   }, [updateStatus]);
 
-  // Filter tasks for staff/intern user or all tasks for managers, PMs, and support maintenance clients
+  // Filter tasks for staff/intern user or all tasks for managers, PMs, CSOs, and support maintenance clients
   const staffTasks =
     user?.role === "staff" || user?.role === "intern"
       ? ((tasks ?? []).filter((task) => task.assigneeId === user?.id))
