@@ -775,6 +775,7 @@ export const staffQueries = pgTable("staff_queries", {
   additionalNote: text("additional_note"),
   sentBy: integer("sent_by").references(() => users.id).notNull(),
   status: text("status", { enum: ["pending", "acknowledged", "resolved"] }).default("pending"),
+  resolutionReason: text("resolution_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

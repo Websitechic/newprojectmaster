@@ -5080,31 +5080,47 @@ End of Report
 
     const user = req.user!;
     const queryId = parseInt(req.params.id);
-    const { status } = req.body;
+    const { status, resolutionReason } = req.body;
 
     try {
       if (!status || !["acknowledged", "resolved"].includes(status)) {
         return res.status(400).json({ error: "Valid status is required (acknowledged or resolved)" });
       }
 
-      // Check if the query exists and belongs to the user
+      // Check if the query exists
       const [existingQuery] = await db
         .select()
         .from(staffQueries)
-        .where(
-          and(
-            eq(staffQueries.id, queryId),
-            eq(staffQueries.staffId, user.id)
-          )
-        )
+        .where(eq(staffQueries.id, queryId))
         .limit(1);
 
       if (!existingQuery) {
-        return res.status(404).json({ error: "Staff query not found or access denied" });
+        return res.status(404).json({ error: "Staff query not found" });
       }
 
-      if (existingQuery.status !== "pending") {
-        return res.status(400).json({ error: "Query has already been processed" });
+      // Authorization logic
+      const isOpsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isTeamLead = user.role === "team_lead";
+      const isStaffRecipient = existingQuery.staffId === user.id;
+
+      if (status === "acknowledged") {
+        if (!isStaffRecipient) {
+          return res.status(403).json({ error: "Only the recipient can acknowledge a penalty" });
+        }
+        if (existingQuery.status !== "pending") {
+          return res.status(400).json({ error: "Penalty has already been processed" });
+        }
+      } else if (status === "resolved") {
+        if (!isOpsManager && !isTeamLead) {
+          return res.status(403).json({ error: "Only team leads and operations managers can resolve penalties" });
+        }
+        // Resolution allowed from pending or acknowledged
+        if (!["pending", "acknowledged"].includes(existingQuery.status)) {
+          return res.status(400).json({ error: "Penalty is already in a final state" });
+        }
+        if (!resolutionReason) {
+          return res.status(400).json({ error: "Resolution reason is required when resolving" });
+        }
       }
 
       // Update the query status
@@ -5112,6 +5128,7 @@ End of Report
         .update(staffQueries)
         .set({
           status,
+          resolutionReason: status === "resolved" ? resolutionReason : existingQuery.resolutionReason,
           updatedAt: new Date(),
         })
         .where(eq(staffQueries.id, queryId))
@@ -5121,7 +5138,7 @@ End of Report
       res.json({ success: true, query: updatedQuery });
     } catch (error) {
       console.error("Error updating staff query status:", error);
-      res.status(500).json({ error: "Failed to update staff query status", details: error.message });
+      res.status(500).json({ error: "Failed to update staff query status", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
