@@ -23,7 +23,6 @@ import {
   AlertCircle,
   CheckCircle,
   HelpCircle,
-  Search, // Added Search icon import
   CheckSquare,
 } from "lucide-react";
 import {

@@ -42,7 +42,6 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
-  const [searchTerm, setSearchTerm] = useState("");
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
   const [stopGapDialogOpen, setStopGapDialogOpen] = useState(false);
   const [selectedTaskForStopGap, setSelectedTaskForStopGap] = useState<number | null>(null);
@@ -51,7 +50,6 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
   const filteredTasks = tasks
     .filter((task) => task.assigneeId === user?.id)
-    .filter(task => task.title.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => a.id - b.id);
 
   const { data: projects } = useQuery<Project[]>({
