@@ -637,21 +637,19 @@ export default function Dashboard() {
 
               {/* Full Task List with Completed Tab */}
               <div className="space-y-4">
-                <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="flex items-center gap-2 w-full max-w-full">
-                    <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
-                      <Input
-                        type="text"
-                        placeholder="Search tasks..."
-                        className="w-full pr-8"
-                        value={taskSearchQuery}
-                        onChange={(e) => setTaskSearchQuery(e.target.value)}
-                      />
-                      <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                    </div>
+                  <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
+                    <Input
+                      type="text"
+                      placeholder="Search tasks..."
+                      className="w-full pr-8"
+                      value={taskSearchQuery}
+                      onChange={(e) => setTaskSearchQuery(e.target.value)}
+                    />
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   </div>
                 </div>
 
@@ -1339,21 +1337,19 @@ export default function Dashboard() {
               )}
 
               <div className="space-y-6">
-                <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="flex items-center gap-2 w-full max-w-full">
-                    <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
-                      <Input
-                        type="text"
-                        placeholder="Search tasks..."
-                        className="w-full pr-8"
-                        value={taskSearchQuery}
-                        onChange={(e) => setTaskSearchQuery(e.target.value)}
-                      />
-                      <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                    </div>
+                  <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
+                    <Input
+                      type="text"
+                      placeholder="Search tasks..."
+                      className="w-full pr-8"
+                      value={taskSearchQuery}
+                      onChange={(e) => setTaskSearchQuery(e.target.value)}
+                    />
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   </div>
                 </div>
 
