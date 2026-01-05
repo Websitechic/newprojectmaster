@@ -370,21 +370,6 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="relative w-full max-w-sm">
-            <Input
-              placeholder="Search tasks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full"
-            />
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Search by task name or assignee name
-        </p>
-      </div>
       <div className="rounded-md border overflow-x-auto">
         <div className="min-w-[800px]">
           <Table>

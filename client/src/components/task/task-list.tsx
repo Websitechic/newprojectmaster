@@ -398,14 +398,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       {!isStaffView && (
         <div className="space-y-2 mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="relative w-full max-w-sm">
-              <Input
-                placeholder="Search tasks..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-              />
-            </div>
             { !isStaffView && showNewTaskButton && (user?.role === "project_manager" || user?.role === "operations_manager" || (user as any)?.specialization === "operations_manager" || user?.role === "customer_support_officer" || user?.role === "team_lead" || (user?.role === "staff" && user?.specialization === "technical_support")) && (
               <Button onClick={handleNewTask} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
@@ -413,9 +405,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               </Button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Search by task name or assignee name
-          </p>
         </div>
       )}
       
