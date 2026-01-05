@@ -5087,24 +5087,34 @@ End of Report
         return res.status(400).json({ error: "Valid status is required (acknowledged or resolved)" });
       }
 
-      // Check if the query exists and belongs to the user
+      // Check if the user has access to update this query
+      // Operations managers, team leads can resolve any query
+      const isPrivilegedUser = user.role === "operations_manager" || 
+                               user.role === "team_lead" || 
+                               user.specialization === "operations_manager";
+
+      const queryFilter = isPrivilegedUser
+        ? eq(staffQueries.id, queryId)
+        : and(eq(staffQueries.id, queryId), eq(staffQueries.staffId, user.id));
+
       const [existingQuery] = await db
         .select()
         .from(staffQueries)
-        .where(
-          and(
-            eq(staffQueries.id, queryId),
-            eq(staffQueries.staffId, user.id)
-          )
-        )
+        .where(queryFilter)
         .limit(1);
 
       if (!existingQuery) {
         return res.status(404).json({ error: "Staff query not found or access denied" });
       }
 
-      if (existingQuery.status !== "pending") {
+      // If a regular staff member is acknowledging, status must be pending
+      if (!isPrivilegedUser && existingQuery.status !== "pending") {
         return res.status(400).json({ error: "Query has already been processed" });
+      }
+
+      // If a privileged user is resolving, status can be pending or acknowledged
+      if (isPrivilegedUser && status === "resolved" && existingQuery.status === "resolved") {
+        return res.status(400).json({ error: "Query is already resolved" });
       }
 
       // Update the query status
