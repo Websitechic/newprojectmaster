@@ -229,7 +229,7 @@ export default function Dashboard() {
     };
   }, [updateStatus]);
 
-  // Filter tasks for staff/intern user or all tasks for managers and support maintenance clients
+  // Filter tasks for staff/intern user or all tasks for managers, PMs, and support maintenance clients
   const staffTasks =
     user?.role === "staff" || user?.role === "intern"
       ? ((tasks ?? []).filter((task) => task.assigneeId === user?.id))
@@ -238,7 +238,7 @@ export default function Dashboard() {
   // Categorize tasks - moved before userTasks to avoid dependency issues
   const activeTask = (staffTasks ?? []).find((task) => task?.isTimerRunning);
 
-  // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
+  // Use appropriate task set based on user role
   const userTasks =
     user?.role === "staff" || user?.role === "intern"
       ? (staffTasks ?? [])
@@ -626,9 +626,9 @@ export default function Dashboard() {
 
                 <Tabs defaultValue="active" className="w-full">
                   <div className="flex items-center justify-between mb-4">
-                    <TabsList className="flex border-2 border-blue-500 p-1">
-                      <TabsTrigger value="active" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-4 py-2">Active Tasks</TabsTrigger>
-                      <TabsTrigger value="completed" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-4 py-2">Completed</TabsTrigger>
+                    <TabsList className="flex w-full p-1 bg-muted">
+                      <TabsTrigger value="active" className="flex-1 text-xs sm:text-sm px-4 py-2">Active Tasks</TabsTrigger>
+                      <TabsTrigger value="completed" className="flex-1 text-xs sm:text-sm px-4 py-2">Completed</TabsTrigger>
                     </TabsList>
                   </div>
 
@@ -1343,9 +1343,9 @@ export default function Dashboard() {
                 ) : (tasks ?? []).length > 0 ? (
                   <Tabs defaultValue="active" className="w-full mt-4 mb-6">
                     <div className="flex items-center justify-between mb-4">
-                      <TabsList className="flex border-2 border-blue-500 p-1">
-                        <TabsTrigger value="active" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-4 py-2">Active Tasks</TabsTrigger>
-                        <TabsTrigger value="completed" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-4 py-2">Completed</TabsTrigger>
+                      <TabsList className="flex w-full p-1 bg-muted">
+                        <TabsTrigger value="active" className="flex-1 text-xs sm:text-sm px-4 py-2">Active Tasks</TabsTrigger>
+                        <TabsTrigger value="completed" className="flex-1 text-xs sm:text-sm px-4 py-2">Completed</TabsTrigger>
                       </TabsList>
                     </div>
 
