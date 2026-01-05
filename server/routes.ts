@@ -4956,19 +4956,23 @@ End of Report
     }
 
     const user = req.user!;
-    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    const isOpsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
     const isProjectManager = user.role === "project_manager";
     const isTeamLead = user.role === "team_lead";
     const isCustomerSupportOfficer = user.role === "customer_support_officer";
 
     try {
-      // All users (operations managers, project managers, team leads, customer support officers, and staff) see all queries
-      const queries = await db
-        .select()
-        .from(staffQueries)
-        .orderBy(desc(staffQueries.createdAt));
+      let query;
+      if (isOpsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) {
+        // Management see everything
+        query = db.select().from(staffQueries);
+      } else {
+        // Staff see only theirs
+        query = db.select().from(staffQueries).where(eq(staffQueries.staffId, user.id));
+      }
 
-      res.json(queries);
+      const results = await query.orderBy(desc(staffQueries.createdAt));
+      res.json(results);
     } catch (error) {
       console.error("Error fetching staff queries:", error);
       res.status(500).json({ error: "Failed to fetch staff queries" });
