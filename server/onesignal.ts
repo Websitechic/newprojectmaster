@@ -41,9 +41,7 @@ interface OneSignalNotification {
 export async function sendOneSignalNotification(
   userId: number | number[],
   title: string,
-  message: string,
-  url?: string,
-  data?: any
+  message: string
 ): Promise<void> {
   console.log('\n╔════════════════════════════════════════════════════════════════╗');
   console.log('║           ONESIGNAL NOTIFICATION SERVICE CALLED                ║');
@@ -52,8 +50,6 @@ export async function sendOneSignalNotification(
   console.log(`   - User ID(s): ${Array.isArray(userId) ? userId.join(', ') : userId}`);
   console.log(`   - Title: "${title}"`);
   console.log(`   - Message Preview: "${message.substring(0, 50)}..."`);
-  console.log(`   - URL: ${url || 'none'}`);
-  console.log(`   - Data: ${data ? JSON.stringify(data) : 'none'}`);
   
   console.log('\n🔧 Configuration Check:');
   console.log(`   - App ID Exists: ${!!ONESIGNAL_APP_ID}`);
@@ -110,11 +106,6 @@ export async function sendOneSignalNotification(
       },
       target_channel: 'push'
     };
-
-    if (data) {
-      notification.data = data;
-      console.log('   - Data set:', JSON.stringify(data));
-    }
 
     const payload = {
       app_id: ONESIGNAL_APP_ID,
