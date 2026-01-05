@@ -23,6 +23,7 @@ import {
   AlertCircle,
   CheckCircle,
   HelpCircle,
+  Search,
   CheckSquare,
 } from "lucide-react";
 import {
@@ -51,6 +52,7 @@ export default function Dashboard() {
   const [location, setLocation] = useLocation();
   const { user } = useUser();
   const { updateStatus, sendMessage } = useWebSocket(user?.id);
+  const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     inProgress: false,
     pending: false,
@@ -606,22 +608,39 @@ export default function Dashboard() {
 
               {/* Full Task List with Completed Tab */}
               <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
+                  <div className="relative w-full md:w-64">
+                    <Input
+                      type="text"
+                      placeholder="Search task or staff..."
+                      className="w-full pr-8"
+                      value={taskSearchQuery}
+                      onChange={(e) => setTaskSearchQuery(e.target.value)}
+                    />
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  </div>
                 </div>
 
                 <Tabs defaultValue="active" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 border-2 border-blue-500 gap-2 p-1">
-                    <TabsTrigger value="active" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-3 py-2 whitespace-nowrap">Active Tasks</TabsTrigger>
-                    <TabsTrigger value="completed" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-3 py-2 whitespace-nowrap">Completed</TabsTrigger>
-                  </TabsList>
+                  <div className="flex items-center justify-between mb-4">
+                    <TabsList className="flex border-2 border-blue-500 p-1">
+                      <TabsTrigger value="active" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-4 py-2">Active Tasks</TabsTrigger>
+                      <TabsTrigger value="completed" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-4 py-2">Completed</TabsTrigger>
+                    </TabsList>
+                  </div>
 
                   <TabsContent value="active" className="mt-0">
                     {staffTasks && staffTasks.filter(t => t.status !== 'completed').length > 0 ? (
                       <StaffTaskList
-                        tasks={staffTasks.filter(t => t.status !== 'completed')}
+                        tasks={staffTasks.filter(t => {
+                          const matchesSearch = !taskSearchQuery || 
+                            t.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                            (staff?.find(s => s.id === t.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
+                          return t.status !== 'completed' && matchesSearch;
+                        })}
                         projectId={undefined}
                       />
                     ) : (
@@ -634,7 +653,12 @@ export default function Dashboard() {
                   <TabsContent value="completed" className="mt-0">
                     {staffTasks && staffTasks.filter(t => t.status === 'completed').length > 0 ? (
                       <StaffTaskList
-                        tasks={staffTasks.filter(t => t.status === 'completed')}
+                        tasks={staffTasks.filter(t => {
+                          const matchesSearch = !taskSearchQuery || 
+                            t.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                            (staff?.find(s => s.id === t.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
+                          return t.status === 'completed' && matchesSearch;
+                        })}
                         projectId={undefined}
                       />
                     ) : (
@@ -1296,10 +1320,20 @@ export default function Dashboard() {
               )}
 
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
+                  <div className="relative w-full md:w-64">
+                    <Input
+                      type="text"
+                      placeholder="Search task or staff..."
+                      className="w-full pr-8"
+                      value={taskSearchQuery}
+                      onChange={(e) => setTaskSearchQuery(e.target.value)}
+                    />
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  </div>
                 </div>
 
                 {tasksLoading ? (
@@ -1308,22 +1342,30 @@ export default function Dashboard() {
                   </div>
                 ) : (tasks ?? []).length > 0 ? (
                   <Tabs defaultValue="active" className="w-full mt-4 mb-6">
-                    <TabsList className="grid w-full grid-cols-2 border-2 border-blue-500 gap-2 p-1">
-                      <TabsTrigger value="active" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-3 py-2 whitespace-nowrap">Active Tasks</TabsTrigger>
-                      <TabsTrigger value="completed" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-3 py-2 whitespace-nowrap">Completed</TabsTrigger>
-                    </TabsList>
+                    <div className="flex items-center justify-between mb-4">
+                      <TabsList className="flex border-2 border-blue-500 p-1">
+                        <TabsTrigger value="active" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-4 py-2">Active Tasks</TabsTrigger>
+                        <TabsTrigger value="completed" className="data-[state=active]:border-2 data-[state=active]:border-blue-500 text-xs sm:text-sm px-4 py-2">Completed</TabsTrigger>
+                      </TabsList>
+                    </div>
 
                     <TabsContent value="active" className="mt-0">
                       <TaskList
                         tasks={
                           user?.role === "staff" || user?.role === "intern"
-                            ? (tasks ?? []).filter((task) =>
-                                task?.assigneeId === user?.id &&
-                                task?.status !== 'completed'
-                              )
-                            : (tasks ?? []).filter((task) =>
-                                task?.status !== 'completed'
-                              )
+                            ? (tasks ?? []).filter((task) => {
+                                const matchesSearch = !taskSearchQuery || 
+                                  task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                                  (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
+                                return task?.assigneeId === user?.id &&
+                                  task?.status !== 'completed' && matchesSearch;
+                              })
+                            : (tasks ?? []).filter((task) => {
+                                const matchesSearch = !taskSearchQuery || 
+                                  task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                                  (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
+                                return task?.status !== 'completed' && matchesSearch;
+                              })
                         }
                         projectId={undefined}
                         showNewTaskButton={false}
@@ -1335,13 +1377,19 @@ export default function Dashboard() {
                       <TaskList
                         tasks={
                           user?.role === "staff" || user?.role === "intern"
-                            ? (tasks ?? []).filter((task) =>
-                                task?.assigneeId === user?.id &&
-                                task?.status === 'completed'
-                              )
-                            : (tasks ?? []).filter((task) =>
-                                task?.status === 'completed'
-                              )
+                            ? (tasks ?? []).filter((task) => {
+                                const matchesSearch = !taskSearchQuery || 
+                                  task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                                  (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
+                                return task?.assigneeId === user?.id &&
+                                  task?.status === 'completed' && matchesSearch;
+                              })
+                            : (tasks ?? []).filter((task) => {
+                                const matchesSearch = !taskSearchQuery || 
+                                  task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                                  (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
+                                return task?.status === 'completed' && matchesSearch;
+                              })
                         }
                         projectId={undefined}
                         showNewTaskButton={false}
