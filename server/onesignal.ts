@@ -111,11 +111,6 @@ export async function sendOneSignalNotification(
       target_channel: 'push'
     };
 
-    if (url) {
-      notification.url = url;
-      console.log('   - URL set:', url);
-    }
-
     if (data) {
       notification.data = data;
       console.log('   - Data set:', JSON.stringify(data));
