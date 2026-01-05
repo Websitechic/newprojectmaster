@@ -4956,23 +4956,19 @@ End of Report
     }
 
     const user = req.user!;
-    const isOpsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
+    const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
     const isProjectManager = user.role === "project_manager";
     const isTeamLead = user.role === "team_lead";
     const isCustomerSupportOfficer = user.role === "customer_support_officer";
 
     try {
-      let query;
-      if (isOpsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) {
-        // Management see everything
-        query = db.select().from(staffQueries);
-      } else {
-        // Staff see only theirs
-        query = db.select().from(staffQueries).where(eq(staffQueries.staffId, user.id));
-      }
+      // All users (operations managers, project managers, team leads, customer support officers, and staff) see all queries
+      const queries = await db
+        .select()
+        .from(staffQueries)
+        .orderBy(desc(staffQueries.createdAt));
 
-      const results = await query.orderBy(desc(staffQueries.createdAt));
-      res.json(results);
+      res.json(queries);
     } catch (error) {
       console.error("Error fetching staff queries:", error);
       res.status(500).json({ error: "Failed to fetch staff queries" });
@@ -5084,47 +5080,31 @@ End of Report
 
     const user = req.user!;
     const queryId = parseInt(req.params.id);
-    const { status, resolutionReason } = req.body;
+    const { status } = req.body;
 
     try {
       if (!status || !["acknowledged", "resolved"].includes(status)) {
         return res.status(400).json({ error: "Valid status is required (acknowledged or resolved)" });
       }
 
-      // Check if the query exists
+      // Check if the query exists and belongs to the user
       const [existingQuery] = await db
         .select()
         .from(staffQueries)
-        .where(eq(staffQueries.id, queryId))
+        .where(
+          and(
+            eq(staffQueries.id, queryId),
+            eq(staffQueries.staffId, user.id)
+          )
+        )
         .limit(1);
 
       if (!existingQuery) {
-        return res.status(404).json({ error: "Staff query not found" });
+        return res.status(404).json({ error: "Staff query not found or access denied" });
       }
 
-      // Authorization logic
-      const isOpsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-      const isTeamLead = user.role === "team_lead";
-      const isStaffRecipient = existingQuery.staffId === user.id;
-
-      if (status === "acknowledged") {
-        if (!isStaffRecipient) {
-          return res.status(403).json({ error: "Only the recipient can acknowledge a penalty" });
-        }
-        if (existingQuery.status !== "pending") {
-          return res.status(400).json({ error: "Penalty has already been processed" });
-        }
-      } else if (status === "resolved") {
-        if (!isOpsManager && !isTeamLead) {
-          return res.status(403).json({ error: "Only team leads and operations managers can resolve penalties" });
-        }
-        // Resolution allowed from pending or acknowledged
-        if (!["pending", "acknowledged"].includes(existingQuery.status)) {
-          return res.status(400).json({ error: "Penalty is already in a final state" });
-        }
-        if (!resolutionReason) {
-          return res.status(400).json({ error: "Resolution reason is required when resolving" });
-        }
+      if (existingQuery.status !== "pending") {
+        return res.status(400).json({ error: "Query has already been processed" });
       }
 
       // Update the query status
@@ -5132,7 +5112,6 @@ End of Report
         .update(staffQueries)
         .set({
           status,
-          resolutionReason: status === "resolved" ? resolutionReason : existingQuery.resolutionReason,
           updatedAt: new Date(),
         })
         .where(eq(staffQueries.id, queryId))
@@ -5142,7 +5121,7 @@ End of Report
       res.json({ success: true, query: updatedQuery });
     } catch (error) {
       console.error("Error updating staff query status:", error);
-      res.status(500).json({ error: "Failed to update staff query status", details: error instanceof Error ? error.message : String(error) });
+      res.status(500).json({ error: "Failed to update staff query status", details: error.message });
     }
   });
 

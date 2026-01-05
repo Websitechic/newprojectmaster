@@ -10,17 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Send, User, AlertTriangle, Clock, CheckCircle } from "lucide-react";
+import { FileText, Send, User, AlertTriangle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Header } from "@/components/dashboard/header";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 
 interface StaffQuery {
   id: number;
@@ -33,7 +26,6 @@ interface StaffQuery {
   attachmentPath?: string;
   likelyPenalty: string;
   additionalNote?: string;
-  resolutionReason?: string;
   sentBy: number;
   status: "pending" | "acknowledged" | "resolved";
   createdAt: string;
@@ -46,8 +38,6 @@ export default function StaffQueries() {
   const queryClient = useQueryClient();
   const [location] = useLocation();
   const [showForm, setShowForm] = useState(false);
-  const [resolvingQuery, setResolvingQuery] = useState<StaffQuery | null>(null);
-  const [resolutionReason, setResolutionReason] = useState("");
 
   // Fetch all users for staff selection
   const { data: allUsers = [] } = useQuery({
@@ -126,23 +116,18 @@ export default function StaffQueries() {
 
   // Update query status mutation (for staff members)
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status, resolutionReason }: { id: number; status: string; resolutionReason?: string }) => {
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const response = await fetch(`/api/staff-queries/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, resolutionReason }),
+        body: JSON.stringify({ status }),
       });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to update query status");
-      }
+      if (!response.ok) throw new Error("Failed to update query status");
       return response.json();
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Query status updated successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/staff-queries"] });
-      setResolvingQuery(null);
-      setResolutionReason("");
     },
     onError: (error: any) => {
       toast({
@@ -491,27 +476,13 @@ export default function StaffQueries() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setResolvingQuery(query)}
+                      onClick={() => updateStatusMutation.mutate({ id: query.id, status: "resolved" })}
                       disabled={updateStatusMutation.isPending}
                     >
-                      <CheckCircle size={14} className="mr-1" />
                       Mark as Resolved
                     </Button>
                   </div>
                 )}
-
-                {query.status === "resolved" && query.resolutionReason && (
-                  <div className="pt-4 border-t">
-                    <span className="font-medium text-green-700 flex items-center gap-1">
-                      <CheckCircle size={14} />
-                      Resolution Note:
-                    </span>
-                    <p className="text-sm text-gray-700 mt-1 italic">
-                      {query.resolutionReason}
-                    </p>
-                  </div>
-                )}
-
 
                 {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) && (
                   <div className="text-xs text-gray-500 pt-2 border-t">
@@ -525,53 +496,6 @@ export default function StaffQueries() {
       </div>
         </div>
       </div>
-
-      <Dialog open={!!resolvingQuery} onOpenChange={(open) => !open && setResolvingQuery(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Resolve Penalty</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="resolutionReason">Reason for resolving this penalty *</Label>
-              <Textarea
-                id="resolutionReason"
-                placeholder="Describe why this penalty is being marked as resolved..."
-                value={resolutionReason}
-                onChange={(e) => setResolutionReason(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResolvingQuery(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (!resolutionReason.trim()) {
-                  toast({
-                    title: "Required",
-                    description: "Please provide a resolution reason",
-                    variant: "destructive"
-                  });
-                  return;
-                }
-                if (resolvingQuery) {
-                  updateStatusMutation.mutate({
-                    id: resolvingQuery.id,
-                    status: "resolved",
-                    resolutionReason
-                  });
-                }
-              }}
-              disabled={updateStatusMutation.isPending}
-            >
-              {updateStatusMutation.isPending ? "Resolving..." : "Confirm Resolve"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
