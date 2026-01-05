@@ -58,10 +58,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<TaskFormData>(defaultTask);
 
-  // State for managing expanded descriptions
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
-  
-  // State for search functionality
   const [searchTerm, setSearchTerm] = useState("");
 
   const toggleDescription = (taskId: number) => {
@@ -71,10 +68,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     }));
   };
 
-  // State to track real-time timer updates
   const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
 
-  // Update local timers every second for running tasks
   useEffect(() => {
     const interval = setInterval(() => {
       setLocalTimers(prev => {
@@ -94,7 +89,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     return () => clearInterval(interval);
   }, [tasks]);
 
-  // Listen for WebSocket timer events and invalidate queries
   useEffect(() => {
     const handleTimerEvent = () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -114,25 +108,22 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     };
   }, [queryClient, projectId]);
 
-  const { data: staff, isLoading: staffLoading } = useQuery<{ id: number; name: string }[]>({
+  const { data: staff } = useQuery<any[]>({
     queryKey: ["/api/staff", projectId],
     refetchOnWindowFocus: true,
-    enabled: !!user, // Only fetch if user is authenticated
+    enabled: !!user,
   });
 
-  // Get all projects to display project names when showProjectInfo is true
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     enabled: !!user && showProjectInfo,
   });
 
-  // Create a map of project IDs to project names
   const projectMap = projects?.reduce((acc, project) => {
     acc[project.id] = project.name;
     return acc;
   }, {} as Record<number, string>) || {};
 
-  // Get stop gap assignments for tasks
   const { data: stopGapAssignments = {} } = useQuery({
     queryKey: ["/api/stop-gap/assignments", tasks.map(t => t.id)],
     queryFn: async () => {
@@ -169,7 +160,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   const handleNewTask = () => {
     setEditTask(null);
-    // If technical support staff, default to assigning to themselves
     const initialFormData = user?.role === "staff" && user?.specialization === "technical_support"
       ? { ...defaultTask, assigneeId: user.id.toString() }
       : defaultTask;
@@ -204,19 +194,14 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       return response.json();
     },
     onSuccess: (newTask) => {
-      console.log("Task created, updating cache:", newTask);
-
-      // Immediately update the cache with the new task
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
         const updated = oldTasks ? [newTask, ...oldTasks] : [newTask];
-        console.log("Updated global tasks cache:", updated.length, "tasks");
         return updated;
       });
 
       if (projectId) {
         queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
           const updated = oldTasks ? [newTask, ...oldTasks] : [newTask];
-          console.log("Updated project tasks cache:", updated.length, "tasks");
           return updated;
         });
       }
@@ -244,7 +229,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       const hours = parseInt(data.workingHours) || 0;
       const minutes = parseInt(data.workingMinutes || '0') || 0;
 
-      // Auto-pause timer if status is changing to review, completed, or technical_support
       if ((data.status === 'review' || data.status === 'completed' || data.status === 'technical_support') &&
           editTask.isTimerRunning) {
         try {
@@ -279,7 +263,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       return response.json();
     },
     onSuccess: (updatedTask) => {
-      // Update the cache immediately with the updated task
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
         if (!oldTasks) return [updatedTask];
         return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
@@ -292,7 +275,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         });
       }
 
-      // Invalidate queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
@@ -328,7 +310,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       return taskId;
     },
     onSuccess: (deletedTaskId) => {
-      // Optimistically remove the task from cache
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
         return oldTasks ? oldTasks.filter(task => task.id !== deletedTaskId) : [];
       });
@@ -369,9 +350,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     }
   };
 
-  // Filter tasks for staff view to only show tasks assigned to the current user
   const filteredTasks = isStaffView
-    ? tasks.filter((task) => task.assigneeId === user?.staffId)
+    ? tasks.filter((task) => task.assigneeId === (user as any)?.staffId)
     : tasks.filter(task => {
       const taskNameMatch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
       const assigneeName = (staff ?? []).find(s => s?.id === task.assigneeId)?.name || "";
@@ -379,52 +359,59 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       return taskNameMatch || assigneeMatch;
     });
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'todo': return 'bg-gray-100 text-gray-800';
+      case 'in_progress': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'review': return 'bg-yellow-100 text-yellow-800';
+      case 'technical_support': return 'bg-red-100 text-red-800';
+      case 'pending': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-          case 'todo': return 'bg-gray-100 text-gray-800';
-          case 'in_progress': return 'bg-blue-100 text-blue-800';
-          case 'completed': return 'bg-green-100 text-green-800';
-          case 'review': return 'bg-yellow-100 text-yellow-800';
-          case 'technical_support': return 'bg-red-100 text-red-800';
-          case 'pending': return 'bg-orange-100 text-orange-800';
-          default: return 'bg-gray-100 text-gray-800';
-        }
-      };
+  const formatDescription = (description: string | null | undefined, taskId: number) => {
+    if (!description) return "No description";
+    const isExpanded = expandedDescriptions[taskId];
+    const maxLength = 50;
 
-    const formatDescription = (description: string | null | undefined, taskId: number) => {
-        if (!description) return "No description";
-        const isExpanded = expandedDescriptions[taskId];
-        const maxLength = 50; // Define your desired max length for truncation
+    if (description.length <= maxLength) {
+      return description;
+    }
 
-        if (description.length <= maxLength) {
-          return description;
-        }
-
-        return (
-          <span>
-            {isExpanded ? description : description.substring(0, maxLength) + "..."}
-            <button
-              onClick={() => toggleDescription(taskId)}
-              className="ml-2 text-blue-500 hover:underline"
-            >
-              {isExpanded ? "Show less" : "Show more"}
-            </button>
-          </span>
-        );
-      };
+    return (
+      <span>
+        {isExpanded ? description : description.substring(0, maxLength) + "..."}
+        <button
+          onClick={() => toggleDescription(taskId)}
+          className="ml-2 text-blue-500 hover:underline"
+        >
+          {isExpanded ? "Show less" : "Show more"}
+        </button>
+      </span>
+    );
+  };
 
   return (
-    <div>
+    <div className="space-y-4">
       {!isStaffView && (
         <div className="space-y-2 mb-4">
-          <div className="flex items-center space-x-2">
-            <Input
-              placeholder="Search tasks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="relative w-full max-w-sm">
+              <Input
+                placeholder="Search tasks..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            { !isStaffView && showNewTaskButton && (user?.role === "project_manager" || user?.role === "operations_manager" || (user as any)?.specialization === "operations_manager" || user?.role === "customer_support_officer" || user?.role === "team_lead" || (user?.role === "staff" && user?.specialization === "technical_support")) && (
+              <Button onClick={handleNewTask} className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-2" />
+                New Task
+              </Button>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             Search by task name or assignee name
@@ -432,17 +419,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         </div>
       )}
       
-      <div className="flex justify-end mb-4">
-        { !isStaffView && showNewTaskButton && (user?.role === "project_manager" || user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "customer_support_officer" || user?.role === "team_lead" || (user?.role === "staff" && user?.specialization === "technical_support")) && (
-          <Button onClick={handleNewTask}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Task
-          </Button>
-        )}
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto">
+        <div className="min-w-[800px]">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
@@ -477,7 +456,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <div className="text-sm leading-tight">
                     {(() => {
                       if (!task || !task.assigneeId) return "Unassigned";
-                      const assignee = staff?.find((s) => s && s.id === task.assigneeId);
+                      const assignee = (staff ?? []).find((s) => s && s.id === task.assigneeId);
                       const name = assignee?.name || "Unassigned";
                       const role = assignee?.role === 'team_lead' ? ' (Team Lead)' : '';
                       return (name + role).split(' ').map((word, idx) => (
@@ -573,6 +552,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -581,7 +561,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
             <DialogTitle>{editTask ? "Edit Task" : "Create New Task"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Title - Full width */}
             <div className="space-y-2">
               <Label htmlFor="title">Title</Label>
               <Input
@@ -593,37 +572,29 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               />
             </div>
 
-            {/* Task Details - Full width */}
             <div className="space-y-2">
               <Label htmlFor="description">Task Details</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Enter detailed task description..."
-                rows={4}
-                className="resize-none min-h-[100px]"
+                placeholder="Enter task details"
+                className="min-h-[100px]"
               />
             </div>
 
-            {/* Two column grid for medium screens and up */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select
                   value={formData.status}
-                  onValueChange={(value: TaskFormData["status"]) =>
-                    setFormData({ ...formData, status: value })
-                  }
+                  onValueChange={(value: TaskFormData["status"]) => setFormData({ ...formData, status: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(!editTask || (!editTask.hasBeenStarted && (editTask.timeSpent || 0) === 0)) && (
-                      <SelectItem value="todo">To Do</SelectItem>
-                    )}
-                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="todo">To Do</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="review">Review</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
@@ -639,29 +610,21 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select assignee" />
+                    <SelectValue placeholder="Select staff member" />
                   </SelectTrigger>
                   <SelectContent>
-                    {user?.role === "staff" && user?.specialization === "technical_support" ? (
-                      // Technical support staff can only assign to themselves
-                      <SelectItem value={user.id.toString()}>
-                        {user.name} (Me)
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {(staff ?? []).map((s) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>
+                        {s.name}
                       </SelectItem>
-                    ) : (
-                      // Project managers can assign to anyone
-                      <>
-                        <SelectItem value="unassigned">Unassigned</SelectItem>
-                        {staff?.map((member) => (
-                          <SelectItem key={member.id} value={member.id.toString()}>
-                            {member.name}
-                          </SelectItem>
-                        ))}
-                      </>
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date</Label>
                 <Input
@@ -683,7 +646,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               </div>
             </div>
 
-            {/* Working time - Hours and Minutes */}
             <div className="space-y-2">
               <Label>Working Time Allocation</Label>
               <div className="flex gap-4 max-w-md">
@@ -718,7 +680,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               </p>
             </div>
 
-            {/* Submit button */}
             <div className="pt-4 border-t">
               <Button type="submit" className="w-full md:w-auto md:min-w-[200px]">
                 {editTask ? "Update Task" : "Create Task"}
