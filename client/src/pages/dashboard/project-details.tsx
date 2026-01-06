@@ -78,6 +78,50 @@ export default function ProjectDetails() {
     },
   });
 
+  // Fetch project tasks to calculate progress
+  const { data: tasks } = useQuery<any[]>({
+    queryKey: [`/api/projects/${id}/tasks`],
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${id}/tasks`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  const completedTasksCount = tasks?.filter(t => t.status === "completed").length || 0;
+  const totalTasksCount = tasks?.length || 0;
+  const calculatedProgress = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
+  const allTasksCompleted = totalTasksCount > 0 && completedTasksCount === totalTasksCount;
+
+  // Mutation to complete project
+  const completeProject = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/projects/${id}/complete`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to complete project");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
+      toast({
+        title: "Success",
+        description: "Project marked as completed!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Fetch project manager (creator) information
   const { data: projectManager } = useQuery({
     queryKey: [`/api/users/${project?.managerId}`],
@@ -440,11 +484,23 @@ export default function ProjectDetails() {
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span>Completion</span>
-                            <span>{project.progress || 0}%</span>
+                            <span>{calculatedProgress}%</span>
                           </div>
-                          <Progress value={project.progress || 0} className="w-full" />
+                          <Progress value={calculatedProgress} className="w-full" />
                         </div>
                       </div>
+
+                      {isProjectManager && project.status !== "completed" && allTasksCompleted && (
+                        <div className="pt-2">
+                          <Button 
+                            className="w-full bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => completeProject.mutate()}
+                            disabled={completeProject.isPending}
+                          >
+                            {completeProject.isPending ? "Completing..." : "Click to complete project"}
+                          </Button>
+                        </div>
+                      )}
 
                       {project.teamMembers && project.teamMembers.length > 0 && (
                         <div className="flex items-center gap-3">

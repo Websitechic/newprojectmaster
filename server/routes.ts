@@ -3149,6 +3149,63 @@ End of Report
     }
   });
 
+  // Complete Project (Project Managers only)
+  app.post("/api/projects/:id/complete", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+
+    try {
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Access control: PM (creator), Operations Manager, or CSOs (who have high visibility)
+      const isProjectManager = project.managerId === user.id || user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isCSO = user.role === "customer_support_officer";
+
+      if (!isProjectManager && !isCSO) {
+        return res.status(403).json({ error: "Only project managers or CSOs can complete projects" });
+      }
+
+      // Verify all tasks are completed
+      const projectTasks = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.projectId, projectId));
+
+      const allTasksDone = projectTasks.length > 0 && projectTasks.every(t => t.status === "completed");
+
+      if (!allTasksDone) {
+        return res.status(400).json({ error: "Cannot complete project: some tasks are still pending" });
+      }
+
+      const [updatedProject] = await db
+        .update(projects)
+        .set({
+          status: "completed",
+          progress: 100,
+          updatedAt: new Date()
+        })
+        .where(eq(projects.id, projectId))
+        .returning();
+
+      res.json(updatedProject);
+    } catch (error) {
+      console.error("Error completing project:", error);
+      res.status(500).json({ error: "Failed to complete project" });
+    }
+  });
+
   // Update task (PUT endpoint for operations managers and project managers)
   app.put("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
