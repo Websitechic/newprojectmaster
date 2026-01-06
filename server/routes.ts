@@ -8253,6 +8253,74 @@ End of Report
     }
   });
 
+  // Add link resource to project
+  app.post("/api/projects/:id/resources/link", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+    const { name, link, category } = req.body;
+
+    try {
+      if (!name || !link || !category) {
+        return res.status(400).json({ error: "Name, link, and category are required" });
+      }
+
+      // Validate URL format
+      try {
+        new URL(link);
+      } catch (urlError) {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Check if project exists
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check user access permissions
+      const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+      const isTeamLead = user.role === 'team_lead';
+      const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
+      const isCustomerSupportOfficer = user.role === 'customer_support_officer';
+      const isClient = user.role === 'client' && project.clientId === user.id;
+
+      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isCustomerSupportOfficer || isClient;
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied - insufficient permissions" });
+      }
+
+      // Insert the new link resource
+      const [newResource] = await db
+        .insert(resources)
+        .values({
+          name: name.trim(),
+          type: category,
+          link: link.trim(),
+          projectId,
+          uploadedBy: user.id,
+        })
+        .returning();
+
+      res.json({ success: true, resourceId: newResource.id });
+    } catch (error) {
+      console.error("Error adding link resource:", error);
+      res.status(500).json({
+        error: "Failed to add link",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Update resource
   app.put("/api/projects/:projectId/resources/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
