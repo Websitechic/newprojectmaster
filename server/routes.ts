@@ -372,7 +372,7 @@ export function registerRoutes(app: Express): Server {
   // Tasks endpoint - returns tasks based on user role
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
@@ -407,9 +407,10 @@ export function registerRoutes(app: Express): Server {
         user.specialization === "operations_manager" ||
         user.role === "team_lead" ||
         user.role === "customer_support_officer" ||
-        user.role === "project_manager"
+        user.role === "project_manager" ||
+        user.role === "admin"
       ) {
-        // Operations managers, team leads, project managers, and customer support officers see all tasks
+        // Operations managers, team leads, project managers, customer support officers, and admins see all tasks
         userTasks = await db
           .select()
           .from(tasks)
