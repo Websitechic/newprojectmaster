@@ -10034,6 +10034,20 @@ End of Report
         })
         .returning();
 
+      // If project was completed, revert it to pending when a new task is added
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (project && project.status === "completed") {
+        await db
+          .update(projects)
+          .set({ status: "pending", updatedAt: new Date() })
+          .where(eq(projects.id, projectId));
+      }
+
       console.log("Task created successfully:", newTask);
 
       // Create notification for assignee if task is assigned
