@@ -3296,6 +3296,14 @@ End of Report
         return res.status(404).json({ error: "Task not found" });
       }
 
+      // If project was completed and task status changed from completed, revert project to pending
+      if (project.status === "completed" && existingTask.status === "completed" && status !== "completed") {
+        await db
+          .update(projects)
+          .set({ status: "pending", updatedAt: new Date() })
+          .where(eq(projects.id, project.id));
+      }
+
       console.log("Task updated successfully:", updatedTask);
 
       // If assignee changed, send notification to new assignee

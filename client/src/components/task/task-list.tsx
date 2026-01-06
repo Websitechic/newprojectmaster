@@ -193,16 +193,10 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       return response.json();
     },
     onSuccess: (newTask) => {
-      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
-        const updated = oldTasks ? [newTask, ...oldTasks] : [newTask];
-        return updated;
-      });
-
+      // Invalidate queries to ensure real-time update
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       if (projectId) {
-        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
-          const updated = oldTasks ? [newTask, ...oldTasks] : [newTask];
-          return updated;
-        });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
       }
 
       setIsDialogOpen(false);
