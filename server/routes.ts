@@ -402,28 +402,14 @@ export function registerRoutes(app: Express): Server {
             .where(inArray(tasks.projectId, projectIds))
             .orderBy(desc(tasks.updatedAt));
         }
-      } else if (user.role === "project_manager") {
-        // Project managers see all tasks in their projects
-        const managedProjects = await db
-          .select()
-          .from(projects)
-          .where(eq(projects.managerId, user.id));
-
-        const projectIds = managedProjects.map(p => p.id);
-        if (projectIds.length > 0) {
-          userTasks = await db
-            .select()
-            .from(tasks)
-            .where(inArray(tasks.projectId, projectIds))
-            .orderBy(desc(tasks.updatedAt));
-        }
       } else if (
         user.role === "operations_manager" ||
         user.specialization === "operations_manager" ||
         user.role === "team_lead" ||
-        user.role === "customer_support_officer"
+        user.role === "customer_support_officer" ||
+        user.role === "project_manager"
       ) {
-        // Operations managers, team leads, and customer support officers see all tasks
+        // Operations managers, team leads, project managers, and customer support officers see all tasks
         userTasks = await db
           .select()
           .from(tasks)

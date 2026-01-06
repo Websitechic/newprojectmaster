@@ -236,12 +236,12 @@ export default function Dashboard() {
       : (tasks ?? []);
 
   // Categorize tasks - moved before userTasks to avoid dependency issues
-  const activeTask = (staffTasks ?? []).find((task) => task?.isTimerRunning);
+  const activeTask = (tasks ?? []).find((task) => task?.isTimerRunning && (user?.role === 'staff' || user?.role === 'intern' ? task.assigneeId === user?.id : true));
 
   // Use appropriate task set based on user role
   const userTasks =
     user?.role === "staff" || user?.role === "intern"
-      ? (staffTasks ?? [])
+      ? (tasks ?? []).filter((task) => task.assigneeId === user?.id)
       : (tasks ?? []);
 
   const tasksInProgress = (userTasks ?? []).filter(
