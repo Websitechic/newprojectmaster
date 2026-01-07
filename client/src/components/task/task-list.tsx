@@ -458,6 +458,19 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <TableCell>
                     <div className="text-sm leading-tight">
                       {(() => {
+                        if (!task || !task.assigneeId) return "Unassigned";
+                        const assignee = (staff ?? []).find((s) => s && s.id === task.assigneeId);
+                        const name = assignee?.name || "Unassigned";
+                        const role = assignee?.role === 'team_lead' ? ' (Team Lead)' : '';
+                        return (name + role).split(' ').map((word, idx) => (
+                          <div key={idx}>{word}</div>
+                        ));
+                      })()}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm leading-tight">
+                      {(() => {
                         if (!task || !task.assignedBy) return "System";
                         const assigner = (staff ?? []).find((s) => s && s.id === task.assignedBy);
                         const name = assigner?.name || "System";
