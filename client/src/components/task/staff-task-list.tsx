@@ -413,7 +413,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                     <div className="space-y-1">
                       <div className="font-medium text-sm">{task.title}</div>
                       <div className="text-xs text-muted-foreground">
-                        {projectMap[task.projectId] || `Project ID: ${task.projectId}`}
+                        {task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`) : "No Project"}
                       </div>
                     </div>
                   </TableCell>
