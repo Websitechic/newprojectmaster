@@ -420,7 +420,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Assignee</TableHead>
-              <TableHead>Created By</TableHead>
               {showProjectInfo && <TableHead>Project</TableHead>}
               {showProjectInfo && <TableHead>Time Spent</TableHead>}
               <TableHead>Start Date</TableHead>
@@ -463,18 +462,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                         const name = assignee?.name || "Unassigned";
                         const role = assignee?.role === 'team_lead' ? ' (Team Lead)' : '';
                         return (name + role).split(' ').map((word, idx) => (
-                          <div key={idx}>{word}</div>
-                        ));
-                      })()}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm leading-tight">
-                      {(() => {
-                        if (!task || !task.assignedBy) return "System";
-                        const assigner = (staff ?? []).find((s) => s && s.id === task.assignedBy);
-                        const name = assigner?.name || "System";
-                        return name.split(' ').map((word, idx) => (
                           <div key={idx}>{word}</div>
                         ));
                       })()}
