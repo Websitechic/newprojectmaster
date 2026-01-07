@@ -469,10 +469,18 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   </TableCell>
                   {showProjectInfo && (
                     <TableCell>
-                      <div className="text-sm leading-tight">
-                        {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
-                          <div key={idx}>{word}</div>
-                        )) : "No Project"}
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium leading-tight">
+                          {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
+                            <div key={idx}>{word}</div>
+                          )) : "No Project"}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground leading-tight italic">
+                          Created by: {(() => {
+                            const creator = (staff ?? []).find((s) => s && s.id === task.createdBy);
+                            return creator?.name || "Unknown";
+                          })()}
+                        </div>
                       </div>
                     </TableCell>
                   )}
