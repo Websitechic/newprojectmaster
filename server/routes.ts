@@ -3302,6 +3302,22 @@ End of Report
           .update(projects)
           .set({ status: "pending", updatedAt: new Date() })
           .where(eq(projects.id, project.id));
+        
+        // Broadcast project update
+        if (global.connectedClients) {
+          global.connectedClients.forEach((client, clientId) => {
+            if (client.readyState === 1) { // WebSocket.OPEN
+              try {
+                client.send(JSON.stringify({
+                  type: 'project_updated',
+                  data: { projectId: project.id, status: 'pending' }
+                }));
+              } catch (e) {
+                console.error(`Error broadcasting project update to ${clientId}:`, e);
+              }
+            }
+          });
+        }
       }
 
       console.log("Task updated successfully:", updatedTask);
@@ -10046,6 +10062,22 @@ End of Report
           .update(projects)
           .set({ status: "pending", updatedAt: new Date() })
           .where(eq(projects.id, projectId));
+        
+        // Broadcast project update
+        if (global.connectedClients) {
+          global.connectedClients.forEach((client, clientId) => {
+            if (client.readyState === 1) {
+              try {
+                client.send(JSON.stringify({
+                  type: 'project_updated',
+                  data: { projectId, status: 'pending' }
+                }));
+              } catch (e) {
+                console.error(`Error broadcasting project update to ${clientId}:`, e);
+              }
+            }
+          });
+        }
       }
 
       console.log("Task created successfully:", newTask);
@@ -10089,6 +10121,18 @@ End of Report
         });
       } else {
         console.log('No connected WebSocket clients found');
+      }
+
+      // Explicitly trigger a project update broadcast to ensure everything refreshes
+      if (global.connectedClients) {
+        global.connectedClients.forEach((client) => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({
+              type: 'project_updated',
+              data: { projectId: newTask.projectId }
+            }));
+          }
+        });
       }
 
       return res.status(201).json(newTask);

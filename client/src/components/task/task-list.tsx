@@ -92,6 +92,16 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     const handleTimerEvent = () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+      }
+    };
+
+    const handleTaskCreated = (event: any) => {
+      console.log("WebSocket: task_created received, invalidating queries", event);
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
       }
     };
@@ -99,11 +109,13 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     window.addEventListener('websocket:task_timer_started', handleTimerEvent);
     window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
     window.addEventListener('websocket:task_timer_update', handleTimerEvent);
+    window.addEventListener('websocket:task_created', handleTaskCreated);
 
     return () => {
       window.removeEventListener('websocket:task_timer_started', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_paused', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_update', handleTimerEvent);
+      window.removeEventListener('websocket:task_created', handleTaskCreated);
     };
   }, [queryClient, projectId]);
 
@@ -195,7 +207,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     onSuccess: (newTask) => {
       // Invalidate queries to ensure real-time update
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
       }
 

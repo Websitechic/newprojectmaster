@@ -278,6 +278,31 @@ export default function ProjectDetails() {
     }
   };
 
+  useEffect(() => {
+    const handleProjectUpdate = (event: any) => {
+      const data = event.detail || event;
+      if (data.projectId === parseInt(id!)) {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}/tasks`] });
+      }
+    };
+
+    const handleTaskCreated = (event: any) => {
+      const data = event.detail || event;
+      if (data.projectId === parseInt(id!)) {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}/tasks`] });
+      }
+    };
+
+    window.addEventListener('websocket:project_updated', handleProjectUpdate);
+    window.addEventListener('websocket:task_created', handleTaskCreated);
+    return () => {
+      window.removeEventListener('websocket:project_updated', handleProjectUpdate);
+      window.removeEventListener('websocket:task_created', handleTaskCreated);
+    };
+  }, [id, queryClient]);
+
   if (isLoading) {
     return (
       <div className="flex h-screen">
