@@ -128,13 +128,8 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
         .filter((id: string | undefined): id is string => id !== undefined);
 
       console.log('Setting team members for project:', project.id, memberIds);
-      // Use reset instead of setValue to ensure the form state is fully updated
-      // We keep the other values but update teamMembers
-      const currentValues = form.getValues();
-      form.reset({
-        ...currentValues,
-        teamMembers: memberIds
-      });
+      // Update the field directly and force a re-render
+      form.setValue('teamMembers', memberIds);
     }
   }, [membersLoaded, existingMembers, project?.id, form]);
 
