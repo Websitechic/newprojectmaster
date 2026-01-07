@@ -48,6 +48,35 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const [stopGapHours, setStopGapHours] = useState("0");
   const [stopGapMinutes, setStopGapMinutes] = useState("0");
 
+  const pauseTimer = useMutation({
+    mutationFn: async (taskId: number) => {
+      const response = await fetch(`/api/tasks/${taskId}/pause-timer`, {
+        method: "POST",
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to pause timer');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+      toast({
+        title: "Timer Paused",
+        description: "Task timer has been paused",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredTasks = tasks
     .filter((task) => task.assigneeId === user?.id)
     .sort((a, b) => a.id - b.id);
@@ -148,35 +177,6 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
       toast({
         title: "Timer Started",
         description: "Task timer has been started",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const pauseTimer = useMutation({
-    mutationFn: async (taskId: number) => {
-      const response = await fetch(`/api/tasks/${taskId}/pause-timer`, {
-        method: "POST",
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to pause timer');
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
-      toast({
-        title: "Timer Paused",
-        description: "Task timer has been paused",
       });
     },
     onError: (error: Error) => {
