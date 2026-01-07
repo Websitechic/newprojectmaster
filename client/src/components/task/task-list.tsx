@@ -439,7 +439,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50" : ""}>
                   <TableCell className="font-medium">{task.title}</TableCell>
                   <TableCell className="max-w-xs">
-                      {formatDescription(task.description, task.id)}
+                      {formatDescription(task.description || "", task.id)}
                   </TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(task.status, isDeadlineMissed)}>
