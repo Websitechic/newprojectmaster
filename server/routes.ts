@@ -3612,6 +3612,8 @@ End of Report
             assignedTo: reviewLinks.assignedTo,
             status: reviewLinks.status,
             reviewedAt: reviewLinks.reviewedAt,
+            reviewComment: reviewLinks.reviewComment,
+            commentedAt: reviewLinks.commentedAt,
             createdAt: reviewLinks.createdAt,
             updatedAt: reviewLinks.updatedAt,
             assigneeName: users.name,
@@ -3633,6 +3635,8 @@ End of Report
             assignedTo: reviewLinks.assignedTo,
             status: reviewLinks.status,
             reviewedAt: reviewLinks.reviewedAt,
+            reviewComment: reviewLinks.reviewComment,
+            commentedAt: reviewLinks.commentedAt,
             createdAt: reviewLinks.createdAt,
             updatedAt: reviewLinks.updatedAt,
             senderName: users.name,
@@ -3816,6 +3820,23 @@ End of Report
         newLink.id,
         "review_link"
       );
+
+      // Send SSE notification to team lead for browser notification
+      const teamLeadId = parseInt(assignedTo);
+      if (global.sseClients && global.sseClients.has(teamLeadId)) {
+        const client = global.sseClients.get(teamLeadId);
+        if (client) {
+          client.write(`data: ${JSON.stringify({
+            type: 'review_link_assigned',
+            data: {
+              linkId: newLink.id,
+              title,
+              senderName: user.name,
+              message: `${user.name} sent you a link to review: "${title}"`
+            }
+          })}\n\n`);
+        }
+      }
 
       res.json(newLink);
     } catch (error) {
@@ -4144,10 +4165,104 @@ End of Report
         "review_link"
       );
 
+      // Send SSE notification to project manager
+      if (global.sseClients && global.sseClients.has(link.sentBy)) {
+        const client = global.sseClients.get(link.sentBy);
+        if (client) {
+          client.write(`data: ${JSON.stringify({
+            type: 'review_link_reviewed',
+            data: {
+              linkId,
+              title: link.title,
+              reviewerName: user.name,
+              message: `${user.name} has reviewed your link: "${link.title}"`
+            }
+          })}\n\n`);
+        }
+      }
+
       res.json(updatedLink);
     } catch (error) {
       console.error("Error marking link as reviewed:", error);
       res.status(500).json({ error: "Failed to mark link as reviewed" });
+    }
+  });
+
+  // Add comment to review link (Team Leads only)
+  app.put("/api/review-links/:id/comment", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "team_lead") {
+      return res.status(403).json({ error: "Only team leads can add comments to review links" });
+    }
+
+    try {
+      const linkId = parseInt(req.params.id);
+      const { comment } = req.body;
+
+      if (!comment || comment.trim() === "") {
+        return res.status(400).json({ error: "Comment is required" });
+      }
+
+      // Check if link exists and is assigned to this team lead
+      const [link] = await db
+        .select()
+        .from(reviewLinks)
+        .where(and(
+          eq(reviewLinks.id, linkId),
+          eq(reviewLinks.assignedTo, user.id)
+        ))
+        .limit(1);
+
+      if (!link) {
+        return res.status(404).json({ error: "Review link not found or not assigned to you" });
+      }
+
+      // Update link with comment and set status to needs_revision
+      const [updatedLink] = await db
+        .update(reviewLinks)
+        .set({
+          reviewComment: comment.trim(),
+          commentedAt: new Date(),
+          status: "needs_revision",
+          updatedAt: new Date(),
+        })
+        .where(eq(reviewLinks.id, linkId))
+        .returning();
+
+      // Create notification for project manager
+      await createNotification(
+        link.sentBy,
+        "task_assigned",
+        `${user.name} added a comment to your review link: "${link.title}"`,
+        linkId,
+        "review_link"
+      );
+
+      // Send SSE notification to project manager for browser notification
+      if (global.sseClients && global.sseClients.has(link.sentBy)) {
+        const client = global.sseClients.get(link.sentBy);
+        if (client) {
+          client.write(`data: ${JSON.stringify({
+            type: 'review_link_comment',
+            data: {
+              linkId,
+              title: link.title,
+              commenterName: user.name,
+              comment: comment.trim(),
+              message: `${user.name} commented on your review: "${link.title}"`
+            }
+          })}\n\n`);
+        }
+      }
+
+      res.json(updatedLink);
+    } catch (error) {
+      console.error("Error adding comment to review link:", error);
+      res.status(500).json({ error: "Failed to add comment to review link" });
     }
   });
 
