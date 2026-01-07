@@ -120,7 +120,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   }, [queryClient, projectId]);
 
   const { data: staff } = useQuery<any[]>({
-    queryKey: ["/api/staff", projectId],
+    queryKey: ["/api/staff"],
     refetchOnWindowFocus: true,
     enabled: !!user,
   });
@@ -437,7 +437,15 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
               return (
                 <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50" : ""}>
-                  <TableCell className="font-medium">{task.title}</TableCell>
+                  <TableCell className="font-medium">
+                    <div>{task.title}</div>
+                    <div className="text-[10px] text-muted-foreground leading-tight italic mt-1">
+                      Assigned by: {(() => {
+                        const creator = (staff ?? []).find((s) => s && s.id === task.assignedBy);
+                        return creator?.name || "Unknown";
+                      })()}
+                    </div>
+                  </TableCell>
                   <TableCell className="max-w-xs">
                       {formatDescription(task.description || "", task.id)}
                   </TableCell>
@@ -469,18 +477,10 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   </TableCell>
                   {showProjectInfo && (
                     <TableCell>
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium leading-tight">
-                          {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
-                            <div key={idx}>{word}</div>
-                          )) : "No Project"}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground leading-tight italic">
-                          Assigned by: {(() => {
-                            const creator = (staff ?? []).find((s) => s && s.id === task.assignedBy);
-                            return creator?.name || "Unknown";
-                          })()}
-                        </div>
+                      <div className="text-sm leading-tight">
+                        {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
+                          <div key={idx}>{word}</div>
+                        )) : "No Project"}
                       </div>
                     </TableCell>
                   )}
