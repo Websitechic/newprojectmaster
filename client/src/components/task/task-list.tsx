@@ -119,11 +119,28 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     };
   }, [queryClient, projectId]);
 
+  const { data: usersData } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+    enabled: !!user,
+  });
+
   const { data: staff } = useQuery<any[]>({
     queryKey: ["/api/staff"],
     refetchOnWindowFocus: true,
     enabled: !!user,
   });
+
+  const { data: clients } = useQuery<any[]>({
+    queryKey: ["/api/clients"],
+    enabled: !!user,
+  });
+
+  const allUsers = [...(usersData || []), ...(staff || []), ...(clients || [])];
+  const userMap = allUsers.reduce((acc, u) => {
+    if (u && u.id) acc[u.id] = u.name;
+    return acc;
+  }, {} as Record<number, string>);
+
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -440,10 +457,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <TableCell className="font-medium">
                     <div>{task.title}</div>
                     <div className="text-[10px] text-muted-foreground leading-tight italic mt-1">
-                      Assigned by: {(() => {
-                        const creator = (staff ?? []).find((s) => s && s.id === task.assignedBy);
-                        return creator?.name || "Unknown";
-                      })()}
+                      Assigned by: {task.assignedBy ? (userMap[task.assignedBy] || "Unknown User") : "System"}
                     </div>
                   </TableCell>
                   <TableCell className="max-w-xs">
