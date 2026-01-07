@@ -361,7 +361,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     ? tasks.filter((task) => task.assigneeId === (user as any)?.staffId)
     : tasks;
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, isDeadlineMissed: boolean = false) => {
+    if (isDeadlineMissed) return 'bg-red-600 text-white font-bold';
     switch (status) {
       case 'todo': return 'bg-gray-100 text-gray-800';
       case 'in_progress': return 'bg-blue-100 text-blue-800';
@@ -428,119 +429,135 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredTasks.map((task) => (
-              <TableRow key={task.id}>
-                <TableCell className="font-medium">{task.title}</TableCell>
-                <TableCell className="max-w-xs">
-                    {formatDescription(task.description, task.id)}
-                </TableCell>
-                <TableCell>
-                  <Badge className={getStatusColor(task.status)}>
-                    <div className="text-center leading-tight">
-                      {(task.status?.replace('_', ' ') || 'todo').split(' ').map((word, idx) => (
-                        <div key={idx}>{word}</div>
-                      ))}
-                    </div>
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm leading-tight">
-                    {(() => {
-                      if (!task || !task.assigneeId) return "Unassigned";
-                      const assignee = (staff ?? []).find((s) => s && s.id === task.assigneeId);
-                      const name = assignee?.name || "Unassigned";
-                      const role = assignee?.role === 'team_lead' ? ' (Team Lead)' : '';
-                      return (name + role).split(' ').map((word, idx) => (
-                        <div key={idx}>{word}</div>
-                      ));
-                    })()}
-                  </div>
-                </TableCell>
-                {showProjectInfo && (
-                  <TableCell>
-                    <div className="text-sm leading-tight">
-                      {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
-                        <div key={idx}>{word}</div>
-                      )) : "No Project"}
-                    </div>
+            {filteredTasks.map((task) => {
+              const isDeadlineMissed = task.deadline &&
+                new Date(task.deadline).getTime() < Date.now() &&
+                task.status !== "completed" &&
+                task.status !== "review";
+
+              return (
+                <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50" : ""}>
+                  <TableCell className="font-medium">{task.title}</TableCell>
+                  <TableCell className="max-w-xs">
+                      {formatDescription(task.description, task.id)}
                   </TableCell>
-                )}
-                {showProjectInfo && (
                   <TableCell>
-                    <div className="space-y-1">
-                      <div className={`flex items-center gap-1 ${task.isTimerRunning ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
-                        <Clock className="h-4 w-4" />
-                        <span>{formatTime(localTimers[task.id] || task.timeSpent || 0)}</span>
-                        {task.isTimerRunning && (
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
+                    <Badge className={getStatusColor(task.status, isDeadlineMissed)}>
+                      <div className="text-center leading-tight">
+                        {isDeadlineMissed ? (
+                          "Deadline Missed"
+                        ) : (
+                          (task.status?.replace('_', ' ') || 'todo').split(' ').map((word, idx) => (
+                            <div key={idx}>{word}</div>
+                          ))
                         )}
                       </div>
-                      {stopGapAssignments[task.id] && (
-                        <div className="text-xs text-blue-600 font-medium">
-                          Stop Gap: +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
-                        </div>
-                      )}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm leading-tight">
+                      {(() => {
+                        if (!task || !task.assigneeId) return "Unassigned";
+                        const assignee = (staff ?? []).find((s) => s && s.id === task.assigneeId);
+                        const name = assignee?.name || "Unassigned";
+                        const role = assignee?.role === 'team_lead' ? ' (Team Lead)' : '';
+                        return (name + role).split(' ').map((word, idx) => (
+                          <div key={idx}>{word}</div>
+                        ));
+                      })()}
                     </div>
                   </TableCell>
-                )}
-                <TableCell>
-                  {task.startDate ? (
-                    <div className="text-sm">
-                      <div>{new Date(task.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
-                      <div className="text-muted-foreground">{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                    </div>
-                  ) : "Not set"}
-                </TableCell>
-                <TableCell>
-                  {task.deadline ? (
-                    <div className="text-sm">
-                      <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
-                      <div className="text-muted-foreground">{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                    </div>
-                  ) : "No deadline"}
-                </TableCell>
-                <TableCell>
-                  {task.workingHours || task.workingMinutes ? (() => {
-                    const hours = task.workingHours || 0;
-                    const minutes = task.workingMinutes || 0;
-                    if (hours > 0 && minutes > 0) return `${hours}hr ${minutes}mins`;
-                    if (hours > 0) return `${hours}hr`;
-                    if (minutes > 0) return `${minutes}mins`;
-                    return "Not set";
-                  })() : "Not set"}
-                </TableCell>
-                <TableCell className="text-right">
-                  {!isStaffView ? (
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          if (task && task.id) {
-                            handleEditClick(task);
-                          }
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          if (task && task.id) {
-                            deleteTask.mutate(task.id);
-                          }
-                        }}
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">View Only</span>
+                  {showProjectInfo && (
+                    <TableCell>
+                      <div className="text-sm leading-tight">
+                        {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
+                          <div key={idx}>{word}</div>
+                        )) : "No Project"}
+                      </div>
+                    </TableCell>
                   )}
-                </TableCell>
-              </TableRow>
-            ))}
+                  {showProjectInfo && (
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className={`flex items-center gap-1 ${task.isTimerRunning ? 'text-blue-600 font-medium' : isDeadlineMissed ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
+                          <Clock className="h-4 w-4" />
+                          <span className={isDeadlineMissed ? "animate-pulse" : ""}>{formatTime(localTimers[task.id] || task.timeSpent || 0)}</span>
+                          {task.isTimerRunning && (
+                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
+                          )}
+                        </div>
+                        {stopGapAssignments[task.id] && (
+                          <div className="text-xs text-blue-600 font-medium">
+                            Stop Gap: +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
+                          </div>
+                        )}
+                        {isDeadlineMissed && (
+                          <div className="text-xs text-red-600 font-medium">
+                            Deadline Missed
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
+                  <TableCell>
+                    {task.startDate ? (
+                      <div className="text-sm">
+                        <div>{new Date(task.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        <div className="text-muted-foreground">{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                      </div>
+                    ) : "Not set"}
+                  </TableCell>
+                  <TableCell>
+                    {task.deadline ? (
+                      <div className={`text-sm ${isDeadlineMissed ? "text-red-600 font-bold" : ""}`}>
+                        <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        <div className="text-muted-foreground">{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                      </div>
+                    ) : "No deadline"}
+                  </TableCell>
+                  <TableCell>
+                    {task.workingHours || task.workingMinutes ? (() => {
+                      const hours = task.workingHours || 0;
+                      const minutes = task.workingMinutes || 0;
+                      if (hours > 0 && minutes > 0) return `${hours}hr ${minutes}mins`;
+                      if (hours > 0) return `${hours}hr`;
+                      if (minutes > 0) return `${minutes}mins`;
+                      return "Not set";
+                    })() : "Not set"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {!isStaffView ? (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (task && task.id) {
+                              handleEditClick(task);
+                            }
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (task && task.id) {
+                              deleteTask.mutate(task.id);
+                            }
+                          }}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">View Only</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
         </div>
