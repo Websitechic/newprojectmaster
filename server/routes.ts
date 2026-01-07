@@ -3838,6 +3838,18 @@ End of Report
         }
       }
 
+      // Send OneSignal push notification to team lead
+      try {
+        const { sendPushNotification } = await import("./websocket");
+        await sendPushNotification(
+          teamLeadId,
+          "New Review Request",
+          `${user.name} sent you a link to review: "${title}"`
+        );
+      } catch (err) {
+        console.error("Failed to send OneSignal notification for review assignment:", err);
+      }
+
       res.json(newLink);
     } catch (error) {
       console.error("Error creating review link:", error);
@@ -4181,6 +4193,18 @@ End of Report
         }
       }
 
+      // Send OneSignal push notification to project manager
+      try {
+        const { sendPushNotification } = await import("./websocket");
+        await sendPushNotification(
+          link.sentBy,
+          "Review Completed",
+          `${user.name} has reviewed your link: "${link.title}"`
+        );
+      } catch (err) {
+        console.error("Failed to send OneSignal notification for review completion:", err);
+      }
+
       res.json(updatedLink);
     } catch (error) {
       console.error("Error marking link as reviewed:", error);
@@ -4233,6 +4257,10 @@ End of Report
         .where(eq(reviewLinks.id, linkId))
         .returning();
 
+      if (!updatedLink) {
+        return res.status(404).json({ error: "Review link not found or update failed" });
+      }
+
       // Create notification for project manager
       await createNotification(
         link.sentBy,
@@ -4257,6 +4285,18 @@ End of Report
             }
           })}\n\n`);
         }
+      }
+
+      // Send OneSignal push notification to project manager
+      try {
+        const { sendPushNotification } = await import("./websocket");
+        await sendPushNotification(
+          link.sentBy,
+          "Revision Requested",
+          `${user.name} commented on your review: "${link.title}"`
+        );
+      } catch (err) {
+        console.error("Failed to send OneSignal notification for comment:", err);
       }
 
       res.json(updatedLink);

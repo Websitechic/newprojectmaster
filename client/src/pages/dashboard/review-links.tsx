@@ -197,8 +197,16 @@ export default function ReviewLinks() {
         body: JSON.stringify({ comment }),
       });
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to add comment");
+        const errorText = await response.text();
+        let errorMessage = "Failed to add comment";
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorMessage;
+        } catch (e) {
+          // Use original text if not JSON
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       return response.json();
     },
