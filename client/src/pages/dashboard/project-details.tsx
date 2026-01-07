@@ -32,7 +32,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox"; // Added import for Checkbox
-import { useState } from "react"; //Import useState
+import { useState, useEffect } from "react"; //Import useState and useEffect
 
 const deliverableSchema = z.object({
   name: z.string().min(1, "Deliverable name is required"),
