@@ -127,8 +127,14 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
         .map((member: any) => member.userId?.toString())
         .filter((id: string | undefined): id is string => id !== undefined);
 
-      console.log('Setting team members:', memberIds);
-      form.setValue('teamMembers', memberIds, { shouldValidate: false });
+      console.log('Setting team members for project:', project.id, memberIds);
+      // Use reset instead of setValue to ensure the form state is fully updated
+      // We keep the other values but update teamMembers
+      const currentValues = form.getValues();
+      form.reset({
+        ...currentValues,
+        teamMembers: memberIds
+      });
     }
   }, [membersLoaded, existingMembers, project?.id, form]);
 
