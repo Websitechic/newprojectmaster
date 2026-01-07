@@ -964,8 +964,10 @@ export const reviewLinks = pgTable("review_links", {
   description: text("description"),
   sentBy: integer("sent_by").notNull().references(() => users.id, { onDelete: "cascade" }),
   assignedTo: integer("assigned_to").notNull().references(() => users.id, { onDelete: "cascade" }),
-  status: text("status", { enum: ["pending", "reviewed"] }).notNull().default("pending"),
+  status: text("status", { enum: ["pending", "reviewed", "needs_revision"] }).notNull().default("pending"),
   reviewedAt: timestamp("reviewed_at"),
+  reviewComment: text("review_comment"),
+  commentedAt: timestamp("commented_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
