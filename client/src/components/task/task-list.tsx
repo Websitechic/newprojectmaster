@@ -476,7 +476,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                           )) : "No Project"}
                         </div>
                         <div className="text-[10px] text-muted-foreground leading-tight italic">
-                          Created by: {(() => {
+                          Assigned by: {(() => {
                             const creator = (staff ?? []).find((s) => s && s.id === task.assignedBy);
                             return creator?.name || "Unknown";
                           })()}
