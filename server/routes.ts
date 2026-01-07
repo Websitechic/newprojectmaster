@@ -4265,10 +4265,16 @@ End of Report
         updateData.status = "needs_revision";
       }
 
+      // If user is team lead, use link.assignedTo
+      // If user is PM, use link.sentBy
+      const whereClause = isTeamLead 
+        ? and(eq(reviewLinks.id, linkId), eq(reviewLinks.assignedTo, user.id))
+        : and(eq(reviewLinks.id, linkId), eq(reviewLinks.sentBy, user.id));
+
       const [updatedLink] = await db
         .update(reviewLinks)
         .set(updateData)
-        .where(eq(reviewLinks.id, linkId))
+        .where(whereClause)
         .returning();
 
       if (!updatedLink) {
