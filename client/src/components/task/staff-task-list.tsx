@@ -102,6 +102,17 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      tasks.forEach(task => {
+        const isDeadlineMissed = task.deadline &&
+          new Date(task.deadline).getTime() < Date.now() &&
+          task.status !== "completed" &&
+          task.status !== "review";
+
+        if (isDeadlineMissed && task.isTimerRunning) {
+          pauseTimer.mutate(task.id);
+        }
+      });
+
       setLocalTimers(prev => {
         const newTimers = { ...prev };
         tasks.forEach(task => {
@@ -117,7 +128,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [tasks]);
+  }, [tasks, pauseTimer]);
 
   const startTimer = useMutation({
     mutationFn: async (taskId: number) => {
@@ -387,13 +398,17 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
             {filteredTasks.map((task) => {
               const currentTime = localTimers[task.id] || task.timeSpent || 0;
               const timeOverLimit = isTimeOverLimit(task, currentTime);
+              const isDeadlineMissed = task.deadline &&
+                new Date(task.deadline).getTime() < Date.now() &&
+                task.status !== "completed" &&
+                task.status !== "review";
 
               const isExpanded = expandedDescriptions[task.id] || false;
               const description = task.description || "No description";
               const isLongDescription = description.length > 100;
 
               return (
-                <TableRow key={task.id}>
+                <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50" : ""}>
                   <TableCell className="w-[200px]">
                     <div className="space-y-1">
                       <div className="font-medium text-sm">{task.title}</div>
@@ -445,42 +460,48 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                     </div>
                   </TableCell>
                   <TableCell className="w-[180px]">
-                    <Select
-                      value={task.status || 'todo'}
-                      onValueChange={(status) => {
-                        if (status === 'technical_support' && task.isTimerRunning) {
-                          pauseTimer.mutate(task.id);
-                        }
-                        if (status === 'pending' && task.isTimerRunning) {
-                          pauseTimer.mutate(task.id);
-                        }
-                        if (status === 'in_progress' && !task.isTimerRunning) {
-                          startTimer.mutate(task.id);
-                        }
-                        updateTaskStatus.mutate({ taskId: task.id, status });
-                      }}
-                      disabled={updateTaskStatus.isPending || pauseTimer.isPending || startTimer.isPending}
-                    >
-                      <SelectTrigger className="w-full h-8 text-xs px-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(!task.hasBeenStarted && (task.timeSpent || 0) === 0) && (
-                          <SelectItem value="todo">To Do</SelectItem>
-                        )}
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="review">Review</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="technical_support">Technical Support</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {isDeadlineMissed ? (
+                      <Badge variant="destructive" className="w-full justify-center py-1">
+                        Deadline Missed
+                      </Badge>
+                    ) : (
+                      <Select
+                        value={task.status || 'todo'}
+                        onValueChange={(status) => {
+                          if (status === 'technical_support' && task.isTimerRunning) {
+                            pauseTimer.mutate(task.id);
+                          }
+                          if (status === 'pending' && task.isTimerRunning) {
+                            pauseTimer.mutate(task.id);
+                          }
+                          if (status === 'in_progress' && !task.isTimerRunning) {
+                            startTimer.mutate(task.id);
+                          }
+                          updateTaskStatus.mutate({ taskId: task.id, status });
+                        }}
+                        disabled={updateTaskStatus.isPending || pauseTimer.isPending || startTimer.isPending}
+                      >
+                        <SelectTrigger className="w-full h-8 text-xs px-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(!task.hasBeenStarted && (task.timeSpent || 0) === 0) && (
+                            <SelectItem value="todo">To Do</SelectItem>
+                          )}
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="review">Review</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="technical_support">Technical Support</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </TableCell>
                   <TableCell className="w-[180px]">
                     <div className="space-y-1">
                       <div className={`flex items-center gap-1 text-sm ${getTimerColor(task, currentTime)}`}>
                         <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span className={timeOverLimit ? "animate-pulse font-semibold" : ""}>
+                        <span className={timeOverLimit || isDeadlineMissed ? "animate-pulse font-semibold" : ""}>
                           {formatTime(currentTime)}
                         </span>
                         {task.isTimerRunning && (
@@ -502,23 +523,27 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                           Stop Gap: +{Math.floor(stopGapAssignments[task.id].stopGapHours / 60)}h {stopGapAssignments[task.id].stopGapHours % 60}m
                         </div>
                       )}
-                      {timeOverLimit && (
+                      {(timeOverLimit || isDeadlineMissed) && (
                         <div className="text-xs text-red-600 font-medium">
-                          Over limit!
+                          {isDeadlineMissed ? "Deadline Missed" : "Over limit!"}
                         </div>
                       )}
                     </div>
                   </TableCell>
                   <TableCell className="w-[140px]">
                     {task.deadline ? (
-                      <div className="text-xs whitespace-nowrap">
+                      <div className={`text-xs whitespace-nowrap ${isDeadlineMissed ? "text-red-600 font-bold" : ""}`}>
                         <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
                         <div className="text-muted-foreground">{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     ) : <span className="text-muted-foreground text-xs">None</span>}
                   </TableCell>
                   <TableCell className="w-[200px]">
-                    {stopGapAssignments[task.id] ? (
+                    {isDeadlineMissed ? (
+                      <Badge variant="destructive" className="bg-red-100 text-red-800 text-xs whitespace-nowrap border-red-200">
+                        Deadline Missed
+                      </Badge>
+                    ) : stopGapAssignments[task.id] ? (
                       <div className="space-y-1">
                         <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs whitespace-nowrap">
                           +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
@@ -543,36 +568,44 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                   </TableCell>
                   <TableCell className="text-right w-[200px]">
                     <div className="flex justify-end gap-2">
-                      {task.isTimerRunning ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => pauseTimer.mutate(task.id)}
-                          disabled={pauseTimer.isPending}
-                          className="h-8 text-xs px-2 bg-yellow-50 text-yellow-700 border-yellow-200"
-                        >
-                          <Pause className="h-3 w-3 mr-1" /> Pause
-                        </Button>
+                      {isDeadlineMissed ? (
+                        <Badge variant="destructive" className="bg-red-100 text-red-800 text-xs whitespace-nowrap border-red-200">
+                          Deadline Missed
+                        </Badge>
                       ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => startTimer.mutate(task.id)}
-                          disabled={startTimer.isPending || task.status === 'completed' || task.status === 'review'}
-                          className="h-8 text-xs px-2 bg-blue-50 text-blue-700 border-blue-200"
-                        >
-                          <Play className="h-3 w-3 mr-1" /> Start
-                        </Button>
+                        <>
+                          {task.isTimerRunning ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => pauseTimer.mutate(task.id)}
+                              disabled={pauseTimer.isPending}
+                              className="h-8 text-xs px-2 bg-yellow-50 text-yellow-700 border-yellow-200"
+                            >
+                              <Pause className="h-3 w-3 mr-1" /> Pause
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => startTimer.mutate(task.id)}
+                              disabled={startTimer.isPending || task.status === 'completed' || task.status === 'review'}
+                              className="h-8 text-xs px-2 bg-blue-50 text-blue-700 border-blue-200"
+                            >
+                              <Play className="h-3 w-3 mr-1" /> Start
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => submitTask.mutate(task.id)}
+                            disabled={submitTask.isPending || task.status === 'completed' || task.status === 'review'}
+                            className="h-8 text-xs px-2 bg-green-50 text-green-700 border-green-200"
+                          >
+                            <Send className="h-3 w-3 mr-1" /> Submit
+                          </Button>
+                        </>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => submitTask.mutate(task.id)}
-                        disabled={submitTask.isPending || task.status === 'completed' || task.status === 'review'}
-                        className="h-8 text-xs px-2 bg-green-50 text-green-700 border-green-200"
-                      >
-                        <Send className="h-3 w-3 mr-1" /> Submit
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
