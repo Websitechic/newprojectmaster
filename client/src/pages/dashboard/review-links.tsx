@@ -501,20 +501,18 @@ export default function ReviewLinks() {
                               <span className="hidden sm:inline">Open Link</span>
                               <span className="sm:hidden">Open</span>
                             </Button>
-                            {((isTeamLead && (link.status === "pending" || link.status === "needs_revision")) || isProjectManager) && (
+                            {isTeamLead && (link.status === "pending" || link.status === "needs_revision") && (
                               <>
-                                {isTeamLead && (link.status === "pending" || link.status === "needs_revision") && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => markReviewedMutation.mutate(link.id)}
-                                    disabled={markReviewedMutation.isPending}
-                                    className="bg-green-600 hover:bg-green-700 flex-shrink-0"
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    <span className="hidden sm:inline">Approve</span>
-                                    <span className="sm:hidden">OK</span>
-                                  </Button>
-                                )}
+                                <Button
+                                  size="sm"
+                                  onClick={() => markReviewedMutation.mutate(link.id)}
+                                  disabled={markReviewedMutation.isPending}
+                                  className="bg-green-600 hover:bg-green-700 flex-shrink-0"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  <span className="hidden sm:inline">Approve</span>
+                                  <span className="sm:hidden">OK</span>
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
