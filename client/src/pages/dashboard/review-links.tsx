@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, ExternalLink, Trash2, CheckCircle, Clock } from "lucide-react";
+import { Plus, ExternalLink, Trash2, CheckCircle, Clock, MessageSquare, AlertCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
 export default function ReviewLinks() {
@@ -49,6 +49,9 @@ export default function ReviewLinks() {
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [selectedLinkId, setSelectedLinkId] = useState<number | null>(null);
+  const [commentText, setCommentText] = useState("");
 
   const toggleCardExpansion = (linkId: number) => {
     setExpandedCards(prev => ({
@@ -184,6 +187,49 @@ export default function ReviewLinks() {
       });
     },
   });
+
+  // Add comment mutation (for team leads)
+  const addCommentMutation = useMutation({
+    mutationFn: async ({ linkId, comment }: { linkId: number; comment: string }) => {
+      const response = await fetch(`/api/review-links/${linkId}/comment`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comment }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to add comment");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
+      toast({
+        title: "Comment Added",
+        description: "Your feedback has been sent to the project manager",
+      });
+      setCommentDialogOpen(false);
+      setSelectedLinkId(null);
+      setCommentText("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddComment = (linkId: number) => {
+    setSelectedLinkId(linkId);
+    setCommentDialogOpen(true);
+  };
+
+  const handleSubmitComment = () => {
+    if (!selectedLinkId || !commentText.trim()) return;
+    addCommentMutation.mutate({ linkId: selectedLinkId, comment: commentText });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -381,10 +427,12 @@ export default function ReviewLinks() {
                                 className={
                                   link.status === "reviewed"
                                     ? "bg-green-100 text-green-700 flex-shrink-0"
+                                    : link.status === "needs_revision"
+                                    ? "bg-orange-100 text-orange-700 flex-shrink-0"
                                     : "bg-yellow-100 text-yellow-700 flex-shrink-0"
                                 }
                               >
-                                {link.status === "reviewed" ? "Reviewed" : "Pending"}
+                                {link.status === "reviewed" ? "Reviewed" : link.status === "needs_revision" ? "Needs Revision" : "Pending"}
                               </Badge>
                             </div>
                             {link.description && (
@@ -417,6 +465,22 @@ export default function ReviewLinks() {
                                 </>
                               )}
                             </div>
+                            {link.reviewComment && (
+                              <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-sm font-medium text-orange-800">Revision Comment:</p>
+                                    <p className="text-sm text-orange-700 mt-1">{link.reviewComment}</p>
+                                    {link.commentedAt && (
+                                      <p className="text-xs text-orange-500 mt-1">
+                                        Added: {new Date(link.commentedAt).toLocaleDateString()} at {new Date(link.commentedAt).toLocaleTimeString()}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:ml-4">
                             <Button
@@ -429,17 +493,29 @@ export default function ReviewLinks() {
                               <span className="hidden sm:inline">Open Link</span>
                               <span className="sm:hidden">Open</span>
                             </Button>
-                            {isTeamLead && link.status === "pending" && (
-                              <Button
-                                size="sm"
-                                onClick={() => markReviewedMutation.mutate(link.id)}
-                                disabled={markReviewedMutation.isPending}
-                                className="bg-green-600 hover:bg-green-700 flex-shrink-0"
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                <span className="hidden sm:inline">Mark Reviewed</span>
-                                <span className="sm:hidden">Review</span>
-                              </Button>
+                            {isTeamLead && (link.status === "pending" || link.status === "needs_revision") && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => markReviewedMutation.mutate(link.id)}
+                                  disabled={markReviewedMutation.isPending}
+                                  className="bg-green-600 hover:bg-green-700 flex-shrink-0"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  <span className="hidden sm:inline">Approve</span>
+                                  <span className="sm:hidden">OK</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleAddComment(link.id)}
+                                  className="border-orange-500 text-orange-600 hover:bg-orange-50 flex-shrink-0"
+                                >
+                                  <MessageSquare className="h-4 w-4 mr-1" />
+                                  <span className="hidden sm:inline">Add Comment</span>
+                                  <span className="sm:hidden">Comment</span>
+                                </Button>
+                              </>
                             )}
                             {isProjectManager && (
                               <AlertDialog>
@@ -478,6 +554,47 @@ export default function ReviewLinks() {
           </Card>
         </div>
       </div>
+
+      {/* Comment Dialog for Team Leads */}
+      <Dialog open={commentDialogOpen} onOpenChange={setCommentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Review Comment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label htmlFor="comment">Your feedback or revision request</Label>
+              <Textarea
+                id="comment"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Enter your feedback here..."
+                className="mt-1"
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCommentDialogOpen(false);
+                  setCommentText("");
+                  setSelectedLinkId(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitComment}
+                disabled={!commentText.trim() || addCommentMutation.isPending}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                {addCommentMutation.isPending ? "Submitting..." : "Submit Comment"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
