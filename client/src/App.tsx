@@ -349,6 +349,54 @@ function GlobalNotificationListener() {
               console.log('🔄 General channel message update:', data);
               queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
             }
+            // Review link assigned (team lead receives a new review request)
+            else if (data.type === 'review_link_assigned') {
+              console.log('📋 Review link assigned:', data);
+              playNotificationSound().catch(err => {
+                console.error('❌ Review link assigned sound failed:', err);
+              });
+              showNotification(
+                'New Review Request',
+                {
+                  body: data.data?.message || 'You have a new link to review',
+                  data: { url: '/dashboard/review-links' }
+                }
+              );
+              queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+            }
+            // Review link reviewed (PM notified when approved)
+            else if (data.type === 'review_link_reviewed') {
+              console.log('✅ Review link reviewed:', data);
+              playNotificationSound().catch(err => {
+                console.error('❌ Review link reviewed sound failed:', err);
+              });
+              showNotification(
+                'Review Completed',
+                {
+                  body: data.data?.message || 'Your review link has been approved',
+                  data: { url: '/dashboard/review-links' }
+                }
+              );
+              queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+            }
+            // Review link comment (PM notified when team lead adds feedback)
+            else if (data.type === 'review_link_comment') {
+              console.log('💬 Review link comment:', data);
+              playNotificationSound().catch(err => {
+                console.error('❌ Review link comment sound failed:', err);
+              });
+              showNotification(
+                'Revision Requested',
+                {
+                  body: data.data?.message || 'A team lead commented on your review',
+                  data: { url: '/dashboard/review-links' }
+                }
+              );
+              queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+            }
             // Existing team mention logic
             else if (data.type === 'team_mention') {
               console.log('📌 Team mention notification received:', data);
