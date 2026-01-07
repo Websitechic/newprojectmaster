@@ -4212,15 +4212,18 @@ End of Report
     }
   });
 
-  // Add comment to review link (Team Leads only)
+  // Add comment to review link (Team Leads and Project Managers)
   app.put("/api/review-links/:id/comment", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
-    if (user.role !== "team_lead") {
-      return res.status(403).json({ error: "Only team leads can add comments to review links" });
+    const isTeamLead = user.role === "team_lead";
+    const isPM = user.role === "project_manager";
+
+    if (!isTeamLead && !isPM) {
+      return res.status(403).json({ error: "Only team leads and project managers can add comments to review links" });
     }
 
     try {
@@ -4231,29 +4234,40 @@ End of Report
         return res.status(400).json({ error: "Comment is required" });
       }
 
-      // Check if link exists and is assigned to this team lead
+      // Check if link exists and user has access
+      // PMs can comment on links they sent, Team Leads on links assigned to them
       const [link] = await db
         .select()
         .from(reviewLinks)
         .where(and(
           eq(reviewLinks.id, linkId),
-          eq(reviewLinks.assignedTo, user.id)
+          or(
+            eq(reviewLinks.assignedTo, user.id),
+            eq(reviewLinks.sentBy, user.id)
+          )
         ))
         .limit(1);
 
       if (!link) {
-        return res.status(404).json({ error: "Review link not found or not assigned to you" });
+        return res.status(404).json({ error: "Review link not found or you don't have access to it" });
       }
 
-      // Update link with comment and set status to needs_revision
+      // Update link with comment
+      // If team lead comments, set status to needs_revision
+      // If PM comments, keep status or handle as needed
+      const updateData: any = {
+        reviewComment: comment.trim(),
+        commentedAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      if (isTeamLead) {
+        updateData.status = "needs_revision";
+      }
+
       const [updatedLink] = await db
         .update(reviewLinks)
-        .set({
-          reviewComment: comment.trim(),
-          commentedAt: new Date(),
-          status: "needs_revision",
-          updatedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(reviewLinks.id, linkId))
         .returning();
 
@@ -4261,18 +4275,21 @@ End of Report
         return res.status(404).json({ error: "Review link not found or update failed" });
       }
 
-      // Create notification for project manager
+      // Determine recipient for notifications
+      const recipientId = isTeamLead ? link.sentBy : link.assignedTo;
+
+      // Create notification for the other party
       await createNotification(
-        link.sentBy,
+        recipientId,
         "task_assigned",
-        `${user.name} added a comment to your review link: "${link.title}"`,
+        `${user.name} added a comment to review link: "${link.title}"`,
         linkId,
         "review_link"
       );
 
-      // Send SSE notification to project manager for browser notification
-      if (global.sseClients && global.sseClients.has(link.sentBy)) {
-        const client = global.sseClients.get(link.sentBy);
+      // Send SSE notification
+      if (global.sseClients && global.sseClients.has(recipientId)) {
+        const client = global.sseClients.get(recipientId);
         if (client) {
           client.write(`data: ${JSON.stringify({
             type: 'review_link_comment',
@@ -4281,19 +4298,19 @@ End of Report
               title: link.title,
               commenterName: user.name,
               comment: comment.trim(),
-              message: `${user.name} commented on your review: "${link.title}"`
+              message: `${user.name} commented on review: "${link.title}"`
             }
           })}\n\n`);
         }
       }
 
-      // Send OneSignal push notification to project manager
+      // Send OneSignal push notification
       try {
         const { sendOneSignalNotification } = await import("./websocket");
         await sendOneSignalNotification(
-          [link.sentBy],
-          "Revision Requested",
-          `${user.name} commented on your review: "${link.title}"`
+          [recipientId],
+          isTeamLead ? "Revision Requested" : "Comment on Review",
+          `${user.name} commented on review: "${link.title}"`
         );
       } catch (err) {
         console.error("Failed to send OneSignal notification for comment:", err);
