@@ -122,9 +122,8 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
   // Update form when existing members are loaded
   useEffect(() => {
-    if (project?.id && membersLoaded && existingMembers.length >= 0) {
+    if (project?.id && membersLoaded && Array.isArray(existingMembers)) {
       const memberIds = existingMembers
-        .filter((member: any) => member.invitationStatus === 'accepted')
         .map((member: any) => member.userId.toString());
 
       console.log('Setting team members:', memberIds);
