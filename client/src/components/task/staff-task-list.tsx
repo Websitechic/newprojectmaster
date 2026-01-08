@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Play, Pause, Send, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, Pause, Send, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Task, Project } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
@@ -77,9 +77,16 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     },
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const filteredTasks = tasks
     .filter((task) => task.assigneeId === user?.id)
     .sort((a, b) => a.id - b.id);
+
+  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + itemsPerPage);
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -395,7 +402,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredTasks.map((task) => {
+            {paginatedTasks.map((task) => {
               const currentTime = localTimers[task.id] || task.timeSpent || 0;
               const timeOverLimit = isTimeOverLimit(task, currentTime);
               const isDeadlineMissed = task.deadline &&
@@ -615,6 +622,47 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
         </Table>
         </div>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-4">
+          <div className="text-sm text-muted-foreground">
+            Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTasks.length)} of {filteredTasks.length} tasks
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  className="w-8 h-8 p-0"
+                >
+                  {page}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Dialog open={stopGapDialogOpen} onOpenChange={setStopGapDialogOpen}>
         <DialogContent>

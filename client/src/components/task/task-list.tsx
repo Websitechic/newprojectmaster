@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash, Plus, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Trash, Plus, Clock } from "lucide-react";
 import type { Task, Project } from "@db/schema";
 
 interface TaskFormData {
@@ -374,9 +374,16 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const filteredTasks = isStaffView
     ? tasks.filter((task) => task.assigneeId === (user as any)?.staffId)
     : tasks;
+
+  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + itemsPerPage);
 
   const getStatusColor = (status: string, isDeadlineMissed: boolean = false) => {
     if (isDeadlineMissed) return 'bg-red-600 text-white font-bold';
@@ -446,7 +453,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredTasks.map((task) => {
+            {paginatedTasks.map((task) => {
               const isDeadlineMissed = task.deadline &&
                 new Date(task.deadline).getTime() < Date.now() &&
                 task.status !== "completed" &&
@@ -584,6 +591,47 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         </Table>
         </div>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-4">
+          <div className="text-sm text-muted-foreground">
+            Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTasks.length)} of {filteredTasks.length} tasks
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  className="w-8 h-8 p-0"
+                >
+                  {page}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[800px] overflow-y-auto">
