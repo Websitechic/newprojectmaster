@@ -47,14 +47,8 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
   const queryClient = useQueryClient();
   const unreadCount = useProjectUnreadCount(project.id);
 
-  // Check project membership for project managers
-  const isProjectMember = project.teamMembers?.some(member => {
-    // teamMembers might be an array of user objects or IDs depending on the API response structure
-    const userId = typeof member === 'object' ? (member as any).userId : member;
-    return userId?.toString() === user?.id?.toString();
-  }) || false;
-
-  const isProjectManager = user?.role === 'project_manager' && (project.managerId === user.id || isProjectMember);
+  // Project managers can edit any project they can see (backend already filters to projects they manage or are members of)
+  const isProjectManager = user?.role === 'project_manager';
 
   // Debug logging
   console.log('User role:', user?.role, 'Is PM:', isProjectManager);
