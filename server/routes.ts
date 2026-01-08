@@ -9594,11 +9594,27 @@ End of Report
         .limit(1);
 
       if (!project) {
-        return res.status(404).json({ error:"Project not found" });
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check project membership for project managers
+      let isProjectMember = false;
+      if (user.role === "project_manager") {
+        const membership = await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.userId, user.id)
+            )
+          )
+          .limit(1);
+        isProjectMember = membership.length > 0;
       }
 
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+      const isProjectManager = user.role === "project_manager" && (project.managerId === user.id || isProjectMember);
       const isProductOwner = user.role === "product_owner";
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
       const isTeamLead = user.role === "team_lead";
