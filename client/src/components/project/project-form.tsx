@@ -124,7 +124,7 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
   useEffect(() => {
     if (project?.id && membersLoaded && Array.isArray(existingMembers)) {
       const memberIds = existingMembers
-        .map((member: any) => member.userId?.toString())
+        .map((member: any) => (member.id || member.userId)?.toString())
         .filter((id: string | undefined): id is string => id !== undefined);
 
       console.log('Setting team members for project:', project.id, memberIds);
