@@ -609,9 +609,40 @@ export default function ProjectDetails() {
                                 <div key={index} className="border rounded-lg p-3">
                                   <div className="flex items-center justify-between mb-2">
                                     <h5 className="font-medium">{deliverable.name}</h5>
-                                    <Badge variant="outline">
-                                      {deliverable.status || 'Pending'}
-                                    </Badge>
+                                    <Select
+                                      defaultValue={deliverable.status || 'pending'}
+                                      onValueChange={async (newStatus) => {
+                                        try {
+                                          const response = await fetch(`/api/deliverables/${deliverable.id}/status`, {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ status: newStatus }),
+                                          });
+                                          if (!response.ok) throw new Error('Failed to update status');
+                                          queryClient.invalidateQueries({ queryKey: [`/api/project-plans/${projectPlan.id}`] });
+                                          toast({
+                                            title: "Success",
+                                            description: "Deliverable status updated",
+                                          });
+                                        } catch (error) {
+                                          toast({
+                                            title: "Error",
+                                            description: "Failed to update status",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="w-[130px] h-8 text-xs">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="pending">Pending</SelectItem>
+                                        <SelectItem value="in_progress">In Progress</SelectItem>
+                                        <SelectItem value="completed">Completed</SelectItem>
+                                        <SelectItem value="overdue">Overdue</SelectItem>
+                                      </SelectContent>
+                                    </Select>
                                   </div>
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
                                     <div>

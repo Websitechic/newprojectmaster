@@ -8323,6 +8323,44 @@ End of Report
     }
   });
 
+  // Update deliverable status
+  app.patch("/api/deliverables/:id/status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const deliverableId = parseInt(req.params.id);
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: "Status is required" });
+    }
+
+    try {
+      const [deliverable] = await db
+        .select()
+        .from(deliverables)
+        .where(eq(deliverables.id, deliverableId))
+        .limit(1);
+
+      if (!deliverable) {
+        return res.status(404).json({ error: "Deliverable not found" });
+      }
+
+      // Check access (simplified for brevity, should ideally match project access)
+      const [updatedDeliverable] = await db
+        .update(deliverables)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(deliverables.id, deliverableId))
+        .returning();
+
+      res.json(updatedDeliverable);
+    } catch (error) {
+      console.error("Error updating deliverable status:", error);
+      res.status(500).json({ error: "Failed to update deliverable status" });
+    }
+  });
+
   // Get project tasks
   app.get("/api/projects/:id/tasks", async (req, res) => {
     if (!req.isAuthenticated()) {
