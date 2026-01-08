@@ -9998,7 +9998,7 @@ End of Report
       const [existingPlan] = await db
         .select()
         .from(projectPlans)
-        .where(eq(existingPlan.id, planId))
+        .where(eq(projectPlans.id, planId))
         .limit(1);
 
       if (!existingPlan) {
@@ -10056,7 +10056,7 @@ End of Report
           status: status || existingPlan.status,
           updatedAt: new Date(),
         })
-        .where(eq(existingPlan.id, planId))
+        .where(eq(projectPlans.id, planId))
         .returning();
 
       // Delete existing deliverables
