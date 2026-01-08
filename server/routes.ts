@@ -10214,6 +10214,38 @@ End of Report
         return res.status(400).json({ error: "Title and project ID are required" });
       }
 
+      // Check if user has permission to create tasks for this project
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check if user is a member of the project
+      const membership = await db
+        .select()
+        .from(projectMembers)
+        .where(
+          and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.userId, user.id)
+          )
+        )
+        .limit(1);
+
+      const canCreateTask =
+        user.role === "operations_manager" ||
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
+        project.managerId === user.id ||
+        (user.role === "project_manager" && membership.length > 0) ||
+        (user.role === "staff" && user.specialization === "technical_support" && membership.length > 0);
+
+      if (!canCreateTask) {
+        return res.status(403).json({ error: "You don't have permission to create tasks for this project" });
+      }
+
       // Validate working hours if provided (can be decimal for hours + minutes)
       let taskWorkingHours = null;
       if (workingHours !== null && workingHours !== undefined) {
@@ -10244,12 +10276,6 @@ End of Report
         .returning();
 
       // If project was completed, revert it to pending when a new task is added
-      const [project] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, projectId))
-        .limit(1);
-
       if (project && project.status === "completed") {
         await db
           .update(projects)
