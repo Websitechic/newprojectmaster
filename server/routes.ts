@@ -8229,6 +8229,17 @@ End of Report
       }
 
       // Check if user has access to this project
+      const membership = await db
+        .select()
+        .from(projectMembers)
+        .where(
+          and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.userId, user.id)
+          )
+        )
+        .limit(1);
+
       const hasAccess =
         user.role === "operations_manager" ||
         user.role === "team_lead" ||
@@ -8237,19 +8248,7 @@ End of Report
         user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        (user.role === "staff" && await db
-          .select()
-          .from(projectMembers)
-          .where(
-            and(
-              eq(projectMembers.projectId, projectId),
-              eq(projectMembers.userId, user.id),
-              eq(projectMembers.invitationStatus, "accepted")
-            )
-          )
-          .limit(1)
-          .then(members => members.length > 0)
-        );
+        membership.length > 0;
 
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -8338,6 +8337,7 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
+      // Check if user has access to this project
       const hasAccess =
         user.role === "operations_manager" ||
         user.role === "team_lead" ||
@@ -8346,14 +8346,13 @@ End of Report
         user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        (user.role === "staff" && await db
+        (await db
           .select()
           .from(projectMembers)
           .where(
             and(
               eq(projectMembers.projectId, projectId),
-              eq(projectMembers.userId, user.id),
-              eq(projectMembers.invitationStatus, "accepted")
+              eq(projectMembers.userId, user.id)
             )
           )
           .limit(1)
@@ -8389,6 +8388,7 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
+      // Check if user has access to this project
       const hasAccess =
         user.role === "operations_manager" ||
         user.role === "team_lead" ||
@@ -8397,14 +8397,13 @@ End of Report
         user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        (user.role === "staff" && await db
+        (await db
           .select()
           .from(projectMembers)
           .where(
             and(
               eq(projectMembers.projectId, projectId),
-              eq(projectMembers.userId, user.id),
-              eq(projectMembers.invitationStatus, "accepted")
+              eq(projectMembers.userId, user.id)
             )
           )
           .limit(1)
