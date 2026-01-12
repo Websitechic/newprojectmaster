@@ -606,7 +606,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                         {/* Show actual start time when work was started */}
                         {(task as any).actualStartTime && (
                           <div className="text-xs text-green-600 font-medium mt-1">
-                            Actual: {new Date((task as any).actualStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            Started: {new Date((task as any).actualStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         )}
                       </div>
