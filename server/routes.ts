@@ -3242,7 +3242,7 @@ End of Report
 
       // Check permissions - ensure project.id exists
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+      const isProjectManager = user.role === "project_manager";
       const isTaskAssignee = existingTask.assigneeId === user.id;
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
       const isTeamLead = user.role === "team_lead";
@@ -3397,7 +3397,7 @@ End of Report
 
       // Check permissions - ensure project.id exists
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+      const isProjectManager = user.role === "project_manager";
       const isProductOwner = user.role === "product_owner";
       const isTechnicalSupport = user.role === "staff" && user.specialization === "technical_support";
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
