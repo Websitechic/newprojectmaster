@@ -3332,19 +3332,6 @@ End of Report
         if (!existingTask.reviewStartedAt) {
           updateData.reviewStartedAt = new Date();
         }
-
-        // Notify project manager when task is submitted for review
-        const pmId = project.managerId || existingTask.assignedBy;
-        if (pmId) {
-          await createNotification(
-            pmId,
-            "task_updated",
-            `${user.name} has submitted task "${updatedTask.title}" for review`,
-            updatedTask.id,
-            "task"
-          );
-          console.log(`Review notification sent to project manager ${pmId}`);
-        }
       }
 
       // Track when task is completed
@@ -3363,6 +3350,25 @@ End of Report
 
       if (!updatedTask) {
         return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Notify project manager when task is submitted for review
+      if (status === 'review' && existingTask.status !== 'review') {
+        try {
+          const pmId = project.managerId || existingTask.assignedBy;
+          if (pmId) {
+            await createNotification(
+              pmId,
+              "task_updated",
+              `${user.name} has submitted task "${updatedTask.title}" for review`,
+              updatedTask.id,
+              "task"
+            );
+            console.log(`Review notification sent to project manager ${pmId} from PUT endpoint`);
+          }
+        } catch (notifyErr) {
+          console.error('Error sending task review notification:', notifyErr);
+        }
       }
 
       // If project was completed and task status changed from completed, revert project to pending
