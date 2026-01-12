@@ -434,7 +434,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       case 'review': return 'bg-yellow-100 text-yellow-800';
       case 'technical_support': return 'bg-red-100 text-red-800';
       case 'pending': return 'bg-orange-100 text-orange-800';
-      case 'not_approved': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -635,81 +634,52 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     })() : "Not set"}
                   </TableCell>
                   <TableCell className="text-right">
-                        {((user?.role === "project_manager" || user?.role === "team_lead" || (user as any)?.role === "team_lead") && task.status === 'review') ? (
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
-                              onClick={() => {
-                                fetch(`/api/tasks/${task.id}`, {
-                                  method: "PATCH",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ status: 'completed' }),
-                                }).then(() => queryClient.invalidateQueries({ queryKey: ["/api/tasks"] }));
-                              }}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
-                              onClick={() => {
-                                fetch(`/api/tasks/${task.id}`, {
-                                  method: "PATCH",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ status: 'not_approved' }),
-                                }).then(() => queryClient.invalidateQueries({ queryKey: ["/api/tasks"] }));
-                              }}
-                            >
-                              Not Approved
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-2">
+                    {!isStaffView ? (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (task && task.id) {
+                              handleEditClick(task);
+                            }
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => {
-                                if (task && task.id) {
-                                  handleEditClick(task);
-                                }
-                              }}
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Trash className="h-4 w-4" />
                             </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the task
-                                    "{task.title}" and remove its data from our servers.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    className="bg-red-600 hover:bg-red-700"
-                                    onClick={() => deleteTask.mutate(task.id)}
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        )}
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the task
+                                "{task.title}" and remove its data from our servers.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-red-600 hover:bg-red-700"
+                                onClick={() => deleteTask.mutate(task.id)}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">View Only</span>
+                    )}
                   </TableCell>
                 </TableRow>
               );
