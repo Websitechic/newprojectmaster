@@ -3135,6 +3135,33 @@ End of Report
         .where(eq(tasks.id, taskId))
         .returning();
 
+      // Clear user's current task
+      await db
+        .update(users)
+        .set({
+          currentTaskId: null,
+          taskStartTime: null,
+        })
+        .where(eq(users.id, user.id));
+
+      // Get project information for notification
+      const [project] = await db
+        .select({ managerId: projects.managerId, name: projects.name })
+        .from(projects)
+        .where(eq(projects.id, task.projectId))
+        .limit(1);
+
+      // Notify project manager about task submission
+      if (project && project.managerId) {
+        await createNotification(
+          project.managerId,
+          "task_updated",
+          `${user.name} submitted task for review: "${task.title}" in project "${project.name}"`,
+          taskId,
+          "task"
+        );
+      }
+
       // Broadcast task update via WebSocket
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
@@ -3299,8 +3326,21 @@ End of Report
       }
 
       // Track when task enters review status
-      if (status === 'review' && existingTask.status !== 'review' && !existingTask.reviewStartedAt) {
-        updateData.reviewStartedAt = new Date();
+      if (status === 'review' && existingTask.status !== 'review') {
+        if (!existingTask.reviewStartedAt) {
+          updateData.reviewStartedAt = new Date();
+        }
+        
+        // Notify project manager about status change to review
+        if (project && project.managerId) {
+          await createNotification(
+            project.managerId,
+            "task_updated",
+            `${user.name} moved task to review: "${existingTask.title}" in project "${project.name}"`,
+            taskId,
+            "task"
+          );
+        }
       }
 
       // Track when task is completed
@@ -10853,6 +10893,33 @@ End of Report
         .where(eq(tasks.id, taskId))
         .returning();
 
+      // Clear user's current task
+      await db
+        .update(users)
+        .set({
+          currentTaskId: null,
+          taskStartTime: null,
+        })
+        .where(eq(users.id, user.id));
+
+      // Get project information for notification
+      const [project] = await db
+        .select({ managerId: projects.managerId, name: projects.name })
+        .from(projects)
+        .where(eq(projects.id, task.projectId))
+        .limit(1);
+
+      // Notify project manager about task submission
+      if (project && project.managerId) {
+        await createNotification(
+          project.managerId,
+          "task_updated",
+          `${user.name} submitted task for review: "${task.title}" in project "${project.name}"`,
+          taskId,
+          "task"
+        );
+      }
+
       // Broadcast task update via WebSocket
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
@@ -10913,8 +10980,26 @@ End of Report
       };
       
       // Track when task enters review status
-      if (status === 'review' && task.status !== 'review' && !task.reviewStartedAt) {
+      if (status === 'review' && task.status !== 'review') {
         statusUpdateData.reviewStartedAt = new Date();
+
+        // Get project information for notification
+        const [project] = await db
+          .select({ managerId: projects.managerId, name: projects.name })
+          .from(projects)
+          .where(eq(projects.id, task.projectId))
+          .limit(1);
+
+        // Notify project manager about status change to review
+        if (project && project.managerId) {
+          await createNotification(
+            project.managerId,
+            "task_updated",
+            `${user.name} moved task to review: "${task.title}" in project "${project.name}"`,
+            taskId,
+            "task"
+          );
+        }
       }
 
       // Track when task is completed
