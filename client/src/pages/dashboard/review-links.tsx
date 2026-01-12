@@ -52,6 +52,8 @@ export default function ReviewLinks() {
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [selectedLinkId, setSelectedLinkId] = useState<number | null>(null);
   const [commentText, setCommentText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const toggleCardExpansion = (linkId: number) => {
     setExpandedCards(prev => ({
@@ -279,6 +281,16 @@ export default function ReviewLinks() {
     createLinkMutation.mutate({ title, linkUrl, description, assignedTo });
   };
 
+  const filteredLinks = reviewLinks.filter((link: any) => {
+    const matchesSearch = 
+      link.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (link.description && link.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesStatus = statusFilter === "all" || link.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
   if (!isProjectManager && !isTeamLead) {
     return (
       <div className="flex h-screen">
@@ -422,6 +434,32 @@ export default function ReviewLinks() {
             </Card>
           </div>
 
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1">
+              <Input
+                placeholder="Search reviews..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="reviewed">Approved</SelectItem>
+                  <SelectItem value="not_approved">Not Approved</SelectItem>
+                  <SelectItem value="needs_revision">Needs Revision</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {/* Links List */}
           <Card>
             <CardHeader>
@@ -435,13 +473,13 @@ export default function ReviewLinks() {
                 <div className="text-center py-8">
                   <p className="text-red-500">Error loading review links: {error.message}</p>
                 </div>
-              ) : reviewLinks.length === 0 ? (
+              ) : filteredLinks.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">No review links found</p>
+                  <p className="text-gray-500">No review links found matching your criteria</p>
                 </div>
               ) : (
                 <div className="space-y-4 overflow-x-auto">
-                  {reviewLinks.map((link: any) => {
+                  {filteredLinks.map((link: any) => {
                     const maxDescriptionLength = 150;
                     const shouldTruncate = link.description && link.description.length > maxDescriptionLength;
                     const displayDescription = shouldTruncate && !expandedCards[link.id]
