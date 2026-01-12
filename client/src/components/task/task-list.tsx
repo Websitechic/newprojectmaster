@@ -230,8 +230,37 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
       }
 
+      // Prepend for immediate visibility
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) => {
+        const tasks = Array.isArray(oldTasks) ? oldTasks : [];
+        if (tasks.some(t => t.id === newTask.id)) return tasks;
+        return [newTask, ...tasks];
+      });
+
+      if (projectId) {
+        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+          const tasks = Array.isArray(oldTasks) ? oldTasks : [];
+          if (tasks.some(t => t.id === newTask.id)) return tasks;
+          return [newTask, ...tasks];
+        });
+      }
+
+      // Force UI update by resetting pagination
+      setCurrentPage(1);
+
       setIsDialogOpen(false);
       setFormData(defaultTask);
+      
+      // Notify other clients about the new task via WebSocket
+      // We'll use the centralized websocket handling if available
+      const ws = (window as any).socket;
+      if (ws && ws.readyState === 1) { // 1 is WebSocket.OPEN
+        ws.send(JSON.stringify({
+          type: 'task_created',
+          task: newTask
+        }));
+      }
+
       toast({
         title: "Success",
         description: "Task created successfully",

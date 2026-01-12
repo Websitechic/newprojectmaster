@@ -209,12 +209,34 @@ export function setupWebSocket(wss: WebSocketServer) {
             // Handle other message types here
             console.log('Received message:', message);
             
+            // Handle task created
+            if (message.type === 'task_created' && message.task) {
+              if (global.connectedClients) {
+                global.connectedClients.forEach((client, clientId) => {
+                  if (client.userId === userId) return;
+                  if (client.readyState === 1) { // 1 is WebSocket.OPEN
+                    try {
+                      client.send(JSON.stringify({
+                        type: 'task_created',
+                        data: {
+                          task: message.task,
+                          createdBy: userId
+                        }
+                      }));
+                    } catch (sendError) {
+                      console.error(`Error sending task creation to client ${clientId}:`, sendError);
+                    }
+                  }
+                });
+              }
+            }
+
             // Handle task status updates
             if (message.type === 'task_update' && message.taskId && userId) {
               if (global.connectedClients) {
                 global.connectedClients.forEach((client, clientId) => {
                   if (client.userId === userId) return; // Don't send back to sender
-                  if (client.readyState === WebSocket.OPEN) {
+                  if (client.readyState === 1) { // 1 is WebSocket.OPEN
                     try {
                       client.send(JSON.stringify({
                         type: 'task_update',
