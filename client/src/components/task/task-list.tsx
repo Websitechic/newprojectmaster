@@ -434,6 +434,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       case 'review': return 'bg-yellow-100 text-yellow-800';
       case 'technical_support': return 'bg-red-100 text-red-800';
       case 'pending': return 'bg-orange-100 text-orange-800';
+      case 'not_approved': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
