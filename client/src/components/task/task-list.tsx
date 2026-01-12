@@ -28,7 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Pencil, Trash, Plus, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Trash, Plus, Clock, Search } from "lucide-react";
 import type { Task, Project } from "@db/schema";
 
 interface TaskFormData {
@@ -417,13 +417,19 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const filteredTasks = isStaffView
-    ? tasks.filter((task) => task.assigneeId === (user as any)?.staffId)
-    : tasks;
+  const [searchQuery, setSearchQuery] = useState("");
 
+  const filteredTasks = (isStaffView
+    ? tasks.filter((task) => task.assigneeId === (user as any)?.staffId)
+    : tasks).filter(task => 
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+  const isSearching = searchQuery.length > 0;
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedTasks = isSearching ? filteredTasks : filteredTasks.slice(startIndex, startIndex + itemsPerPage);
 
   const getStatusColor = (status: string, isDeadlineMissed: boolean = false) => {
     if (isDeadlineMissed) return 'bg-red-600 text-white font-bold';
@@ -471,6 +477,15 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 New Task
               </Button>
             )}
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search tasks..."
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -689,7 +704,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         </div>
       </div>
 
-      {totalPages > 1 && (
+      {/* Pagination - only show if not searching */}
+      {!isSearching && totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-4">
           <div className="text-sm text-muted-foreground">
             Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTasks.length)} of {filteredTasks.length} tasks

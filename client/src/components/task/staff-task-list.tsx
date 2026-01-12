@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Play, Pause, Send, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Pause, Send, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { Task, Project } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
@@ -80,13 +80,20 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const filteredTasks = tasks
     .filter((task) => task.assigneeId === user?.id)
+    .filter(task => 
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
     .sort((a, b) => a.id - b.id);
 
+  const isSearching = searchQuery.length > 0;
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedTasks = isSearching ? filteredTasks : filteredTasks.slice(startIndex, startIndex + itemsPerPage);
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -386,6 +393,17 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search tasks..."
+            className="pl-8"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
       <div className="rounded-md border overflow-x-auto">
         <div className="min-w-[800px]">
           <Table>
@@ -623,7 +641,8 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
         </div>
       </div>
 
-      {totalPages > 1 && (
+      {/* Pagination - only show if not searching */}
+      {!isSearching && totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-4">
           <div className="text-sm text-muted-foreground">
             Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTasks.length)} of {filteredTasks.length} tasks
