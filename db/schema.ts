@@ -172,6 +172,9 @@ export const tasks = pgTable("tasks", {
   isTimerRunning: boolean("is_timer_running").default(false),
   timerStartTime: timestamp("timer_start_time"),
   hasBeenStarted: boolean("has_been_started").default(false),
+  actualStartTime: timestamp("actual_start_time"), // When work actually started (first timer start)
+  reviewStartedAt: timestamp("review_started_at"), // When task entered review status
+  completedAt: timestamp("completed_at"), // When task was marked as completed
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
