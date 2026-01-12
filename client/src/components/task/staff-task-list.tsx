@@ -498,7 +498,9 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="in_progress">In Progress</SelectItem>
                           <SelectItem value="review">Review</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
+                          {(user?.role !== "staff" && user?.role !== "intern") && (
+                            <SelectItem value="completed">Completed</SelectItem>
+                          )}
                           <SelectItem value="technical_support">Technical Support</SelectItem>
                         </SelectContent>
                       </Select>

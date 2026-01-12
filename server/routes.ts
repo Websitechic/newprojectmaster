@@ -3149,15 +3149,18 @@ End of Report
 
         if (taskWithProjectInfo && taskWithProjectInfo.project) {
           const pmId = taskWithProjectInfo.project.managerId || taskWithProjectInfo.task.assignedBy;
+          console.log(`[DEBUG] Task submission detected via POST. Task ID: ${taskId}, PM ID candidate: ${pmId}`);
           if (pmId) {
-            await createNotification(
+            const pmNotification = await createNotification(
               pmId,
               "task_updated",
               `${user.name} has submitted task "${updatedTask.title}" for review`,
               updatedTask.id,
               "task"
             );
-            console.log(`Review notification sent to project manager ${pmId}`);
+            console.log(`✅ Review notification sent to project manager ${pmId}. Notification ID: ${pmNotification?.id}`);
+          } else {
+            console.log(`⚠️ No PM ID found for task submission ${taskId}. Project Manager: ${taskWithProjectInfo.project.managerId}, Assigned By: ${taskWithProjectInfo.task.assignedBy}`);
           }
         }
       } catch (notifyErr) {
@@ -3356,15 +3359,18 @@ End of Report
       if (status === 'review' && existingTask.status !== 'review') {
         try {
           const pmId = project.managerId || existingTask.assignedBy;
+          console.log(`[DEBUG] Task review update detected. Task ID: ${taskId}, PM ID candidate: ${pmId}`);
           if (pmId) {
-            await createNotification(
+            const pmNotification = await createNotification(
               pmId,
               "task_updated",
               `${user.name} has submitted task "${updatedTask.title}" for review`,
               updatedTask.id,
               "task"
             );
-            console.log(`Review notification sent to project manager ${pmId} from PUT endpoint`);
+            console.log(`✅ Review notification sent to project manager ${pmId} from PUT endpoint. Notification ID: ${pmNotification?.id}`);
+          } else {
+            console.log(`⚠️ No PM ID found for task ${taskId}. Project Manager: ${project.managerId}, Assigned By: ${existingTask.assignedBy}`);
           }
         } catch (notifyErr) {
           console.error('Error sending task review notification:', notifyErr);
@@ -10917,15 +10923,18 @@ End of Report
 
         if (taskWithProjectInfo && taskWithProjectInfo.project) {
           const pmId = taskWithProjectInfo.project.managerId || taskWithProjectInfo.task.assignedBy;
+          console.log(`[DEBUG] Task submission detected via POST. Task ID: ${taskId}, PM ID candidate: ${pmId}`);
           if (pmId) {
-            await createNotification(
+            const pmNotification = await createNotification(
               pmId,
               "task_updated",
               `${user.name} has submitted task "${updatedTask.title}" for review`,
               updatedTask.id,
               "task"
             );
-            console.log(`Review notification sent to project manager ${pmId}`);
+            console.log(`✅ Review notification sent to project manager ${pmId}. Notification ID: ${pmNotification?.id}`);
+          } else {
+            console.log(`⚠️ No PM ID found for task submission ${taskId}. Project Manager: ${taskWithProjectInfo.project.managerId}, Assigned By: ${taskWithProjectInfo.task.assignedBy}`);
           }
         }
       } catch (notifyErr) {
