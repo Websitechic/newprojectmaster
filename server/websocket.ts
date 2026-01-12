@@ -212,19 +212,21 @@ export function setupWebSocket(wss: WebSocketServer) {
             // Handle task created
             if (message.type === 'task_created' && message.task) {
               if (global.connectedClients) {
-                global.connectedClients.forEach((client, clientId) => {
+                global.connectedClients.forEach((wsClient) => {
+                  const client = wsClient as ExtendedWebSocket;
                   if (client.userId === userId) return;
-                  if (client.readyState === 1) { // 1 is WebSocket.OPEN
+                  if (client.readyState === WebSocket.OPEN) {
                     try {
                       client.send(JSON.stringify({
                         type: 'task_created',
+                        projectId: message.task.projectId,
                         data: {
                           task: message.task,
                           createdBy: userId
                         }
                       }));
                     } catch (sendError) {
-                      console.error(`Error sending task creation to client ${clientId}:`, sendError);
+                      console.error(`Error sending task creation to client ${client.userId}:`, sendError);
                     }
                   }
                 });
@@ -234,9 +236,10 @@ export function setupWebSocket(wss: WebSocketServer) {
             // Handle task status updates
             if (message.type === 'task_update' && message.taskId && userId) {
               if (global.connectedClients) {
-                global.connectedClients.forEach((client, clientId) => {
+                global.connectedClients.forEach((wsClient) => {
+                  const client = wsClient as ExtendedWebSocket;
                   if (client.userId === userId) return; // Don't send back to sender
-                  if (client.readyState === 1) { // 1 is WebSocket.OPEN
+                  if (client.readyState === WebSocket.OPEN) {
                     try {
                       client.send(JSON.stringify({
                         type: 'task_update',
@@ -248,7 +251,7 @@ export function setupWebSocket(wss: WebSocketServer) {
                         }
                       }));
                     } catch (sendError) {
-                      console.error(`Error sending task update to client ${clientId}:`, sendError);
+                      console.error(`Error sending task update to client ${client.userId}:`, sendError);
                     }
                   }
                 });

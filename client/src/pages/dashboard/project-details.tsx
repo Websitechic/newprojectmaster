@@ -280,27 +280,24 @@ export default function ProjectDetails() {
   };
 
   useEffect(() => {
-    const handleProjectUpdate = (event: any) => {
-      const data = event.detail || event;
-      if (data.projectId === parseInt(id!)) {
-        queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
-        queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}/tasks`] });
-      }
-    };
-
     const handleTaskCreated = (event: any) => {
       const data = event.detail || event;
-      if (data.projectId === parseInt(id!)) {
+      // We check for id which is the projectId from params
+      if (data.projectId === parseInt(id!) || (data.data && data.data.task && data.data.task.projectId === parseInt(id!))) {
+        console.log("Real-time task creation detected for project:", id);
         queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
         queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}/tasks`] });
       }
     };
 
-    window.addEventListener('websocket:project_updated', handleProjectUpdate);
     window.addEventListener('websocket:task_created', handleTaskCreated);
+    window.addEventListener('websocket:task_updated', handleTaskCreated);
+    window.addEventListener('websocket:task_deleted', handleTaskCreated);
+
     return () => {
-      window.removeEventListener('websocket:project_updated', handleProjectUpdate);
       window.removeEventListener('websocket:task_created', handleTaskCreated);
+      window.removeEventListener('websocket:task_updated', handleTaskCreated);
+      window.removeEventListener('websocket:task_deleted', handleTaskCreated);
     };
   }, [id, queryClient]);
 
@@ -449,7 +446,7 @@ export default function ProjectDetails() {
           </div>
 
           {/* Project Overview - Hidden for support and maintenance clients */}
-          {user?.clientType !== 'support_maintenance_client' && (
+          {(user as any)?.clientType !== 'support_maintenance_client' && (
             <div className="mb-8">
               <Card>
                 <CardHeader>
@@ -565,7 +562,7 @@ export default function ProjectDetails() {
           )}
 
           {/* Project Plan Section - Hidden for support and maintenance clients */}
-          {user?.clientType !== 'support_maintenance_client' && (
+          {(user as any)?.clientType !== 'support_maintenance_client' && (
             <div className="mb-8">
               <Card>
                 <CardHeader>

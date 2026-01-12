@@ -238,7 +238,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       });
 
       if (projectId) {
-        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+        queryClient.setQueryData([`/api/projects/${projectId}/tasks`], (oldTasks: Task[] | undefined) => {
           const tasks = Array.isArray(oldTasks) ? oldTasks : [];
           if (tasks.some(t => t.id === newTask.id)) return tasks;
           return [newTask, ...tasks];
@@ -493,7 +493,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <TableCell className="font-medium">
                     <div>{task.title}</div>
                     <div className="text-[10px] text-muted-foreground leading-tight italic mt-1">
-                      Assigned by: {task.assignedBy ? (userMap[task.assignedBy] || "Unknown User") : "System"}
+                      Assigned by: {task.assignedBy ? (userMap[task.assignedBy as number] || "Unknown User") : "System"}
                     </div>
                   </TableCell>
                   <TableCell className="max-w-xs">
