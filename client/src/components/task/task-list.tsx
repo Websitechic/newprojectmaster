@@ -511,17 +511,47 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                       {formatDescription(task.description || "", task.id)}
                   </TableCell>
                   <TableCell>
-                    <Badge className={getStatusColor(task.status, isDeadlineMissed)}>
-                      <div className="text-center leading-tight">
-                        {isDeadlineMissed ? (
-                          "Deadline Missed"
-                        ) : (
-                          (task.status?.replace('_', ' ') || 'todo').split(' ').map((word, idx) => (
-                            <div key={idx}>{word}</div>
-                          ))
-                        )}
-                      </div>
-                    </Badge>
+                    <div className="space-y-1">
+                      <Badge className={getStatusColor(task.status, isDeadlineMissed)}>
+                        <div className="text-center leading-tight">
+                          {isDeadlineMissed ? (
+                            "Deadline Missed"
+                          ) : (
+                            (task.status?.replace('_', ' ') || 'todo').split(' ').map((word, idx) => (
+                              <div key={idx}>{word}</div>
+                            ))
+                          )}
+                        </div>
+                      </Badge>
+                      {/* Show pending review time for tasks in review */}
+                      {task.status === 'review' && (task as any).reviewStartedAt && (
+                        <div className="text-xs text-orange-600 font-medium">
+                          Pending: {(() => {
+                            const reviewStart = new Date((task as any).reviewStartedAt).getTime();
+                            const now = Date.now();
+                            const diffMs = now - reviewStart;
+                            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                            if (diffHours > 0) return `${diffHours}h ${diffMins}m`;
+                            return `${diffMins}m`;
+                          })()}
+                        </div>
+                      )}
+                      {/* Show total review time for completed tasks */}
+                      {task.status === 'completed' && (task as any).reviewStartedAt && (task as any).completedAt && (
+                        <div className="text-xs text-green-600 font-medium">
+                          Review: {(() => {
+                            const reviewStart = new Date((task as any).reviewStartedAt).getTime();
+                            const completedAt = new Date((task as any).completedAt).getTime();
+                            const diffMs = completedAt - reviewStart;
+                            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                            if (diffHours > 0) return `${diffHours}h`;
+                            return `${diffMins}m`;
+                          })()}
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm leading-tight">
@@ -573,6 +603,12 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                       <div className="text-sm">
                         <div>{new Date(task.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
                         <div className="text-muted-foreground">{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                        {/* Show actual start time when work was started */}
+                        {(task as any).actualStartTime && (
+                          <div className="text-xs text-green-600 font-medium mt-1">
+                            Actual: {new Date((task as any).actualStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        )}
                       </div>
                     ) : "Not set"}
                   </TableCell>
