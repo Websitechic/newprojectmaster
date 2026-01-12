@@ -35,9 +35,10 @@ import { Label } from "@/components/ui/label";
 interface StaffTaskListProps {
   tasks: Task[];
   projectId?: number;
+  searchQuery?: string;
 }
 
-export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
+export function StaffTaskList({ tasks, projectId, searchQuery = "" }: StaffTaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -79,8 +80,6 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-
-  const [searchQuery, setSearchQuery] = useState("");
 
   const filteredTasks = tasks
     .filter((task) => task.assigneeId === user?.id)
@@ -393,17 +392,6 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search tasks..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
       <div className="rounded-md border overflow-x-auto">
         <div className="min-w-[800px]">
           <Table>

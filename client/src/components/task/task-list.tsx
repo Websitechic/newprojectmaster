@@ -59,9 +59,17 @@ interface TaskListProps {
   isStaffView?: boolean;
   showNewTaskButton?: boolean;
   showProjectInfo?: boolean;
+  searchQuery?: string;
 }
 
-export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true, showProjectInfo = false }: TaskListProps) {
+export function TaskList({ 
+  tasks, 
+  projectId, 
+  isStaffView = false, 
+  showNewTaskButton = true, 
+  showProjectInfo = false,
+  searchQuery = ""
+}: TaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -417,8 +425,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const [searchQuery, setSearchQuery] = useState("");
-
   const filteredTasks = (isStaffView
     ? tasks.filter((task) => task.assigneeId === (user as any)?.staffId)
     : tasks).filter(task => 
@@ -477,15 +483,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 New Task
               </Button>
             )}
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tasks..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
           </div>
         </div>
       )}
