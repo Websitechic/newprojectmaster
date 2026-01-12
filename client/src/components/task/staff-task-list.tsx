@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Play, Pause, Send, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Play, Pause, Send, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Task, Project } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
@@ -35,10 +35,9 @@ import { Label } from "@/components/ui/label";
 interface StaffTaskListProps {
   tasks: Task[];
   projectId?: number;
-  searchQuery?: string;
 }
 
-export function StaffTaskList({ tasks, projectId, searchQuery = "" }: StaffTaskListProps) {
+export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -83,21 +82,11 @@ export function StaffTaskList({ tasks, projectId, searchQuery = "" }: StaffTaskL
 
   const filteredTasks = tasks
     .filter((task) => task.assigneeId === user?.id)
-    .filter(task => 
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-    .sort((a, b) => {
-      // Sort tasks to put newer/unstarted ones first or by priority
-      if (a.status === 'todo' && b.status !== 'todo') return -1;
-      if (a.status !== 'todo' && b.status === 'todo') return 1;
-      return b.id - a.id;
-    });
+    .sort((a, b) => a.id - b.id);
 
-  const isSearching = searchQuery.length > 0;
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedTasks = isSearching ? filteredTasks : filteredTasks.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + itemsPerPage);
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -509,6 +498,7 @@ export function StaffTaskList({ tasks, projectId, searchQuery = "" }: StaffTaskL
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="in_progress">In Progress</SelectItem>
                           <SelectItem value="review">Review</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
                           <SelectItem value="technical_support">Technical Support</SelectItem>
                         </SelectContent>
                       </Select>
@@ -633,8 +623,7 @@ export function StaffTaskList({ tasks, projectId, searchQuery = "" }: StaffTaskL
         </div>
       </div>
 
-      {/* Pagination - only show if not searching */}
-      {!isSearching && totalPages > 1 && (
+      {totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-4">
           <div className="text-sm text-muted-foreground">
             Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTasks.length)} of {filteredTasks.length} tasks

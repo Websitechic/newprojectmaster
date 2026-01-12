@@ -28,7 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Pencil, Trash, Plus, Clock, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Trash, Plus, Clock } from "lucide-react";
 import type { Task, Project } from "@db/schema";
 
 interface TaskFormData {
@@ -59,17 +59,9 @@ interface TaskListProps {
   isStaffView?: boolean;
   showNewTaskButton?: boolean;
   showProjectInfo?: boolean;
-  searchQuery?: string;
 }
 
-export function TaskList({ 
-  tasks, 
-  projectId, 
-  isStaffView = false, 
-  showNewTaskButton = true, 
-  showProjectInfo = false,
-  searchQuery = ""
-}: TaskListProps) {
+export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true, showProjectInfo = false }: TaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -425,17 +417,13 @@ export function TaskList({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const filteredTasks = (isStaffView
+  const filteredTasks = isStaffView
     ? tasks.filter((task) => task.assigneeId === (user as any)?.staffId)
-    : tasks).filter(task => 
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    : tasks;
 
-  const isSearching = searchQuery.length > 0;
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedTasks = isSearching ? filteredTasks : filteredTasks.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + itemsPerPage);
 
   const getStatusColor = (status: string, isDeadlineMissed: boolean = false) => {
     if (isDeadlineMissed) return 'bg-red-600 text-white font-bold';
@@ -701,8 +689,7 @@ export function TaskList({
         </div>
       </div>
 
-      {/* Pagination - only show if not searching */}
-      {!isSearching && totalPages > 1 && (
+      {totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-4">
           <div className="text-sm text-muted-foreground">
             Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTasks.length)} of {filteredTasks.length} tasks
@@ -785,6 +772,7 @@ export function TaskList({
                     <SelectItem value="todo">To Do</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="review">Review</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="technical_support">Technical Support</SelectItem>
                   </SelectContent>
                 </Select>
