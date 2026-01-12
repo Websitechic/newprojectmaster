@@ -4346,17 +4346,19 @@ End of Report
       const [link] = await db
         .select()
         .from(reviewLinks)
-        .where(and(
-          eq(reviewLinks.id, linkId),
-          or(
-            eq(reviewLinks.assignedTo, user.id),
-            eq(reviewLinks.sentBy, user.id)
-          )
-        ))
+        .where(eq(reviewLinks.id, linkId))
         .limit(1);
 
       if (!link) {
-        return res.status(404).json({ error: "Review link not found or you don't have access to it" });
+        return res.status(404).json({ error: "Review link not found" });
+      }
+
+      // Check access
+      if (isTeamLead && link.assignedTo !== user.id) {
+        return res.status(403).json({ error: "This review is not assigned to you" });
+      }
+      if (isPM && link.sentBy !== user.id) {
+        return res.status(403).json({ error: "You did not send this review" });
       }
 
       // Update link with comment
@@ -4374,14 +4376,10 @@ End of Report
 
       // If user is team lead, use link.assignedTo
       // If user is PM, use link.sentBy
-      const whereClause = isTeamLead 
-        ? and(eq(reviewLinks.id, linkId), eq(reviewLinks.assignedTo, user.id))
-        : and(eq(reviewLinks.id, linkId), eq(reviewLinks.sentBy, user.id));
-
       const [updatedLink] = await db
         .update(reviewLinks)
         .set(updateData)
-        .where(whereClause)
+        .where(eq(reviewLinks.id, linkId))
         .returning();
 
       if (!updatedLink) {
