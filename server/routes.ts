@@ -2853,15 +2853,23 @@ End of Report
           startTime: now,
         });
 
+      // Set actualStartTime only on first timer start
+      const updateData: any = {
+        isTimerRunning: true,
+        timerStartTime: now,
+        hasBeenStarted: true,
+        status: "in_progress",
+        updatedAt: now
+      };
+      
+      // Only set actualStartTime if it hasn't been set before
+      if (!task.actualStartTime) {
+        updateData.actualStartTime = now;
+      }
+
       const [updatedTask] = await db
         .update(tasks)
-        .set({
-          isTimerRunning: true,
-          timerStartTime: now,
-          hasBeenStarted: true,
-          status: "in_progress",
-          updatedAt: now
-        })
+        .set(updateData)
         .where(eq(tasks.id, taskId))
         .returning();
 
@@ -3108,15 +3116,22 @@ End of Report
 
       // Update task to review status and stop timer
       const now = new Date();
+      const reviewUpdateData: any = {
+        status: "review",
+        isTimerRunning: false,
+        timeSpent: newTimeSpent,
+        timerStartTime: null,
+        updatedAt: now
+      };
+      
+      // Set reviewStartedAt if not already set
+      if (!task.reviewStartedAt) {
+        reviewUpdateData.reviewStartedAt = now;
+      }
+      
       const [updatedTask] = await db
         .update(tasks)
-        .set({
-          status: "review",
-          isTimerRunning: false,
-          timeSpent: newTimeSpent,
-          timerStartTime: null,
-          updatedAt: now
-        })
+        .set(reviewUpdateData)
         .where(eq(tasks.id, taskId))
         .returning();
 
@@ -3281,6 +3296,16 @@ End of Report
           clearInterval(global.timerIntervals.get(taskId));
           global.timerIntervals.delete(taskId);
         }
+      }
+
+      // Track when task enters review status
+      if (status === 'review' && existingTask.status !== 'review' && !existingTask.reviewStartedAt) {
+        updateData.reviewStartedAt = new Date();
+      }
+
+      // Track when task is completed
+      if (status === 'completed' && existingTask.status !== 'completed') {
+        updateData.completedAt = new Date();
       }
 
       updateData.updatedAt = new Date();
@@ -10729,15 +10754,22 @@ End of Report
 
       // Update task to review status and stop timer
       const now = new Date();
+      const reviewUpdateData: any = {
+        status: "review",
+        isTimerRunning: false,
+        timeSpent: newTimeSpent,
+        timerStartTime: null,
+        updatedAt: now
+      };
+      
+      // Set reviewStartedAt if not already set
+      if (!task.reviewStartedAt) {
+        reviewUpdateData.reviewStartedAt = now;
+      }
+      
       const [updatedTask] = await db
         .update(tasks)
-        .set({
-          status: "review",
-          isTimerRunning: false,
-          timeSpent: newTimeSpent,
-          timerStartTime: null,
-          updatedAt: now
-        })
+        .set(reviewUpdateData)
         .where(eq(tasks.id, taskId))
         .returning();
 
@@ -10794,13 +10826,25 @@ End of Report
         return res.status(403).json({ error: "You can only update status for tasks assigned to you" });
       }
 
-      // Update task status
+      // Update task status with tracking timestamps
+      const statusUpdateData: any = {
+        status,
+        updatedAt: new Date(),
+      };
+      
+      // Track when task enters review status
+      if (status === 'review' && task.status !== 'review' && !task.reviewStartedAt) {
+        statusUpdateData.reviewStartedAt = new Date();
+      }
+
+      // Track when task is completed
+      if (status === 'completed' && task.status !== 'completed') {
+        statusUpdateData.completedAt = new Date();
+      }
+      
       await db
         .update(tasks)
-        .set({
-          status,
-          updatedAt: new Date(),
-        })
+        .set(statusUpdateData)
         .where(eq(tasks.id, taskId));
 
       res.json({ success: true });
