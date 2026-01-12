@@ -65,7 +65,7 @@ export function setupWebSocket(wss: WebSocketServer) {
     try {
       console.log('WebSocket connection established');
 
-      let userId: number | null = null;
+      let userId: number | undefined = undefined;
       const extWs = ws as ExtendedWebSocket;
       extWs.isAlive = true;
 
@@ -93,7 +93,7 @@ export function setupWebSocket(wss: WebSocketServer) {
 
         // Set a timeout to close unauthenticated connections
         const authTimeout = setTimeout(() => {
-          if (!userId && ws.readyState === ws.OPEN) {
+          if (!userId && ws.readyState === WebSocket.OPEN) {
             console.log('Closing unauthenticated WebSocket connection after timeout');
             try {
               ws.close(1008, 'Authentication timeout');
@@ -159,7 +159,9 @@ export function setupWebSocket(wss: WebSocketServer) {
         if (!global.connectedClients) {
           global.connectedClients = new Map();
         }
-        global.connectedClients.set(userId, extWs);
+        if (userId) {
+          global.connectedClients.set(userId, extWs);
+        }
 
         // Handle pong responses
         ws.on('pong', () => {
