@@ -4237,6 +4237,88 @@ End of Report
     }
   });
 
+  // Mark review link as not approved
+  app.put("/api/review-links/:id/not-approved", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "team_lead") {
+      return res.status(403).json({ error: "Only team leads can mark links as not approved" });
+    }
+
+    try {
+      const linkId = parseInt(req.params.id);
+
+      // Check if link exists and is assigned to this team lead
+      const [link] = await db
+        .select()
+        .from(reviewLinks)
+        .where(and(
+          eq(reviewLinks.id, linkId),
+          eq(reviewLinks.assignedTo, user.id)
+        ))
+        .limit(1);
+
+      if (!link) {
+        return res.status(404).json({ error: "Review link not found or not assigned to you" });
+      }
+
+      // Update link status
+      const [updatedLink] = await db
+        .update(reviewLinks)
+        .set({
+          status: "not_approved",
+          updatedAt: new Date(),
+        })
+        .where(eq(reviewLinks.id, linkId))
+        .returning();
+
+      // Create notification for project manager
+      await createNotification(
+        link.sentBy,
+        "task_updated",
+        `${user.name} has marked your link: "${link.title}" as NOT APPROVED`,
+        linkId,
+        "review_link"
+      );
+
+      // Send SSE notification to project manager
+      if (global.sseClients && global.sseClients.has(link.sentBy)) {
+        const client = global.sseClients.get(link.sentBy);
+        if (client) {
+          client.write(`data: ${JSON.stringify({
+            type: 'review_link_not_approved',
+            data: {
+              linkId,
+              title: link.title,
+              reviewerName: user.name,
+              message: `${user.name} has marked your link: "${link.title}" as NOT APPROVED`
+            }
+          })}\n\n`);
+        }
+      }
+
+      // Send OneSignal push notification to project manager
+      try {
+        const { sendOneSignalNotification } = await import("./websocket");
+        await sendOneSignalNotification(
+          [link.sentBy],
+          "Review Not Approved",
+          `${user.name} has marked your link: "${link.title}" as NOT APPROVED`
+        );
+      } catch (err) {
+        console.error("Failed to send OneSignal notification for review rejection:", err);
+      }
+
+      res.json(updatedLink);
+    } catch (error) {
+      console.error("Error marking link as not approved:", error);
+      res.status(500).json({ error: "Failed to mark link as not approved" });
+    }
+  });
+
   // Add comment to review link (Team Leads and Project Managers)
   app.put("/api/review-links/:id/comment", async (req, res) => {
     if (!req.isAuthenticated()) {

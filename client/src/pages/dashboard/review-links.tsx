@@ -149,7 +149,34 @@ export default function ReviewLinks() {
       queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
       toast({
         title: "Success",
-        description: "Link marked as reviewed",
+        description: "Link marked as approved",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mark as not approved mutation
+  const markNotApprovedMutation = useMutation({
+    mutationFn: async (linkId: number) => {
+      const response = await fetch(`/api/review-links/${linkId}/not-approved`, {
+        method: "PUT",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to mark as not approved");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
+      toast({
+        title: "Success",
+        description: "Link marked as not approved",
       });
     },
     onError: (error: Error) => {
@@ -431,16 +458,18 @@ export default function ReviewLinks() {
                             <div className="flex flex-wrap items-center gap-2 mb-2">
                               <h3 className="font-semibold text-base sm:text-lg break-words">{link.title}</h3>
                               <Badge
-                                variant={link.status === "reviewed" ? "default" : "secondary"}
+                                variant={link.status === "reviewed" ? "default" : link.status === "not_approved" ? "destructive" : "secondary"}
                                 className={
                                   link.status === "reviewed"
                                     ? "bg-green-100 text-green-700 flex-shrink-0"
+                                    : link.status === "not_approved"
+                                    ? "bg-red-100 text-red-700 flex-shrink-0"
                                     : link.status === "needs_revision"
                                     ? "bg-orange-100 text-orange-700 flex-shrink-0"
                                     : "bg-yellow-100 text-yellow-700 flex-shrink-0"
                                 }
                               >
-                                {link.status === "reviewed" ? "Reviewed" : link.status === "needs_revision" ? "Needs Revision" : "Pending"}
+                                {link.status === "reviewed" ? "Reviewed" : link.status === "not_approved" ? "Not Approved" : link.status === "needs_revision" ? "Needs Revision" : "Pending"}
                               </Badge>
                             </div>
                             {link.description && (
@@ -506,12 +535,23 @@ export default function ReviewLinks() {
                                 <Button
                                   size="sm"
                                   onClick={() => markReviewedMutation.mutate(link.id)}
-                                  disabled={markReviewedMutation.isPending}
+                                  disabled={markReviewedMutation.isPending || markNotApprovedMutation.isPending}
                                   className="bg-green-600 hover:bg-green-700 flex-shrink-0"
                                 >
                                   <CheckCircle className="h-4 w-4 mr-1" />
                                   <span className="hidden sm:inline">Approve</span>
                                   <span className="sm:hidden">OK</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => markNotApprovedMutation.mutate(link.id)}
+                                  disabled={markReviewedMutation.isPending || markNotApprovedMutation.isPending}
+                                  variant="destructive"
+                                  className="flex-shrink-0"
+                                >
+                                  <AlertCircle className="h-4 w-4 mr-1" />
+                                  <span className="hidden sm:inline">Not Approved</span>
+                                  <span className="sm:hidden">Reject</span>
                                 </Button>
                                 <Button
                                   size="sm"
