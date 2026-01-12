@@ -87,7 +87,12 @@ export function StaffTaskList({ tasks, projectId, searchQuery = "" }: StaffTaskL
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
     )
-    .sort((a, b) => a.id - b.id);
+    .sort((a, b) => {
+      // Sort tasks to put newer/unstarted ones first or by priority
+      if (a.status === 'todo' && b.status !== 'todo') return -1;
+      if (a.status !== 'todo' && b.status === 'todo') return 1;
+      return b.id - a.id;
+    });
 
   const isSearching = searchQuery.length > 0;
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);

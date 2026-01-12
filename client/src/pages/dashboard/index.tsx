@@ -244,15 +244,19 @@ export default function Dashboard() {
       ? (tasks ?? []).filter((task) => task.assigneeId === user?.id)
       : (tasks ?? []);
 
-  const tasksInProgress = (userTasks ?? []).filter(
-    (task) => task.status === "in_progress"
-  );
-  const pendingTasks = (userTasks ?? []).filter((task) => task.status === "pending"); // Changed to filter for 'pending' status
-  const todoTasks = (userTasks ?? []).filter((task) => task.status === "todo"); // Added filtering for 'todo' status
-  const tasksInReview = (userTasks ?? []).filter((task) => task.status === "review");
-  const technicalSupportTasks = (userTasks ?? []).filter(
-    (task) => task.status === "technical_support",
-  );
+  const categorizedTasks = {
+    inProgress: (userTasks ?? []).filter(task => task.status === "in_progress"),
+    pending: (userTasks ?? []).filter(task => task.status === "pending"),
+    todo: (userTasks ?? []).filter(task => task.status === "todo" || task.status === "not_started"),
+    review: (userTasks ?? []).filter(task => task.status === "review"),
+    technicalSupport: (userTasks ?? []).filter(task => task.status === "technical_support")
+  };
+
+  const tasksInProgress = categorizedTasks.inProgress;
+  const pendingTasks = categorizedTasks.pending;
+  const todoTasks = categorizedTasks.todo;
+  const tasksInReview = categorizedTasks.review;
+  const technicalSupportTasks = categorizedTasks.technicalSupport;
 
   // Calculate overall progress
   const totalTasks = (userTasks ?? []).length;
