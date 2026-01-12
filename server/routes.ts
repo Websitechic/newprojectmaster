@@ -3135,6 +3135,35 @@ End of Report
         .where(eq(tasks.id, taskId))
         .returning();
 
+      // Notify project manager when task is submitted for review
+      try {
+        const [taskWithProjectInfo] = await db
+          .select({
+            task: tasks,
+            project: projects,
+          })
+          .from(tasks)
+          .leftJoin(projects, eq(tasks.projectId, projects.id))
+          .where(eq(tasks.id, taskId))
+          .limit(1);
+
+        if (taskWithProjectInfo && taskWithProjectInfo.project) {
+          const pmId = taskWithProjectInfo.project.managerId || taskWithProjectInfo.task.assignedBy;
+          if (pmId) {
+            await createNotification(
+              pmId,
+              "task_updated",
+              `${user.name} has submitted task "${updatedTask.title}" for review`,
+              updatedTask.id,
+              "task"
+            );
+            console.log(`Review notification sent to project manager ${pmId}`);
+          }
+        }
+      } catch (notifyErr) {
+        console.error('Error sending task submission notification:', notifyErr);
+      }
+
       // Broadcast task update via WebSocket
       if (global.connectedClients) {
         global.connectedClients.forEach((client) => {
@@ -3299,8 +3328,23 @@ End of Report
       }
 
       // Track when task enters review status
-      if (status === 'review' && existingTask.status !== 'review' && !existingTask.reviewStartedAt) {
-        updateData.reviewStartedAt = new Date();
+      if (status === 'review' && existingTask.status !== 'review') {
+        if (!existingTask.reviewStartedAt) {
+          updateData.reviewStartedAt = new Date();
+        }
+
+        // Notify project manager when task is submitted for review
+        const pmId = project.managerId || existingTask.assignedBy;
+        if (pmId) {
+          await createNotification(
+            pmId,
+            "task_updated",
+            `${user.name} has submitted task "${updatedTask.title}" for review`,
+            updatedTask.id,
+            "task"
+          );
+          console.log(`Review notification sent to project manager ${pmId}`);
+        }
       }
 
       // Track when task is completed
@@ -10852,6 +10896,35 @@ End of Report
         .set(reviewUpdateData)
         .where(eq(tasks.id, taskId))
         .returning();
+
+      // Notify project manager when task is submitted for review
+      try {
+        const [taskWithProjectInfo] = await db
+          .select({
+            task: tasks,
+            project: projects,
+          })
+          .from(tasks)
+          .leftJoin(projects, eq(tasks.projectId, projects.id))
+          .where(eq(tasks.id, taskId))
+          .limit(1);
+
+        if (taskWithProjectInfo && taskWithProjectInfo.project) {
+          const pmId = taskWithProjectInfo.project.managerId || taskWithProjectInfo.task.assignedBy;
+          if (pmId) {
+            await createNotification(
+              pmId,
+              "task_updated",
+              `${user.name} has submitted task "${updatedTask.title}" for review`,
+              updatedTask.id,
+              "task"
+            );
+            console.log(`Review notification sent to project manager ${pmId}`);
+          }
+        }
+      } catch (notifyErr) {
+        console.error('Error sending task submission notification:', notifyErr);
+      }
 
       // Broadcast task update via WebSocket
       if (global.connectedClients) {
