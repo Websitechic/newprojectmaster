@@ -249,6 +249,7 @@ export default function Dashboard() {
     pending: (userTasks ?? []).filter(task => task.status === "pending"),
     todo: (userTasks ?? []).filter(task => task.status === "todo" || task.status === "not_started"),
     review: (userTasks ?? []).filter(task => task.status === "review"),
+    notStarted: (userTasks ?? []).filter(task => task.status === "not_started"),
     technicalSupport: (userTasks ?? []).filter(task => task.status === "technical_support")
   };
 
@@ -256,6 +257,7 @@ export default function Dashboard() {
   const pendingTasks = categorizedTasks.pending;
   const todoTasks = categorizedTasks.todo;
   const tasksInReview = categorizedTasks.review;
+  const tasksNotStarted = categorizedTasks.notStarted;
   const technicalSupportTasks = categorizedTasks.technicalSupport;
 
   // Calculate overall progress
@@ -462,24 +464,10 @@ export default function Dashboard() {
                             )}
                           </Button>
                         </CollapsibleTrigger>
-                        <CollapsibleContent className="mt-2">
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {todoTasks.map((task) => (
-                              <div
-                                key={task.id}
-                                className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded"
-                              >
-                                <div className="font-medium truncate">
-                                  {task.title}
-                                </div>
-                                {task.deadline && (
-                                  <div className="text-muted-foreground">
-                                    Due: {new Date(task.deadline).toLocaleDateString()}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
+                        <CollapsibleContent className="space-y-2 mt-3">
+                          {todoTasks.map((task) => (
+                            <TaskCard key={task.id} task={task} />
+                          ))}
                         </CollapsibleContent>
                       </Collapsible>
                     ) : (
@@ -1131,24 +1119,10 @@ export default function Dashboard() {
                             )}
                           </Button>
                         </CollapsibleTrigger>
-                        <CollapsibleContent className="mt-2">
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {todoTasks.map((task) => (
-                              <div
-                                key={task.id}
-                                className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded"
-                              >
-                                <div className="font-medium truncate">
-                                  {task.title}
-                                </div>
-                                {task.deadline && (
-                                  <div className="text-muted-foreground">
-                                    Due: {new Date(task.deadline).toLocaleDateString()}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
+                        <CollapsibleContent className="space-y-2 mt-3">
+                          {todoTasks.map((task) => (
+                            <TaskCard key={task.id} task={task} />
+                          ))}
                         </CollapsibleContent>
                       </Collapsible>
                     ) : (
