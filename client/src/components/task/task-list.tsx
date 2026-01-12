@@ -515,7 +515,10 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                       <Badge className={getStatusColor(task.status, isDeadlineMissed)}>
                         <div className="text-center leading-tight">
                           {isDeadlineMissed ? (
-                            "Deadline Missed"
+                            <div className="flex flex-col items-center">
+                              <div>Deadline</div>
+                              <div>Missed</div>
+                            </div>
                           ) : (
                             (task.status?.replace('_', ' ') || 'todo').split(' ').map((word, idx) => (
                               <div key={idx}>{word}</div>
