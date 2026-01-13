@@ -161,6 +161,25 @@ export function NotificationsDropdown() {
     }
   };
 
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch("/api/notifications/read-all", {
+        method: "PUT",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to mark all notifications as read: ${response.status}`);
+      }
+
+      queryClient.setQueryData(["/api/notifications"], (old: Notification[] = []) =>
+        old.map(n => ({ ...n, read: true }))
+      );
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+    }
+  };
+
   const markAsRead = async (notificationId: number) => {
     try {
       const response = await fetch(`/api/notifications/${notificationId}/read`, {
@@ -202,7 +221,11 @@ export function NotificationsDropdown() {
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => {
+      if (open && unreadCount > 0) {
+        markAllAsRead();
+      }
+    }}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell size={20} />

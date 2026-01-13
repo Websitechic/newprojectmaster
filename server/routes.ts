@@ -9415,6 +9415,21 @@ End of Report
   });
 
   // Mark notification as read
+  // Mark all notifications as read for the current user
+  app.put("/api/notifications/read-all", requireAuth, async (req, res) => {
+    const user = req.user!;
+    try {
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(eq(notifications.userId, user.id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ error: "Failed to mark all notifications as read" });
+    }
+  });
+
   app.put("/api/notifications/:id/read", requireAuth, async (req, res) => {
     try {
       const notificationId = parseInt(req.params.id);
