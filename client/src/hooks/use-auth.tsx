@@ -32,10 +32,13 @@ type LoginData = {
 type RegisterData = LoginData & {
   name: string;
   email: string;
-  role: "client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager" | "team_lead";
+  role: string;
   specialization?: string;
   productService?: string;
   clientType?: string;
+  breakOneTime?: string;
+  breakTwoTime?: string;
+  projectManagerType?: string;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -150,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (data: {
       username: string;
       password: string;
-      role: "client" | "project_manager" | "staff" | "intern" | "operations_manager" | "team_lead";
+      role: string;
       name: string;
       email: string;
       specialization?: string;
@@ -158,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clientType?: string;
       breakOneTime?: string;
       breakTwoTime?: string;
+      projectManagerType?: string;
     }) => {
       const res = await fetch("/api/register", {
         method: "POST",

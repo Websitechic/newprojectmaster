@@ -14,7 +14,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager" | "team_lead">("staff");
+  const [role, setRole] = useState<string>("staff");
   const [specialization, setSpecialization] = useState("");
   const [productService, setProductService] = useState("");
   const [clientType, setClientType] = useState("");
@@ -102,7 +102,7 @@ export default function AuthPage() {
           }
         }
 
-        await registerMutation.mutateAsync({
+        const registerData: any = {
           username: formData.username,
           password: formData.password,
           name: formData.name,
@@ -111,8 +111,11 @@ export default function AuthPage() {
           specialization: (role === "staff" || role === "intern") ? specialization : undefined,
           productService: role === "client" ? productService : undefined,
           clientType: role === "client" ? clientType : undefined,
+          breakOneTime: role !== "client" ? breakOneTime : undefined,
           projectManagerType: role === "project_manager" ? formData.projectManagerType : undefined,
-        });
+        };
+
+        await registerMutation.mutateAsync(registerData);
       }
     } catch (error: any) {
       toast({
@@ -239,7 +242,7 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={(value: "client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager" | "team_lead") => setRole(value)}>
+                  <Select value={role} onValueChange={(value: any) => setRole(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
