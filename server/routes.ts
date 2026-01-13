@@ -3921,9 +3921,8 @@ End of Report
 
       // Send OneSignal push notification to team lead
       try {
-        const { sendOneSignalNotification } = await import("./websocket");
         await sendOneSignalNotification(
-          [teamLeadId],
+          teamLeadId,
           "New Review Request",
           `${user.name} sent you a link to review: "${title}"`
         );
@@ -4276,9 +4275,8 @@ End of Report
 
       // Send OneSignal push notification to project manager
       try {
-        const { sendOneSignalNotification } = await import("./websocket");
         await sendOneSignalNotification(
-          [link.sentBy],
+          link.sentBy,
           "Review Completed",
           `${user.name} has reviewed your link: "${link.title}"`
         );
@@ -4358,9 +4356,8 @@ End of Report
 
       // Send OneSignal push notification to project manager
       try {
-        const { sendOneSignalNotification } = await import("./websocket");
         await sendOneSignalNotification(
-          [link.sentBy],
+          link.sentBy,
           "Review Not Approved",
           `${user.name} has marked your link: "${link.title}" as NOT APPROVED`
         );
@@ -4473,9 +4470,8 @@ End of Report
 
       // Send OneSignal push notification
       try {
-        const { sendOneSignalNotification } = await import("./websocket");
         await sendOneSignalNotification(
-          [recipientId],
+          recipientId,
           isTeamLead ? "Revision Requested" : "Comment on Review",
           `${user.name} commented on review: "${link.title}"`
         );
