@@ -34,7 +34,7 @@ import {
   Bug,
   ExternalLink,
 } from "lucide-react";
-import { useUser } from "@/hooks/use-user";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
@@ -108,7 +108,7 @@ function SidebarItem({ icon, label, href, active, badge, external, onClick, hasU
 }
 
 export function AppSidebar({ currentPath }: { currentPath: string }) {
-  const { logout, user } = useUser();
+  const { logoutMutation, user } = useAuth();
   const [, setLocation] = useLocation();
   const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -821,14 +821,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
           variant="ghost"
           size="sm"
           className="w-full justify-start mt-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
-          onClick={async () => {
-            try {
-              await logout();
-              window.location.href = '/auth';
-            } catch (error) {
-              console.error("Logout failed:", error);
-              window.location.href = '/auth';
-            }
+          onClick={() => {
+            logoutMutation.mutate();
           }}
         >
           <LogOut size={14} className="mr-2 flex-shrink-0" />
