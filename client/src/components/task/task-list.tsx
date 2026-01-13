@@ -463,13 +463,28 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   return (
     <div className="space-y-4">
       {!isStaffView && (
-        <div className="space-y-2 mb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="space-y-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             { !isStaffView && showNewTaskButton && (user?.role === "project_manager" || user?.role === "operations_manager" || (user as any)?.specialization === "operations_manager" || user?.role === "customer_support_officer" || user?.role === "team_lead" || (user?.role === "staff" && user?.specialization === "technical_support")) && (
               <Button onClick={handleNewTask} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 New Task
               </Button>
+            )}
+
+            {staff && staff.length > 0 && (
+              <div className="flex flex-wrap gap-2 items-center text-sm border rounded-lg p-3 bg-muted/30">
+                <span className="font-semibold mr-2 flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  Staff Break Times:
+                </span>
+                {staff.map((s: any) => (
+                  <Badge key={s.id} variant="outline" className="bg-background">
+                    <span className="font-medium mr-1">{s.name}:</span>
+                    <span className="text-muted-foreground">{s.breakOneTime || "Not set"}</span>
+                  </Badge>
+                ))}
+              </div>
             )}
           </div>
         </div>
