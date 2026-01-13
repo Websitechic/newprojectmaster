@@ -2801,10 +2801,10 @@ End of Report
     }
   });
 
-  // Start task timer (Staff and Interns only)
+  // Start task timer (Staff, Interns, and Team Leads)
   app.post("/api/tasks/:id/start-timer", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern")) {
-      return res.status(403).send("Only staff members and interns can start timers");
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern" && req.user!.role !== "team_lead")) {
+      return res.status(403).send("Only staff members, interns and team leads can start timers");
     }
 
     try {
@@ -2958,10 +2958,10 @@ End of Report
     }
   });
 
-  // Pause task timer (Staff and Interns only)
+  // Pause task timer (Staff, Interns, and Team Leads)
   app.post("/api/tasks/:id/pause-timer", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern")) {
-      return res.status(403).send("Only staff members and interns can pause timers");
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern" && req.user!.role !== "team_lead")) {
+      return res.status(403).send("Only staff members, interns and team leads can pause timers");
     }
 
     try {
@@ -3077,10 +3077,10 @@ End of Report
     }
   });
 
-  // Submit task for review (Staff and Interns only)
+  // Submit task for review (Staff, Interns, and Team Leads)
   app.post("/api/tasks/:id/submit", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern")) {
-      return res.status(403).send("Only staff members and interns can submit tasks");
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern" && req.user!.role !== "team_lead")) {
+      return res.status(403).send("Only staff members, interns and team leads can submit tasks");
     }
 
     try {
