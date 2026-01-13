@@ -212,10 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
       queryClient.clear(); // Clear all queries on logout
-      toast({
-        title: "Success",
-        description: "Successfully logged out",
-      });
+      window.location.href = "/auth";
     },
     onError: (error: Error) => {
       console.error("Logout error:", error);
