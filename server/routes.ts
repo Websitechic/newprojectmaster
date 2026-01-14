@@ -1977,16 +1977,22 @@ export function registerRoutes(app: Express): Server {
           })
           .where(eq(stopGapAllocations.id, allocation.id));
 
-        // Update task working time
-        const newWorkingMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0) + stopGapMinutes;
-        const newHours = Math.floor(newWorkingMinutes / 60);
-        const newMinutes = newWorkingMinutes % 60;
+        // Update task working time and deadline
+        const newWorkingMinutesTotal = (task.workingHours || 0) * 60 + (task.workingMinutes || 0) + stopGapMinutes;
+        const newHours = Math.floor(newWorkingMinutesTotal / 60);
+        const newMinutes = newWorkingMinutesTotal % 60;
+
+        let newDeadline = task.deadline;
+        if (newDeadline) {
+          newDeadline = new Date(new Date(newDeadline).getTime() + stopGapMinutes * 60000);
+        }
 
         await tx
           .update(tasks)
           .set({
             workingHours: newHours,
             workingMinutes: newMinutes,
+            deadline: newDeadline,
             updatedAt: new Date(),
           })
           .where(eq(tasks.id, taskId));
