@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS "sops" (
 --> statement-breakpoint
 ALTER TABLE "client_sentiment" ALTER COLUMN "week_start" SET DATA TYPE text;--> statement-breakpoint
 ALTER TABLE "client_sentiment" ALTER COLUMN "week_end" SET DATA TYPE text;--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "gender" text;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "gender" text;--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "issue_reports" ADD CONSTRAINT "issue_reports_submitter_id_users_id_fk" FOREIGN KEY ("submitter_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION

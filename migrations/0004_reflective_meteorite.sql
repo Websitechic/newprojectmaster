@@ -152,9 +152,9 @@ CREATE TABLE IF NOT EXISTS "technical_support_requests" (
         "resolved_at" timestamp
 );
 --> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "onboarding_status" text DEFAULT 'not_onboarded';--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "product_service" text;--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "client_type" text;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "onboarding_status" text DEFAULT 'not_onboarded';--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "product_service" text;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "client_type" text;--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "bookings" ADD CONSTRAINT "bookings_scheduled_by_users_id_fk" FOREIGN KEY ("scheduled_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
