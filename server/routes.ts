@@ -4471,11 +4471,24 @@ End of Report
 
       console.log("📝 Updating review link with:", updateData);
 
-      const [updatedLink] = await db
-        .update(reviewLinks)
-        .set(updateData)
-        .where(eq(reviewLinks.id, linkId))
-        .returning();
+      let updatedLink;
+      try {
+        const result = await db
+          .update(reviewLinks)
+          .set(updateData)
+          .where(eq(reviewLinks.id, linkId))
+          .returning();
+        updatedLink = result[0];
+      } catch (dbError: any) {
+        console.error("❌ Database update failed:", dbError);
+        console.error("❌ Error code:", dbError.code);
+        console.error("❌ Error message:", dbError.message);
+        return res.status(500).json({ 
+          error: "Database error while updating review link", 
+          details: dbError.message,
+          code: dbError.code 
+        });
+      }
 
       if (!updatedLink) {
         console.log("❌ Comment rejected: Update failed");
