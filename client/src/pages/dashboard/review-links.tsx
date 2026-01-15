@@ -107,6 +107,7 @@ export default function ReviewLinks() {
       const response = await fetch("/api/review-links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -141,6 +142,7 @@ export default function ReviewLinks() {
     mutationFn: async (linkId: number) => {
       const response = await fetch(`/api/review-links/${linkId}/reviewed`, {
         method: "PUT",
+        credentials: "include",
       });
       if (!response.ok) {
         throw new Error("Failed to mark as reviewed");
@@ -168,6 +170,7 @@ export default function ReviewLinks() {
     mutationFn: async (linkId: number) => {
       const response = await fetch(`/api/review-links/${linkId}/not-approved`, {
         method: "PUT",
+        credentials: "include",
       });
       if (!response.ok) {
         throw new Error("Failed to mark as not approved");
@@ -195,6 +198,7 @@ export default function ReviewLinks() {
     mutationFn: async (linkId: number) => {
       const response = await fetch(`/api/review-links/${linkId}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!response.ok) {
         throw new Error("Failed to delete review link");
@@ -223,6 +227,7 @@ export default function ReviewLinks() {
       const response = await fetch(`/api/review-links/${linkId}/comment`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ comment }),
       });
       if (!response.ok) {
