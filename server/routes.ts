@@ -4400,7 +4400,16 @@ End of Report
 
   // Add comment to review link (Team Leads and Project Managers)
   app.put("/api/review-links/:id/comment", async (req, res) => {
+    console.log("📝 PUT /api/review-links/:id/comment - Request received", {
+      params: req.params,
+      body: req.body,
+      isAuthenticated: req.isAuthenticated(),
+      userId: req.user?.id,
+      userRole: req.user?.role
+    });
+
     if (!req.isAuthenticated()) {
+      console.log("❌ Comment rejected: Not authenticated");
       return res.status(401).json({ error: "Not authenticated" });
     }
 
@@ -4409,6 +4418,7 @@ End of Report
     const isPM = user.role === "project_manager";
 
     if (!isTeamLead && !isPM) {
+      console.log("❌ Comment rejected: Invalid role", user.role);
       return res.status(403).json({ error: "Only team leads and project managers can add comments to review links" });
     }
 
@@ -4416,12 +4426,15 @@ End of Report
       const linkId = parseInt(req.params.id);
       const { comment } = req.body;
 
+      console.log("📝 Processing comment:", { linkId, comment: comment?.substring(0, 50), userId: user.id });
+
       if (!comment || comment.trim() === "") {
+        console.log("❌ Comment rejected: Empty comment");
         return res.status(400).json({ error: "Comment is required" });
       }
 
       // Check if link exists and user has access
-      // PMs can comment on links they sent, Team Leads on links assigned to them
+      console.log("🔍 Looking up review link:", linkId);
       const [link] = await db
         .select()
         .from(reviewLinks)
@@ -4429,20 +4442,23 @@ End of Report
         .limit(1);
 
       if (!link) {
+        console.log("❌ Comment rejected: Link not found", linkId);
         return res.status(404).json({ error: "Review link not found" });
       }
 
+      console.log("✅ Link found:", { id: link.id, assignedTo: link.assignedTo, sentBy: link.sentBy });
+
       // Check access
       if (isTeamLead && link.assignedTo !== user.id) {
+        console.log("❌ Comment rejected: Team lead not assigned to this link");
         return res.status(403).json({ error: "This review is not assigned to you" });
       }
       if (isPM && link.sentBy !== user.id) {
+        console.log("❌ Comment rejected: PM did not send this link");
         return res.status(403).json({ error: "You did not send this review" });
       }
 
       // Update link with comment
-      // If team lead comments, set status to needs_revision
-      // If PM comments, keep status or handle as needed
       const updateData: any = {
         reviewComment: comment.trim(),
         commentedAt: new Date(),
@@ -4453,8 +4469,8 @@ End of Report
         updateData.status = "needs_revision";
       }
 
-      // If user is team lead, use link.assignedTo
-      // If user is PM, use link.sentBy
+      console.log("📝 Updating review link with:", updateData);
+
       const [updatedLink] = await db
         .update(reviewLinks)
         .set(updateData)
@@ -4462,36 +4478,50 @@ End of Report
         .returning();
 
       if (!updatedLink) {
+        console.log("❌ Comment rejected: Update failed");
         return res.status(404).json({ error: "Review link not found or update failed" });
       }
+
+      console.log("✅ Link updated successfully:", updatedLink.id);
 
       // Determine recipient for notifications
       const recipientId = isTeamLead ? link.sentBy : link.assignedTo;
 
       // Create notification for the other party
-      await createNotification(
-        recipientId,
-        "task_assigned",
-        `${user.name} added a comment to review link: "${link.title}"`,
-        linkId,
-        "review_link"
-      );
+      try {
+        await createNotification(
+          recipientId,
+          "task_assigned",
+          `${user.name} added a comment to review link: "${link.title}"`,
+          linkId,
+          "review_link"
+        );
+        console.log("✅ Notification created for recipient:", recipientId);
+      } catch (notifErr) {
+        console.error("⚠️ Failed to create notification:", notifErr);
+        // Continue - don't fail the entire request
+      }
 
       // Send SSE notification
-      if (global.sseClients && global.sseClients.has(recipientId)) {
-        const client = global.sseClients.get(recipientId);
-        if (client) {
-          client.write(`data: ${JSON.stringify({
-            type: 'review_link_comment',
-            data: {
-              linkId,
-              title: link.title,
-              commenterName: user.name,
-              comment: comment.trim(),
-              message: `${user.name} commented on review: "${link.title}"`
-            }
-          })}\n\n`);
+      try {
+        if (global.sseClients && global.sseClients.has(recipientId)) {
+          const client = global.sseClients.get(recipientId);
+          if (client) {
+            client.write(`data: ${JSON.stringify({
+              type: 'review_link_comment',
+              data: {
+                linkId,
+                title: link.title,
+                commenterName: user.name,
+                comment: comment.trim(),
+                message: `${user.name} commented on review: "${link.title}"`
+              }
+            })}\n\n`);
+          }
         }
+      } catch (sseErr) {
+        console.error("⚠️ Failed to send SSE notification:", sseErr);
+        // Continue - don't fail the entire request
       }
 
       // Send OneSignal push notification
@@ -4501,13 +4531,16 @@ End of Report
           isTeamLead ? "Revision Requested" : "Comment on Review",
           `${user.name} commented on review: "${link.title}"`
         );
+        console.log("✅ OneSignal notification sent");
       } catch (err) {
-        console.error("Failed to send OneSignal notification for comment:", err);
+        console.error("⚠️ Failed to send OneSignal notification for comment:", err);
+        // Continue - don't fail the entire request
       }
 
+      console.log("✅ Comment added successfully, returning response");
       res.json(updatedLink);
     } catch (error) {
-      console.error("Error adding comment to review link:", error);
+      console.error("❌ Error adding comment to review link:", error);
       res.status(500).json({ error: "Failed to add comment to review link" });
     }
   });
