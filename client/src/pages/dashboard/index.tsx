@@ -240,7 +240,7 @@ export default function Dashboard() {
 
   // Use appropriate task set based on user role
   const userTasks =
-    user?.role === "staff" || user?.role === "intern"
+    user?.role === "staff" || user?.role === "intern" || user?.role === "product_owner"
       ? (tasks ?? []).filter((task) => task.assigneeId === user?.id)
       : (tasks ?? []);
 
