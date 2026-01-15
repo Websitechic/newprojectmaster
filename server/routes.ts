@@ -408,9 +408,10 @@ export function registerRoutes(app: Express): Server {
         user.role === "team_lead" ||
         user.role === "customer_support_officer" ||
         user.role === "project_manager" ||
-        user.role === "admin"
+        user.role === "admin" ||
+        user.role === "product_owner"
       ) {
-        // Operations managers, team leads, project managers, customer support officers, and admins see all tasks
+        // Operations managers, team leads, project managers, customer support officers, product owners and admins see all tasks
         userTasks = await db
           .select()
           .from(tasks)
