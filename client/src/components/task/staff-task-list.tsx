@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
 import {
   Dialog,
   DialogContent,
@@ -40,8 +41,10 @@ interface StaffTaskListProps {
 export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { playAlarmSound } = useNotificationSound();
   const queryClient = useQueryClient();
   const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
+  const alarmTriggeredRef = useRef<Record<number, boolean>>({});
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
   const [stopGapDialogOpen, setStopGapDialogOpen] = useState(false);
   const [selectedTaskForStopGap, setSelectedTaskForStopGap] = useState<number | null>(null);
@@ -146,6 +149,24 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
         if (isDeadlineMissed && task.isTimerRunning) {
           pauseTimer.mutate(task.id);
+        }
+
+        // Check for 10-minute deadline warning
+        if (task.deadline && task.status !== "completed" && task.status !== "review") {
+          const deadlineTime = new Date(task.deadline).getTime();
+          const timeUntilDeadline = deadlineTime - Date.now();
+          const tenMinutesInMs = 10 * 60 * 1000;
+
+          if (timeUntilDeadline > 0 && timeUntilDeadline <= tenMinutesInMs && !alarmTriggeredRef.current[task.id]) {
+            console.log(`🚨 Deadline alarm triggered for task: ${task.title}`);
+            playAlarmSound();
+            alarmTriggeredRef.current[task.id] = true;
+            toast({
+              title: "DEADLINE APPROACHING",
+              description: `Task "${task.title}" is due in less than 10 minutes!`,
+              variant: "destructive",
+            });
+          }
         }
       });
 

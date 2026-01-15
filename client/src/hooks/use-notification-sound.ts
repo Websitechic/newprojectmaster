@@ -173,8 +173,59 @@ export function useNotificationSound() {
     }
   }, []);
 
+  // Play alarm sound - loud and continuous
+  const playAlarmSound = useCallback(async () => {
+    console.log('🚨 playAlarmSound called');
+    
+    try {
+      if (!audioContextRef.current) {
+        console.error('❌ Audio not ready');
+        return;
+      }
+
+      const context = audioContextRef.current;
+      
+      // Resume if suspended
+      if (context.state === 'suspended') {
+        await context.resume();
+      }
+
+      const osc1 = context.createOscillator();
+      const osc2 = context.createOscillator();
+      const gainNode = context.createGain();
+
+      osc1.type = 'sawtooth';
+      osc2.type = 'square';
+      
+      osc1.frequency.setValueAtTime(440, context.currentTime);
+      osc2.frequency.setValueAtTime(445, context.currentTime);
+
+      // Create a siren effect
+      osc1.frequency.exponentialRampToValueAtTime(880, context.currentTime + 0.5);
+      osc1.frequency.exponentialRampToValueAtTime(440, context.currentTime + 1.0);
+      
+      gainNode.gain.setValueAtTime(0.5, context.currentTime);
+      
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+      gainNode.connect(context.destination);
+
+      osc1.start();
+      osc2.start();
+
+      // Stop after 5 seconds to not be too annoying but still "continuous" enough
+      osc1.stop(context.currentTime + 5);
+      osc2.stop(context.currentTime + 5);
+
+      console.log('🔊 ALARM SOUND PLAYING NOW!');
+    } catch (error) {
+      console.error('❌ Error playing alarm sound:', error);
+    }
+  }, []);
+
   return {
     playNotificationSound,
+    playAlarmSound,
     unlockAudioContext,
     isUnlocked,
     isInitialized,
