@@ -409,18 +409,18 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
     <div className="space-y-4">
       <div className="rounded-md border overflow-x-auto">
         <div className="min-w-[800px]">
-          <Table>
+          <Table className="table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[200px]">Task & Project</TableHead>
-              <TableHead className="w-[140px]">Start Date</TableHead>
-              <TableHead className="w-[280px]">Description</TableHead>
-              <TableHead className="w-[140px]">Assigned By</TableHead>
-              <TableHead className="w-[180px]">Status</TableHead>
-              <TableHead className="w-[180px]">Timer</TableHead>
-              <TableHead className="w-[140px]">Deadline</TableHead>
-              <TableHead className="w-[200px]">Stop Gap</TableHead>
-              <TableHead className="text-right w-[200px]">Actions</TableHead>
+              <TableHead className="w-[150px]">Task & Project</TableHead>
+              <TableHead className="w-[180px]">Description</TableHead>
+              <TableHead className="w-[100px]">Assigned By</TableHead>
+              <TableHead className="w-[120px]">Status</TableHead>
+              <TableHead className="w-[120px]">Timer</TableHead>
+              <TableHead className="w-[110px]">Start Date</TableHead>
+              <TableHead className="w-[110px]">Deadline</TableHead>
+              <TableHead className="w-[120px]">Stop Gap</TableHead>
+              <TableHead className="text-right w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
