@@ -1102,7 +1102,7 @@ export default function KPIReportPage() {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 border-none shadow-none bg-transparent max-w-none" align="end" side="bottom" sideOffset={10}>
-                          <div className="bg-white rounded-lg border shadow-md p-1 scale-[0.8] sm:scale-[0.85] md:scale-90 lg:scale-95 origin-top-right overflow-hidden">
+                          <div className="bg-white rounded-lg border shadow-md p-1 scale-[0.75] sm:scale-[0.85] md:scale-90 lg:scale-95 origin-top-right overflow-hidden transition-transform duration-200">
                             <CalendarComponent
                               mode="range"
                               selected={{
@@ -1121,7 +1121,7 @@ export default function KPIReportPage() {
                               <div className="px-2 pb-2">
                                 <Button
                                   size="sm"
-                                  className="w-full mt-1 h-8 text-xs"
+                                  className="w-full mt-1 h-8 text-[10px] sm:text-xs"
                                   onClick={() => {
                                     setUseCustomRange(true);
                                   }}
