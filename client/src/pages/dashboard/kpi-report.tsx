@@ -1103,28 +1103,19 @@ export default function KPIReportPage() {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-1 max-w-[300px]" align="end" side="bottom" sideOffset={10}>
                           <div className="space-y-1">
-                            <div className="scale-[0.85] origin-top">
-                              <label className="text-xs font-medium mb-1 block text-gray-700 text-center">Start Date</label>
+                            <div className="scale-[0.95] origin-top">
                               <CalendarComponent
-                                mode="single"
-                                selected={customStartDate}
-                                onSelect={(date) => {
-                                  setCustomStartDate(date);
+                                mode="range"
+                                selected={{
+                                  from: customStartDate,
+                                  to: customEndDate
+                                }}
+                                onSelect={(range) => {
+                                  if (range?.from) setCustomStartDate(range.from);
+                                  if (range?.to) setCustomEndDate(range.to);
                                   setUseCustomRange(true);
                                 }}
-                                className="rounded-md border-0"
-                              />
-                            </div>
-                            <div className="border-t pt-1 scale-[0.85] origin-top">
-                              <label className="text-xs font-medium mb-1 block text-gray-700 text-center">End Date</label>
-                              <CalendarComponent
-                                mode="single"
-                                selected={customEndDate}
-                                onSelect={(date) => {
-                                  setCustomEndDate(date);
-                                  setUseCustomRange(true);
-                                }}
-                                disabled={(date) => customStartDate ? date < customStartDate : false}
+                                numberOfMonths={2}
                                 className="rounded-md border-0"
                               />
                             </div>
