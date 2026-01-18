@@ -353,16 +353,16 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col lg:pl-64 min-w-0 max-w-full">
         <Header />
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full max-w-full">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <h1 className="text-2xl font-bold">Dashboard</h1>
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto items-center">
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search tasks..."
                   value={taskSearchQuery}
                   onChange={(e) => setTaskSearchQuery(e.target.value)}
-                  className="pl-8"
+                  className="pl-8 h-10"
                 />
               </div>
               <Popover>
@@ -370,11 +370,11 @@ export default function Dashboard() {
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-full sm:w-[240px] justify-start text-left font-normal",
+                      "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2 hover:border-primary/50 transition-colors",
                       !date && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
                     {date instanceof Date ? (
                       format(date, "PPP")
                     ) : (date as any)?.from ? (
@@ -387,7 +387,7 @@ export default function Dashboard() {
                         format((date as any).from, "PPP")
                       )
                     ) : (
-                      <span>Filter by date</span>
+                      <span className="font-semibold text-primary">Filter tasks by date</span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -405,10 +405,10 @@ export default function Dashboard() {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="w-full justify-center"
+                        className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => setDate(undefined)}
                       >
-                        Clear Selection
+                        Clear Date Selection
                       </Button>
                     </div>
                   )}
