@@ -252,7 +252,7 @@ export default function Dashboard() {
       : (tasks ?? [])
     ).filter((task: Task) => {
       // Apply search filter
-      if (taskSearchQuery && !task.title.toLowerCase().includes(taskSearchQuery.toLowerCase())) {
+      if (taskSearchQuery && !task.title?.toLowerCase().includes(taskSearchQuery.toLowerCase())) {
         return false;
       }
 
@@ -263,10 +263,10 @@ export default function Dashboard() {
 
         if (date instanceof Date) {
           if (!isSameDay(taskDate, date)) return false;
-        } else if (date.from && date.to) {
-          if (!isWithinInterval(taskDate, { start: startOfDay(date.from), end: endOfDay(date.to) })) return false;
-        } else if (date.from) {
-          if (!isSameDay(taskDate, date.from)) return false;
+        } else if ((date as any).from && (date as any).to) {
+          if (!isWithinInterval(taskDate, { start: startOfDay((date as any).from), end: endOfDay((date as any).to) })) return false;
+        } else if ((date as any).from) {
+          if (!isSameDay(taskDate, (date as any).from)) return false;
         }
       }
       return true;
@@ -361,7 +361,7 @@ export default function Dashboard() {
                 placeholder="Search tasks by title..."
                 value={taskSearchQuery}
                 onChange={(e) => setTaskSearchQuery(e.target.value)}
-                className="pl-8 h-10"
+                className="pl-8 h-10 border-2"
               />
             </div>
             <Popover>
@@ -369,11 +369,11 @@ export default function Dashboard() {
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2",
-                    !date && "text-muted-foreground"
+                    "w-full sm:w-[240px] h-10 justify-start text-left font-bold border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 transition-all",
+                    !date && "text-primary"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                  <CalendarIcon className="mr-2 h-5 w-5 text-primary" />
                   {date instanceof Date ? (
                     format(date, "PPP")
                   ) : (date as any)?.from ? (
@@ -386,7 +386,7 @@ export default function Dashboard() {
                       format((date as any).from, "PPP")
                     )
                   ) : (
-                    <span className="font-medium">Filter by date</span>
+                    <span className="font-bold">FILTER BY DATE</span>
                   )}
                 </Button>
               </PopoverTrigger>

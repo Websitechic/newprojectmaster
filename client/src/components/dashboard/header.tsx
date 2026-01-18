@@ -37,12 +37,11 @@ export function Header() {
   // Only show unlock button when user is logged in
   // The button will show current unlock state (enabled/not enabled)
   useEffect(() => {
-    if (user) {
-      setShowUnlockButton(true);
-    } else {
-      setShowUnlockButton(false);
+    const shouldShow = !!user;
+    if (showUnlockButton !== shouldShow) {
+      setShowUnlockButton(shouldShow);
     }
-  }, [user]);
+  }, [user, showUnlockButton]);
 
   // Fetch team chat unread counts
   const { data: teamChatUnreads = {} } = useQuery<Record<number, number>>({
@@ -129,7 +128,7 @@ export function Header() {
     // Add team chats with unread messages
     Object.entries(teamChatUnreads).forEach(([projectId, count]) => {
       if (count > 0) {
-        const project = projects.find((p: any) => p.id === parseInt(projectId));
+        const project = (projects as any[]).find((p: any) => p.id === parseInt(projectId));
         if (project) {
           projectMap.set(parseInt(projectId), {
             name: project.name,
@@ -143,7 +142,7 @@ export function Header() {
     // Add/update with mention counts
     Object.entries(mentionCounts).forEach(([projectId, count]) => {
       if (count > 0) {
-        const project = projects.find((p: any) => p.id === parseInt(projectId));
+        const project = (projects as any[]).find((p: any) => p.id === parseInt(projectId));
         if (project) {
           const existing = projectMap.get(parseInt(projectId));
           if (existing) {
@@ -175,7 +174,7 @@ export function Header() {
 
     // Add direct messages with unread messages
     if (directMessagesData) {
-      directMessagesData.forEach((conv: any) => {
+      (directMessagesData as any[]).forEach((conv: any) => {
         if (conv.unreadCount > 0) {
           combined.push({
             type: "direct_message",
@@ -188,8 +187,13 @@ export function Header() {
       });
     }
 
-    setUnreadMessages(combined);
-  }, [teamChatUnreads, mentionCounts, directMessagesData, projects, generalChannelUnread]);
+    // Only update if the serialized string has changed to prevent infinite loops
+    const currentSerialized = JSON.stringify(combined);
+    const previousSerialized = JSON.stringify(unreadMessages);
+    if (currentSerialized !== previousSerialized) {
+      setUnreadMessages(combined);
+    }
+  }, [teamChatUnreads, mentionCounts, directMessagesData, projects, generalChannelUnread, unreadMessages]);
 
   const handleLogout = async () => {
     try {
