@@ -1101,11 +1101,11 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[320px] p-4" align="end" side="bottom" sideOffset={10}>
-                          <div className="space-y-4">
-                            <div>
+                        <PopoverContent className="w-auto p-4 md:max-w-none" align="end" side="bottom" sideOffset={10}>
+                          <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1">
                               <label className="text-xs font-bold mb-2 block text-gray-900 text-center uppercase tracking-wider">Start Date</label>
-                              <div className="border rounded-md">
+                              <div className="border rounded-md p-1">
                                 <CalendarComponent
                                   mode="single"
                                   selected={customStartDate}
@@ -1113,13 +1113,13 @@ export default function KPIReportPage() {
                                     setCustomStartDate(date);
                                     setUseCustomRange(true);
                                   }}
-                                  className="rounded-md border-0 w-full"
+                                  className="rounded-md border-0"
                                 />
                               </div>
                             </div>
-                            <div>
+                            <div className="flex-1">
                               <label className="text-xs font-bold mb-2 block text-gray-900 text-center uppercase tracking-wider">End Date</label>
-                              <div className="border rounded-md">
+                              <div className="border rounded-md p-1">
                                 <CalendarComponent
                                   mode="single"
                                   selected={customEndDate}
@@ -1128,7 +1128,7 @@ export default function KPIReportPage() {
                                     setUseCustomRange(true);
                                   }}
                                   disabled={(date) => customStartDate ? date < customStartDate : false}
-                                  className="rounded-md border-0 w-full"
+                                  className="rounded-md border-0"
                                 />
                               </div>
                             </div>
