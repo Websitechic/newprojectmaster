@@ -1,8 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 
 export function useNotificationSound() {
-  console.log('🎵 useNotificationSound hook called');
-  
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const silentBufferRef = useRef<AudioBuffer | null>(null);
