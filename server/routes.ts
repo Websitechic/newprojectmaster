@@ -661,30 +661,43 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      // Get overdue tasks
-      const overdueTasks = await db
-        .select({
-          id: tasks.id,
-          title: tasks.title,
-          assigneeId: tasks.assigneeId,
-          deadline: tasks.deadline,
-        })
+      // Update overdue notifications and auto-stop timers
+      const tasksToUpdate = await db
+        .select()
         .from(tasks)
         .where(
           and(
-            sql`${tasks.deadline} < ${today}`,
-            ne(tasks.status, "completed")
+            sql`${tasks.deadline} < ${now}`,
+            ne(tasks.status, "completed"),
+            ne(tasks.status, "review")
           )
         );
 
-      // Send overdue notifications
-      for (const task of overdueTasks) {
-        if (task.assigneeId && task.deadline) {
-          const daysOverdue = Math.ceil((today.getTime() - new Date(task.deadline).getTime()) / (1000 * 60 * 60 * 24));
+      for (const task of tasksToUpdate) {
+        if (task.isTimerRunning) {
+          const startTime = task.timerStartTime ? new Date(task.timerStartTime).getTime() : now.getTime();
+          const elapsed = Math.floor((now.getTime() - startTime) / 1000);
+          const newTimeSpent = (task.timeSpent || 0) + elapsed;
+
+          await db
+            .update(tasks)
+            .set({
+              isTimerRunning: false,
+              timerStartTime: null,
+              timeSpent: newTimeSpent,
+              updatedAt: now
+            })
+            .where(eq(tasks.id, task.id));
+          
+          console.log(`[DEADLINE] Auto-stopped timer for task ${task.id} as deadline was reached.`);
+        }
+
+        if (task.assigneeId) {
+          const daysOverdue = Math.ceil((now.getTime() - new Date(task.deadline!).getTime()) / (1000 * 60 * 60 * 24));
           await createNotification(
             task.assigneeId,
             "task_overdue",
-            `🔴 Task "${task.title}" is ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue`,
+            `🔴 Task "${task.title}" is ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue and timer has been stopped`,
             task.id,
             "task"
           );
