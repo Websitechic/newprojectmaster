@@ -1,155 +1,155 @@
 CREATE TABLE IF NOT EXISTS "bookings" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "title" text NOT NULL,
-        "description" text,
-        "type" text NOT NULL,
-        "scheduled_by" integer NOT NULL,
-        "participants" jsonb NOT NULL,
-        "start_time" timestamp NOT NULL,
-        "end_time" timestamp NOT NULL,
-        "status" text DEFAULT 'scheduled',
-        "meeting_link" text,
-        "notes" text,
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"title" text NOT NULL,
+	"description" text,
+	"type" text NOT NULL,
+	"scheduled_by" integer NOT NULL,
+	"participants" jsonb NOT NULL,
+	"start_time" timestamp NOT NULL,
+	"end_time" timestamp NOT NULL,
+	"status" text DEFAULT 'scheduled',
+	"meeting_link" text,
+	"notes" text,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "client_sentiment" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "client_id" integer NOT NULL,
-        "sentiment" text NOT NULL,
-        "reason" text NOT NULL,
-        "week_start" timestamp NOT NULL,
-        "week_end" timestamp NOT NULL,
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"client_id" integer NOT NULL,
+	"sentiment" text NOT NULL,
+	"reason" text NOT NULL,
+	"week_start" timestamp NOT NULL,
+	"week_end" timestamp NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "complaints" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "name" text NOT NULL,
-        "email" text NOT NULL,
-        "product_manager_name" text,
-        "developer_name" text,
-        "technical_manager_name" text,
-        "valuable_things" json DEFAULT '[]'::json,
-        "detailed_explanation" text NOT NULL,
-        "screenshot_url" text,
-        "status" text DEFAULT 'pending' NOT NULL,
-        "review_comments" text,
-        "submitter_id" integer,
-        "reviewed_by" integer,
-        "created_at" timestamp DEFAULT now(),
-        "reviewed_at" timestamp
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"email" text NOT NULL,
+	"product_manager_name" text,
+	"developer_name" text,
+	"technical_manager_name" text,
+	"valuable_things" json DEFAULT '[]'::json,
+	"detailed_explanation" text NOT NULL,
+	"screenshot_url" text,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"review_comments" text,
+	"submitter_id" integer,
+	"reviewed_by" integer,
+	"created_at" timestamp DEFAULT now(),
+	"reviewed_at" timestamp
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "deadline_extension_requests" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "task_id" integer NOT NULL,
-        "requester_id" integer NOT NULL,
-        "project_manager_id" integer NOT NULL,
-        "reason" text NOT NULL,
-        "requested_deadline" timestamp,
-        "status" text DEFAULT 'pending',
-        "decision_reason" text,
-        "decided_by" integer,
-        "decided_at" timestamp,
-        "approved_deadline" timestamp,
-        "approved_working_hours" integer,
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"task_id" integer NOT NULL,
+	"requester_id" integer NOT NULL,
+	"project_manager_id" integer NOT NULL,
+	"reason" text NOT NULL,
+	"requested_deadline" timestamp,
+	"status" text DEFAULT 'pending',
+	"decision_reason" text,
+	"decided_by" integer,
+	"decided_at" timestamp,
+	"approved_deadline" timestamp,
+	"approved_working_hours" integer,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "memo_reads" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "memo_id" integer NOT NULL,
-        "user_id" integer NOT NULL,
-        "read_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"memo_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
+	"read_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "memos" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "title" text NOT NULL,
-        "content" text NOT NULL,
-        "type" text NOT NULL,
-        "recipients" jsonb NOT NULL,
-        "sent_by" integer NOT NULL,
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"title" text NOT NULL,
+	"content" text NOT NULL,
+	"type" text NOT NULL,
+	"recipients" jsonb NOT NULL,
+	"sent_by" integer NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "message_read_receipts" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "message_id" integer NOT NULL,
-        "user_id" integer NOT NULL,
-        "read_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"message_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
+	"read_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "project_messages" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "project_id" integer NOT NULL,
-        "sender_id" integer NOT NULL,
-        "content" text NOT NULL,
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"project_id" integer NOT NULL,
+	"sender_id" integer NOT NULL,
+	"content" text NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "resources" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "name" text NOT NULL,
-        "type" text NOT NULL,
-        "size" integer,
-        "path" text,
-        "link" text,
-        "project_id" integer,
-        "uploaded_by" integer,
-        "created_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"type" text NOT NULL,
+	"size" integer,
+	"path" text,
+	"link" text,
+	"project_id" integer,
+	"uploaded_by" integer,
+	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "staff_complaints" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "name" text NOT NULL,
-        "email" text NOT NULL,
-        "department" text,
-        "detailed_explanation" text NOT NULL,
-        "screenshot_url" text,
-        "status" text DEFAULT 'pending' NOT NULL,
-        "review_comments" text,
-        "submitter_id" integer,
-        "reviewed_at" timestamp,
-        "created_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"email" text NOT NULL,
+	"department" text,
+	"detailed_explanation" text NOT NULL,
+	"screenshot_url" text,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"review_comments" text,
+	"submitter_id" integer,
+	"reviewed_at" timestamp,
+	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "staff_queries" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "staff_id" integer NOT NULL,
-        "staff_name" text NOT NULL,
-        "department" text NOT NULL,
-        "staff_unique_value" text NOT NULL,
-        "reason" text NOT NULL,
-        "why_query" text NOT NULL,
-        "attachment_path" text,
-        "likely_penalty" text NOT NULL,
-        "additional_note" text,
-        "sent_by" integer NOT NULL,
-        "status" text DEFAULT 'pending',
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"staff_id" integer NOT NULL,
+	"staff_name" text NOT NULL,
+	"department" text NOT NULL,
+	"staff_unique_value" text NOT NULL,
+	"reason" text NOT NULL,
+	"why_query" text NOT NULL,
+	"attachment_path" text,
+	"likely_penalty" text NOT NULL,
+	"additional_note" text,
+	"sent_by" integer NOT NULL,
+	"status" text DEFAULT 'pending',
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "technical_support_requests" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "title" text NOT NULL,
-        "description" text NOT NULL,
-        "task_id" integer,
-        "requester_id" integer NOT NULL,
-        "assigned_to_id" integer,
-        "status" text DEFAULT 'pending',
-        "priority" text DEFAULT 'medium',
-        "resolution" text,
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now(),
-        "resolved_at" timestamp
+	"id" serial PRIMARY KEY NOT NULL,
+	"title" text NOT NULL,
+	"description" text NOT NULL,
+	"task_id" integer,
+	"requester_id" integer NOT NULL,
+	"assigned_to_id" integer,
+	"status" text DEFAULT 'pending',
+	"priority" text DEFAULT 'medium',
+	"resolution" text,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now(),
+	"resolved_at" timestamp
 );
 --> statement-breakpoint
 ALTER TABLE "users" ADD COLUMN "onboarding_status" text DEFAULT 'not_onboarded';--> statement-breakpoint

@@ -1,53 +1,53 @@
 CREATE TABLE IF NOT EXISTS "issue_reports" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "title" text NOT NULL,
-        "description" text NOT NULL,
-        "suggestions" text,
-        "reporter_name" text NOT NULL,
-        "reporter_email" text NOT NULL,
-        "priority" text DEFAULT 'medium',
-        "category" text DEFAULT 'other',
-        "status" text DEFAULT 'pending',
-        "submitter_id" integer,
-        "reviewed_by" integer,
-        "reviewed_at" timestamp,
-        "review_comments" text,
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"title" text NOT NULL,
+	"description" text NOT NULL,
+	"suggestions" text,
+	"reporter_name" text NOT NULL,
+	"reporter_email" text NOT NULL,
+	"priority" text DEFAULT 'medium',
+	"category" text DEFAULT 'other',
+	"status" text DEFAULT 'pending',
+	"submitter_id" integer,
+	"reviewed_by" integer,
+	"reviewed_at" timestamp,
+	"review_comments" text,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "notes" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "title" text,
-        "content" text NOT NULL,
-        "type" text DEFAULT 'freetext',
-        "todo_items" jsonb,
-        "user_id" integer NOT NULL,
-        "created_by" integer NOT NULL,
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now(),
-        "category" text DEFAULT 'general'
+	"id" serial PRIMARY KEY NOT NULL,
+	"title" text,
+	"content" text NOT NULL,
+	"type" text DEFAULT 'freetext',
+	"todo_items" jsonb,
+	"user_id" integer NOT NULL,
+	"created_by" integer NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now(),
+	"category" text DEFAULT 'general'
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "sop_segments" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "sop_id" integer NOT NULL,
-        "title" text NOT NULL,
-        "content" text NOT NULL,
-        "file_url" text,
-        "segment_order" integer DEFAULT 0 NOT NULL,
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"sop_id" integer NOT NULL,
+	"title" text NOT NULL,
+	"content" text NOT NULL,
+	"file_url" text,
+	"segment_order" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "sops" (
-        "id" serial PRIMARY KEY NOT NULL,
-        "title" text NOT NULL,
-        "department" text NOT NULL,
-        "reference_link" text,
-        "created_by" integer NOT NULL,
-        "created_at" timestamp DEFAULT now(),
-        "updated_at" timestamp DEFAULT now()
+	"id" serial PRIMARY KEY NOT NULL,
+	"title" text NOT NULL,
+	"department" text NOT NULL,
+	"reference_link" text,
+	"created_by" integer NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 ALTER TABLE "client_sentiment" ALTER COLUMN "week_start" SET DATA TYPE text;--> statement-breakpoint
