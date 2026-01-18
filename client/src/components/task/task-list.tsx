@@ -85,12 +85,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       setLocalTimers(prev => {
         const newTimers = { ...prev };
         tasks.forEach(task => {
-          const isDeadlineMissed = task.deadline &&
-            new Date(task.deadline).getTime() < Date.now() &&
-            task.status !== "completed" &&
-            task.status !== "review";
-
-          if (task.isTimerRunning && task.timerStartTime && !isDeadlineMissed) {
+          if (task.isTimerRunning && task.timerStartTime) {
             const elapsedSinceStart = Math.floor((Date.now() - new Date(task.timerStartTime).getTime()) / 1000);
             newTimers[task.id] = (task.timeSpent || 0) + elapsedSinceStart;
           } else {
