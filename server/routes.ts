@@ -668,26 +668,80 @@ export function registerRoutes(app: Express): Server {
           title: tasks.title,
           assigneeId: tasks.assigneeId,
           deadline: tasks.deadline,
+          isTimerRunning: tasks.isTimerRunning,
+          timerStartTime: tasks.timerStartTime,
+          timeSpent: tasks.timeSpent,
         })
         .from(tasks)
         .where(
           and(
             sql`${tasks.deadline} < ${today}`,
-            ne(tasks.status, "completed")
+            ne(tasks.status, "completed"),
+            ne(tasks.status, "review")
           )
         );
 
-      // Send overdue notifications
+      // Send overdue notifications and pause running timers
       for (const task of overdueTasks) {
-        if (task.assigneeId && task.deadline) {
+        if (task.deadline) {
           const daysOverdue = Math.ceil((today.getTime() - new Date(task.deadline).getTime()) / (1000 * 60 * 60 * 24));
-          await createNotification(
-            task.assigneeId,
-            "task_overdue",
-            `🔴 Task "${task.title}" is ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue`,
-            task.id,
-            "task"
-          );
+          
+          if (task.assigneeId) {
+            await createNotification(
+              task.assigneeId,
+              "task_overdue",
+              `🔴 Task "${task.title}" is ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue`,
+              task.id,
+              "task"
+            );
+          }
+
+          // If timer is running on an overdue task, pause it
+          if (task.isTimerRunning && task.timerStartTime) {
+            console.log(`[DEADLINE_CHECK] Pausing running timer for overdue task ${task.id}`);
+            const elapsedSeconds = Math.floor((new Date().getTime() - new Date(task.timerStartTime).getTime()) / 1000);
+            const totalTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
+
+            // Clear the timer interval if it exists in the current process
+            if (global.timerIntervals && global.timerIntervals.has(task.id)) {
+              clearInterval(global.timerIntervals.get(task.id));
+              global.timerIntervals.delete(task.id);
+            }
+
+            const [updatedTask] = await db
+              .update(tasks)
+              .set({
+                isTimerRunning: false,
+                timeSpent: totalTimeSpent,
+                timerStartTime: null,
+                updatedAt: new Date()
+              })
+              .where(eq(tasks.id, task.id))
+              .returning();
+
+            // Broadcast timer paused event via WebSocket
+            if (global.connectedClients) {
+              global.connectedClients.forEach((client) => {
+                if (client.readyState === 1) { // WebSocket.OPEN
+                  try {
+                    client.send(JSON.stringify({
+                      type: 'task_timer_paused',
+                      data: {
+                        taskId: updatedTask.id,
+                        isTimerRunning: updatedTask.isTimerRunning,
+                        timeSpent: updatedTask.timeSpent,
+                        timerStartTime: updatedTask.timerStartTime,
+                        status: updatedTask.status,
+                        projectId: updatedTask.projectId
+                      }
+                    }));
+                  } catch (error) {
+                    console.error('Error broadcasting timer pause from deadline check:', error);
+                  }
+                }
+              });
+            }
+          }
         }
       }
 
