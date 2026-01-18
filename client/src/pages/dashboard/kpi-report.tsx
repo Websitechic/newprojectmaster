@@ -1101,7 +1101,7 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-1 max-w-[300px]" align="end" side="bottom" sideOffset={10}>
+                        <PopoverContent className="w-auto p-1 max-w-none" align="end" side="bottom" sideOffset={10}>
                           <div className="space-y-1">
                             <div className="scale-[0.95] origin-top">
                               <CalendarComponent
@@ -1111,8 +1111,8 @@ export default function KPIReportPage() {
                                   to: customEndDate
                                 }}
                                 onSelect={(range) => {
-                                  if (range?.from) setCustomStartDate(range.from);
-                                  if (range?.to) setCustomEndDate(range.to);
+                                  setCustomStartDate(range?.from);
+                                  setCustomEndDate(range?.to);
                                   setUseCustomRange(true);
                                 }}
                                 numberOfMonths={2}
