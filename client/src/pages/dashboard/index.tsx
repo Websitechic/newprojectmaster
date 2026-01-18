@@ -354,72 +354,72 @@ export default function Dashboard() {
         <Header />
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full max-w-full">
           <BookingAlert />
+          <div className="mb-6 flex flex-col sm:flex-row gap-3 items-center bg-white dark:bg-gray-800 p-3 rounded-lg border shadow-sm">
+            <div className="relative w-full sm:flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search tasks by title..."
+                value={taskSearchQuery}
+                onChange={(e) => setTaskSearchQuery(e.target.value)}
+                className="pl-8 h-10"
+              />
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                  {date instanceof Date ? (
+                    format(date, "PPP")
+                  ) : (date as any)?.from ? (
+                    (date as any).to ? (
+                      <>
+                        {format((date as any).from, "LLL dd, y")} -{" "}
+                        {format((date as any).to, "LLL dd, y")}
+                      </>
+                    ) : (
+                      format((date as any).from, "PPP")
+                    )
+                  ) : (
+                    <span className="font-medium">Filter by date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
+                  selected={date as any}
+                  onSelect={setDate as any}
+                  numberOfMonths={2}
+                />
+                {date && (
+                  <div className="p-3 border-t">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setDate(undefined)}
+                    >
+                      Clear Selection
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          </div>
           {user?.role === "staff" ||
           (user?.role === "client" &&
             user?.clientType === "support_maintenance_client") ||
           user?.role === "intern" ? ( // Added intern role here
             <>
               {/* Staff & Support Maintenance Client & Intern Dashboard */}
-              <div className="mb-6 flex flex-col sm:flex-row gap-3 items-center bg-white dark:bg-gray-800 p-3 rounded-lg border shadow-sm">
-                <div className="relative w-full sm:flex-1">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search tasks by title..."
-                    value={taskSearchQuery}
-                    onChange={(e) => setTaskSearchQuery(e.target.value)}
-                    className="pl-8 h-10"
-                  />
-                </div>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2",
-                        !date && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                      {date instanceof Date ? (
-                        format(date, "PPP")
-                      ) : (date as any)?.from ? (
-                        (date as any).to ? (
-                          <>
-                            {format((date as any).from, "LLL dd, y")} -{" "}
-                            {format((date as any).to, "LLL dd, y")}
-                          </>
-                        ) : (
-                          format((date as any).from, "PPP")
-                        )
-                      ) : (
-                        <span className="font-medium">Filter by date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="end">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
-                      selected={date as any}
-                      onSelect={setDate as any}
-                      numberOfMonths={2}
-                    />
-                    {date && (
-                      <div className="p-3 border-t">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setDate(undefined)}
-                        >
-                          Clear Selection
-                        </Button>
-                      </div>
-                    )}
-                  </PopoverContent>
-                </Popover>
-              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full overflow-hidden">
                 {/* Tasks in Progress */}
