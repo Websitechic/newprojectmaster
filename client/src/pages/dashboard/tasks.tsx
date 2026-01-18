@@ -14,13 +14,19 @@ import {
 import { Input } from "@/components/ui/input";
 import type { Task, Project } from "@db/schema";
 import { useState, useEffect } from "react";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Calendar as CalendarIcon } from "lucide-react";
+import { format, isSameDay, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 export default function Tasks() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [date, setDate] = useState<Date | { from: Date; to: Date } | undefined>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -47,6 +53,20 @@ export default function Tasks() {
     // Apply search filter
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
+    }
+
+    // Apply date filter
+    if (date) {
+      const taskDate = task.deadline ? new Date(task.deadline) : (task.startDate ? new Date(task.startDate) : null);
+      if (!taskDate) return false;
+
+      if (date instanceof Date) {
+        if (!isSameDay(taskDate, date)) return false;
+      } else if (date.from && date.to) {
+        if (!isWithinInterval(taskDate, { start: startOfDay(date.from), end: endOfDay(date.to) })) return false;
+      } else if (date.from) {
+        if (!isSameDay(taskDate, date.from)) return false;
+      }
     }
 
     if (filter === "all" && !selectedProject) return true;
@@ -97,6 +117,55 @@ export default function Tasks() {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <h1 className="text-2xl font-bold">Tasks</h1>
               <div className="flex flex-wrap gap-2 sm:gap-4">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date instanceof Date ? (
+                        format(date, "PPP")
+                      ) : date?.from ? (
+                        date.to ? (
+                          <>
+                            {format(date.from, "LLL dd, y")} -{" "}
+                            {format(date.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(date.from, "PPP")
+                        )
+                      ) : (
+                        <span>Pick a date or range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={date instanceof Date ? date : date?.from}
+                      selected={date as any}
+                      onSelect={setDate as any}
+                      numberOfMonths={2}
+                    />
+                    {date && (
+                      <div className="p-3 border-t">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full justify-center"
+                          onClick={() => setDate(undefined)}
+                        >
+                          Clear Selection
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
                 <Select value={selectedProject} onValueChange={setSelectedProject}>
                   <SelectTrigger className="w-full sm:w-[200px]">
                     <SelectValue placeholder="Select project" />
