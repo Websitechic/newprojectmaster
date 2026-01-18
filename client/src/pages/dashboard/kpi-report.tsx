@@ -1101,10 +1101,10 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-3 max-w-[300px]" align="end" side="bottom" sideOffset={10}>
-                          <div className="space-y-3">
-                            <div>
-                              <label className="text-xs font-medium mb-1.5 block text-gray-700">Start Date</label>
+                        <PopoverContent className="w-auto p-1 max-w-[300px]" align="end" side="bottom" sideOffset={10}>
+                          <div className="space-y-1">
+                            <div className="scale-[0.85] origin-top">
+                              <label className="text-xs font-medium mb-1 block text-gray-700 text-center">Start Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customStartDate}
@@ -1115,8 +1115,8 @@ export default function KPIReportPage() {
                                 className="rounded-md border-0"
                               />
                             </div>
-                            <div className="border-t pt-2">
-                              <label className="text-xs font-medium mb-1.5 block text-gray-700">End Date</label>
+                            <div className="border-t pt-1 scale-[0.85] origin-top">
+                              <label className="text-xs font-medium mb-1 block text-gray-700 text-center">End Date</label>
                               <CalendarComponent
                                 mode="single"
                                 selected={customEndDate}
