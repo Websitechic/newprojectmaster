@@ -1101,34 +1101,34 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-1 max-w-none" align="end" side="bottom" sideOffset={10}>
-                          <div className="space-y-1">
-                            <div className="scale-[0.95] origin-top">
-                              <CalendarComponent
-                                mode="range"
-                                selected={{
-                                  from: customStartDate,
-                                  to: customEndDate
-                                }}
-                                onSelect={(range) => {
-                                  setCustomStartDate(range?.from);
-                                  setCustomEndDate(range?.to);
-                                  setUseCustomRange(true);
-                                }}
-                                numberOfMonths={2}
-                                className="rounded-md border-0"
-                              />
-                            </div>
+                        <PopoverContent className="w-auto p-0 border-none shadow-none bg-transparent max-w-none" align="end" side="bottom" sideOffset={10}>
+                          <div className="bg-white rounded-lg border shadow-md p-1 scale-[0.8] sm:scale-[0.85] md:scale-90 lg:scale-95 origin-top-right overflow-hidden">
+                            <CalendarComponent
+                              mode="range"
+                              selected={{
+                                from: customStartDate,
+                                to: customEndDate
+                              }}
+                              onSelect={(range) => {
+                                setCustomStartDate(range?.from);
+                                setCustomEndDate(range?.to);
+                                setUseCustomRange(true);
+                              }}
+                              numberOfMonths={2}
+                              className="rounded-md border-0"
+                            />
                             {customStartDate && customEndDate && (
-                              <Button
-                                size="sm"
-                                className="w-full mt-1"
-                                onClick={() => {
-                                  setUseCustomRange(true);
-                                }}
-                              >
-                                Apply Range
-                              </Button>
+                              <div className="px-2 pb-2">
+                                <Button
+                                  size="sm"
+                                  className="w-full mt-1 h-8 text-xs"
+                                  onClick={() => {
+                                    setUseCustomRange(true);
+                                  }}
+                                >
+                                  Apply Range
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </PopoverContent>
