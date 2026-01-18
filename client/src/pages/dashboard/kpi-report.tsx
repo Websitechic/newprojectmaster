@@ -1101,49 +1101,49 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-4 md:max-w-none" align="end" side="bottom" sideOffset={10}>
-                          <div className="flex flex-col md:flex-row gap-4">
-                            <div className="flex-1">
-                              <label className="text-xs font-bold mb-2 block text-gray-900 text-center uppercase tracking-wider">Start Date</label>
-                              <div className="border rounded-md p-1">
-                                <CalendarComponent
-                                  mode="single"
-                                  selected={customStartDate}
-                                  onSelect={(date) => {
-                                    setCustomStartDate(date);
-                                    setUseCustomRange(true);
-                                  }}
-                                  className="rounded-md border-0"
-                                />
+                        <PopoverContent className="w-auto p-4" align="end" side="bottom" sideOffset={10}>
+                          <div className="flex flex-col space-y-4">
+                            <div className="flex flex-col md:flex-row gap-8">
+                              <div className="flex flex-col items-center">
+                                <label className="text-sm font-bold mb-2 text-gray-900 uppercase tracking-tight">Start date</label>
+                                <div className="border rounded-lg p-1">
+                                  <CalendarComponent
+                                    mode="single"
+                                    selected={customStartDate}
+                                    onSelect={(date) => {
+                                      setCustomStartDate(date);
+                                      setUseCustomRange(true);
+                                    }}
+                                    className="rounded-md border-0"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-center">
+                                <label className="text-sm font-bold mb-2 text-gray-900 uppercase tracking-tight">End date</label>
+                                <div className="border rounded-lg p-1">
+                                  <CalendarComponent
+                                    mode="single"
+                                    selected={customEndDate}
+                                    onSelect={(date) => {
+                                      setCustomEndDate(date);
+                                      setUseCustomRange(true);
+                                    }}
+                                    disabled={(date) => customStartDate ? date < customStartDate : false}
+                                    className="rounded-md border-0"
+                                  />
+                                </div>
                               </div>
                             </div>
-                            <div className="flex-1">
-                              <label className="text-xs font-bold mb-2 block text-gray-900 text-center uppercase tracking-wider">End Date</label>
-                              <div className="border rounded-md p-1">
-                                <CalendarComponent
-                                  mode="single"
-                                  selected={customEndDate}
-                                  onSelect={(date) => {
-                                    setCustomEndDate(date);
-                                    setUseCustomRange(true);
-                                  }}
-                                  disabled={(date) => customStartDate ? date < customStartDate : false}
-                                  className="rounded-md border-0"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          {customStartDate && customEndDate && (
                             <Button
-                              size="sm"
-                              className="w-full mt-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2"
+                              size="lg"
+                              className="w-full bg-[#0f172a] hover:bg-[#1e293b] text-white font-bold py-3 text-base rounded-md"
                               onClick={() => {
                                 setUseCustomRange(true);
                               }}
                             >
                               Apply Range
                             </Button>
-                          )}
+                          </div>
                         </PopoverContent>
                       </Popover>
                     </div>
