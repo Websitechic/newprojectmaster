@@ -48,11 +48,18 @@ import {
 import type { Project, Task } from "@db/schema";
 import { StopGapCard } from "@/components/dashboard/stop-gap-card";
 
+import { format, isSameDay, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { Calendar as CalendarIcon } from "lucide-react";
+
 export default function Dashboard() {
   const [location, setLocation] = useLocation();
   const { user } = useUser();
   const { updateStatus, sendMessage } = useWebSocket(user?.id);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
+  const [date, setDate] = useState<Date | { from: Date; to: Date } | undefined>();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     inProgress: false,
     pending: false,
@@ -240,9 +247,30 @@ export default function Dashboard() {
 
   // Use appropriate task set based on user role
   const userTasks =
-    user?.role === "staff" || user?.role === "intern" || user?.role === "product_owner"
+    (user?.role === "staff" || user?.role === "intern" || user?.role === "product_owner"
       ? (tasks ?? []).filter((task) => task.assigneeId === user?.id)
-      : (tasks ?? []);
+      : (tasks ?? [])
+    ).filter((task: Task) => {
+      // Apply search filter
+      if (taskSearchQuery && !task.title.toLowerCase().includes(taskSearchQuery.toLowerCase())) {
+        return false;
+      }
+
+      // Apply date filter
+      if (date) {
+        const taskDate = task.deadline ? new Date(task.deadline) : (task.startDate ? new Date(task.startDate) : null);
+        if (!taskDate) return false;
+
+        if (date instanceof Date) {
+          if (!isSameDay(taskDate, date)) return false;
+        } else if (date.from && date.to) {
+          if (!isWithinInterval(taskDate, { start: startOfDay(date.from), end: endOfDay(date.to) })) return false;
+        } else if (date.from) {
+          if (!isSameDay(taskDate, date.from)) return false;
+        }
+      }
+      return true;
+    });
 
   const tasksInProgress = (userTasks ?? []).filter(
     (task) => task.status === "in_progress"
@@ -325,6 +353,69 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col lg:pl-64 min-w-0 max-w-full">
         <Header />
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full max-w-full">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search tasks..."
+                  value={taskSearchQuery}
+                  onChange={(e) => setTaskSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full sm:w-[240px] justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date instanceof Date ? (
+                      format(date, "PPP")
+                    ) : (date as any)?.from ? (
+                      (date as any).to ? (
+                        <>
+                          {format((date as any).from, "LLL dd, y")} -{" "}
+                          {format((date as any).to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format((date as any).from, "PPP")
+                      )
+                    ) : (
+                      <span>Filter by date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
+                    selected={date as any}
+                    onSelect={setDate as any}
+                    numberOfMonths={2}
+                  />
+                  {date && (
+                    <div className="p-3 border-t">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-center"
+                        onClick={() => setDate(undefined)}
+                      >
+                        Clear Selection
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
           <BookingAlert />
           {user?.role === "staff" ||
           (user?.role === "client" &&
