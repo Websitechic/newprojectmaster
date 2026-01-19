@@ -1101,11 +1101,11 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-2" align="end" side="bottom" sideOffset={10}>
-                          <div className="flex flex-col md:flex-row gap-2">
-                            <div className="w-auto">
-                              <label className="text-[10px] font-bold mb-1 block text-gray-900 text-center uppercase tracking-wider">Start Date</label>
-                              <div className="border rounded-md p-1 bg-white">
+                        <PopoverContent className="w-auto p-4" align="end" side="bottom" sideOffset={10}>
+                          <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1 min-w-[280px]">
+                              <label className="text-sm font-bold mb-2 block text-gray-900 text-center uppercase tracking-wider">Start Date</label>
+                              <div className="border rounded-md p-2 bg-white shadow-sm">
                                 <CalendarComponent
                                   mode="single"
                                   selected={customStartDate}
@@ -1117,9 +1117,9 @@ export default function KPIReportPage() {
                                 />
                               </div>
                             </div>
-                            <div className="w-auto">
-                              <label className="text-[10px] font-bold mb-1 block text-gray-900 text-center uppercase tracking-wider">End Date</label>
-                              <div className="border rounded-md p-1 bg-white">
+                            <div className="flex-1 min-w-[280px]">
+                              <label className="text-sm font-bold mb-2 block text-gray-900 text-center uppercase tracking-wider">End Date</label>
+                              <div className="border rounded-md p-2 bg-white shadow-sm">
                                 <CalendarComponent
                                   mode="single"
                                   selected={customEndDate}
