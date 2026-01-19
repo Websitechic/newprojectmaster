@@ -316,12 +316,12 @@ export default function UserControl() {
                 <Award className="h-4 w-4" />
                 Specialization
               </Label>
-              <Select value={formData.specialization} onValueChange={(value) => setFormData({ ...formData, specialization: value })}>
+              <Select value={formData.specialization || "none"} onValueChange={(value) => setFormData({ ...formData, specialization: value === "none" ? "" : value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select specialization" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {specializations.map((spec) => (
                     <SelectItem key={spec.value} value={spec.value}>
                       {spec.label}
