@@ -182,7 +182,8 @@ export default function StaffQueries() {
       "substandard_delivery": "Substandard delivery",
       "repeatedly_missed_deadlines": "Repeatedly 3 times in a week missed task deadline",
       "disrespectful_communication": "Disrespectful communication manner to co worker",
-      "disregard_company_policy": "Disregard of the company policy"
+      "disregard_company_policy": "Disregard of the company policy",
+      "others": "Others"
     };
     return reasonMap[reason] || reason;
   };
@@ -305,6 +306,7 @@ export default function StaffQueries() {
                       <SelectItem value="repeatedly_missed_deadlines">Repeatedly 3 times in a week missed task deadline</SelectItem>
                       <SelectItem value="disrespectful_communication">Disrespectful communication manner to co worker</SelectItem>
                       <SelectItem value="disregard_company_policy">Disregard of the company policy</SelectItem>
+                      <SelectItem value="others">Others</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
