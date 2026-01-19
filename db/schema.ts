@@ -720,9 +720,7 @@ export const memoReads = pgTable("memo_reads", {
   memoId: integer("memo_id").references(() => memos.id, { onDelete: "cascade" }).notNull(),
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   readAt: timestamp("read_at").defaultNow(),
-}, (table) => ({
-  uniqueMemoUser: unique().on(table.memoId, table.userId),
-}));
+});
 
 export const memosRelations = relations(memos, ({ one, many }) => ({
   sender: one(users, {
@@ -1024,9 +1022,7 @@ export const stopGapAllocations = pgTable("stop_gap_allocations", {
   remainingHours: integer("remaining_hours").notNull().default(300), // 5 hours = 300 minutes
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => ({
-  uniqueUserMonth: unique().on(table.userId, table.monthYear),
-}));
+});
 
 export const stopGapTaskAssignments = pgTable("stop_gap_task_assignments", {
   id: serial("id").primaryKey(),
@@ -1035,9 +1031,7 @@ export const stopGapTaskAssignments = pgTable("stop_gap_task_assignments", {
   stopGapHours: integer("stop_gap_hours").notNull(), // Store in minutes
   monthYear: text("month_year").notNull(),
   appliedAt: timestamp("applied_at").defaultNow(),
-}, (table) => ({
-  uniqueTask: unique().on(table.taskId),
-}));
+});
 
 export const stopGapAllocationsRelations = relations(stopGapAllocations, ({ one }) => ({
   user: one(users, {
