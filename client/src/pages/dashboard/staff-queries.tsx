@@ -141,7 +141,7 @@ export default function StaffQueries() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.staffId || !formData.staffName || !formData.department || !formData.staffUniqueValue ||
+    if (!formData.staffId || !formData.staffName || !formData.department ||
         !formData.reason || !formData.whyQuery || !formData.likelyPenalty) {
       toast({
         title: "Error",
@@ -155,7 +155,7 @@ export default function StaffQueries() {
       staffId: parseInt(formData.staffId),
       staffName: formData.staffName,
       department: formData.department,
-      staffUniqueValue: formData.staffUniqueValue,
+      staffUniqueValue: formData.staffUniqueValue || "",
       reason: formData.reason,
       whyQuery: formData.whyQuery,
       attachmentPath: formData.attachmentFile ? "pending_upload" : null,
@@ -284,18 +284,7 @@ export default function StaffQueries() {
                 </div>
 
                 <div>
-                  <Label htmlFor="staffUniqueValue">Staff 3 Unique Value *</Label>
-                  <Input
-                    id="staffUniqueValue"
-                    value={formData.staffUniqueValue}
-                    onChange={(e) => setFormData(prev => ({ ...prev, staffUniqueValue: e.target.value }))}
-                    placeholder="Staff unique identifier"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="reason">Reason for Query *</Label>
+                  <Label htmlFor="reason">Reason for Penalty *</Label>
                   <Select onValueChange={(value) => setFormData(prev => ({ ...prev, reason: value }))} value={formData.reason || ""}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select reason" />
@@ -426,7 +415,7 @@ export default function StaffQueries() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle size={16} className="text-red-600" />
-                    <span className="font-medium text-red-600">Reason:</span>
+                    <span className="font-medium text-red-600">Reason for Penalty:</span>
                   </div>
                   <p className="text-sm bg-red-50 p-3 rounded-md">
                     {getReasonLabel(query.reason)}
