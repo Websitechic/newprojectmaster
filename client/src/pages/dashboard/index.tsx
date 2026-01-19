@@ -252,7 +252,7 @@ export default function Dashboard() {
       : (tasks ?? [])
     ).filter((task: Task) => {
       // Apply search filter
-      if (taskSearchQuery && !task.title?.toLowerCase().includes(taskSearchQuery.toLowerCase())) {
+      if (taskSearchQuery && !task.title.toLowerCase().includes(taskSearchQuery.toLowerCase())) {
         return false;
       }
 
@@ -263,10 +263,10 @@ export default function Dashboard() {
 
         if (date instanceof Date) {
           if (!isSameDay(taskDate, date)) return false;
-        } else if ((date as any).from && (date as any).to) {
-          if (!isWithinInterval(taskDate, { start: startOfDay((date as any).from), end: endOfDay((date as any).to) })) return false;
-        } else if ((date as any).from) {
-          if (!isSameDay(taskDate, (date as any).from)) return false;
+        } else if (date.from && date.to) {
+          if (!isWithinInterval(taskDate, { start: startOfDay(date.from), end: endOfDay(date.to) })) return false;
+        } else if (date.from) {
+          if (!isSameDay(taskDate, date.from)) return false;
         }
       }
       return true;
@@ -353,67 +353,70 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col lg:pl-64 min-w-0 max-w-full">
         <Header />
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full max-w-full">
-          <BookingAlert />
-          <div className="mb-6 flex flex-col sm:flex-row gap-3 items-center bg-white dark:bg-gray-800 p-3 rounded-lg border shadow-sm">
-            <div className="relative w-full sm:flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tasks by title..."
-                value={taskSearchQuery}
-                onChange={(e) => setTaskSearchQuery(e.target.value)}
-                className="pl-8 h-10 border-2"
-              />
-            </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full sm:w-[240px] h-10 justify-start text-left font-bold border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 transition-all",
-                    !date && "text-primary"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-5 w-5 text-primary" />
-                  {date instanceof Date ? (
-                    format(date, "PPP")
-                  ) : (date as any)?.from ? (
-                    (date as any).to ? (
-                      <>
-                        {format((date as any).from, "LLL dd, y")} -{" "}
-                        {format((date as any).to, "LLL dd, y")}
-                      </>
-                    ) : (
-                      format((date as any).from, "PPP")
-                    )
-                  ) : (
-                    <span className="font-bold">FILTER BY DATE</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
-                  selected={date as any}
-                  onSelect={setDate as any}
-                  numberOfMonths={2}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto items-center">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search tasks..."
+                  value={taskSearchQuery}
+                  onChange={(e) => setTaskSearchQuery(e.target.value)}
+                  className="pl-8 h-10"
                 />
-                {date && (
-                  <div className="p-3 border-t">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setDate(undefined)}
-                    >
-                      Clear Selection
-                    </Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2 hover:border-primary/50 transition-colors",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                    {date instanceof Date ? (
+                      format(date, "PPP")
+                    ) : (date as any)?.from ? (
+                      (date as any).to ? (
+                        <>
+                          {format((date as any).from, "LLL dd, y")} -{" "}
+                          {format((date as any).to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format((date as any).from, "PPP")
+                      )
+                    ) : (
+                      <span className="font-semibold text-primary">Filter tasks by date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
+                    selected={date as any}
+                    onSelect={setDate as any}
+                    numberOfMonths={2}
+                  />
+                  {date && (
+                    <div className="p-3 border-t">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setDate(undefined)}
+                      >
+                        Clear Date Selection
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
+          <BookingAlert />
           {user?.role === "staff" ||
           (user?.role === "client" &&
             user?.clientType === "support_maintenance_client") ||
