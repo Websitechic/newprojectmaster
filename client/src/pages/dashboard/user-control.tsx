@@ -66,7 +66,7 @@ export default function UserControl() {
   const isAuthorized = user?.role === "team_lead" || user?.role === "operations_manager" || user?.specialization === "operations_manager";
 
   const { data: allUsers = [], isLoading } = useQuery<UserData[]>({
-    queryKey: ["/api/users/all"],
+    queryKey: ["/api/user-control/users"],
     enabled: isAuthorized,
   });
 
@@ -90,7 +90,7 @@ export default function UserControl() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "User updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/users/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-control/users"] });
       setEditingUser(null);
     },
     onError: (error: Error) => {
@@ -113,7 +113,7 @@ export default function UserControl() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "User account deactivated" });
-      queryClient.invalidateQueries({ queryKey: ["/api/users/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-control/users"] });
       setDeactivatingUser(null);
     },
     onError: (error: Error) => {

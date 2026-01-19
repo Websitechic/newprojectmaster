@@ -11161,7 +11161,7 @@ End of Report
   });
 
   // User control endpoints - only for team_lead and operations_manager
-  app.get("/api/users/all", async (req, res) => {
+  app.get("/api/user-control/users", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
