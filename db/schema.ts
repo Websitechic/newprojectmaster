@@ -93,6 +93,7 @@ export const users = pgTable("users", {
   lastActive: timestamp("last_active").defaultNow(),
   lastSeen: timestamp("last_seen").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
+  isActive: boolean("is_active").default(true),
 });
 
 export const clientInvitations = pgTable("client_invitations", {

@@ -40,6 +40,7 @@ import ClientAccounts from "@/pages/dashboard/client-accounts";
 import ClientSentiment from "@/pages/dashboard/client-sentiment";
 import ClientSentimentTracker from "@/pages/dashboard/client-sentiment-tracker";
 import ProfilePage from "@/pages/dashboard/profile";
+import UserControl from "@/pages/dashboard/user-control";
 import AllUsersPage from "@/pages/all-users";
 
 import Memos from "@/pages/dashboard/memos";
@@ -598,6 +599,7 @@ function Router() {
           <PrivateRoute path="/dashboard/send-complaint" component={SendComplaint} />
           <PrivateRoute path="/dashboard/report-issues" component={ReportIssues} />
           <Route path="/dashboard/profile" component={ProfilePage} />
+          <Route path="/dashboard/user-control" component={UserControl} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
