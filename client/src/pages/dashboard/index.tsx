@@ -683,7 +683,7 @@ export default function Dashboard() {
                           defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
                           selected={date as any}
                           onSelect={setDate as any}
-                          numberOfMonths={2}
+                          numberOfMonths={1}
                         />
                         {date && (
                           <div className="p-3 border-t">
@@ -1446,7 +1446,7 @@ export default function Dashboard() {
                           defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
                           selected={date as any}
                           onSelect={setDate as any}
-                          numberOfMonths={2}
+                          numberOfMonths={1}
                         />
                         {date && (
                           <div className="p-3 border-t">
