@@ -4329,28 +4329,36 @@ End of Report
         .returning();
 
       // Create notification for project manager
-      await createNotification(
-        link.sentBy,
-        "task_completed",
-        `${user.name} has reviewed your link: "${link.title}"`,
-        linkId,
-        "review_link"
-      );
+      try {
+        await createNotification(
+          link.sentBy,
+          "task_completed",
+          `${user.name} has reviewed your link: "${link.title}"`,
+          linkId,
+          "review_link"
+        );
+      } catch (notifErr) {
+        console.error("Failed to create notification for review completion:", notifErr);
+      }
 
       // Send SSE notification to project manager
-      if (global.sseClients && global.sseClients.has(link.sentBy)) {
-        const client = global.sseClients.get(link.sentBy);
-        if (client) {
-          client.write(`data: ${JSON.stringify({
-            type: 'review_link_reviewed',
-            data: {
-              linkId,
-              title: link.title,
-              reviewerName: user.name,
-              message: `${user.name} has reviewed your link: "${link.title}"`
-            }
-          })}\n\n`);
+      try {
+        if (global.sseClients && global.sseClients.has(link.sentBy)) {
+          const client = global.sseClients.get(link.sentBy);
+          if (client) {
+            client.write(`data: ${JSON.stringify({
+              type: 'review_link_reviewed',
+              data: {
+                linkId,
+                title: link.title,
+                reviewerName: user.name,
+                message: `${user.name} has reviewed your link: "${link.title}"`
+              }
+            })}\n\n`);
+          }
         }
+      } catch (sseErr) {
+        console.error("Failed to send SSE notification for review completion:", sseErr);
       }
 
       // Send OneSignal push notification to project manager
@@ -4410,28 +4418,36 @@ End of Report
         .returning();
 
       // Create notification for project manager
-      await createNotification(
-        link.sentBy,
-        "task_updated",
-        `${user.name} has marked your link: "${link.title}" as NOT APPROVED`,
-        linkId,
-        "review_link"
-      );
+      try {
+        await createNotification(
+          link.sentBy,
+          "task_updated",
+          `${user.name} has marked your link: "${link.title}" as NOT APPROVED`,
+          linkId,
+          "review_link"
+        );
+      } catch (notifErr) {
+        console.error("Failed to create notification for review rejection:", notifErr);
+      }
 
       // Send SSE notification to project manager
-      if (global.sseClients && global.sseClients.has(link.sentBy)) {
-        const client = global.sseClients.get(link.sentBy);
-        if (client) {
-          client.write(`data: ${JSON.stringify({
-            type: 'review_link_not_approved',
-            data: {
-              linkId,
-              title: link.title,
-              reviewerName: user.name,
-              message: `${user.name} has marked your link: "${link.title}" as NOT APPROVED`
-            }
-          })}\n\n`);
+      try {
+        if (global.sseClients && global.sseClients.has(link.sentBy)) {
+          const client = global.sseClients.get(link.sentBy);
+          if (client) {
+            client.write(`data: ${JSON.stringify({
+              type: 'review_link_not_approved',
+              data: {
+                linkId,
+                title: link.title,
+                reviewerName: user.name,
+                message: `${user.name} has marked your link: "${link.title}" as NOT APPROVED`
+              }
+            })}\n\n`);
+          }
         }
+      } catch (sseErr) {
+        console.error("Failed to send SSE notification for review rejection:", sseErr);
       }
 
       // Send OneSignal push notification to project manager
