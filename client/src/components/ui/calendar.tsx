@@ -10,13 +10,15 @@ export type CalendarProps = React.ComponentProps<typeof DayPicker>
 function Calendar({
   className,
   classNames,
-  showOutsideDays = false,
+  showOutsideDays = true,
+  fixedWeeks = true,
   ...props
 }: CalendarProps) {
   return (
     <div className="w-full max-w-[280px]">
       <DayPicker
         showOutsideDays={showOutsideDays}
+        fixedWeeks={fixedWeeks}
         className={cn("p-3", className)}
         classNames={{
           months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 w-full",
