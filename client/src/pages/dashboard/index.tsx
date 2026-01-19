@@ -676,7 +676,7 @@ export default function Dashboard() {
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="p-0 w-[280px] max-w-[90vw]" align="end">
+                      <PopoverContent className="p-0 w-[260px] max-w-[90vw]" align="end">
                         <Calendar
                           initialFocus
                           mode="range"
@@ -1439,7 +1439,7 @@ export default function Dashboard() {
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="p-0 w-[280px] max-w-[90vw]" align="end">
+                      <PopoverContent className="p-0 w-[260px] max-w-[90vw]" align="end">
                         <Calendar
                           initialFocus
                           mode="range"
