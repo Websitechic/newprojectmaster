@@ -655,7 +655,7 @@ export default function Dashboard() {
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2 hover:border-primary/50 transition-colors",
+                            "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2 hover:border-primary/50 transition-colors shrink-0",
                             !date && "text-muted-foreground"
                           )}
                         >
@@ -1418,7 +1418,7 @@ export default function Dashboard() {
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2 hover:border-primary/50 transition-colors",
+                            "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2 hover:border-primary/50 transition-colors shrink-0",
                             !date && "text-muted-foreground"
                           )}
                         >

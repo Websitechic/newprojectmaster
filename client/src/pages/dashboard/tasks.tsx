@@ -122,7 +122,7 @@ export default function Tasks() {
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        "w-full sm:w-[240px] justify-start text-left font-normal shrink-0",
                         !date && "text-muted-foreground"
                       )}
                     >
