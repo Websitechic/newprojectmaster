@@ -57,7 +57,7 @@ export default function Tasks() {
 
     // Apply date filter
     if (date) {
-      const taskDate = task.deadline ? new Date(task.deadline) : (task.startDate ? new Date(task.startDate) : null);
+      const taskDate = task.startDate ? new Date(task.startDate) : (task.deadline ? new Date(task.deadline) : null);
       if (!taskDate) return false;
 
       if (date instanceof Date) {
