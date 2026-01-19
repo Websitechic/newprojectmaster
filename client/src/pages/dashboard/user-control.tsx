@@ -57,6 +57,7 @@ export default function UserControl() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [deactivatingUser, setDeactivatingUser] = useState<UserData | null>(null);
+  const [activatingUser, setActivatingUser] = useState<UserData | null>(null);
   const [formData, setFormData] = useState({
     role: "",
     specialization: "",
@@ -100,10 +101,11 @@ export default function UserControl() {
 
   const deactivateUserMutation = useMutation({
     mutationFn: async (userId: number) => {
-      const response = await fetch(`/api/user-control/${userId}/deactivate`, {
+      const response = await fetch(`/api/user-control/${userId}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ isActive: false }),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -115,6 +117,30 @@ export default function UserControl() {
       toast({ title: "Success", description: "User account deactivated" });
       queryClient.invalidateQueries({ queryKey: ["/api/user-control/users"] });
       setDeactivatingUser(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const activateUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const response = await fetch(`/api/user-control/${userId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isActive: true }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to activate user");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "User account activated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-control/users"] });
+      setActivatingUser(null);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -259,15 +285,26 @@ export default function UserControl() {
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
-                                {userData.role !== "team_lead" && userData.isActive !== false && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-red-600 hover:text-red-700"
-                                    onClick={() => setDeactivatingUser(userData)}
-                                  >
-                                    <UserX className="h-4 w-4" />
-                                  </Button>
+                                {userData.role !== "team_lead" && (
+                                  userData.isActive !== false ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-red-600 hover:text-red-700"
+                                      onClick={() => setDeactivatingUser(userData)}
+                                    >
+                                      <UserX className="h-4 w-4" />
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-green-600 hover:text-green-700"
+                                      onClick={() => setActivatingUser(userData)}
+                                    >
+                                      <Users className="h-4 w-4" />
+                                    </Button>
+                                  )
                                 )}
                               </div>
                             </td>
@@ -372,6 +409,27 @@ export default function UserControl() {
             </Button>
             <Button variant="destructive" onClick={handleDeactivate} disabled={deactivateUserMutation.isPending}>
               {deactivateUserMutation.isPending ? "Deactivating..." : "Deactivate Account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!activatingUser} onOpenChange={(open) => !open && setActivatingUser(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <Users className="h-5 w-5" />
+              Activate User Account
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reactivate {activatingUser?.name}'s account? They will be able to log in again.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActivatingUser(null)}>
+              Cancel
+            </Button>
+            <Button className="bg-green-600 hover:bg-green-700" onClick={() => activatingUser && activateUserMutation.mutate(activatingUser.id)} disabled={activateUserMutation.isPending}>
+              {activateUserMutation.isPending ? "Activating..." : "Activate Account"}
             </Button>
           </DialogFooter>
         </DialogContent>

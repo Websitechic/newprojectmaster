@@ -208,6 +208,11 @@ export function setupAuth(app: Express) {
           console.log('User not found:', username);
           return done(null, false, { message: "Incorrect username." });
         }
+
+        if (user.isActive === false) {
+          console.log('User account deactivated:', username);
+          return done(null, false, { message: "This account has been deactivated. Please contact an administrator." });
+        }
         
         console.log('User found, comparing password...');
         console.log('Stored password hash format:', {

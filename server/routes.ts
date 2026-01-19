@@ -11227,7 +11227,7 @@ End of Report
     }
   });
 
-  app.post("/api/user-control/:userId/deactivate", async (req, res) => {
+  app.post("/api/user-control/:userId/status", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
@@ -11240,6 +11240,7 @@ End of Report
     }
 
     const userId = parseInt(req.params.userId);
+    const { isActive } = req.body;
 
     try {
       const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
@@ -11247,16 +11248,32 @@ End of Report
         return res.status(404).json({ error: "User not found" });
       }
 
-      if (targetUser.role === "team_lead") {
+      if (targetUser.role === "team_lead" && isActive === false) {
         return res.status(403).json({ error: "Cannot deactivate team lead accounts" });
       }
 
-      await db.update(users).set({ isActive: false }).where(eq(users.id, userId));
+      await db.update(users).set({ isActive }).where(eq(users.id, userId));
+
+      // If deactivating, clear any active sessions for this user
+      if (isActive === false && req.sessionStore && typeof req.sessionStore.all === 'function') {
+        req.sessionStore.all((err, sessions) => {
+          if (!err && sessions) {
+            Object.keys(sessions).forEach(sessionId => {
+              const session = sessions[sessionId];
+              if (session && session.passport && session.passport.user === userId) {
+                req.sessionStore?.destroy(sessionId, (err) => {
+                  if (err) console.error(`Failed to destroy session ${sessionId} for user ${userId}:`, err);
+                });
+              }
+            });
+          }
+        });
+      }
 
       res.json({ success: true });
     } catch (error) {
-      console.error("Error deactivating user:", error);
-      res.status(500).json({ error: "Failed to deactivate user" });
+      console.error("Error updating user status:", error);
+      res.status(500).json({ error: "Failed to update user status" });
     }
   });
 
