@@ -84,7 +84,6 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const itemsPerPage = 10;
 
   const filteredTasks = tasks
-    .filter((task) => task.assigneeId === user?.id)
     .sort((a, b) => b.id - a.id);
 
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);

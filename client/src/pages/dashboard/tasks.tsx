@@ -199,9 +199,7 @@ export default function Tasks() {
           {selectedProject ? (
             <TaskList tasks={filteredTasks || []} projectId={parseInt(selectedProject)} />
           ) : (
-            <div className="text-center text-muted-foreground mt-8">
-              Please select a project to manage tasks
-            </div>
+            <TaskList tasks={filteredTasks || []} projectId={undefined} showNewTaskButton={false} showProjectInfo={true} />
           )}
         </div>
       </div>

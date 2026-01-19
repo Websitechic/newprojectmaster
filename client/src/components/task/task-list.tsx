@@ -421,9 +421,11 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     ? tasks.filter((task) => task.assigneeId === (user as any)?.staffId)
     : tasks;
 
-  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
+  const sortedTasks = [...filteredTasks].sort((a, b) => b.id - a.id);
+
+  const totalPages = Math.ceil(sortedTasks.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedTasks = sortedTasks.slice(startIndex, startIndex + itemsPerPage);
 
   const getStatusColor = (status: string, isDeadlineMissed: boolean = false) => {
     if (isDeadlineMissed) return 'bg-red-600 text-white font-bold';
@@ -523,7 +525,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     </div>
                   </TableCell>
                   <TableCell className="max-w-xs">
-                      {formatDescription(task.description || "", task.id)}
+                      {formatDescription((task.description as any) || "", task.id)}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
@@ -535,7 +537,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                               <div>Missed</div>
                             </div>
                           ) : (
-                            (task.status?.replace('_', ' ') || 'todo').split(' ').map((word, idx) => (
+                            (task.status?.replace('_', ' ') || 'todo').split(' ').map((word: string, idx: number) => (
                               <div key={idx}>{word}</div>
                             ))
                           )}
@@ -578,7 +580,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                         const assignee = (staff ?? []).find((s) => s && s.id === task.assigneeId);
                         const name = assignee?.name || "Unassigned";
                         const role = assignee?.role === 'team_lead' ? ' (Team Lead)' : '';
-                        return (name + role).split(' ').map((word, idx) => (
+                        return (name + role).split(' ').map((word: string, idx: number) => (
                           <div key={idx}>{word}</div>
                         ));
                       })()}
@@ -587,7 +589,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   {showProjectInfo && (
                     <TableCell>
                       <div className="text-sm leading-tight">
-                        {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word, idx) => (
+                        {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word: string, idx: number) => (
                           <div key={idx}>{word}</div>
                         )) : "No Project"}
                       </div>

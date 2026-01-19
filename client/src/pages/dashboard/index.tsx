@@ -202,10 +202,10 @@ export default function Dashboard() {
     };
 
 
-    window.addEventListener('websocket:task_update', handleTaskUpdate);
-    window.addEventListener('websocket:task_created', handleTaskUpdate);
-    window.addEventListener('websocket:task_deleted', handleTaskUpdate);
-    window.addEventListener('websocket:task_updated', handleTaskUpdate);
+    window.addEventListener('websocket:task_update', () => handleTaskUpdate());
+    window.addEventListener('websocket:task_created', () => handleTaskUpdate());
+    window.addEventListener('websocket:task_deleted', () => handleTaskUpdate());
+    window.addEventListener('websocket:task_updated', () => handleTaskUpdate());
     window.addEventListener('websocket:project_message', handleProjectMessage);
     window.addEventListener('websocket:task_timer_started', handleTimerEvent);
     window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
@@ -713,7 +713,7 @@ export default function Dashboard() {
                   <TabsContent value="active" className="mt-0">
                     {staffTasks && staffTasks.filter(t => t.status !== 'completed').length > 0 ? (
                       <StaffTaskList
-                        tasks={staffTasks.filter(t => {
+                        tasks={userTasks.filter(t => {
                           const matchesSearch = !taskSearchQuery || 
                             t.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
                             (staff?.find(s => s.id === t.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
@@ -731,7 +731,7 @@ export default function Dashboard() {
                   <TabsContent value="completed" className="mt-0">
                     {staffTasks && staffTasks.filter(t => t.status === 'completed').length > 0 ? (
                       <StaffTaskList
-                        tasks={staffTasks.filter(t => {
+                        tasks={userTasks.filter(t => {
                           const matchesSearch = !taskSearchQuery || 
                             t.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
                             (staff?.find(s => s.id === t.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
@@ -940,7 +940,7 @@ export default function Dashboard() {
                             // Also check updatedAt for recent activity
                             if (task?.updatedAt) {
                               const lastUpdated = new Date(task.updatedAt);
-                              return lastUpdated >= oneWeekAgo && (task?.hasBeenStarted || task?.status !== 'todo');
+                              return lastUpdated >= oneWeekAgo && (task?.hasBeenStarted || (task?.status as any) !== 'todo');
                             }
                             return false;
                           });
@@ -1032,7 +1032,7 @@ export default function Dashboard() {
                         const completedProjects =
                           (projects ?? []).filter((project) => {
                             return (
-                              project?.status === "completed" ||
+                              project?.status === ("completed" as any) ||
                               (project?.progress === 100 &&
                                 project?.updatedAt &&
                                 new Date(project.updatedAt) >= oneMonthAgo)
@@ -1386,7 +1386,7 @@ export default function Dashboard() {
 
                   {(tasks ?? []).filter(task => task?.assigneeId === user?.id).length > 0 ? (
                     <StaffTaskList
-                      tasks={(tasks ?? []).filter(task => task?.assigneeId === user?.id)}
+                      tasks={userTasks.filter(task => task?.assigneeId === user?.id)}
                       projectId={undefined}
                     />
                   ) : (
@@ -1482,14 +1482,14 @@ export default function Dashboard() {
                       <TaskList
                         tasks={
                           user?.role === "staff" || user?.role === "intern"
-                            ? (tasks ?? []).filter((task) => {
+                            ? userTasks.filter((task) => {
                                 const matchesSearch = !taskSearchQuery || 
                                   task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
                                   (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
                                 return task?.assigneeId === user?.id &&
                                   task?.status !== 'completed' && matchesSearch;
                               })
-                            : (tasks ?? []).filter((task) => {
+                            : userTasks.filter((task) => {
                                 const matchesSearch = !taskSearchQuery || 
                                   task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
                                   (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
@@ -1506,14 +1506,14 @@ export default function Dashboard() {
                       <TaskList
                         tasks={
                           user?.role === "staff" || user?.role === "intern"
-                            ? (tasks ?? []).filter((task) => {
+                            ? userTasks.filter((task) => {
                                 const matchesSearch = !taskSearchQuery || 
                                   task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
                                   (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
                                 return task?.assigneeId === user?.id &&
                                   task?.status === 'completed' && matchesSearch;
                               })
-                            : (tasks ?? []).filter((task) => {
+                            : userTasks.filter((task) => {
                                 const matchesSearch = !taskSearchQuery || 
                                   task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
                                   (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
