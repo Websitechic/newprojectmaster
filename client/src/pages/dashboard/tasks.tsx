@@ -143,7 +143,7 @@ export default function Tasks() {
                       )}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="end">
+                  <PopoverContent className="p-0 w-[280px] max-w-[90vw]" align="end">
                     <Calendar
                       initialFocus
                       mode="range"
