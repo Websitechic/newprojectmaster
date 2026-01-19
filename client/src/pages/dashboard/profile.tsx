@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { User, Mail, Phone, Briefcase, Award, Clock, Key, Eye, EyeOff } from "lucide-react";
+import { User, Mail, Phone, Briefcase, Award, Clock, Key, Eye, EyeOff, Users } from "lucide-react";
+import { Link } from "wouter";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export default function ProfilePage() {
@@ -206,8 +207,16 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Reset Password Section */}
-                <div className="border-t pt-6">
+                {/* Actions Section */}
+                <div className="border-t pt-6 flex flex-wrap gap-3">
+                  {(user.role === "team_lead" || user.role === "operations_manager" || user.specialization === "operations_manager") && (
+                    <Link href="/dashboard/user-control">
+                      <Button variant="outline" className="w-full sm:w-auto">
+                        <Users className="h-4 w-4 mr-2" />
+                        User Control
+                      </Button>
+                    </Link>
+                  )}
                   <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
                     <DialogTrigger asChild>
                       <Button variant="outline" className="w-full sm:w-auto">

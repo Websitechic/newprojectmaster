@@ -11160,6 +11160,106 @@ End of Report
     }
   });
 
+  // User control endpoints - only for team_lead and operations_manager
+  app.get("/api/users/all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const isAuthorized = user.role === "team_lead" || user.role === "operations_manager" || user.specialization === "operations_manager";
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    try {
+      const allUsers = await db.select({
+        id: users.id,
+        name: users.name,
+        username: users.username,
+        email: users.email,
+        role: users.role,
+        specialization: users.specialization,
+        breakOneTime: users.breakOneTime,
+        isActive: users.isActive,
+      }).from(users);
+
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/user-control/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const currentUser = req.user!;
+    const isAuthorized = currentUser.role === "team_lead" || currentUser.role === "operations_manager" || currentUser.specialization === "operations_manager";
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const userId = parseInt(req.params.userId);
+    const { role, specialization, breakOneTime } = req.body;
+
+    try {
+      const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const updateData: any = {};
+      if (role) updateData.role = role;
+      if (specialization !== undefined) updateData.specialization = specialization || null;
+      if (breakOneTime !== undefined) updateData.breakOneTime = breakOneTime || null;
+
+      await db.update(users).set(updateData).where(eq(users.id, userId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
+  app.post("/api/user-control/:userId/deactivate", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const currentUser = req.user!;
+    const isAuthorized = currentUser.role === "team_lead" || currentUser.role === "operations_manager" || currentUser.specialization === "operations_manager";
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const userId = parseInt(req.params.userId);
+
+    try {
+      const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (targetUser.role === "team_lead") {
+        return res.status(403).json({ error: "Cannot deactivate team lead accounts" });
+      }
+
+      await db.update(users).set({ isActive: false }).where(eq(users.id, userId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deactivating user:", error);
+      res.status(500).json({ error: "Failed to deactivate user" });
+    }
+  });
+
   // Global error handler for API routes
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     console.error('API Error:', err);
