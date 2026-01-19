@@ -150,7 +150,7 @@ export default function Tasks() {
                       defaultMonth={date instanceof Date ? date : date?.from}
                       selected={date as any}
                       onSelect={setDate as any}
-                      numberOfMonths={2}
+                      numberOfMonths={1}
                     />
                     {date && (
                       <div className="p-3 border-t">
