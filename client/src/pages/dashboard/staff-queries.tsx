@@ -185,7 +185,7 @@ export default function StaffQueries() {
       "disregard_company_policy": "Disregard of the company policy",
       "others": "Others"
     };
-    return reasonMap[reason] || reason;
+    return reasonMap[reason] || (reason === "others" ? "Others" : reason);
   };
 
   const getStatusColor = (status: string) => {

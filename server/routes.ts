@@ -5551,7 +5551,8 @@ End of Report
         "substandard_delivery",
         "repeatedly_missed_deadlines",
         "disrespectful_communication",
-        "disregard_company_policy"
+        "disregard_company_policy",
+        "others"
       ];
 
       if (!validReasons.includes(reason)) {
