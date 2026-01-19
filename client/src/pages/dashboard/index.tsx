@@ -676,14 +676,14 @@ export default function Dashboard() {
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="p-0 w-[260px] max-w-[90vw]" align="end">
+                      <PopoverContent className="p-0 w-auto" align="end">
                         <Calendar
                           initialFocus
                           mode="range"
                           defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
                           selected={date as any}
                           onSelect={setDate as any}
-                          numberOfMonths={1}
+                          numberOfMonths={user?.role === 'admin' || user?.role === 'project_manager' ? 2 : 1}
                         />
                         {date && (
                           <div className="p-3 border-t">
@@ -1439,14 +1439,14 @@ export default function Dashboard() {
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="p-0 w-[260px] max-w-[90vw]" align="end">
+                      <PopoverContent className="p-0 w-auto" align="end">
                         <Calendar
                           initialFocus
                           mode="range"
                           defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
                           selected={date as any}
                           onSelect={setDate as any}
-                          numberOfMonths={1}
+                          numberOfMonths={user?.role === 'admin' || user?.role === 'project_manager' ? 2 : 1}
                         />
                         {date && (
                           <div className="p-3 border-t">
