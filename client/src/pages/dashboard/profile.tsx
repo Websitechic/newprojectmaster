@@ -202,7 +202,7 @@ export default function ProfilePage() {
                       <Clock className="h-4 w-4" />
                       Daily Break Time
                     </Label>
-                    <p className="text-base font-medium">{formatBreakTime(user.dailyBreakMinutes)}</p>
+                    <p className="text-base font-medium">{user.breakOneTime || "Not set"}</p>
                   </div>
                 </div>
 
