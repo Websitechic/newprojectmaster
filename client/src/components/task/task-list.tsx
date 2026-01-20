@@ -108,8 +108,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       }
     };
 
-    const handleTaskCreated = (event: any) => {
-      console.log("WebSocket: task_created received, invalidating queries", event);
+    const handleTaskUpdated = (event: any) => {
+      console.log("WebSocket: task_updated received, invalidating queries", event);
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
@@ -121,14 +121,14 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
     window.addEventListener('websocket:task_timer_update', handleTimerEvent);
     window.addEventListener('websocket:task_created', handleTaskCreated);
-    window.addEventListener('websocket:task_updated', handleTaskCreated); // Added task_updated listener
+    window.addEventListener('websocket:task_updated', handleTaskUpdated);
 
     return () => {
       window.removeEventListener('websocket:task_timer_started', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_paused', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_update', handleTimerEvent);
       window.removeEventListener('websocket:task_created', handleTaskCreated);
-      window.removeEventListener('websocket:task_updated', handleTaskCreated); // Remove task_updated listener
+      window.removeEventListener('websocket:task_updated', handleTaskUpdated);
     };
   }, [queryClient, projectId]);
 

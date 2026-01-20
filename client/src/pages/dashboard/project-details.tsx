@@ -281,9 +281,11 @@ export default function ProjectDetails() {
 
   useEffect(() => {
     const handleTaskUpdate = (event: any) => {
-      console.log("Real-time task update detected for project:", id);
+      console.log("Real-time task update detected for project:", id, "Event:", event.type);
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}/tasks`] });
+      // Invalidate specific project tasks key used in TaskList
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", parseInt(id!), "tasks"] });
     };
 
     window.addEventListener('websocket:task_created', handleTaskUpdate);

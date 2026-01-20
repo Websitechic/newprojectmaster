@@ -51,6 +51,26 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const [stopGapHours, setStopGapHours] = useState("0");
   const [stopGapMinutes, setStopGapMinutes] = useState("0");
 
+  useEffect(() => {
+    const handleTaskUpdate = (event: any) => {
+      console.log("WebSocket update received in StaffTaskList:", event);
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+      }
+    };
+
+    window.addEventListener('websocket:task_created', handleTaskUpdate);
+    window.addEventListener('websocket:task_updated', handleTaskUpdate);
+    window.addEventListener('websocket:task_deleted', handleTaskUpdate);
+
+    return () => {
+      window.removeEventListener('websocket:task_created', handleTaskUpdate);
+      window.removeEventListener('websocket:task_updated', handleTaskUpdate);
+      window.removeEventListener('websocket:task_deleted', handleTaskUpdate);
+    };
+  }, [queryClient, projectId]);
+
   const pauseTimer = useMutation({
     mutationFn: async (taskId: number) => {
       const response = await fetch(`/api/tasks/${taskId}/pause-timer`, {

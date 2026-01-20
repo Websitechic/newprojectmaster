@@ -96,6 +96,9 @@ export function useWebSocket(userId: number | undefined) {
           } else if (message.type === 'task_updated') {
             console.log('Task updated WebSocket message received:', message.data);
             window.dispatchEvent(new CustomEvent('websocket:task_updated', { detail: message.data }));
+          } else if (message.type === 'task_update') {
+            console.log('Task update WebSocket message received:', message.data);
+            window.dispatchEvent(new CustomEvent('websocket:task_updated', { detail: message.data }));
           } else if (message.type === 'task_deleted') {
             console.log('Task deleted WebSocket message received (ignored - using optimistic updates):', message.data);
             // Removed event dispatch to prevent infinite re-render loops
