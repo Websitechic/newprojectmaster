@@ -350,8 +350,10 @@ export default function Dashboard() {
     <div className="flex min-h-screen bg-background w-full max-w-full overflow-hidden">
       <Sidebar currentPath={location} />
 
-      <div className="flex-1 flex flex-col lg:pl-64 min-w-0 max-w-full">
-        <Header />
+      <div className="flex-1 flex flex-col lg:pl-64 min-w-0 max-w-full relative h-screen overflow-hidden">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <Header />
+        </div>
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full max-w-full">
           <BookingAlert />
           {user?.role === "staff" ||
