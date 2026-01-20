@@ -7,7 +7,8 @@ import { Header } from "@/components/dashboard/header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Users, AlertTriangle, Plus, Edit, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,8 +64,11 @@ export default function Bookings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [bookingToDelete, setBookingToDelete] = useState<number | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [formData, setFormData] = useState({
+    id: undefined as number | undefined,
     title: "",
     description: "",
     type: "",
@@ -141,6 +145,8 @@ export default function Bookings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      setIsEditDialogOpen(false);
+      resetForm();
       toast({
         title: "Success",
         description: "Booking updated successfully",
@@ -196,6 +202,7 @@ export default function Bookings() {
 
   const resetForm = () => {
     setFormData({
+      id: undefined,
       title: "",
       description: "",
       type: "",
@@ -205,6 +212,21 @@ export default function Bookings() {
       meetingLink: "",
       notes: ""
     });
+  };
+
+  const handleEdit = (booking: Booking) => {
+    setFormData({
+      id: booking.id,
+      title: booking.title,
+      description: booking.description || "",
+      type: booking.type,
+      participants: booking.participants,
+      startTime: format(new Date(booking.startTime), "yyyy-MM-dd'T'HH:mm"),
+      endTime: format(new Date(booking.endTime), "yyyy-MM-dd'T'HH:mm"),
+      meetingLink: booking.meetingLink || "",
+      notes: booking.notes || ""
+    });
+    setIsEditDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -219,7 +241,11 @@ export default function Bookings() {
       return;
     }
 
-    createBookingMutation.mutate(formData);
+    if (formData.id) {
+      updateBookingMutation.mutate(formData);
+    } else {
+      createBookingMutation.mutate(formData);
+    }
   };
 
   const handleParticipantToggle = (userId: number) => {
@@ -438,8 +464,154 @@ export default function Bookings() {
                 <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createBookingMutation.isPending}>
-                  {createBookingMutation.isPending ? "Creating..." : "Schedule Meeting"}
+                <Button type="submit" disabled={createBookingMutation.isPending || updateBookingMutation.isPending}>
+                  {formData.id 
+                    ? (updateBookingMutation.isPending ? "Updating..." : "Update Meeting")
+                    : (createBookingMutation.isPending ? "Creating..." : "Schedule Meeting")
+                  }
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Meeting</DialogTitle>
+              <DialogDescription>
+                Update the meeting details and participants
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-title">Meeting Title *</Label>
+                  <Input
+                    id="edit-title"
+                    value={formData.title}
+                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Enter meeting title"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-type">Meeting Type *</Label>
+                  <Select 
+                    value={formData.type} 
+                    onValueChange={(value) => {
+                      if (value === "general_booking") {
+                        const allStaffIds = users
+                          .filter(user => user.role === "staff" || user.role === "project_manager")
+                          .map(user => user.id);
+                        setFormData(prev => ({ ...prev, type: value, participants: allStaffIds }));
+                      } else {
+                        setFormData(prev => ({ ...prev, type: value, participants: [] }));
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select meeting type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(BOOKING_TYPES).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Meeting description"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-startTime">Start Time *</Label>
+                  <Input
+                    id="edit-startTime"
+                    type="datetime-local"
+                    value={formData.startTime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
+                    required
+                    step="60"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-endTime">End Time *</Label>
+                  <Input
+                    id="edit-endTime"
+                    type="datetime-local"
+                    value={formData.endTime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                    required
+                    step="60"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-meetingLink">Meeting Link</Label>
+                <Input
+                  id="edit-meetingLink"
+                  value={formData.meetingLink}
+                  onChange={(e) => setFormData(prev => ({ ...prev, meetingLink: e.target.value }))}
+                  placeholder="https://meet.google.com/..."
+                />
+              </div>
+
+              <div>
+                <Label>Participants *</Label>
+                <div className="max-h-40 overflow-y-auto border rounded-md p-3 space-y-2">
+                  {getFilteredUsers().map((user) => (
+                    <div key={user.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-user-${user.id}`}
+                        checked={formData.participants.includes(user.id)}
+                        onCheckedChange={() => handleParticipantToggle(user.id)}
+                      />
+                      <label htmlFor={`edit-user-${user.id}`} className="text-sm flex-1 cursor-pointer">
+                        {user.name} ({user.role})
+                        {user.specialization && (
+                          <span className="text-gray-500 ml-1">- {user.specialization.replace('_', ' ')}</span>
+                        )}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  {formData.participants.length} participant(s) selected
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-notes">Notes</Label>
+                <Textarea
+                  id="edit-notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Additional notes"
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateBookingMutation.isPending}>
+                  {updateBookingMutation.isPending ? "Updating..." : "Update Meeting"}
                 </Button>
               </div>
             </form>
@@ -484,22 +656,52 @@ export default function Bookings() {
 
                   <div className="flex items-center gap-2">
                     {isBookingUpcoming(booking.startTime) && booking.status === "scheduled" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => updateBookingMutation.mutate({ id: booking.id, status: "cancelled" })}
-                      >
-                        Cancel
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(booking)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateBookingMutation.mutate({ id: booking.id, status: "cancelled" })}
+                        >
+                          Cancel
+                        </Button>
+                      </>
                     )}
 
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => deleteBookingMutation.mutate(booking.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the meeting booking.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteBookingMutation.mutate(booking.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </CardHeader>
