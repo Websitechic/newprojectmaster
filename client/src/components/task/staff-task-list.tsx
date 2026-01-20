@@ -32,6 +32,7 @@ import { Play, Pause, Send, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronR
 import type { Task, Project } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface StaffTaskListProps {
   tasks: Task[];
@@ -496,47 +497,57 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                     </div>
                   </TableCell>
                   <TableCell className="w-[180px]">
-                    {isDeadlineMissed ? (
-                      <Badge variant="destructive" className="w-full justify-center py-1">
-                        Deadline Missed
-                      </Badge>
-                    ) : (
-                      <Select
-                        value={task.status || 'todo'}
-                        onValueChange={(status) => {
-                          if (status === 'technical_support' && task.isTimerRunning) {
-                            pauseTimer.mutate(task.id);
-                          }
-                          if (status === 'pending' && task.isTimerRunning) {
-                            pauseTimer.mutate(task.id);
-                          }
-                          if (status === 'in_progress' && !task.isTimerRunning) {
-                            startTimer.mutate(task.id);
-                          }
-                          updateTaskStatus.mutate({ taskId: task.id, status });
-                        }}
-                        disabled={updateTaskStatus.isPending || pauseTimer.isPending || startTimer.isPending}
-                      >
-                        <SelectTrigger className="w-full h-8 text-xs px-2">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(!task.hasBeenStarted && (task.timeSpent || 0) === 0) && (
-                            <SelectItem value="todo">To Do</SelectItem>
-                          )}
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="review">Review</SelectItem>
-                          {task.status === "completed" && (
-                            <SelectItem value="completed" disabled>Completed</SelectItem>
-                          )}
-                          {(user?.role !== "staff" && user?.role !== "intern") && task.status !== "completed" && (
-                            <SelectItem value="completed">Completed</SelectItem>
-                          )}
-                          <SelectItem value="technical_support">Technical Support</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
+                    <div className="space-y-1">
+                      {isDeadlineMissed ? (
+                        <Badge variant="destructive" className="w-full justify-center py-1">
+                          Deadline Missed
+                        </Badge>
+                      ) : (
+                        <Select
+                          value={task.status || 'todo'}
+                          onValueChange={(status) => {
+                            if (status === 'technical_support' && task.isTimerRunning) {
+                              pauseTimer.mutate(task.id);
+                            }
+                            if (status === 'pending' && task.isTimerRunning) {
+                              pauseTimer.mutate(task.id);
+                            }
+                            if (status === 'in_progress' && !task.isTimerRunning) {
+                              startTimer.mutate(task.id);
+                            }
+                            updateTaskStatus.mutate({ taskId: task.id, status });
+                          }}
+                          disabled={updateTaskStatus.isPending || pauseTimer.isPending || startTimer.isPending}
+                        >
+                          <SelectTrigger className="w-full h-8 text-xs px-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(!task.hasBeenStarted && (task.timeSpent || 0) === 0) && (
+                              <SelectItem value="todo">To Do</SelectItem>
+                            )}
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="review">Review</SelectItem>
+                            {task.status === "completed" && (
+                              <SelectItem value="completed" disabled>Completed</SelectItem>
+                            )}
+                            {(user?.role !== "staff" && user?.role !== "intern") && task.status !== "completed" && (
+                              <SelectItem value="completed">Completed</SelectItem>
+                            )}
+                            <SelectItem value="technical_support">Technical Support</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {(task as any).reviewLink && (
+                        <div className={cn(
+                          "text-[10px] mt-1 italic text-center",
+                          isDeadlineMissed ? "text-white/90" : "text-muted-foreground dark:text-white/70"
+                        )}>
+                          {(task as any).reviewLinkApproved ? "(Approved)" : "(Pending Approval)"}
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="w-[180px]">
                     <div className="space-y-1">
