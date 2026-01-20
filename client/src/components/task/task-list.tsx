@@ -530,7 +530,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               {showProjectInfo && <TableHead>Time Spent</TableHead>}
               <TableHead>Start Date</TableHead>
               <TableHead>Deadline</TableHead>
-              <TableHead>Ended</TableHead>
               <TableHead>Working Hours</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -662,18 +661,24 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     {task.deadline ? (
                       <div className={`text-sm ${isDeadlineMissed ? "text-red-600 font-bold" : ""}`}>
                         <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
-                        <div className="text-muted-foreground">{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                      </div>
-                    ) : "No deadline"}
-                  </TableCell>
-                  <TableCell>
-                    {task.status === 'review' && (task as any).reviewStartedAt ? (
-                      <div className="text-xs text-green-600 font-semibold">
-                        <div>{new Date((task as any).reviewStartedAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
-                        <div>{new Date((task as any).reviewStartedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div className="text-muted-foreground flex flex-col">
+                          <span>{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                          {task.status === 'review' && (task as any).reviewStartedAt && (
+                            <span className="text-[10px] text-green-600 font-semibold mt-0.5">
+                              Ended: {new Date((task as any).reviewStartedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ) : (
-                      <span className="text-muted-foreground text-xs">—</span>
+                      <div className="flex flex-col">
+                        <span className="text-muted-foreground text-sm">No deadline</span>
+                        {task.status === 'review' && (task as any).reviewStartedAt && (
+                          <span className="text-[10px] text-green-600 font-semibold mt-0.5">
+                            Ended: {new Date((task as any).reviewStartedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>
