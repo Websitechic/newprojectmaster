@@ -517,7 +517,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 task.status !== "review";
 
               return (
-                <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50" : ""}>
+                <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50 dark:bg-red-900/20" : ""}>
                   <TableCell className="font-medium">
                     <div>{task.title}</div>
                     <div className="text-[10px] text-muted-foreground leading-tight italic mt-1">

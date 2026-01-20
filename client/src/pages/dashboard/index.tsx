@@ -490,7 +490,12 @@ export default function Dashboard() {
                             {todoTasks.map((task) => (
                               <div
                                 key={task.id}
-                                className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                                className={cn(
+                                  "text-xs p-2 rounded",
+                                  task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== "completed" && task.status !== "review"
+                                    ? "bg-red-50 dark:bg-red-900/20"
+                                    : "bg-gray-50 dark:bg-gray-800"
+                                )}
                               >
                                 <div className="font-medium truncate">
                                   {task.title}
@@ -1210,7 +1215,12 @@ export default function Dashboard() {
                             {todoTasks.map((task) => (
                               <div
                                 key={task.id}
-                                className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                                className={cn(
+                                  "text-xs p-2 rounded",
+                                  task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== "completed" && task.status !== "review"
+                                    ? "bg-red-50 dark:bg-red-900/20"
+                                    : "bg-gray-50 dark:bg-gray-800"
+                                )}
                               >
                                 <div className="font-medium truncate">
                                   {task.title}
