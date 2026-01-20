@@ -600,8 +600,8 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
                         <div className="text-muted-foreground flex flex-col">
                           <span>{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                          {(task.status === 'completed' || task.status === 'review') && task.completedAt && (
-                            <span className="text-[10px] text-green-600 font-semibold mt-0.5">Ended: {new Date(task.completedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                          {task.status === 'review' && task.reviewStartedAt && (
+                            <span className="text-[10px] text-green-600 font-semibold mt-0.5">Ended: {new Date(task.reviewStartedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                           )}
                         </div>
                       </div>

@@ -667,10 +667,10 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     ) : "No deadline"}
                   </TableCell>
                   <TableCell>
-                    {(task.status === 'completed' || task.status === 'review') && task.completedAt ? (
+                    {task.status === 'review' && (task as any).reviewStartedAt ? (
                       <div className="text-xs text-green-600 font-semibold">
-                        <div>{new Date(task.completedAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
-                        <div>{new Date(task.completedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div>{new Date((task as any).reviewStartedAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        <div>{new Date((task as any).reviewStartedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>
