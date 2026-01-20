@@ -184,14 +184,14 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const handleEditClick = (task: Task) => {
     setEditTask(task);
 
-    const formatToLocalDateTime = (dateString: string | null) => {
-      if (!dateString) return "";
-      const date = new Date(dateString);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
+    const formatToLocalDateTime = (date: Date | null) => {
+      if (!date) return "";
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
       return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
 
@@ -523,10 +523,10 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
           </TableHeader>
           <TableBody>
             {paginatedTasks.map((task) => {
-              const isDeadlineMissed = task.deadline &&
+              const isDeadlineMissed = !!(task.deadline &&
                 new Date(task.deadline).getTime() < Date.now() &&
                 task.status !== "completed" &&
-                task.status !== "review";
+                task.status !== "review");
 
               return (
                 <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white" : ""}>
