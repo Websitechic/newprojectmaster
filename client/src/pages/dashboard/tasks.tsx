@@ -49,6 +49,25 @@ export default function Tasks() {
     enabled: !!user, // Only fetch if user is authenticated
   });
 
+  // Listen for real-time updates via WebSocket
+  useEffect(() => {
+    const handleTaskUpdate = () => {
+      console.log('Task update event received, invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    };
+
+    window.addEventListener('websocket:task_updated', handleTaskUpdate);
+    window.addEventListener('websocket:task_created', handleTaskUpdate);
+    window.addEventListener('websocket:task_deleted', handleTaskUpdate);
+
+    return () => {
+      window.removeEventListener('websocket:task_updated', handleTaskUpdate);
+      window.removeEventListener('websocket:task_created', handleTaskUpdate);
+      window.removeEventListener('websocket:task_deleted', handleTaskUpdate);
+    };
+  }, [queryClient]);
+
   const filteredTasks = tasks?.filter((task: Task) => {
     // Apply search filter
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) {

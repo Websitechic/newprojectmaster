@@ -361,7 +361,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       const ws = (window as any).socket;
       if (ws && ws.readyState === 1) { // 1 is WebSocket.OPEN
         ws.send(JSON.stringify({
-          type: 'task_updated',
+          type: 'task_update', // Changed from task_updated to match server expectation
+          taskId: updatedTask.id,
+          status: updatedTask.status,
           task: updatedTask
         }));
       }

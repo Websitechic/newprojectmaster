@@ -236,7 +236,7 @@ export function setupWebSocket(wss: WebSocketServer) {
             }
 
             // Handle task status updates
-            if (message.type === 'task_update' && message.taskId && userId) {
+            if ((message.type === 'task_update' || message.type === 'task_updated') && (message.taskId || message.task?.id) && userId) {
               if (global.connectedClients) {
                 global.connectedClients.forEach((wsClient) => {
                   const client = wsClient as ExtendedWebSocket;
@@ -244,10 +244,11 @@ export function setupWebSocket(wss: WebSocketServer) {
                   if (client.readyState === WebSocket.OPEN) {
                     try {
                       client.send(JSON.stringify({
-                        type: 'task_update',
+                        type: 'task_updated',
                         data: {
-                          taskId: message.taskId,
-                          status: message.status,
+                          task: message.task,
+                          taskId: message.taskId || message.task?.id,
+                          status: message.status || message.task?.status,
                           updatedBy: userId,
                           updatedAt: new Date().toISOString()
                         }
