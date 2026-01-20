@@ -184,13 +184,24 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const handleEditClick = (task: Task) => {
     setEditTask(task);
 
+    const formatToLocalDateTime = (dateString: string | null) => {
+      if (!dateString) return "";
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
     setFormData({
       title: task.title,
       description: task.description || "",
       status: task.status as TaskFormData["status"] || "todo",
       assigneeId: task.assigneeId?.toString() || "",
-      startDate: task.startDate ? new Date(task.startDate).toISOString().slice(0, 16) : "",
-      deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : "",
+      startDate: formatToLocalDateTime(task.startDate),
+      deadline: formatToLocalDateTime(task.deadline),
       workingHours: task.workingHours?.toString() || "",
       workingMinutes: task.workingMinutes?.toString() || "0",
     });
