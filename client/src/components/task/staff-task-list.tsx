@@ -432,11 +432,11 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
           <TableHeader>
             <TableRow>
               <TableHead className="w-[200px]">Task & Project</TableHead>
-              <TableHead className="w-[140px]">Start Date</TableHead>
               <TableHead className="w-[280px]">Description</TableHead>
               <TableHead className="w-[140px]">Assigned By</TableHead>
               <TableHead className="w-[180px]">Status</TableHead>
               <TableHead className="w-[180px]">Timer</TableHead>
+              <TableHead className="w-[140px]">Start Date</TableHead>
               <TableHead className="w-[140px]">Deadline</TableHead>
               <TableHead className="w-[200px]">Stop Gap</TableHead>
               <TableHead className="text-right w-[200px]">Actions</TableHead>
@@ -464,14 +464,6 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         {task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`) : "No Project"}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="w-[140px]">
-                    {task.startDate ? (
-                      <div className="text-xs">
-                        <div>{new Date(task.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
-                        <div className="text-muted-foreground">{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                      </div>
-                    ) : <span className="text-muted-foreground text-xs">Not set</span>}
                   </TableCell>
                   <TableCell className="w-[280px]">
                     <div className="space-y-1">
@@ -590,6 +582,14 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                         </div>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell className="w-[140px]">
+                    {task.startDate ? (
+                      <div className="text-xs">
+                        <div>{new Date(task.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        <div className="text-muted-foreground">{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                      </div>
+                    ) : <span className="text-muted-foreground text-xs">Not set</span>}
                   </TableCell>
                   <TableCell className="w-[140px]">
                     {task.deadline ? (
