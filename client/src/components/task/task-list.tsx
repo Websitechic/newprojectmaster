@@ -427,8 +427,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTasks = sortedTasks.slice(startIndex, startIndex + itemsPerPage);
 
-  const getStatusColor = (status: string, isDeadlineMissed: boolean = false) => {
+  const getStatusColor = (status: string | null, isDeadlineMissed: boolean = false) => {
     if (isDeadlineMissed) return 'bg-red-600 text-white font-bold';
+    if (!status) return 'bg-gray-100 text-gray-800';
     switch (status) {
       case 'todo': return 'bg-gray-100 text-gray-800';
       case 'in_progress': return 'bg-blue-100 text-blue-800';

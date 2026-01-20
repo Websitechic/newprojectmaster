@@ -125,7 +125,7 @@ export default function Dashboard() {
     queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) =>
       oldTasks?.map(task =>
         task.id === taskId ? { ...task, status: newStatus, isTimerRunning: statusToPauseTimer.includes(newStatus) ? false : task.isTimerRunning } : task
-      )
+      ) ?? []
     );
 
     try {
@@ -588,24 +588,6 @@ export default function Dashboard() {
                     <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                       {technicalSupportTasks.length > 0 ? (
                         <div className="space-y-3">
-                          <Select>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select a support task..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {technicalSupportTasks.map((task) => (
-                                <SelectItem
-                                  key={task.id}
-                                  value={task.id.toString()}
-                                >
-                                  <div className="flex flex-col items-start">
-                                    <span className="font-medium text-sm text-foreground">{task.title}</span>
-                                    <span className="text-xs text-muted-foreground truncate">{task.description?.substring(0, 50)}...</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                           <Collapsible
                             open={openSections.technical}
                             onOpenChange={() => toggleSection("technical")}
