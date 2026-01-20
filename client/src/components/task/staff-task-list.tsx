@@ -587,7 +587,10 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                     {task.startDate ? (
                       <div className="text-xs">
                         <div>{new Date(task.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
-                        <div className="text-muted-foreground">{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div className="text-muted-foreground flex flex-col">
+                          <span>{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="text-[10px] text-blue-500 font-semibold mt-0.5">Started: {new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
                       </div>
                     ) : <span className="text-muted-foreground text-xs">Not set</span>}
                   </TableCell>
