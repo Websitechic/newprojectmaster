@@ -120,14 +120,14 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     window.addEventListener('websocket:task_timer_started', handleTimerEvent);
     window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
     window.addEventListener('websocket:task_timer_update', handleTimerEvent);
-    window.addEventListener('websocket:task_created', handleTaskCreated);
+    window.addEventListener('websocket:task_created', handleTaskUpdated);
     window.addEventListener('websocket:task_updated', handleTaskUpdated);
 
     return () => {
       window.removeEventListener('websocket:task_timer_started', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_paused', handleTimerEvent);
       window.removeEventListener('websocket:task_timer_update', handleTimerEvent);
-      window.removeEventListener('websocket:task_created', handleTaskCreated);
+      window.removeEventListener('websocket:task_created', handleTaskUpdated);
       window.removeEventListener('websocket:task_updated', handleTaskUpdated);
     };
   }, [queryClient, projectId]);
