@@ -150,7 +150,7 @@ export default function Dashboard() {
       if (statusToPauseTimer.includes(newStatus) && originalIsTimerRunning) {
         sendMessage({
           type: "TASK_TIMER_PAUSED",
-          payload: { taskId: taskId, projectId: projectId || 0, userId: user?.id },
+          payload: { taskId: taskId, projectId: projectId, userId: user?.id },
         });
       }
     } catch (error) {
@@ -285,7 +285,7 @@ export default function Dashboard() {
   // Calculate overall progress
   const totalTasks = (userTasks ?? []).length;
   const completedTasks = (userTasks ?? []).filter(
-    (task) => (task.status as string) === "completed",
+    (task) => task.status === "completed",
   ).length;
   const overallProgress =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;

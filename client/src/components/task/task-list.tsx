@@ -30,7 +30,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Pencil, Trash, Plus, Clock } from "lucide-react";
 import type { Task, Project } from "@db/schema";
-import { cn } from "@/lib/utils";
 
 interface TaskFormData {
   title: string;
@@ -530,7 +529,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      <Badge className={getStatusColor(task.status || "todo", isDeadlineMissed)}>
+                      <Badge className={getStatusColor(task.status, isDeadlineMissed)}>
                         <div className="text-center leading-tight">
                           {isDeadlineMissed ? (
                             <div className="flex flex-col items-center">
@@ -546,10 +545,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                       </Badge>
                       {/* Show pending review time for tasks in review */}
                       {task.status === 'review' && (task as any).reviewStartedAt && (
-                        <div className={cn(
-                          "text-xs font-medium",
-                          isDeadlineMissed ? "text-white" : "text-black"
-                        )}>
+                        <div className="text-xs text-black font-medium">
                           Pending: {(() => {
                             const reviewStart = new Date((task as any).reviewStartedAt).getTime();
                             const now = Date.now();
@@ -563,10 +559,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                       )}
                       {/* Show total review time for completed tasks */}
                       {task.status === 'completed' && (task as any).reviewStartedAt && (task as any).completedAt && (
-                        <div className={cn(
-                          "text-xs font-medium",
-                          isDeadlineMissed ? "text-white" : "text-black"
-                        )}>
+                        <div className="text-xs text-black font-medium">
                           Review: {(() => {
                             const reviewStart = new Date((task as any).reviewStartedAt).getTime();
                             const completedAt = new Date((task as any).completedAt).getTime();
@@ -576,14 +569,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                             if (diffHours > 0) return `${diffHours}h`;
                             return `${diffMins}m`;
                           })()}
-                        </div>
-                      )}
-                      {(task as any).reviewLink && (
-                        <div className={cn(
-                          "text-[10px] mt-1 italic",
-                          isDeadlineMissed ? "text-white/90" : "text-muted-foreground dark:text-white/70"
-                        )}>
-                          {(task as any).reviewLinkApproved ? "(Approved)" : "(Pending Approval)"}
                         </div>
                       )}
                     </div>
