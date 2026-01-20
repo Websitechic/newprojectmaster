@@ -493,7 +493,7 @@ export default function Dashboard() {
                                 className={cn(
                                   "text-xs p-2 rounded",
                                   task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== "completed" && task.status !== "review"
-                                    ? "bg-red-50 dark:bg-red-900/20"
+                                    ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white"
                                     : "bg-gray-50 dark:bg-gray-800"
                                 )}
                               >
@@ -1218,7 +1218,7 @@ export default function Dashboard() {
                                 className={cn(
                                   "text-xs p-2 rounded",
                                   task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== "completed" && task.status !== "review"
-                                    ? "bg-red-50 dark:bg-red-900/20"
+                                    ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white"
                                     : "bg-gray-50 dark:bg-gray-800"
                                 )}
                               >

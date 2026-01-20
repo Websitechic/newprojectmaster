@@ -436,7 +436,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
               const isLongDescription = description.length > 100;
 
               return (
-                <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50 dark:bg-red-900/20" : ""}>
+                <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white" : ""}>
                   <TableCell className="w-[200px]">
                     <div className="space-y-1">
                       <div className="font-medium text-sm">{task.title}</div>
