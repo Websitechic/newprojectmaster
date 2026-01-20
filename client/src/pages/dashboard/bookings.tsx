@@ -83,6 +83,7 @@ export default function Bookings() {
   // Fetch bookings
   const { data: bookings = [], isLoading: bookingsLoading } = useQuery({
     queryKey: ["/api/bookings"],
+    refetchInterval: 5000, // Optional: auto-refetch every 5s
   });
 
   // Fetch all users for participant selection

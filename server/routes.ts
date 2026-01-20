@@ -7225,7 +7225,7 @@ End of Report
 
     const user = req.user!;
     const bookingId = parseInt(req.params.id);
-    const { status } = req.body;
+    const { status, title, description, type, participants, startTime, endTime, meetingLink, notes } = req.body;
 
     try {
       // Check if booking exists
@@ -7246,13 +7246,24 @@ End of Report
         return res.status(403).json({ error: "You don't have permission to update this booking" });
       }
 
-      // Update the booking status
+      // Update the booking
+      const updateData: any = {
+        updatedAt: new Date()
+      };
+
+      if (status !== undefined) updateData.status = status;
+      if (title !== undefined) updateData.title = title;
+      if (description !== undefined) updateData.description = description;
+      if (type !== undefined) updateData.type = type;
+      if (participants !== undefined) updateData.participants = participants;
+      if (startTime !== undefined) updateData.startTime = new Date(startTime + ':00.000Z');
+      if (endTime !== undefined) updateData.endTime = new Date(endTime + ':00.000Z');
+      if (meetingLink !== undefined) updateData.meetingLink = meetingLink;
+      if (notes !== undefined) updateData.notes = notes;
+
       const [updatedBooking] = await db
         .update(bookings)
-        .set({
-          status,
-          updatedAt: new Date()
-        })
+        .set(updateData)
         .where(eq(bookings.id, bookingId))
         .returning();
 
