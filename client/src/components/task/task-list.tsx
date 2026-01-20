@@ -530,6 +530,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               {showProjectInfo && <TableHead>Time Spent</TableHead>}
               <TableHead>Start Date</TableHead>
               <TableHead>Deadline</TableHead>
+              <TableHead>Ended</TableHead>
               <TableHead>Working Hours</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -664,6 +665,16 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                         <div className="text-muted-foreground">{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     ) : "No deadline"}
+                  </TableCell>
+                  <TableCell>
+                    {(task.status === 'completed' || task.status === 'review') && task.completedAt ? (
+                      <div className="text-xs text-green-600 font-semibold">
+                        <div>{new Date(task.completedAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        <div>{new Date(task.completedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {task.workingHours || task.workingMinutes ? (() => {
