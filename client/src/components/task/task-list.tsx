@@ -545,7 +545,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                       </Badge>
                       {/* Show pending review time for tasks in review */}
                       {task.status === 'review' && (task as any).reviewStartedAt && (
-                        <div className="text-xs text-black font-medium">
+                        <div className="text-xs text-black dark:text-white font-medium">
                           Pending: {(() => {
                             const reviewStart = new Date((task as any).reviewStartedAt).getTime();
                             const now = Date.now();
@@ -559,7 +559,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                       )}
                       {/* Show total review time for completed tasks */}
                       {task.status === 'completed' && (task as any).reviewStartedAt && (task as any).completedAt && (
-                        <div className="text-xs text-black font-medium">
+                        <div className="text-xs text-black dark:text-white font-medium">
                           Review: {(() => {
                             const reviewStart = new Date((task as any).reviewStartedAt).getTime();
                             const completedAt = new Date((task as any).completedAt).getTime();
