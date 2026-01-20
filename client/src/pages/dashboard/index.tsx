@@ -331,9 +331,6 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-      <p className="text-xs text-gray-500 mb-2 line-clamp-2">
-        {task.description}
-      </p>
       <div className="flex justify-between items-center">
         <Badge variant="outline" className="text-xs">
           {task.status === "in_progress"
