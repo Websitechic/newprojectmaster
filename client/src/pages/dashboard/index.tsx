@@ -252,8 +252,17 @@ export default function Dashboard() {
       : (tasks ?? [])
     ).filter((task: Task) => {
       // Apply search filter
-      if (taskSearchQuery && !task.title.toLowerCase().includes(taskSearchQuery.toLowerCase())) {
-        return false;
+      if (taskSearchQuery) {
+        const query = taskSearchQuery.toLowerCase();
+        const matchesTitle = task.title.toLowerCase().includes(query);
+        
+        // Find assignee name
+        const assignee = (staff ?? []).find(s => s.id === task.assigneeId);
+        const matchesAssignee = assignee?.name.toLowerCase().includes(query);
+        
+        if (!matchesTitle && !matchesAssignee) {
+          return false;
+        }
       }
 
       // Apply date filter
