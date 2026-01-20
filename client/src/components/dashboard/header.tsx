@@ -13,7 +13,7 @@ import { useUser } from "@/hooks/use-user";
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useUnreadMessages } from "@/hooks/use-unread-messages";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,7 +30,6 @@ interface UnreadMessage {
 export function Header() {
   const { user, logout } = useUser();
   const [_, setLocation] = useLocation();
-  const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
   const { playNotificationSound, isUnlocked, isInitialized } = useNotificationSound();
   const [showUnlockButton, setShowUnlockButton] = useState(false);
 
@@ -58,8 +57,7 @@ export function Header() {
     refetchInterval: 10000,
   });
 
-  // Fetch direct messages unread count
-  const { data: directMessagesData } = useQuery({
+  const { data: directMessagesData = [] } = useQuery({
     queryKey: ["/api/direct-messages/conversations"],
     queryFn: async () => {
       const response = await fetch("/api/direct-messages/conversations");
@@ -110,12 +108,14 @@ export function Header() {
   const { mentionCounts } = useUnreadMessages();
 
   // Combine unread messages
-  useEffect(() => {
-    const combined: UnreadMessage[] = [];
+  const combined = useMemo(() => {
+    if (!user) return [];
+
+    const result: UnreadMessage[] = [];
 
     // Add general channel if there are unread messages
     if (generalChannelUnread > 0) {
-      combined.push({
+      result.push({
         type: "general_channel" as any,
         id: 0,
         name: "General Channel",
@@ -147,11 +147,9 @@ export function Header() {
         if (project) {
           const existing = projectMap.get(parseInt(projectId));
           if (existing) {
-            // Update existing entry with mention flag
             existing.hasMention = true;
             existing.count += count;
           } else {
-            // Add new entry for mention only
             projectMap.set(parseInt(projectId), {
               name: project.name,
               count: count,
@@ -164,7 +162,7 @@ export function Header() {
 
     // Convert map to combined array
     projectMap.forEach((data, projectId) => {
-      combined.push({
+      result.push({
         type: "team_chat",
         id: projectId,
         name: data.hasMention ? `${data.name} (mentioned)` : data.name,
@@ -177,7 +175,7 @@ export function Header() {
     if (directMessagesData) {
       directMessagesData.forEach((conv: any) => {
         if (conv.unreadCount > 0) {
-          combined.push({
+          result.push({
             type: "direct_message",
             id: conv.user.id,
             name: conv.user.name,
@@ -188,8 +186,8 @@ export function Header() {
       });
     }
 
-    setUnreadMessages(combined);
-  }, [teamChatUnreads, mentionCounts, directMessagesData, projects, generalChannelUnread]);
+    return result;
+  }, [user, teamChatUnreads, mentionCounts, directMessagesData, projects, generalChannelUnread]);
 
   const handleLogout = async () => {
     try {
@@ -218,7 +216,7 @@ export function Header() {
     }
   };
 
-  const totalUnread = unreadMessages.reduce((sum, msg) => sum + msg.unreadCount, 0);
+  const totalUnread = useMemo(() => combined.reduce((sum, msg) => sum + msg.unreadCount, 0), [combined]);
 
   return (
     <header className="h-16 sm:h-18 bg-background border-b border-border px-3 sm:px-4 lg:px-6 flex items-center justify-between w-full max-w-full overflow-hidden">
@@ -269,14 +267,14 @@ export function Header() {
             <div className="px-3 py-2 text-xs sm:text-sm font-semibold border-b">
               Unread Messages
             </div>
-            {unreadMessages.length === 0 ? (
+            {combined.length === 0 ? (
               <div className="px-3 py-4 text-center text-xs sm:text-sm text-muted-foreground">
                 No unread messages
               </div>
             ) : (
               <ScrollArea className="h-72 sm:h-96">
                 <div className="p-1">
-                  {unreadMessages.map((message) => (
+                  {combined.map((message) => (
                     <DropdownMenuItem
                       key={`${message.type}-${message.id}`}
                       onClick={() => handleMessageClick(message)}
