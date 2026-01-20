@@ -280,24 +280,20 @@ export default function ProjectDetails() {
   };
 
   useEffect(() => {
-    const handleTaskCreated = (event: any) => {
-      const data = event.detail || event;
-      // We check for id which is the projectId from params
-      if (data.projectId === parseInt(id!) || (data.data && data.data.task && data.data.task.projectId === parseInt(id!))) {
-        console.log("Real-time task creation detected for project:", id);
-        queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
-        queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}/tasks`] });
-      }
+    const handleTaskUpdate = (event: any) => {
+      console.log("Real-time task update detected for project:", id);
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}/tasks`] });
     };
 
-    window.addEventListener('websocket:task_created', handleTaskCreated);
-    window.addEventListener('websocket:task_updated', handleTaskCreated);
-    window.addEventListener('websocket:task_deleted', handleTaskCreated);
+    window.addEventListener('websocket:task_created', handleTaskUpdate);
+    window.addEventListener('websocket:task_updated', handleTaskUpdate);
+    window.addEventListener('websocket:task_deleted', handleTaskUpdate);
 
     return () => {
-      window.removeEventListener('websocket:task_created', handleTaskCreated);
-      window.removeEventListener('websocket:task_updated', handleTaskCreated);
-      window.removeEventListener('websocket:task_deleted', handleTaskCreated);
+      window.removeEventListener('websocket:task_created', handleTaskUpdate);
+      window.removeEventListener('websocket:task_updated', handleTaskUpdate);
+      window.removeEventListener('websocket:task_deleted', handleTaskUpdate);
     };
   }, [id, queryClient]);
 
