@@ -4519,12 +4519,28 @@ End of Report
       console.log("✅ Link found:", { id: link.id, assignedTo: link.assignedTo, sentBy: link.sentBy });
 
       // Check access
-      if (isTeamLead && link.assignedTo !== user.id) {
-        console.log("❌ Comment rejected: Team lead not assigned to this link");
+      const currentUserId = Number(user.id);
+      const linkAssignedTo = Number(link.assignedTo);
+      const linkSentBy = Number(link.sentBy);
+
+      console.log("🛠️ Debug access check:", { 
+        currentUserId, 
+        userRole: user.role, 
+        linkAssignedTo, 
+        linkSentBy,
+        isTeamLead,
+        isPM
+      });
+
+      // Relaxing check slightly to handle potential type mismatches or stale data
+      if (isTeamLead && linkAssignedTo !== currentUserId) {
+        console.log("❌ Comment rejected: Team lead not assigned to this link. UserID:", currentUserId, "AssignedTo:", linkAssignedTo);
+        // If it's a team lead but not the specific assignee, we might want to check if they are part of the same project if needed, 
+        // but for now, let's just fix the comparison.
         return res.status(403).json({ error: "This review is not assigned to you" });
       }
-      if (isPM && link.sentBy !== user.id) {
-        console.log("❌ Comment rejected: PM did not send this link");
+      if (isPM && linkSentBy !== currentUserId) {
+        console.log("❌ Comment rejected: PM did not send this link. UserID:", currentUserId, "SentBy:", linkSentBy);
         return res.status(403).json({ error: "You did not send this review" });
       }
 
@@ -4548,15 +4564,17 @@ End of Report
           .set(updateData)
           .where(eq(reviewLinks.id, linkId))
           .returning();
+        
+        if (result.length === 0) {
+           console.log("❌ Comment rejected: No rows updated for linkId", linkId);
+           return res.status(404).json({ error: "Review link not found during update" });
+        }
         updatedLink = result[0];
       } catch (dbError: any) {
         console.error("❌ Database update failed:", dbError);
-        console.error("❌ Error code:", dbError.code);
-        console.error("❌ Error message:", dbError.message);
         return res.status(500).json({ 
           error: "Database error while updating review link", 
-          details: dbError.message,
-          code: dbError.code 
+          details: dbError.message
         });
       }
 
