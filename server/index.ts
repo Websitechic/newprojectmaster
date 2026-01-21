@@ -146,6 +146,84 @@ let emailServiceInitialized = false;
       }
     }
 
+    // Ensure review_links table has required columns and constraints (manual schema fix)
+    // This is CRITICAL - if schema update fails, we must not start the server in a broken state
+    log("Checking review_links schema for required columns...");
+    
+    let schemaUpdateNeeded = false;
+    let schemaUpdateFailed = false;
+    
+    try {
+      // Check if review_comment column exists
+      const reviewCommentCheck = await db.execute(`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'review_links' AND column_name = 'review_comment'
+      `);
+      
+      if (reviewCommentCheck.length === 0) {
+        schemaUpdateNeeded = true;
+        log("Adding missing review_comment column...");
+        await db.execute(`ALTER TABLE review_links ADD COLUMN review_comment TEXT`);
+        log("✅ Added review_comment column");
+      } else {
+        log("✓ review_comment column exists");
+      }
+      
+      // Check if commented_at column exists
+      const commentedAtCheck = await db.execute(`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'review_links' AND column_name = 'commented_at'
+      `);
+      
+      if (commentedAtCheck.length === 0) {
+        schemaUpdateNeeded = true;
+        log("Adding missing commented_at column...");
+        await db.execute(`ALTER TABLE review_links ADD COLUMN commented_at TIMESTAMP`);
+        log("✅ Added commented_at column");
+      } else {
+        log("✓ commented_at column exists");
+      }
+      
+      // Check and update status constraint to include new values
+      const constraintCheck = await db.execute(`
+        SELECT pg_get_constraintdef(oid) as constraint_def
+        FROM pg_constraint 
+        WHERE conrelid = 'review_links'::regclass 
+        AND conname = 'review_links_status_check'
+      `);
+      
+      if (constraintCheck.length > 0) {
+        const constraintDef = (constraintCheck[0] as any).constraint_def || '';
+        if (!constraintDef.includes('needs_revision')) {
+          schemaUpdateNeeded = true;
+          log("Updating status constraint to include new values...");
+          await db.execute(`ALTER TABLE review_links DROP CONSTRAINT IF EXISTS review_links_status_check`);
+          await db.execute(`ALTER TABLE review_links ADD CONSTRAINT review_links_status_check 
+            CHECK (status IN ('pending', 'reviewed', 'needs_revision', 'not_approved'))`);
+          log("✅ Updated status constraint");
+        } else {
+          log("✓ status constraint is up to date");
+        }
+      }
+      
+      log("✅ review_links schema verified");
+    } catch (schemaError: any) {
+      console.error("❌ CRITICAL: Failed to update review_links schema!");
+      console.error("Error message:", schemaError.message);
+      console.error("Error code:", schemaError.code);
+      console.error("Full error:", schemaError);
+      schemaUpdateFailed = true;
+      
+      // If schema update was needed and failed, this is critical
+      if (schemaUpdateNeeded) {
+        console.error("❌ FATAL: Required schema update failed - cannot start server");
+        process.exit(1);
+      } else {
+        // Schema check failed but no updates were needed, continue with warning
+        console.error("⚠️ Schema check had issues but columns appear to exist - continuing...");
+      }
+    }
+
     // Initialize email service with timeout (non-critical)
     try {
       log("Initializing email service...");

@@ -4547,11 +4547,14 @@ End of Report
 
       let updatedLink;
       try {
+        console.log("🔄 Attempting database update for link:", linkId);
         const result = await db
           .update(reviewLinks)
           .set(updateData)
           .where(eq(reviewLinks.id, linkId))
           .returning();
+        
+        console.log("✅ Database update result:", result.length, "rows");
         
         if (result.length === 0) {
            console.log("❌ Comment rejected: No rows updated for linkId", linkId);
@@ -4559,15 +4562,17 @@ End of Report
         }
         updatedLink = result[0];
       } catch (dbError: any) {
-        console.error("❌ Database update failed:", dbError);
-        console.error("❌ Error details:", {
-          message: dbError.message,
-          code: dbError.code,
-          detail: dbError.detail
-        });
+        console.error("❌ DATABASE UPDATE FAILED ❌");
+        console.error("Error message:", dbError.message);
+        console.error("Error code:", dbError.code);
+        console.error("Error detail:", dbError.detail);
+        console.error("Error constraint:", dbError.constraint);
+        console.error("Error table:", dbError.table);
+        console.error("Full error object:", JSON.stringify(dbError, Object.getOwnPropertyNames(dbError), 2));
         return res.status(500).json({ 
           error: "Database error while updating review link", 
-          details: dbError.message
+          details: dbError.message,
+          code: dbError.code
         });
       }
 
