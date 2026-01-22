@@ -73,7 +73,7 @@ export default function ReviewLinks() {
     "customer_support_officer",
     "team_lead",
   ];
-  const canAccessNewProjectBriefing = allowedRolesForNewProjectBriefing.includes(user?.role);
+  const canAccessNewProjectBriefing = allowedRolesForNewProjectBriefing.includes(user?.role || "");
 
   // Fetch review links
   const { data: reviewLinks = [], isLoading, error } = useQuery({
