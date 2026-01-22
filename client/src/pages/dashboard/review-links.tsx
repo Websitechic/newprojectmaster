@@ -263,14 +263,37 @@ export default function ReviewLinks() {
     },
   });
 
-  const handleAddComment = (linkId: number) => {
+  const [actionCommentDialogOpen, setActionCommentDialogOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'approve' | 'not_approve' | null>(null);
+
+  const handleActionWithComment = (linkId: number, type: 'approve' | 'not_approve') => {
     setSelectedLinkId(linkId);
-    setCommentDialogOpen(true);
+    setPendingAction(type);
+    setCommentText("");
+    setActionCommentDialogOpen(true);
   };
 
-  const handleSubmitComment = () => {
-    if (!selectedLinkId || !commentText.trim()) return;
-    addCommentMutation.mutate({ linkId: selectedLinkId, comment: commentText });
+  const handleConfirmAction = () => {
+    if (!selectedLinkId || !pendingAction) return;
+    
+    if (pendingAction === 'approve') {
+      if (commentText.trim()) {
+        addCommentMutation.mutate({ linkId: selectedLinkId, comment: commentText }, {
+          onSuccess: () => markReviewedMutation.mutate(selectedLinkId)
+        });
+      } else {
+        markReviewedMutation.mutate(selectedLinkId);
+      }
+    } else {
+      if (commentText.trim()) {
+        addCommentMutation.mutate({ linkId: selectedLinkId, comment: commentText }, {
+          onSuccess: () => markNotApprovedMutation.mutate(selectedLinkId)
+        });
+      } else {
+        markNotApprovedMutation.mutate(selectedLinkId);
+      }
+    }
+    setActionCommentDialogOpen(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -574,39 +597,28 @@ export default function ReviewLinks() {
                               <span className="sm:hidden">Open</span>
                             </Button>
                             {isTeamLead && (link.status === "pending" || link.status === "needs_revision" || link.status === "not_approved") && (
-                              <>
+                              <div className="flex gap-2">
                                 <Button
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => markReviewedMutation.mutate(link.id)}
-                                  disabled={markReviewedMutation.isPending || markNotApprovedMutation.isPending}
-                                  className="bg-green-600 hover:bg-green-700 flex-shrink-0"
+                                  className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
+                                  onClick={() => handleActionWithComment(link.id, 'approve')}
+                                  disabled={markReviewedMutation.isPending}
                                 >
                                   <CheckCircle className="h-4 w-4 mr-1" />
-                                  <span className="hidden sm:inline">Approve</span>
-                                  <span className="sm:hidden">OK</span>
+                                  Approve
                                 </Button>
                                 <Button
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => markNotApprovedMutation.mutate(link.id)}
-                                  disabled={markReviewedMutation.isPending || markNotApprovedMutation.isPending}
-                                  variant="destructive"
-                                  className="flex-shrink-0"
+                                  className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
+                                  onClick={() => handleActionWithComment(link.id, 'not_approve')}
+                                  disabled={markNotApprovedMutation.isPending}
                                 >
                                   <AlertCircle className="h-4 w-4 mr-1" />
-                                  <span className="hidden sm:inline">Not Approved</span>
-                                  <span className="sm:hidden">Reject</span>
+                                  Not Approved
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleAddComment(link.id)}
-                                  className="border-orange-500 text-orange-600 hover:bg-orange-50 flex-shrink-0"
-                                >
-                                  <MessageSquare className="h-4 w-4 mr-1" />
-                                  <span className="hidden sm:inline">Add Comment</span>
-                                  <span className="sm:hidden">Comment</span>
-                                </Button>
-                              </>
+                              </div>
                             )}
                             {isProjectManager && (
                               <AlertDialog>
@@ -646,41 +658,34 @@ export default function ReviewLinks() {
         </div>
       </div>
 
-      {/* Comment Dialog for Team Leads */}
-      <Dialog open={commentDialogOpen} onOpenChange={setCommentDialogOpen}>
-        <DialogContent>
+      {/* Action Comment Dialog */}
+      <Dialog open={actionCommentDialogOpen} onOpenChange={setActionCommentDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Review Comment</DialogTitle>
+            <DialogTitle>
+              {pendingAction === 'approve' ? "Approve Review" : "Mark as Not Approved"}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div>
-              <Label htmlFor="comment">Your feedback or revision request</Label>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="action-comment">Add a comment (optional)</Label>
               <Textarea
-                id="comment"
+                id="action-comment"
+                placeholder="Your feedback..."
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Enter your feedback here..."
-                className="mt-1"
                 rows={4}
               />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setCommentDialogOpen(false);
-                  setCommentText("");
-                  setSelectedLinkId(null);
-                }}
-              >
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setActionCommentDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                onClick={handleSubmitComment}
-                disabled={!commentText.trim() || addCommentMutation.isPending}
-                className="bg-orange-600 hover:bg-orange-700"
+              <Button 
+                onClick={handleConfirmAction}
+                className={pendingAction === 'approve' ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
               >
-                {addCommentMutation.isPending ? "Submitting..." : "Submit Comment"}
+                Confirm {pendingAction === 'approve' ? "Approval" : "Rejection"}
               </Button>
             </div>
           </div>
