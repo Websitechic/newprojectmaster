@@ -570,17 +570,33 @@ export default function ReviewLinks() {
                             </div>
                             {link.reviewComment && (
                               <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                                <div className="flex items-start gap-2">
-                                  <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                                  <div>
-                                    <p className="text-sm font-medium text-orange-800">Revision Comment:</p>
-                                    <p className="text-sm text-orange-700 mt-1">{link.reviewComment}</p>
-                                    {link.commentedAt && (
-                                      <p className="text-xs text-orange-500 mt-1">
-                                        Added: {new Date(link.commentedAt).toLocaleDateString()} at {new Date(link.commentedAt).toLocaleTimeString()}
-                                      </p>
-                                    )}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start gap-2">
+                                    <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                      <p className="text-sm font-medium text-orange-800">Revision Comment:</p>
+                                      <p className="text-sm text-orange-700 mt-1">{link.reviewComment}</p>
+                                      {link.commentedAt && (
+                                        <p className="text-xs text-orange-500 mt-1">
+                                          Added: {new Date(link.commentedAt).toLocaleDateString()} at {new Date(link.commentedAt).toLocaleTimeString()}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
+                                  {isTeamLead && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-orange-600 hover:text-orange-800 hover:bg-orange-100"
+                                      onClick={() => {
+                                        setSelectedLinkId(link.id);
+                                        setCommentText(link.reviewComment || "");
+                                        setCommentDialogOpen(true);
+                                      }}
+                                    >
+                                      <MessageSquare className="h-4 w-4" />
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -657,6 +673,42 @@ export default function ReviewLinks() {
           </Card>
         </div>
       </div>
+
+      {/* Edit Comment Dialog */}
+      <Dialog open={commentDialogOpen} onOpenChange={setCommentDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Comment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-comment">Comment</Label>
+              <Textarea
+                id="edit-comment"
+                placeholder="Your feedback..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setCommentDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (selectedLinkId) {
+                    addCommentMutation.mutate({ linkId: selectedLinkId, comment: commentText });
+                  }
+                }}
+                disabled={addCommentMutation.isPending}
+              >
+                {addCommentMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Action Comment Dialog */}
       <Dialog open={actionCommentDialogOpen} onOpenChange={setActionCommentDialogOpen}>
