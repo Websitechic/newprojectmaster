@@ -596,7 +596,7 @@ export default function ReviewLinks() {
                               <span className="hidden sm:inline">Open Link</span>
                               <span className="sm:hidden">Open</span>
                             </Button>
-                            {isTeamLead && (link.status === "pending" || link.status === "needs_revision" || link.status === "not_approved") && (
+                            {isTeamLead && (link.status === "pending" || link.status === "needs_revision") && (
                               <div className="flex gap-2">
                                 <Button
                                   variant="outline"
