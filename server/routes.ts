@@ -10069,7 +10069,9 @@ End of Report
               eq(projectMembers.projectId, projectId),
               ne(projectMembers.userId, project.managerId),
               // Don't remove team leads
-              sql`${projectMembers.userId} NOT IN (${teamLeads.map(tl => tl.id).join(', ') || 'NULL'})`
+              teamLeads.length > 0 
+                ? sql`${projectMembers.userId} NOT IN (${sql.join(teamLeads.map(tl => sql`${tl.id}`), sql`, `)})`
+                : sql`true`
             )
           );
 
