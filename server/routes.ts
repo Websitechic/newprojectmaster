@@ -7651,7 +7651,7 @@ End of Report
         // Project managers and CSOs see requests for tasks they assigned, operations managers and team leads see all requests
         const whereCondition = (user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "team_lead")
           ? undefined // Operations managers and team leads see all requests
-          : eq(deadlineExtensionRequests.projectManagerId, user.id); // PMs and CSOs see only requests for tasks they assigned
+          : eq(deadlineExtensionRequests.projectManagerId, user.id); // PMs and CSOs see only requests where they are the designated manager for that request
 
         requests = await db
           .select({
@@ -7744,12 +7744,13 @@ End of Report
         return res.status(400).json({ error: "Task ID and reason are required" });
       }
 
-      // Get task details to find the project manager
+      // Get task details to find the person who assigned the task
       const [task] = await db
         .select({
           id: tasks.id,
           projectId: tasks.projectId,
           assigneeId: tasks.assigneeId,
+          assignedBy: tasks.assignedBy,
           deadline: tasks.deadline,
         })
         .from(tasks)
@@ -7763,19 +7764,6 @@ End of Report
       // Verify the user is assigned to this task
       if (task.assigneeId !== user.id) {
         return res.status(403).json({ error: "You can only request extensions for tasks assigned to you" });
-      }
-
-      // Get project manager
-      const [project] = await db
-        .select({
-          managerId: projects.managerId,
-        })
-        .from(projects)
-        .where(eq(projects.id, task.projectId))
-        .limit(1);
-
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
       }
 
       // Check if there's already a pending request for this task
@@ -7798,7 +7786,7 @@ End of Report
         .values({
           taskId,
           requesterId: user.id,
-          projectManagerId: project.managerId,
+          projectManagerId: task.assignedBy || user.id, // Set the manager to the person who assigned the task
           reason,
           requestedDeadline: requestedDeadline ? new Date(requestedDeadline) : null,
           status: "pending",
