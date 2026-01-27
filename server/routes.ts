@@ -5097,7 +5097,7 @@ End of Report
     try {
       let hasUpdates = false;
 
-      if (user.role === "staff") {
+      if (user.role === "staff" || user.role === "intern") {
         // For staff, check if their requests have been decided
         const decidedRequests = await db
           .select({ count: sql<number>`count(*)` })
@@ -5105,15 +5105,14 @@ End of Report
           .where(
             and(
               eq(deadlineExtensionRequests.requesterId, user.id),
-              ne(deadlineExtensionRequests.status, "pending"),
-              isNotNull(deadlineExtensionRequests.decidedAt)
+              ne(deadlineExtensionRequests.status, "pending")
             )
           );
 
         hasUpdates = (decidedRequests[0]?.count || 0) > 0;
-      } else if (user.role === "project_manager" || user.role === "operations_manager" || user.specialization === "operations_manager") {
+      } else if (user.role === "project_manager" || user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "customer_support_officer" || user.role === "team_lead") {
         // For managers, check if there are new pending requests
-        const whereCondition = user.role === "operations_manager" || user.specialization === "operations_manager"
+        const whereCondition = user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "team_lead"
           ? eq(deadlineExtensionRequests.status, "pending")
           : and(
               eq(deadlineExtensionRequests.status, "pending"),
