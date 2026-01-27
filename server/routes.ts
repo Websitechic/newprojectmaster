@@ -7649,9 +7649,10 @@ End of Report
 
       if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager" || user.role === "customer_support_officer") {
         // Project managers and CSOs see requests for tasks they assigned, operations managers and team leads see all requests
-        const whereCondition = (user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "team_lead")
+        const isOpsOrLead = user.role === "operations_manager" || (user.specialization === "operations_manager" && user.role !== "project_manager" && user.role !== "customer_support_officer") || user.role === "team_lead";
+        const whereCondition = isOpsOrLead
           ? undefined // Operations managers and team leads see all requests
-          : eq(deadlineExtensionRequests.projectManagerId, user.id); // PMs and CSOs see only requests where they are the designated manager for that request
+          : eq(deadlineExtensionRequests.projectManagerId, user.id); 
 
         requests = await db
           .select({
@@ -7766,6 +7767,15 @@ End of Report
         return res.status(403).json({ error: "You can only request extensions for tasks assigned to you" });
       }
 
+      // Get project details to find the fallback project manager
+      const [project] = await db
+        .select({
+          managerId: projects.managerId,
+        })
+        .from(projects)
+        .where(eq(projects.id, task.projectId))
+        .limit(1);
+
       // Check if there's already a pending request for this task
       const [existingRequest] = await db
         .select()
@@ -7786,7 +7796,7 @@ End of Report
         .values({
           taskId,
           requesterId: user.id,
-          projectManagerId: task.assignedBy || user.id, // Set the manager to the person who assigned the task
+          projectManagerId: task.assignedBy || (project ? project.managerId : user.id), // Set the manager to the person who assigned the task, fallback to project manager
           reason,
           requestedDeadline: requestedDeadline ? new Date(requestedDeadline) : null,
           status: "pending",
