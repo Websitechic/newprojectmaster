@@ -413,7 +413,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     }
   ] : [];
 
-  const extensionMenuItems = (user?.role === "project_manager" && user?.role !== "team_lead") ? [{
+  const extensionMenuItems = (user?.role === "project_manager" && user?.role !== "team_lead") || user?.role === "customer_support_officer" ? [{
     icon: <Clock size={20} />,
     label: "Deadline Extension Requests",
     href: "/dashboard/deadline-extension-requests",
