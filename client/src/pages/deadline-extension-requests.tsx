@@ -237,7 +237,7 @@ export default function DeadlineExtensionRequestsPage() {
                           <TableHead>Staff Member</TableHead>
                           <TableHead>Project</TableHead>
                           <TableHead>Task</TableHead>
-                          <TableHead>New Deadline</TableHead>
+                          <TableHead>Current Deadline</TableHead>
                           <TableHead>Requested<br />Deadline</TableHead>
                           <TableHead>Reason</TableHead>
                           <TableHead>Submitted</TableHead>
