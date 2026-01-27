@@ -7647,9 +7647,9 @@ End of Report
     try {
       let requests;
 
-      if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager" || user.role === "customer_support_officer") {
+      if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.role === "customer_support_officer") {
         // Project managers and CSOs see requests for tasks they assigned, operations managers and team leads see all requests
-        const isOpsOrLead = user.role === "operations_manager" || (user.specialization === "operations_manager" && user.role !== "project_manager" && user.role !== "customer_support_officer") || user.role === "team_lead";
+        const isOpsOrLead = user.role === "operations_manager" || user.role === "team_lead";
         const whereCondition = isOpsOrLead
           ? undefined // Operations managers and team leads see all requests
           : eq(deadlineExtensionRequests.projectManagerId, user.id); 
