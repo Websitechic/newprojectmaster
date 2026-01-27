@@ -239,7 +239,7 @@ export default function DeadlineExtensionRequestsPage() {
                           <TableHead>Requested Deadline</TableHead>
                           <TableHead>Reason</TableHead>
                           <TableHead>Submitted</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                          <TableHead className="text-right min-w-[200px]">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -278,7 +278,7 @@ export default function DeadlineExtensionRequestsPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-green-600 border-green-200 hover:bg-green-50"
+                                  className="text-green-600 border-green-200 hover:bg-green-50 flex-shrink-0"
                                   onClick={() => handleDecision(request, "approved")}
                                 >
                                   <CheckCircle className="h-3 w-3 mr-1" />
@@ -287,7 +287,7 @@ export default function DeadlineExtensionRequestsPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-red-600 border-red-200 hover:bg-red-50"
+                                  className="text-red-600 border-red-200 hover:bg-red-50 flex-shrink-0"
                                   onClick={() => handleDecision(request, "declined")}
                                 >
                                   <XCircle className="h-3 w-3 mr-1" />
