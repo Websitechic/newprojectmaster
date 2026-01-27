@@ -1972,20 +1972,28 @@ export function registerRoutes(app: Express): Server {
       const now = new Date();
       const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-      // Check if task exists and is assigned to user
+      // Check if task exists
       const [task] = await db
         .select()
         .from(tasks)
-        .where(
-          and(
-            eq(tasks.id, taskId),
-            eq(tasks.assigneeId, user.id)
-          )
-        )
+        .where(eq(tasks.id, taskId))
         .limit(1);
 
       if (!task) {
-        return res.status(404).json({ error: "Task not found or not assigned to you" });
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Check permissions:
+      // 1. If assigned to user, they can always apply stop gap
+      // 2. If NOT assigned to user, only allow if they are staff/intern AND deadline is missed
+      const isAssignedToUser = task.assigneeId === user.id;
+      const isDeadlineMissed = task.deadline && new Date(task.deadline).getTime() < Date.now();
+
+      if (!isAssignedToUser) {
+        if (!isDeadlineMissed) {
+          return res.status(403).json({ error: "You can only apply stop gap to other tasks if the deadline has been missed" });
+        }
+        // If deadline is missed, staff/intern can apply stop gap even if not assigned (per requirement)
       }
 
       // Check if stop gap already applied to this task
