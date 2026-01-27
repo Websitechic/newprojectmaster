@@ -7676,6 +7676,7 @@ End of Report
             taskWorkingHours: tasks.workingHours,
             projectName: projects.name,
             projectId: projects.id,
+            assignedBy: tasks.assignedBy, // Add this to verify
           })
           .from(deadlineExtensionRequests)
           .leftJoin(users, eq(deadlineExtensionRequests.requesterId, users.id))
