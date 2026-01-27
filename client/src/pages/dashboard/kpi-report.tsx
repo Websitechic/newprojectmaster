@@ -343,6 +343,8 @@ export default function KPIReportPage() {
     enabled: !!selectedStaff,
   });
 
+  const selectedStaffMember = staffMembers.find(s => s.id.toString() === selectedStaff);
+
   const formatTimeForExport = (hours: number) => {
     const h = Math.floor(hours);
     const m = Math.round((hours - h) * 60);
@@ -423,7 +425,7 @@ export default function KPIReportPage() {
     );
 
     sortedDailyData.forEach(day => {
-      const tasksList = day.taskBreakdown?.map(t => t.title).filter(Boolean) ||
+      const tasksList = day.taskBreakdown?.map((t: any) => t.title).filter(Boolean) ||
                        day.tasks?.filter(Boolean) || [];
       const tasksDisplay = tasksList.length > 0
         ? `${tasksList.length} task(s): ${tasksList.join(', ')}`
@@ -628,11 +630,11 @@ export default function KPIReportPage() {
         data.push(['Date', 'Total Hours Worked', 'Tasks Completed', 'Performance Status']);
 
         // Daily data sorted by date (newest first)
-        const sortedDailyData = [...staffProductivityData.dailyData].sort((a: any, b: any) =>
+        const sortedDailyData = [...staffProductivityData.dailyData].sort((a, b) =>
           new Date(b.date).getTime() - new Date(a.date).getTime()
         );
 
-        sortedDailyData.forEach((day: any) => {
+        sortedDailyData.forEach(day => {
           const tasksList = day.taskBreakdown?.map((t: any) => t.title).filter(Boolean) ||
                            day.tasks?.filter(Boolean) || [];
           const tasksDisplay = tasksList.length > 0
@@ -647,351 +649,68 @@ export default function KPIReportPage() {
           ]);
         });
 
+        // Add task level analysis
         data.push([]);
-        data.push([]);
-
-        // Task breakdown section
         data.push(['TASK-LEVEL ANALYSIS']);
         data.push(['Task Name', 'Assigned Time', 'Actual Time', 'Efficiency', 'Status']);
 
-        const taskRows = Array.from(allTasks.values())
+        Array.from(allTasks.values())
           .sort((a: any, b: any) => a.title.localeCompare(b.title))
-          .map((task: any) => {
+          .forEach((task: any) => {
             const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
             const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
-
             let status = 'On Time';
             let efficiency = '100%';
 
             if (assignedMinutes > 0 && actualMinutes > 0) {
               const taskEfficiency = Math.round((assignedMinutes / actualMinutes) * 100);
               efficiency = `${taskEfficiency}%`;
-
-              if (actualMinutes < assignedMinutes) {
-                status = 'Early';
-              } else if (actualMinutes > assignedMinutes) {
-                status = 'Delayed';
-              }
+              if (actualMinutes < assignedMinutes) status = 'Early';
+              else if (actualMinutes > assignedMinutes) status = 'Delayed';
             }
 
-            return [
+            data.push([
               task.title,
               formatMinutesForExport(assignedMinutes),
               formatMinutesForExport(actualMinutes),
               efficiency,
               status
-            ];
-          });
-
-        taskRows.forEach(row => data.push(row));
-
-        // Totals row
-        data.push([
-          'TOTAL',
-          formatMinutesForExport(totalAssignedMinutes),
-          formatMinutesForExport(totalActualMinutes),
-          `${productivity}%`,
-          '-'
-        ]);
-
-        data.push([]);
-        data.push([]);
-
-        // Weekly averages if applicable
-        if (staffProductivityData.weeklyData && staffProductivityData.weeklyData.length > 0) {
-          data.push(['WEEKLY PERFORMANCE TREND']);
-          data.push(['Week', 'Average Hours', 'Status']);
-
-          // Group by weeks
-          const weekGroups = new Map();
-          sortedDailyData.forEach((day: any) => {
-            const weekStart = startOfWeek(new Date(day.date), { weekStartsOn: 1 });
-            const weekEnd = endOfWeek(new Date(day.date), { weekStartsOn: 1 });
-            const weekKey = format(weekStart, 'MMM dd') + ' - ' + format(weekEnd, 'MMM dd');
-
-            if (!weekGroups.has(weekKey)) {
-              weekGroups.set(weekKey, []);
-            }
-            weekGroups.get(weekKey).push(day);
-          });
-
-          weekGroups.forEach((days: any[], weekKey: string) => {
-            const totalHours = days.reduce((sum: number, day: any) => sum + day.totalSpanHours, 0);
-            const avgHours = totalHours / days.length;
-            const goodDays = days.filter((d: any) => d.performanceStatus === 'good').length;
-            const status = goodDays >= days.length / 2 ? 'GOOD' : goodDays > 0 ? 'FAIR' : 'POOR';
-
-            data.push([
-              weekKey,
-              formatTimeForExport(avgHours),
-              status
             ]);
           });
-        }
 
         data.push([]);
         data.push(['Report End']);
 
         // Create worksheet
         const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 60 }, { wch: 18 }, { wch: 15 }];
 
-        // Set column widths
-        ws['!cols'] = [
-          { wch: 25 },  // Column A - Labels/Dates
-          { wch: 20 },  // Column B - Values/Hours
-          { wch: 60 },  // Column C - Tasks/Details
-          { wch: 18 },  // Column D - Status/Efficiency
-          { wch: 15 }   // Column E - Additional
-        ];
-
-        // Add worksheet to workbook - use staff name as sheet name (max 31 chars)
-        const sheetName = staff.name.substring(0, 31);
-        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(wb, ws, staff.name.substring(0, 31));
       }
 
       // Generate and download file
       const fileName = `Department-Performance-Report-${selectedDepartment}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
       XLSX.writeFile(wb, fileName);
     } catch (error) {
-      console.error('Export error:', error);
-      alert('Failed to export data. Please try again.');
+      console.error('Error exporting all users:', error);
+      alert('Failed to export department report');
     }
-  };
-
-  const selectedStaffMember = staffMembers.find(s => s.id.toString() === selectedStaff);
-
-  // Helper function to get all tasks for the current productivityData
-  const getAllTasks = () => {
-    const tasksMap = new Map();
-    if (productivityData?.dailyData) {
-      productivityData.dailyData.forEach((day: any) => {
-        if (day.taskBreakdown) {
-          day.taskBreakdown.forEach((task: any) => {
-            if (!tasksMap.has(task.id)) {
-              tasksMap.set(task.id, task);
-            }
-          });
-        }
-      });
-    }
-    return tasksMap;
-  };
-  const allTasks = getAllTasks();
-
-  const handleExportStaffSummaryPDF = async () => {
-    if (!selectedStaffMember || !productivityData) return;
-
-    const doc = new jsPDF();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    let y = 15;
-
-    // Header
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Staff Summary Report', 105, y, { align: 'center' });
-    y += 10;
-
-    // Staff Info
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Staff Information', 15, y);
-    y += 7;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-
-    // Calculate average hours (same as "Avg Hours" - excluding excessive hours)
-    const validDays = productivityData.dailyData.filter(day => {
-      const totalMinutes = day.actualWorkHours * 60;
-      return totalMinutes <= 540; // Exclude if > 9 hours
-    });
-    const avgHours = validDays.length > 0
-      ? validDays.reduce((sum, day) => sum + (day.actualWorkHours * 60), 0) / validDays.length / 60
-      : 0;
-
-    const staffInfoData = [
-      ['Name:', selectedStaffMember.name || 'N/A'],
-      ['Average Hours Worked:', formatTimeForExport(avgHours) + '/day'],
-      ['Productivity Score:', (() => {
-        const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
-          sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-        const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
-          sum + Math.floor((task.timeSpent || 0) / 60), 0);
-        return totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
-      })() + '%']
-    ];
-
-    staffInfoData.forEach(row => {
-      doc.text(row[0], 15, y);
-      doc.setFont('helvetica', 'bold');
-      doc.text(row[1], 75, y);
-      doc.setFont('helvetica', 'normal');
-      y += 7;
-    });
-    y += 5;
-
-    // Performance Breakdown
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Performance Breakdown', 15, y);
-    y += 7;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-
-    const performanceData = [
-      ['Good Days:', productivityData.summary.goodDays],
-      ['Fair Days:', productivityData.summary.fairDays],
-      ['Poor Days:', productivityData.summary.poorDays]
-    ];
-
-    performanceData.forEach(row => {
-      doc.text(row[0], 15, y);
-      doc.setFont('helvetica', 'bold');
-      doc.text(String(row[1]), 75, y);
-      doc.setFont('helvetica', 'normal');
-      y += 7;
-    });
-    y += 10;
-
-    // Tasks List - All tasks worked on within date range
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`List of Tasks Performed (${allTasks.size} tasks)`, 15, y);
-    y += 7;
-
-    const taskTableHeaders = ['Task Name', 'Assigned Time', 'Actual Time', 'Status'];
-    const taskTableData = Array.from(allTasks.values()).map((task: any) => {
-      const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
-      const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
-
-      return [
-        task.title || 'Untitled Task',
-        formatMinutesForExport(assignedMinutes),
-        formatMinutesForExport(actualMinutes),
-        task.status || 'N/A'
-      ];
-    });
-
-    if (y + 20 > pageHeight - 15) {
-      doc.addPage();
-      y = 15;
-    }
-
-    autoTable(doc, {
-      startY: y,
-      head: [taskTableHeaders],
-      body: taskTableData,
-      theme: 'striped',
-      headStyles: { fillColor: [229, 231, 235], textColor: [17, 24, 39], fontStyle: 'bold' },
-      bodyStyles: { textColor: [75, 85, 99] },
-      columnStyles: {
-        0: { cellWidth: 70 },
-        1: { cellWidth: 35 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 40 }
-      },
-      margin: { left: 15, right: 15 },
-    });
-
-    y = (doc as any).lastAutoTable.finalY + 10;
-
-    // Fetch and display penalties
-    try {
-      let endDate: Date;
-      let startDate: Date;
-
-      if (useCustomRange && customStartDate && customEndDate) {
-        startDate = customStartDate;
-        endDate = customEndDate;
-      } else {
-        endDate = new Date();
-        startDate = subDays(endDate, dateRange);
-      }
-
-      const penaltiesResponse = await fetch('/api/staff-queries');
-      const usersResponse = await fetch('/api/users');
-
-      if (penaltiesResponse.ok && usersResponse.ok) {
-        const allQueries = await penaltiesResponse.json();
-        const allUsers = await usersResponse.json();
-        
-        // Filter by staff ID and date range
-        const penalties = allQueries.filter((query: any) => {
-          const queryDate = new Date(query.createdAt);
-          return query.staffId === parseInt(selectedStaff) && 
-                 queryDate >= startDate && 
-                 queryDate <= endDate;
-        });
-
-        if (y + 20 > pageHeight - 15) {
-          doc.addPage();
-          y = 15;
-        }
-
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Penalties', 15, y);
-        y += 7;
-
-        if (penalties.length > 0) {
-          const formatReason = (reason: string) => {
-            return reason.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-          };
-
-          const penaltyTableHeaders = ['Reason', 'Likely Penalty', 'Sent By', 'Status'];
-          const penaltyTableData = penalties.map((penalty: any) => [
-            formatReason(penalty.reason),
-            penalty.likelyPenalty || 'N/A',
-            penalty.senderId 
-              ? (allUsers.find((u: any) => u.id === penalty.senderId)?.name || 'Unknown')
-              : 'N/A',
-            penalty.status.charAt(0).toUpperCase() + penalty.status.slice(1)
-          ]);
-
-          autoTable(doc, {
-            startY: y,
-            head: [penaltyTableHeaders],
-            body: penaltyTableData,
-            theme: 'striped',
-            headStyles: { fillColor: [229, 231, 235], textColor: [17, 24, 39], fontStyle: 'bold' },
-            bodyStyles: { textColor: [75, 85, 99] },
-            columnStyles: {
-              0: { cellWidth: 50 },
-              1: { cellWidth: 50 },
-              2: { cellWidth: 45 },
-              3: { cellWidth: 35 }
-            },
-            margin: { left: 15, right: 15 },
-          });
-        } else {
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(11);
-          doc.text('No penalties recorded for this period.', 15, y);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching penalties:', error);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
-      doc.text('Error loading penalties.', 15, y);
-    }
-
-    doc.save(`Staff-Summary-Report-${selectedStaffMember.name.replace(/\s+/g, '-')}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
   return (
-    <div className="flex h-screen w-full">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar currentPath="/dashboard/kpi-report" />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto p-6 w-full">
-          <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">KPI Report</h1>
-                <p className="text-gray-600 mt-1">Employee performance and productivity tracking</p>
+                <h1 className="text-2xl font-bold text-gray-900">KPI Performance Report</h1>
+                <p className="text-gray-600">Analyze staff productivity and performance metrics</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-3">
                 {selectedStaff && productivityData && (
                   <Button
                     onClick={handleExportSingleUser}
@@ -1276,7 +995,7 @@ export default function KPIReportPage() {
                       />
                       <YAxis label={{ value: 'Hours', angle: -90, position: 'insideLeft' }} />
                       <Tooltip
-                        formatter={(value: number, name: string) => [
+                        formatter={(value: number) => [
                           `${value.toFixed(2)} hours`,
                           "Total Time Worked"
                         ]}
@@ -1368,415 +1087,135 @@ export default function KPIReportPage() {
 
                 {/* Tab 2: Productivity Score */}
                 <TabsContent value="score" className="space-y-4">
-                  <div className="mt-4">
-                    {/* Productivity Calculation - Moved to top */}
-                    <div className="mb-6 p-6 bg-blue-50 rounded-lg">
-                      <div className="text-center space-y-4">
-                        <div className="text-lg font-semibold text-gray-900">
-                          Productivity Calculation
-                        </div>
-                        <div className="flex items-center justify-center gap-2 text-xl">
-                          <span>Productivity % = </span>
-                          <span className="inline-flex items-center">
-                            (<span className="mx-1">
-                              {(() => {
-                                // Get all unique tasks from all days in the date range
-                                const allTasks = new Map();
-                                productivityData.dailyData.forEach((day: any) => {
-                                  if (day.taskBreakdown) {
-                                    day.taskBreakdown.forEach((task: any) => {
-                                      // Only add if not already in map (ensures uniqueness)
-                                      if (!allTasks.has(task.id)) {
-                                        allTasks.set(task.id, task);
-                                      }
-                                    });
-                                  }
-                                });
-                                const uniqueTasks = Array.from(allTasks.values());
-                                const totalAssigned = uniqueTasks.reduce((sum: number, task: any) =>
-                                  sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-                                return totalAssigned;
-                              })()}
-                            </span>)
-                          </span>
-                          <span>/</span>
-                          <span className="inline-flex items-center">
-                            (<span className="mx-1">
-                              {(() => {
-                                // Get all unique tasks from all days in the date range
-                                const allTasks = new Map();
-                                productivityData.dailyData.forEach((day: any) => {
-                                  if (day.taskBreakdown) {
-                                    day.taskBreakdown.forEach((task: any) => {
-                                      if (!allTasks.has(task.id)) {
-                                        allTasks.set(task.id, task);
-                                      }
-                                    });
-                                  }
-                                });
-                                const uniqueTasks = Array.from(allTasks.values());
-                                const totalActual = uniqueTasks.reduce((sum: number, task: any) =>
-                                  sum + Math.floor((task.timeSpent || 0) / 60), 0);
-                                return totalActual;
-                              })()}
-                            </span>)
-                          </span>
-                          <span>× 100 = </span>
-                          <span className="text-blue-600 font-bold">
-                            {(() => {
-                              const allTasks = new Map();
-                              productivityData.dailyData.forEach((day: any) => {
-                                if (day.taskBreakdown) {
-                                  day.taskBreakdown.forEach((task: any) => {
-                                    if (!allTasks.has(task.id)) {
-                                      allTasks.set(task.id, task);
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm font-medium">Productivity Overview</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Total Working Days</span>
+                            <span className="font-semibold">{productivityData.summary.totalDays}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Average Daily Hours</span>
+                            <span className="font-semibold">{formatTime(productivityData.summary.avgHoursPerDay)}</span>
+                          </div>
+                          <div className="pt-2 border-t">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium">Productivity Score</span>
+                              <span className="text-lg font-bold text-blue-600">
+                                {(() => {
+                                  const allTasks = new Map();
+                                  productivityData.dailyData.forEach((day: any) => {
+                                    if (day.taskBreakdown) {
+                                      day.taskBreakdown.forEach((task: any) => {
+                                        if (!allTasks.has(task.id)) {
+                                          allTasks.set(task.id, task);
+                                        }
+                                      });
                                     }
                                   });
-                                }
-                              });
-                              const uniqueTasks = Array.from(allTasks.values());
-                              const totalAssigned = uniqueTasks.reduce((sum: number, task: any) =>
-                                sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-                              const totalActual = uniqueTasks.reduce((sum: number, task: any) =>
-                                sum + Math.floor((task.timeSpent || 0) / 60), 0);
-                              const productivity = totalActual > 0 ? Math.round((totalAssigned / totalActual) * 100) : 0;
-                              return productivity;
-                            })()}%
-                          </span>
+                                  
+                                  const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
+                                    sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
+                                  const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
+                                    sum + Math.floor((task.timeSpent || 0) / 60), 0);
+                                  
+                                  return totalActualMinutes > 0 ? `${Math.round((totalAssignedMinutes / totalActualMinutes) * 100)}%` : "0%";
+                                })()}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 italic">
+                              Based on {
+                                (() => {
+                                  const allTasks = new Map();
+                                  productivityData.dailyData.forEach((day: any) => {
+                                    if (day.taskBreakdown) {
+                                      day.taskBreakdown.forEach((task: any) => {
+                                        if (!allTasks.has(task.id)) {
+                                          allTasks.set(task.id, task);
+                                        }
+                                      });
+                                    }
+                                  });
+                                  return allTasks.size;
+                                })()
+                              } unique tasks in this period.
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-center gap-2 text-sm text-gray-700">
-                          <span className="inline-flex items-center gap-1">
-                            ℹ️ This means the worker was
-                            <span className="font-semibold text-blue-600">
-                              {(() => {
-                                const allTasks = new Map();
-                                productivityData.dailyData.forEach((day: any) => {
-                                  if (day.taskBreakdown) {
-                                    day.taskBreakdown.forEach((task: any) => {
-                                      if (!allTasks.has(task.id)) {
-                                        allTasks.set(task.id, task);
-                                      }
-                                    });
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm font-medium">Task Efficiency Breakdown</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                          {(() => {
+                            const allTasks = new Map();
+                            productivityData.dailyData.forEach((day: any) => {
+                              if (day.taskBreakdown) {
+                                day.taskBreakdown.forEach((task: any) => {
+                                  if (!allTasks.has(task.id)) {
+                                    allTasks.set(task.id, task);
                                   }
                                 });
-                                const uniqueTasks = Array.from(allTasks.values());
-                                const totalAssigned = uniqueTasks.reduce((sum: number, task: any) =>
-                                  sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-                                const totalActual = uniqueTasks.reduce((sum: number, task: any) =>
-                                  sum + Math.floor((task.timeSpent || 0) / 60), 0);
-                                const productivity = totalActual > 0 ? Math.round((totalAssigned / totalActual) * 100) : 0;
-                                return productivity >= 100 ? "more efficient" : "less efficient";
-                              })()}
-                            </span>
-                            than expected.
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-600 mt-2">
-                          Showing unique tasks worked on within the selected date range
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Task Breakdown Table */}
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Task Name</TableHead>
-                          <TableHead>Assigned Time (min)</TableHead>
-                          <TableHead>Actual Time Spent (min)</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(() => {
-                          // Get all unique tasks from all days in the date range
-                          const allTasks = new Map();
-                          productivityData.dailyData.forEach((day: any) => {
-                            if (day.taskBreakdown) {
-                              day.taskBreakdown.forEach((task: any) => {
-                                // Use task.id as key to ensure uniqueness
-                                if (!allTasks.has(task.id)) {
-                                  allTasks.set(task.id, task);
-                                }
-                              });
-                            }
-                          });
-                          const uniqueTasks = Array.from(allTasks.values());
-
-                          // Sort tasks by title for consistent display
-                          uniqueTasks.sort((a: any, b: any) => a.title.localeCompare(b.title));
-
-                          return uniqueTasks.map((task: any) => {
-                            // Get assigned time in minutes
-                            const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
-                            // Get actual time spent in minutes (timeSpent is in seconds)
-                            const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
-
-                            // Format time display (e.g., "80 minutes (1hr 20m)")
-                            const formatTimeDisplay = (totalMinutes: number) => {
-                              if (totalMinutes === 0) return '0 minutes';
-                              const hours = Math.floor(totalMinutes / 60);
-                              const minutes = totalMinutes % 60;
-                              if (hours === 0) return `${minutes} minutes`;
-                              return `${totalMinutes} minutes (${hours}hr ${minutes}m)`;
-                            };
-
-                            // Determine status
-                            let status = 'On Time';
-                            let statusColor = 'bg-green-100 text-green-800';
-
-                            if (assignedMinutes > 0) {
-                              if (actualMinutes < assignedMinutes) {
-                                status = 'Early';
-                                statusColor = 'bg-blue-100 text-blue-800';
-                              } else if (actualMinutes > assignedMinutes) {
-                                status = 'Late';
-                                statusColor = 'bg-red-100 text-red-800';
                               }
+                            });
+
+                            const sortedTasks = Array.from(allTasks.values()).sort((a: any, b: any) => a.title.localeCompare(b.title));
+
+                            if (sortedTasks.length === 0) {
+                              return <p className="text-sm text-gray-500 italic">No tasks with start dates in this range.</p>;
                             }
 
-                            return (
-                              <TableRow key={task.id}>
-                                <TableCell className="font-medium">{task.title}</TableCell>
-                                <TableCell>{formatTimeDisplay(assignedMinutes)}</TableCell>
-                                <TableCell>{formatTimeDisplay(actualMinutes)}</TableCell>
-                                <TableCell>
-                                  <Badge className={statusColor}>
-                                    {status}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          });
-                        })()}
-                        <TableRow className="font-bold bg-gray-50">
-                          <TableCell>Total</TableCell>
-                          <TableCell>
-                            {(() => {
-                              const allTasks = new Map();
-                              productivityData.dailyData.forEach((day: any) => {
-                                if (day.taskBreakdown) {
-                                  day.taskBreakdown.forEach((task: any) => {
-                                    if (!allTasks.has(task.id)) {
-                                      allTasks.set(task.id, task);
-                                    }
-                                  });
-                                }
-                              });
-                              const uniqueTasks = Array.from(allTasks.values());
-                              const totalAssigned = uniqueTasks.reduce((sum: number, task: any) =>
-                                sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-                              return totalAssigned;
-                            })()}
-                          </TableCell>
-                          <TableCell>
-                            {(() => {
-                              const allTasks = new Map();
-                              productivityData.dailyData.forEach((day: any) => {
-                                if (day.taskBreakdown) {
-                                  day.taskBreakdown.forEach((task: any) => {
-                                    if (!allTasks.has(task.id)) {
-                                      allTasks.set(task.id, task);
-                                    }
-                                  });
-                                }
-                              });
-                              const uniqueTasks = Array.from(allTasks.values());
-                              const totalActual = uniqueTasks.reduce((sum: number, task: any) =>
-                                sum + Math.floor((task.timeSpent || 0) / 60), 0);
-                              return totalActual;
-                            })()}
-                          </TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                            return sortedTasks.map((task: any) => {
+                              const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
+                              const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
+                              const efficiency = actualMinutes > 0 ? Math.round((assignedMinutes / actualMinutes) * 100) : 0;
+                              
+                              return (
+                                <div key={task.id} className="text-sm border-b pb-2 last:border-0 last:pb-0">
+                                  <div className="flex justify-between font-medium mb-1">
+                                    <span className="truncate mr-2">{task.title}</span>
+                                    <span className={efficiency >= 100 ? "text-green-600" : "text-amber-600"}>
+                                      {efficiency}%
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-xs text-gray-500">
+                                    <span>Est: {task.workingHours}h {task.workingMinutes}m</span>
+                                    <span>Act: {Math.floor(actualMinutes / 60)}h {actualMinutes % 60}m</span>
+                                  </div>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 </TabsContent>
 
-                {/* Staff Summary Tab */}
-                <TabsContent value="summary">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle>Staff Summary</CardTitle>
-                          <CardDescription>
-                            Comprehensive performance overview for the selected period
-                          </CardDescription>
-                        </div>
-                        <Button
-                          onClick={handleExportStaffSummaryPDF}
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                        >
-                          <Download className="h-4 w-4" />
-                          Export as PDF
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      {/* Staff Information */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                          <div className="border-b pb-2">
-                            <h3 className="text-lg font-semibold text-gray-900">Staff Information</h3>
-                          </div>
-
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-gray-600">Name:</span>
-                              <span className="text-sm font-semibold text-gray-900">
-                                {selectedStaffMember?.name || 'N/A'}
-                              </span>
-                            </div>
-
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-gray-600">Average Hours Worked:</span>
-                              <span className="text-sm font-semibold text-gray-900">
-                                {formatTimeForExport((() => {
-                                  // Filter out days with excessive hours (> 9 hours = 540 minutes)
-                                  const validDays = productivityData.dailyData.filter(day => {
-                                    const totalMinutes = day.actualWorkHours * 60;
-                                    return totalMinutes <= 540;
-                                  });
-                                  
-                                  if (validDays.length === 0) return 0;
-                                  
-                                  const totalMinutes = validDays.reduce((sum, day) => sum + (day.actualWorkHours * 60), 0);
-                                  return totalMinutes / validDays.length / 60;
-                                })())}/day
-                              </span>
-                            </div>
-
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-gray-600">Productivity Score:</span>
-                              <span className={`text-sm font-semibold ${
-                                (() => {
-                                  const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
-                                    sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-                                  const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
-                                    sum + Math.floor((task.timeSpent || 0) / 60), 0);
-                                  const score = totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
-                                  return score >= 80 ? 'text-green-600' : score >= 60 ? 'text-yellow-600' : 'text-red-600';
-                                })()
-                              }`}>
-                                {(() => {
-                                  const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
-                                    sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-                                  const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
-                                    sum + Math.floor((task.timeSpent || 0) / 60), 0);
-                                  return totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
-                                })()}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div className="border-b pb-2">
-                            <h3 className="text-lg font-semibold text-gray-900">Performance Breakdown</h3>
-                          </div>
-
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-gray-600">Good Days:</span>
-                              <span className="text-sm font-semibold text-green-600">
-                                {productivityData.summary.goodDays}
-                              </span>
-                            </div>
-
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-gray-600">Fair Days:</span>
-                              <span className="text-sm font-semibold text-yellow-600">
-                                {productivityData.summary.fairDays}
-                              </span>
-                            </div>
-
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-gray-600">Poor Days:</span>
-                              <span className="text-sm font-semibold text-red-600">
-                                {productivityData.summary.poorDays}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tasks List */}
-                      <div className="space-y-4">
-                        <div className="border-b pb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            List of Tasks Performed ({allTasks.size} tasks)
-                          </h3>
-                        </div>
-
-                        <div className="border rounded-lg overflow-hidden">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Task Name</TableHead>
-                                <TableHead>Assigned Time</TableHead>
-                                <TableHead>Actual Time</TableHead>
-                                <TableHead>Status</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {Array.from(allTasks.values()).map((task: any) => {
-                                const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
-                                const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
-
-                                return (
-                                  <TableRow key={task.id}>
-                                    <TableCell className="font-medium">{task.title || 'Untitled Task'}</TableCell>
-                                    <TableCell>{formatMinutesForExport(assignedMinutes)}</TableCell>
-                                    <TableCell>{formatMinutesForExport(actualMinutes)}</TableCell>
-                                    <TableCell>
-                                      <Badge variant={
-                                        task.status === 'completed' ? 'default' : 'secondary'
-                                      }>
-                                        {task.status || 'N/A'}
-                                      </Badge>
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-
-                      {/* Penalties Section */}
-                      <PenaltiesSection 
-                        selectedStaff={selectedStaff}
-                        dateRange={dateRange}
-                        useCustomRange={useCustomRange}
-                        customStartDate={customStartDate}
-                        customEndDate={customEndDate}
-                      />
-                    </CardContent>
-                  </Card>
+                {/* Tab 3: Staff Summary */}
+                <TabsContent value="summary" className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <PenaltiesSection
+                      selectedStaff={selectedStaff}
+                      dateRange={dateRange}
+                      useCustomRange={useCustomRange}
+                      customStartDate={customStartDate}
+                      customEndDate={customEndDate}
+                    />
+                  </div>
                 </TabsContent>
               </Tabs>
             )}
-
-            {/* No Data State */}
-            {!selectedStaff && (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center py-8">
-                    <User className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Select an Employee</h3>
-                    <p className="text-gray-600">
-                      Choose a department and employee to view their KPI report and productivity data.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

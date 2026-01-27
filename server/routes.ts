@@ -1557,7 +1557,7 @@ export function registerRoutes(app: Express): Server {
           performanceColor: day.performanceColor,
           taskCount: validTasks.length, // Count of unique tasks worked on that day
           tasks: validTasks, // Only include valid task titles
-          taskDetails: Array.from(taskDetailsMap.values()), // Include all task details
+          taskBreakdown: Array.from(taskDetailsMap.values()), // Include task breakdown for the period
           workdayStart: day.workdayStart,
           workdayEnd: day.workdayEnd
         };
