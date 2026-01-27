@@ -236,7 +236,7 @@ export default function DeadlineExtensionRequestsPage() {
                           <TableHead>Project</TableHead>
                           <TableHead>Task</TableHead>
                           <TableHead>Current Deadline</TableHead>
-                          <TableHead>Requested Deadline</TableHead>
+                          <TableHead>Requested<br />Deadline</TableHead>
                           <TableHead>Reason</TableHead>
                           <TableHead>Submitted</TableHead>
                           <TableHead className="text-right min-w-[200px]">Actions</TableHead>
@@ -330,7 +330,7 @@ export default function DeadlineExtensionRequestsPage() {
                           <TableHead>Project</TableHead>
                           <TableHead>Task</TableHead>
                           <TableHead>Current Deadline</TableHead>
-                          <TableHead>Requested Deadline</TableHead>
+                          <TableHead>Requested<br />Deadline</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Decision Reason</TableHead>
                           <TableHead>Submitted</TableHead>
