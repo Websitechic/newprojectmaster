@@ -7648,10 +7648,10 @@ End of Report
       let requests;
 
       if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager" || user.role === "customer_support_officer") {
-        // Project managers see requests for their projects, operations managers and team leads see all requests
-        const whereCondition = user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager" || user.role === "customer_support_officer"
-          ? undefined // Operations managers, team leads, and CSOs see all requests
-          : eq(deadlineExtensionRequests.projectManagerId, user.id); // Project managers see only their projects
+        // Project managers and CSOs see requests for tasks they assigned, operations managers and team leads see all requests
+        const whereCondition = (user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "team_lead")
+          ? undefined // Operations managers and team leads see all requests
+          : eq(deadlineExtensionRequests.projectManagerId, user.id); // PMs and CSOs see only requests for tasks they assigned
 
         requests = await db
           .select({
