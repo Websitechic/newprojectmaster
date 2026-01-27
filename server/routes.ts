@@ -7832,8 +7832,6 @@ End of Report
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
       }
-        // Continue execution even if notification fails
-      }
 
       res.json({ success: true, requestId: newRequest.id });
     } catch (error) {
