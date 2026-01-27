@@ -616,10 +616,6 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs whitespace-nowrap border-green-200 w-full justify-center">
                         Completed
                       </Badge>
-                    ) : isDeadlineMissed ? (
-                      <Badge variant="destructive" className="bg-red-100 text-red-800 text-xs whitespace-nowrap border-red-200">
-                        Deadline Missed
-                      </Badge>
                     ) : stopGapAssignments[task.id] ? (
                       <div className="space-y-1">
                         <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs whitespace-nowrap">
