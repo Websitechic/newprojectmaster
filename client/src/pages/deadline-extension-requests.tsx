@@ -257,7 +257,7 @@ export default function DeadlineExtensionRequestsPage() {
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 text-gray-400" />
                                 {request.taskDeadline 
-                                  ? new Date(request.taskDeadline).toLocaleDateString()
+                                  ? new Date(request.taskDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                   : "No deadline"
                                 }
                               </div>
@@ -266,7 +266,7 @@ export default function DeadlineExtensionRequestsPage() {
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 text-gray-400" />
                                 {request.requestedDeadline 
-                                  ? new Date(request.requestedDeadline).toLocaleDateString()
+                                  ? new Date(request.requestedDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                   : "Not specified"
                                 }
                               </div>
@@ -352,7 +352,7 @@ export default function DeadlineExtensionRequestsPage() {
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 text-gray-400" />
                                 {request.taskDeadline 
-                                  ? new Date(request.taskDeadline).toLocaleDateString()
+                                  ? new Date(request.taskDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                   : "No deadline"
                                 }
                               </div>
@@ -361,7 +361,7 @@ export default function DeadlineExtensionRequestsPage() {
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 text-gray-400" />
                                 {request.requestedDeadline 
-                                  ? new Date(request.requestedDeadline).toLocaleDateString()
+                                  ? new Date(request.requestedDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                   : "Not specified"
                                 }
                               </div>
@@ -406,7 +406,7 @@ export default function DeadlineExtensionRequestsPage() {
                                       <Label className="font-medium">Current Deadline</Label>
                                       <p className="mt-1">
                                         {request.taskDeadline 
-                                          ? new Date(request.taskDeadline).toLocaleDateString()
+                                          ? new Date(request.taskDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                           : "No deadline"}
                                       </p>
                                     </div>
@@ -414,7 +414,7 @@ export default function DeadlineExtensionRequestsPage() {
                                       <Label className="font-medium">Requested Deadline</Label>
                                       <p className="mt-1">
                                         {request.requestedDeadline 
-                                          ? new Date(request.requestedDeadline).toLocaleDateString()
+                                          ? new Date(request.requestedDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                           : "Not specified"}
                                       </p>
                                     </div>
@@ -443,7 +443,7 @@ export default function DeadlineExtensionRequestsPage() {
                                       <div>
                                         <Label className="font-medium">Approved Deadline</Label>
                                         <p className="mt-1">
-                                          {new Date(request.approvedDeadline).toLocaleDateString()}
+                                          {new Date(request.approvedDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                       </div>
                                     )}
@@ -495,7 +495,7 @@ export default function DeadlineExtensionRequestsPage() {
                       <span className="text-gray-600">Current Deadline:</span>
                       <span className="ml-2 font-medium">
                         {selectedRequest.taskDeadline 
-                          ? new Date(selectedRequest.taskDeadline).toLocaleDateString()
+                          ? new Date(selectedRequest.taskDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                           : "No deadline"
                         }
                       </span>
