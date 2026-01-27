@@ -477,6 +477,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       icon: <Clock size={20} />,
       label: "Deadline Extension Requests",
       href: "/dashboard/deadline-extension-requests",
+      hasUpdate: indicators.extensionRequests,
       key: "operations-deadline-extension-requests",
     },
     {
@@ -577,6 +578,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       icon: <Clock size={20} />,
       label: "Deadline Extension Requests",
       href: "/dashboard/deadline-extension-requests",
+      hasUpdate: indicators.extensionRequests,
       key: "team-lead-deadline-extension-requests",
     },
     {

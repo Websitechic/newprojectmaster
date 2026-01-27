@@ -7810,7 +7810,7 @@ End of Report
         })
         .returning();
 
-      // Create notification for project manager
+      // Create notification for the person who assigned the task
       const [taskDetails] = await db
         .select({
           title: tasks.title,
@@ -7822,17 +7822,16 @@ End of Report
         .limit(1);
 
       try {
-        await db
-          .insert(notifications)
-          .values({
-            userId: project.managerId,
-            type: "task_updated", // Using existing type
-            content: `${user.name} has requested a deadline extension for task: ${taskDetails?.title || 'Unknown Task'}`,
-            referenceId: newRequest.id,
-            referenceType: "project",
-          });
+        await createNotification(
+          newRequest.projectManagerId,
+          "task_updated",
+          `${user.name} has requested a deadline extension for task: ${taskDetails?.title || 'Unknown Task'}`,
+          newRequest.id,
+          "project"
+        );
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
+      }
         // Continue execution even if notification fails
       }
 
