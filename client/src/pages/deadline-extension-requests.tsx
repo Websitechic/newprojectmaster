@@ -135,7 +135,9 @@ export default function DeadlineExtensionRequestsPage() {
 
     if (decisionType === "approved") {
       if (decisionForm.approvedDeadline) {
-        requestData.approvedDeadline = decisionForm.approvedDeadline;
+        // Parse the local datetime-local string (YYYY-MM-DDTHH:mm) and ensure it's treated as local time
+        const localDate = new Date(decisionForm.approvedDeadline);
+        requestData.approvedDeadline = localDate.toISOString();
       }
       if (decisionForm.approvedWorkingHours) {
         requestData.approvedWorkingHours = decisionForm.approvedWorkingHours;
@@ -235,7 +237,7 @@ export default function DeadlineExtensionRequestsPage() {
                           <TableHead>Staff Member</TableHead>
                           <TableHead>Project</TableHead>
                           <TableHead>Task</TableHead>
-                          <TableHead>Current Deadline</TableHead>
+                          <TableHead>New Deadline</TableHead>
                           <TableHead>Requested<br />Deadline</TableHead>
                           <TableHead>Reason</TableHead>
                           <TableHead>Submitted</TableHead>
@@ -329,7 +331,7 @@ export default function DeadlineExtensionRequestsPage() {
                           <TableHead>Staff Member</TableHead>
                           <TableHead>Project</TableHead>
                           <TableHead>Task</TableHead>
-                          <TableHead>Current Deadline</TableHead>
+                          <TableHead>New Deadline</TableHead>
                           <TableHead>Requested<br />Deadline</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Decision Reason</TableHead>
