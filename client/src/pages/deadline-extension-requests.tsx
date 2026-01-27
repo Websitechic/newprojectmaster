@@ -338,7 +338,7 @@ export default function DeadlineExtensionRequestsPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {requests.map((request) => (
+                        {processedRequests.map((request) => (
                           <TableRow key={request.id}>
                             <TableCell>
                               <div className="flex items-center gap-2">
