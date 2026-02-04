@@ -1661,18 +1661,32 @@ export default function KPIReportPage() {
                             <div className="flex justify-between items-center">
                               <span className="text-sm font-medium text-gray-600">Average Hours Worked:</span>
                               <span className="text-sm font-semibold text-gray-900">
-                                {formatTimeForExport((() => {
-                                  // Filter out days with excessive hours (> 9 hours = 540 minutes)
+                                {(() => {
+                                  // Filter out days with 0 hours and excessive hours (> 9 hours = 540 minutes)
                                   const validDays = productivityData.dailyData.filter(day => {
                                     const totalMinutes = day.actualWorkHours * 60;
-                                    return totalMinutes <= 540;
+                                    return totalMinutes > 0 && totalMinutes <= 540;
                                   });
-                                  
-                                  if (validDays.length === 0) return 0;
-                                  
-                                  const totalMinutes = validDays.reduce((sum, day) => sum + (day.actualWorkHours * 60), 0);
-                                  return totalMinutes / validDays.length / 60;
-                                })())}/day
+
+                                  // If no valid days, show 0
+                                  if (validDays.length === 0) {
+                                    return '0 hr 0m';
+                                  }
+
+                                  // Convert each valid day's Total Time Worked to minutes and sum
+                                  const totalMinutes = validDays.reduce((sum, day) => {
+                                    return sum + (day.actualWorkHours * 60);
+                                  }, 0);
+
+                                  // Divide by number of included days to get average minutes per day
+                                  const avgMinutesPerDay = totalMinutes / validDays.length;
+
+                                  // Convert to hours and minutes for display
+                                  const hours = Math.floor(avgMinutesPerDay / 60);
+                                  const minutes = Math.round(avgMinutesPerDay % 60);
+
+                                  return `${hours} hr ${minutes}m`;
+                                })()}/day
                               </span>
                             </div>
 
