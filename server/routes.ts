@@ -1565,7 +1565,8 @@ export function registerRoutes(app: Express): Server {
               timeSpent: task.timeSpent || 0,
               workingHours: task.workingHours || 0,
               workingMinutes: task.workingMinutes || 0,
-              isCompleted: task.status === 'completed'
+              isCompleted: task.status === 'completed',
+              status: task.status
             } : null;
           }).filter((t: any): t is any => !!t)
         };

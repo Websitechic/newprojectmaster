@@ -1526,17 +1526,37 @@ export default function KPIReportPage() {
                             };
 
                             // Determine status
-                            let status = 'On Time';
-                            let statusColor = 'bg-green-100 text-green-800';
+                            let status = task.status || 'N/A';
+                            let statusColor = 'bg-gray-100 text-gray-800';
 
-                            if (assignedMinutes > 0) {
-                              if (actualMinutes < assignedMinutes) {
-                                status = 'Early';
+                            // Map status to colors
+                            switch (status.toLowerCase()) {
+                              case 'completed':
+                                statusColor = 'bg-green-100 text-green-800';
+                                break;
+                              case 'in_progress':
+                              case 'in-progress':
                                 statusColor = 'bg-blue-100 text-blue-800';
-                              } else if (actualMinutes > assignedMinutes) {
-                                status = 'Late';
+                                status = 'In Progress';
+                                break;
+                              case 'review':
+                                statusColor = 'bg-yellow-100 text-yellow-800';
+                                break;
+                              case 'technical_support':
+                                statusColor = 'bg-purple-100 text-purple-800';
+                                status = 'Technical Support';
+                                break;
+                              case 'todo':
+                                statusColor = 'bg-gray-100 text-gray-800';
+                                status = 'To Do';
+                                break;
+                              case 'missed_deadline':
+                              case 'missed deadline':
                                 statusColor = 'bg-red-100 text-red-800';
-                              }
+                                status = 'Missed Deadline';
+                                break;
+                              default:
+                                statusColor = 'bg-gray-100 text-gray-800';
                             }
 
                             return (
