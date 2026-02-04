@@ -1423,7 +1423,8 @@ export function registerRoutes(app: Express): Server {
           tasks: [],
           taskDetails: [],
           workdayStart: null,
-          workdayEnd: null
+          workdayEnd: null,
+          taskIds: new Set() // Track task IDs worked on this day
         });
       });
 
@@ -1458,6 +1459,7 @@ export function registerRoutes(app: Express): Server {
           // Only add task title if not already in the list for this day
           if (!dailyData.tasks.includes(task.title)) {
             dailyData.tasks.push(task.title);
+            dailyData.taskIds.add(task.id);
           }
         }
       });
@@ -1467,28 +1469,17 @@ export function registerRoutes(app: Express): Server {
         dailyData.taskCount = dailyData.tasks.length;
       });
 
-      // Calculate total actual work hours per day from sessions
-      allSessions.forEach(session => {
-        if (!session.startTime) return;
-
-        const sessionDate = new Date(session.startTime);
-        const dateKey = sessionDate.toISOString().split('T')[0];
-
-        if (!dailyMap.has(dateKey)) return;
-
-        const dailyData = dailyMap.get(dateKey);
-
-        let sessionDuration = 0;
-        if (session.duration) {
-          sessionDuration = session.duration;
-        } else if (session.endTime === null) {
-          const now = new Date();
-          sessionDuration = Math.floor((now.getTime() - new Date(session.startTime).getTime()) / 1000);
-        }
-
-        if (sessionDuration > 0) {
-          dailyData.actualWorkHours += sessionDuration / 3600;
-        }
+      // Calculate total actual work hours per day from task timeSpent
+      // The user wants: "The total time worked for a particular day should be the sum of the time (gotten from the task timer) each task worked on that day"
+      dailyMap.forEach((dailyData) => {
+        let dailySeconds = 0;
+        dailyData.taskIds.forEach(taskId => {
+          const task = allTasksWorkedOn.find(t => t.id === taskId);
+          if (task && task.timeSpent) {
+            dailySeconds += task.timeSpent;
+          }
+        });
+        dailyData.actualWorkHours = dailySeconds / 3600;
       });
 
       // Calculate allocated time from tasks worked on (based on sessions, not task creation date)
