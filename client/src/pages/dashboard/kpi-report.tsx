@@ -820,7 +820,7 @@ export default function KPIReportPage() {
 
     const staffInfoData = [
       ['Name:', selectedStaffMember.name || 'N/A'],
-      ['Average Hours Worked:', avgHoursDisplay + '/day'],
+      ['Average Hours Worked:', avgHoursDisplay],
       ['Productivity Score:', (() => {
         const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
           sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
@@ -1719,7 +1719,7 @@ export default function KPIReportPage() {
                                   const minutes = Math.round(avgMinutesPerDay % 60);
 
                                   return `${hours} hr ${minutes}m`;
-                                })()}/day
+                                })()}
                               </span>
                             </div>
 
