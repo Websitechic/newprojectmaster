@@ -1453,6 +1453,7 @@ export function registerRoutes(app: Express): Server {
         if (!dailyMap.has(dateKey)) return;
 
         const dailyData = dailyMap.get(dateKey);
+        dailyData.taskIds = dailyData.taskIds || new Set<number>();
         const task = allTasksWorkedOn.find(t => t.id === session.taskId);
 
         if (task && task.title) {
@@ -1471,20 +1472,42 @@ export function registerRoutes(app: Express): Server {
 
       // Calculate total actual work hours per day from task timeSpent
       // The user wants: "The total time worked for a particular day should be the sum of the time (gotten from the task timer) each task worked on that day"
-      dailyMap.forEach((dailyData) => {
+      dailyMap.forEach((dailyData: any) => {
         let dailySeconds = 0;
-        dailyData.taskIds.forEach(taskId => {
-          const task = allTasksWorkedOn.find(t => t.id === taskId);
-          if (task && task.timeSpent) {
-            dailySeconds += task.timeSpent;
-          }
-        });
+        const taskIds = dailyData.taskIds as Set<number> | undefined;
+        if (taskIds) {
+          taskIds.forEach((taskId) => {
+            const task = (allTasksWorkedOn as any[]).find(t => t.id === taskId);
+            if (task && task.timeSpent) {
+              dailySeconds += task.timeSpent;
+            }
+          });
+        }
         dailyData.actualWorkHours = dailySeconds / 3600;
+
+        // Update performance status based on the new actualWorkHours
+        if (dailyData.totalSpanHours === 0 && dailyData.actualWorkHours > 0) {
+          dailyData.totalSpanHours = dailyData.actualWorkHours;
+        }
+
+        if (dailyData.actualWorkHours > 9) {
+          dailyData.performanceStatus = 'excessive_hours';
+          dailyData.performanceColor = '#B91C1C';
+        } else if (dailyData.actualWorkHours >= 4) {
+          dailyData.performanceStatus = 'good';
+          dailyData.performanceColor = '#10B981';
+        } else if (dailyData.actualWorkHours >= 2) {
+          dailyData.performanceStatus = 'fair';
+          dailyData.performanceColor = '#F59E0B';
+        } else {
+          dailyData.performanceStatus = 'poor';
+          dailyData.performanceColor = '#EF4444';
+        }
       });
 
       // Calculate allocated time from tasks worked on (based on sessions, not task creation date)
       // Group sessions by date to calculate allocated time per day
-      const allocatedTimeByDate = new Map();
+      const allocatedTimeByDate = new Map<string, Set<number>>();
       allSessions.forEach(session => {
         if (!session.startTime || !session.taskId) return;
 
@@ -1493,12 +1516,12 @@ export function registerRoutes(app: Express): Server {
 
         if (!dailyMap.has(dateKey)) return;
 
-        const task = allTasksWorkedOn.find(t => t.id === session.taskId);
+        const task = (allTasksWorkedOn as any[]).find(t => t.id === session.taskId);
         if (task) {
           if (!allocatedTimeByDate.has(dateKey)) {
-            allocatedTimeByDate.set(dateKey, new Set());
+            allocatedTimeByDate.set(dateKey, new Set<number>());
           }
-          allocatedTimeByDate.get(dateKey).add(task.id);
+          allocatedTimeByDate.get(dateKey)!.add(task.id);
         }
       });
 
@@ -1507,7 +1530,7 @@ export function registerRoutes(app: Express): Server {
         const dailyData = dailyMap.get(dateKey);
         if (dailyData) {
           taskIds.forEach(taskId => {
-            const task = allTasksWorkedOn.find(t => t.id === taskId);
+            const task = (allTasksWorkedOn as any[]).find(t => t.id === taskId);
             if (task) {
               const allocatedHours = (task.workingHours || 0) + ((task.workingMinutes || 0) / 60);
               if (allocatedHours > 0) {
@@ -1518,28 +1541,11 @@ export function registerRoutes(app: Express): Server {
         }
       });
 
-      // Calculate performance status
-      dailyMap.forEach((dailyData) => {
-        if (dailyData.totalSpanHours === 0 && dailyData.actualWorkHours > 0) {
-          dailyData.totalSpanHours = dailyData.actualWorkHours;
-        }
-
-        if (dailyData.actualWorkHours > 9) {
-          dailyData.performanceStatus = 'excessive';
-          dailyData.performanceColor = '#DC2626';
-        } else if (dailyData.actualWorkHours >= 4) {
-          dailyData.performanceStatus = 'good';
-          dailyData.performanceColor = '#10B981';
-        } else if (dailyData.actualWorkHours >= 2) {
-          dailyData.performanceStatus = 'fair';
-          dailyData.performanceColor = '#F59E0B';
-        }
-      });
-
       // Convert to array with taskBreakdown - ensure tasks array is properly populated
       // This matches the structure used by the Productivity Tracking page
-      const dailyData = Array.from(dailyMap.values()).map(day => {
-        const validTasks = day.tasks.filter(task => task && task.trim().length > 0);
+      const dailyData = Array.from(dailyMap.values()).map((day: any) => {
+        const tasksFromDay = (day.tasks || []) as any[];
+        const validTasks = tasksFromDay.filter((task: any) => task && typeof task === 'string' && task.trim().length > 0) as string[];
         return {
           date: day.date,
           totalSpanHours: day.totalSpanHours,
@@ -1550,7 +1556,18 @@ export function registerRoutes(app: Express): Server {
           tasks: validTasks, // Only include valid task titles
           taskDetails: Array.from(taskDetailsMap.values()), // Include all task details
           workdayStart: day.workdayStart,
-          workdayEnd: day.workdayEnd
+          workdayEnd: day.workdayEnd,
+          taskBreakdown: validTasks.map(title => {
+            const task = (allTasksWorkedOn as any[]).find(t => t.title === title);
+            return task ? {
+              id: task.id,
+              title: task.title,
+              timeSpent: task.timeSpent || 0,
+              workingHours: task.workingHours || 0,
+              workingMinutes: task.workingMinutes || 0,
+              isCompleted: task.status === 'completed'
+            } : null;
+          }).filter((t: any): t is any => !!t)
         };
       });
 
