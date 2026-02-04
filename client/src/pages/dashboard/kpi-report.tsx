@@ -1750,8 +1750,35 @@ export default function KPIReportPage() {
                             </TableHeader>
                             <TableBody>
                               {Array.from(allTasks.values()).map((task: any) => {
-                                const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
+                                  const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
                                 const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
+
+                                // Format status display
+                                let displayStatus = task.status || 'N/A';
+                                let statusVariant: "default" | "secondary" | "outline" | "destructive" = "secondary";
+
+                                switch (displayStatus.toLowerCase()) {
+                                  case 'completed':
+                                    statusVariant = "default";
+                                    break;
+                                  case 'missed_deadline':
+                                  case 'missed-deadline':
+                                  case 'missed deadline':
+                                  case 'pending':
+                                    displayStatus = 'Missed Deadline';
+                                    statusVariant = "destructive";
+                                    break;
+                                  case 'in_progress':
+                                  case 'in-progress':
+                                    displayStatus = 'In Progress';
+                                    break;
+                                  case 'todo':
+                                    displayStatus = 'To Do';
+                                    break;
+                                  case 'technical_support':
+                                    displayStatus = 'Technical Support';
+                                    break;
+                                }
 
                                 return (
                                   <TableRow key={task.id}>
@@ -1759,10 +1786,8 @@ export default function KPIReportPage() {
                                     <TableCell>{formatMinutesForExport(assignedMinutes)}</TableCell>
                                     <TableCell>{formatMinutesForExport(actualMinutes)}</TableCell>
                                     <TableCell>
-                                      <Badge variant={
-                                        task.status === 'completed' ? 'default' : 'secondary'
-                                      }>
-                                        {task.status || 'N/A'}
+                                      <Badge variant={statusVariant}>
+                                        {displayStatus}
                                       </Badge>
                                     </TableCell>
                                   </TableRow>
