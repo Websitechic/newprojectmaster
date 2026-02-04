@@ -806,15 +806,21 @@ export default function KPIReportPage() {
     // Calculate average hours (same as "Avg Hours" - excluding excessive hours)
     const validDays = productivityData.dailyData.filter(day => {
       const totalMinutes = day.actualWorkHours * 60;
-      return totalMinutes <= 540; // Exclude if > 9 hours
+      return totalMinutes > 0 && totalMinutes <= 540; // Exclude 0 and > 9 hours
     });
-    const avgHours = validDays.length > 0
-      ? validDays.reduce((sum, day) => sum + (day.actualWorkHours * 60), 0) / validDays.length / 60
-      : 0;
+
+    const totalMinutes = validDays.reduce((sum, day) => sum + (day.actualWorkHours * 60), 0);
+    const avgMinutesPerDay = validDays.length > 0 ? totalMinutes / validDays.length : 0;
+    
+    const avgHoursDisplay = (() => {
+      const h = Math.floor(avgMinutesPerDay / 60);
+      const m = Math.round(avgMinutesPerDay % 60);
+      return `${h} hr ${m}m`;
+    })();
 
     const staffInfoData = [
       ['Name:', selectedStaffMember.name || 'N/A'],
-      ['Average Hours Worked:', formatTimeForExport(avgHours) + '/day'],
+      ['Average Hours Worked:', avgHoursDisplay + '/day'],
       ['Productivity Score:', (() => {
         const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
           sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
@@ -867,11 +873,38 @@ export default function KPIReportPage() {
       const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
       const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
 
+      // Format status display (match Staff Summary tab logic)
+      let displayStatus = task.status || 'N/A';
+      switch (displayStatus.toLowerCase()) {
+        case 'missed_deadline':
+        case 'missed-deadline':
+        case 'missed deadline':
+        case 'pending':
+          displayStatus = 'Missed Deadline';
+          break;
+        case 'in_progress':
+        case 'in-progress':
+          displayStatus = 'In Progress';
+          break;
+        case 'todo':
+          displayStatus = 'To Do';
+          break;
+        case 'technical_support':
+          displayStatus = 'Technical Support';
+          break;
+        case 'completed':
+          displayStatus = 'Completed';
+          break;
+        default:
+          // Capitalize first letter of other statuses
+          displayStatus = displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1).replace(/_/g, ' ');
+      }
+
       return [
         task.title || 'Untitled Task',
         formatMinutesForExport(assignedMinutes),
         formatMinutesForExport(actualMinutes),
-        task.status || 'N/A'
+        displayStatus
       ];
     });
 
