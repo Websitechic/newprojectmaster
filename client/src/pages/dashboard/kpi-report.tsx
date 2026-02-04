@@ -1551,7 +1551,9 @@ export default function KPIReportPage() {
                                 status = 'To Do';
                                 break;
                               case 'missed_deadline':
+                              case 'missed-deadline':
                               case 'missed deadline':
+                              case 'pending':
                                 statusColor = 'bg-red-100 text-red-800';
                                 status = 'Missed Deadline';
                                 break;
