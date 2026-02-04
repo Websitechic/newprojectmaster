@@ -404,8 +404,10 @@ export default function KPIReportPage() {
     data.push(['Metric', 'Value']);
     data.push(['Total Working Days', productivityData.summary.totalDays]);
     data.push(['Average Daily Hours', formatTimeForExport((() => {
-      const totalMinutes = productivityData.dailyData.reduce((sum, day) => sum + (day.totalSpanHours * 60), 0);
-      return totalMinutes / productivityData.summary.totalDays / 60;
+      const validDays = productivityData.dailyData.filter(day => day.totalSpanHours > 0 && day.totalSpanHours <= 9);
+      if (validDays.length === 0) return 0;
+      const totalMinutes = validDays.reduce((sum, day) => sum + (day.totalSpanHours * 60), 0);
+      return totalMinutes / validDays.length / 60;
     })())]);
     data.push(['Good Performance Days', productivityData.summary.goodDays]);
     data.push(['Fair Performance Days', productivityData.summary.fairDays]);
@@ -614,8 +616,10 @@ export default function KPIReportPage() {
         data.push(['Metric', 'Value']);
         data.push(['Total Working Days', staffProductivityData.summary.totalDays]);
         data.push(['Average Daily Hours', formatTimeForExport((() => {
-          const totalMinutes = staffProductivityData.dailyData.reduce((sum: any, day: any) => sum + (day.totalSpanHours * 60), 0);
-          return totalMinutes / staffProductivityData.summary.totalDays / 60;
+          const validDays = staffProductivityData.dailyData.filter((day: any) => day.totalSpanHours > 0 && day.totalSpanHours <= 9);
+          if (validDays.length === 0) return 0;
+          const totalMinutes = validDays.reduce((sum: any, day: any) => sum + (day.totalSpanHours * 60), 0);
+          return totalMinutes / validDays.length / 60;
         })())]);
         data.push(['Good Performance Days', staffProductivityData.summary.goodDays]);
         data.push(['Fair Performance Days', staffProductivityData.summary.fairDays]);
@@ -1188,10 +1192,10 @@ export default function KPIReportPage() {
                         <p className="text-sm font-medium text-gray-600">Avg Hours</p>
                         <p className="text-2xl font-bold">
                           {(() => {
-                            // Filter out days with excessive hours (> 9 hours = 540 minutes)
+                            // Filter out days with 0 hours and excessive hours (> 9 hours = 540 minutes)
                             const validDays = productivityData.dailyData.filter(day => {
                               const totalMinutes = day.actualWorkHours * 60;
-                              return totalMinutes <= 540; // Exclude if > 9 hours
+                              return totalMinutes > 0 && totalMinutes <= 540;
                             });
 
                             // If no valid days, show 0
