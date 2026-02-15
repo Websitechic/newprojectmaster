@@ -44,11 +44,44 @@ export default function AuthPage() {
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Not implemented",
-      description: "Password reset functionality will be added soon.",
-      variant: "destructive",
-    });
+    if (!email) {
+      toast({
+        title: "Error",
+        description: "Please enter your email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: data.message || "Password reset email sent. Please check your inbox.",
+        });
+        setResetMode(false);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || data.error || "Failed to send reset email.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (resetMode) {
