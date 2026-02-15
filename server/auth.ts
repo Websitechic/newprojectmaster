@@ -213,6 +213,11 @@ export function setupAuth(app: Express) {
           console.log('User account deactivated:', username);
           return done(null, false, { message: "This account has been deactivated. Please contact an administrator." });
         }
+
+        if (user.mustSetPassword === true) {
+          console.log('User must set password first:', username);
+          return done(null, false, { message: "MUST_SET_PASSWORD" });
+        }
         
         console.log('User found, comparing password...');
         console.log('Stored password hash format:', {
@@ -435,6 +440,15 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).send("Authentication required");
+      }
+
+      const currentUser = req.user;
+      if (currentUser.role !== "operations_manager" && currentUser.role !== "team_lead" && currentUser.specialization !== "operations_manager") {
+        return res.status(403).send("Only operations managers and team leads can create accounts");
+      }
+
       const result = registerSchema.safeParse(req.body);
       if (!result.success) {
         return res
@@ -444,7 +458,6 @@ export function setupAuth(app: Express) {
 
       const { username, password, role, name, email, breakOneTime, specialization, productService, clientType, projectManagerType } = result.data;
 
-      // Check if user already exists
       const [existingUser] = await db
         .select()
         .from(users)
@@ -455,74 +468,109 @@ export function setupAuth(app: Express) {
         return res.status(400).send("Username already exists");
       }
 
-      // Validate break time for non-client users
       if (role !== "client") {
         if (!breakOneTime) {
           return res.status(400).send("Daily break time is required for staff and project managers");
         }
       }
 
-      // Validate project manager type
       if (role === "project_manager" && (!projectManagerType || !["main", "supervisor"].includes(projectManagerType))) {
         return res.status(400).send("Project manager type is required and must be either 'main' or 'supervisor'");
       }
 
-      // Hash the password
-      const hashedPassword = await crypto.hash(password);
+      const tempPassword = randomBytes(16).toString("hex");
+      const hashedPassword = await crypto.hash(tempPassword);
+      const setupToken = randomBytes(32).toString("hex");
 
-      // Prepare user data
       const userData: any = {
         username,
         password: hashedPassword,
         name,
         email,
         role: role as any,
-        status: UserStatus.ONLINE, // Set to online since they'll be logged in
+        status: UserStatus.OFFLINE,
         emailVerified: false,
         onboardingStatus: "not_onboarded",
+        mustSetPassword: true,
+        passwordSetupToken: setupToken,
         projectManagerType: role === "project_manager" ? projectManagerType : null,
       };
 
-      // Add specialization for staff and intern users
       if ((role === "staff" || role === "intern") && specialization) {
         userData.specialization = specialization as any;
       }
 
-      // Add client-specific fields
       if (role === "client") {
         if (productService) userData.productService = productService as any;
         if (clientType) userData.clientType = clientType as any;
       }
 
-      // Add break times for non-client users
       if (role !== "client") {
         if (breakOneTime) userData.breakOneTime = breakOneTime;
       }
 
-
-      // Create the new user
       const [newUser] = await db
         .insert(users)
         .values(userData)
         .returning();
 
-      // Log the user in after registration
-      req.login(newUser, (err) => {
-        if (err) {
-          return next(err);
-        }
-        return res.json({
-          message: "Registration successful",
-          user: {
-            id: newUser.id,
-            username: newUser.username,
-            role: newUser.role,
-            name: newUser.name
-          },
-        });
+      return res.json({
+        message: "Account created successfully. The user will need to set their password on first login.",
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          role: newUser.role,
+          name: newUser.name
+        },
+        setupToken: setupToken,
       });
     } catch (error) {
       next(error);
+    }
+  });
+
+  app.post("/api/setup-password", async (req, res) => {
+    try {
+      const { username, token, newPassword } = req.body;
+
+      if (!username || !token || !newPassword) {
+        return res.status(400).send("Username, token, and new password are required");
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).send("Password must be at least 6 characters");
+      }
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            sql`LOWER(${users.username}) = LOWER(${username})`,
+            eq(users.passwordSetupToken, token),
+            eq(users.mustSetPassword, true)
+          )
+        )
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).send("Invalid setup link or password has already been set");
+      }
+
+      const hashedPassword = await crypto.hash(newPassword);
+
+      await db
+        .update(users)
+        .set({
+          password: hashedPassword,
+          mustSetPassword: false,
+          passwordSetupToken: null,
+        })
+        .where(eq(users.id, user.id));
+
+      return res.json({ message: "Password set successfully. You can now log in." });
+    } catch (error) {
+      return res.status(500).send("Error setting up password");
     }
   });
   // Email verification endpoint

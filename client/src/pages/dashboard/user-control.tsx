@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Search, Edit, UserX, Clock, Briefcase, Award, AlertTriangle } from "lucide-react";
+import { Users, Search, Edit, UserX, Clock, Briefcase, Award, AlertTriangle, UserPlus, Copy, CheckCircle } from "lucide-react";
 
 interface UserData {
   id: number;
@@ -58,10 +58,24 @@ export default function UserControl() {
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [deactivatingUser, setDeactivatingUser] = useState<UserData | null>(null);
   const [activatingUser, setActivatingUser] = useState<UserData | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createdUserInfo, setCreatedUserInfo] = useState<{ username: string; setupToken: string } | null>(null);
+  const [copiedToken, setCopiedToken] = useState(false);
   const [formData, setFormData] = useState({
     role: "",
     specialization: "",
     breakOneTime: "",
+  });
+  const [createFormData, setCreateFormData] = useState({
+    username: "",
+    name: "",
+    email: "",
+    role: "staff",
+    specialization: "",
+    breakOneTime: "",
+    productService: "",
+    clientType: "",
+    projectManagerType: "",
   });
 
   const isAuthorized = user?.role === "team_lead" || user?.role === "operations_manager" || user?.specialization === "operations_manager";
@@ -147,6 +161,45 @@ export default function UserControl() {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: async (data: typeof createFormData) => {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          username: data.username,
+          password: "temporary",
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          specialization: (data.role === "staff" || data.role === "intern") ? data.specialization : undefined,
+          breakOneTime: data.role !== "client" ? data.breakOneTime : undefined,
+          productService: data.role === "client" ? data.productService : undefined,
+          clientType: data.role === "client" ? data.clientType : undefined,
+          projectManagerType: data.role === "project_manager" ? data.projectManagerType : undefined,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || "Failed to create user");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Success", description: "User account created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-control/users"] });
+      setCreatedUserInfo({
+        username: data.user.username,
+        setupToken: data.setupToken,
+      });
+      setShowCreateDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleEditUser = (userData: UserData) => {
     setEditingUser(userData);
     setFormData({
@@ -169,6 +222,53 @@ export default function UserControl() {
   const handleDeactivate = () => {
     if (!deactivatingUser) return;
     deactivateUserMutation.mutate(deactivatingUser.id);
+  };
+
+  const handleCreateUser = () => {
+    if (!createFormData.username || !createFormData.name || !createFormData.email) {
+      toast({ title: "Error", description: "Username, name, and email are required", variant: "destructive" });
+      return;
+    }
+    if (createFormData.role !== "client" && !createFormData.breakOneTime) {
+      toast({ title: "Error", description: "Break time is required for non-client users", variant: "destructive" });
+      return;
+    }
+    if ((createFormData.role === "staff" || createFormData.role === "intern") && !createFormData.specialization) {
+      toast({ title: "Error", description: "Specialization is required", variant: "destructive" });
+      return;
+    }
+    if (createFormData.role === "project_manager" && !createFormData.projectManagerType) {
+      toast({ title: "Error", description: "Project manager type is required", variant: "destructive" });
+      return;
+    }
+    if (createFormData.role === "client" && (!createFormData.productService || !createFormData.clientType)) {
+      toast({ title: "Error", description: "Product/Service and Client Type are required for clients", variant: "destructive" });
+      return;
+    }
+    createUserMutation.mutate(createFormData);
+  };
+
+  const handleCopyToken = () => {
+    if (createdUserInfo) {
+      navigator.clipboard.writeText(createdUserInfo.setupToken);
+      setCopiedToken(true);
+      toast({ title: "Copied", description: "Setup token copied to clipboard" });
+      setTimeout(() => setCopiedToken(false), 2000);
+    }
+  };
+
+  const resetCreateForm = () => {
+    setCreateFormData({
+      username: "",
+      name: "",
+      email: "",
+      role: "staff",
+      specialization: "",
+      breakOneTime: "",
+      productService: "",
+      clientType: "",
+      projectManagerType: "",
+    });
   };
 
   const filteredUsers = allUsers.filter((u: UserData) =>
@@ -219,6 +319,10 @@ export default function UserControl() {
                   Manage user roles, specializations, and account status
                 </p>
               </div>
+              <Button onClick={() => { resetCreateForm(); setShowCreateDialog(true); }} className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                Create New User
+              </Button>
             </div>
 
             <Card>
@@ -320,6 +424,190 @@ export default function UserControl() {
         </div>
       </div>
 
+      {/* Create User Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={(open) => { if (!open) setShowCreateDialog(false); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Create New User
+            </DialogTitle>
+            <DialogDescription>
+              Create a new account. The user will receive a setup token to set their own password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Username *</Label>
+              <Input
+                value={createFormData.username}
+                onChange={(e) => setCreateFormData({ ...createFormData, username: e.target.value })}
+                placeholder="Enter username"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
+              <Input
+                value={createFormData.name}
+                onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+                placeholder="Enter full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                value={createFormData.email}
+                onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                placeholder="Enter email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Role *</Label>
+              <Select value={createFormData.role} onValueChange={(value) => setCreateFormData({ ...createFormData, role: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {createFormData.role === "project_manager" && (
+              <div className="space-y-2">
+                <Label>Project Manager Type *</Label>
+                <Select value={createFormData.projectManagerType} onValueChange={(value) => setCreateFormData({ ...createFormData, projectManagerType: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="main">Main</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {(createFormData.role === "staff" || createFormData.role === "intern") && (
+              <div className="space-y-2">
+                <Label>Specialization *</Label>
+                <Select value={createFormData.specialization} onValueChange={(value) => setCreateFormData({ ...createFormData, specialization: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select specialization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {specializations.map((spec) => (
+                      <SelectItem key={spec.value} value={spec.value}>
+                        {spec.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {createFormData.role === "client" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Product/Service *</Label>
+                  <Select value={createFormData.productService} onValueChange={(value) => setCreateFormData({ ...createFormData, productService: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select product/service" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="website_development">Website Development</SelectItem>
+                      <SelectItem value="dpl_outright">DPL Outright</SelectItem>
+                      <SelectItem value="dpl_partnership">DPL Partnership</SelectItem>
+                      <SelectItem value="direct_marketing">Direct Marketing</SelectItem>
+                      <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Client Type *</Label>
+                  <Select value={createFormData.clientType} onValueChange={(value) => setCreateFormData({ ...createFormData, clientType: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select client type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="project_client">Project Client</SelectItem>
+                      <SelectItem value="support_maintenance_client">Support & Maintenance Client</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
+            {createFormData.role !== "client" && (
+              <div className="space-y-2">
+                <Label>Daily Break Time *</Label>
+                <Input
+                  type="time"
+                  value={createFormData.breakOneTime}
+                  onChange={(e) => setCreateFormData({ ...createFormData, breakOneTime: e.target.value })}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateUser} disabled={createUserMutation.isPending}>
+              {createUserMutation.isPending ? "Creating..." : "Create Account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Setup Token Result Dialog */}
+      <Dialog open={!!createdUserInfo} onOpenChange={(open) => { if (!open) setCreatedUserInfo(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle className="h-5 w-5" />
+              Account Created
+            </DialogTitle>
+            <DialogDescription>
+              The account for <strong>{createdUserInfo?.username}</strong> has been created. Share the setup token below with the user so they can set their password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Username</Label>
+              <Input value={createdUserInfo?.username || ""} readOnly />
+            </div>
+            <div className="space-y-2">
+              <Label>Password Setup Token</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={createdUserInfo?.setupToken || ""}
+                  readOnly
+                  className="font-mono text-xs"
+                />
+                <Button variant="outline" size="sm" onClick={handleCopyToken} className="shrink-0">
+                  {copiedToken ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The new user should go to the password setup page, enter their username and this token to set their password.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setCreatedUserInfo(null)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -392,6 +680,7 @@ export default function UserControl() {
         </DialogContent>
       </Dialog>
 
+      {/* Deactivate User Dialog */}
       <Dialog open={!!deactivatingUser} onOpenChange={(open) => !open && setDeactivatingUser(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -413,6 +702,8 @@ export default function UserControl() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Activate User Dialog */}
       <Dialog open={!!activatingUser} onOpenChange={(open) => !open && setActivatingUser(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>

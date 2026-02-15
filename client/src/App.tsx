@@ -42,6 +42,7 @@ import ClientSentimentTracker from "@/pages/dashboard/client-sentiment-tracker";
 import ProfilePage from "@/pages/dashboard/profile";
 import UserControl from "@/pages/dashboard/user-control";
 import AllUsersPage from "@/pages/all-users";
+import SetupPasswordPage from "@/pages/setup-password";
 
 import Memos from "@/pages/dashboard/memos";
 import StaffComplaints from "@/pages/dashboard/staff-complaints";
@@ -492,6 +493,9 @@ function Router() {
           </Route>
           <Route path="/all-users">
             <AllUsersPage />
+          </Route>
+          <Route path="/setup-password">
+            <SetupPasswordPage />
           </Route>
           <Route path="/">
             {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}

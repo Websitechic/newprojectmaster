@@ -141,6 +141,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("🔐 Client: Login error:", error);
       console.error("🔐 Client: Error message:", error.message);
       console.error("🔐 Client: Error stack:", error.stack);
+      if (error.message === "MUST_SET_PASSWORD") {
+        toast({
+          title: "Password Setup Required",
+          description: "You need to set your password first. Redirecting...",
+        });
+        window.location.href = "/setup-password";
+        return;
+      }
       toast({
         title: "Login Failed",
         description: error.message || "Invalid username or password",

@@ -90,6 +90,8 @@ export const users = pgTable("users", {
   clientType: text("client_type", {
     enum: ["project_client", "support_maintenance_client"]
   }),
+  mustSetPassword: boolean("must_set_password").default(false),
+  passwordSetupToken: text("password_setup_token"),
   lastActive: timestamp("last_active").defaultNow(),
   lastSeen: timestamp("last_seen").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
