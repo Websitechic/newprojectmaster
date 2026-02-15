@@ -179,7 +179,7 @@ export default function AuthPage() {
       <Card className="auth-form-container">
         <CardHeader className="text-center">
           <h1 className="text-2xl font-bold">
-            {isLogin ? "Login" : "Register"}
+            Login
           </h1>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -219,154 +219,20 @@ export default function AuthPage() {
                 </Button>
               </div>
             </div>
-            {!isLogin && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={(value: any) => setRole(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="client">Client</SelectItem>
-                      <SelectItem value="project_manager">Project Manager</SelectItem>
-                      <SelectItem value="product_owner">Product Owner</SelectItem>
-                      <SelectItem value="operations_manager">Operations Manager</SelectItem>
-                      <SelectItem value="team_lead">Team Lead</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="intern">Intern</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {role === "project_manager" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="projectManagerType">Project Manager Type *</Label>
-                    <Select
-                      value={formData.projectManagerType || ""}
-                      onValueChange={(value) => setFormData({ ...formData, projectManagerType: value })}
-                      required
-                    >
-                      <SelectTrigger id="projectManagerType">
-                        <SelectValue placeholder="Select project manager type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="main">Main</SelectItem>
-                        <SelectItem value="supervisor">Supervisor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {(role === "staff" || role === "intern") && (
-                  <div className="space-y-2">
-                    <Label htmlFor="specialization">Specialization</Label>
-                    <Select value={specialization} onValueChange={setSpecialization}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your specialization" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="automation">Automation</SelectItem>
-                        <SelectItem value="copywriting">Copy Writing</SelectItem>
-                        <SelectItem value="design">Design</SelectItem>
-                        <SelectItem value="media_buying">Media Buying</SelectItem>
-                        <SelectItem value="development">Development</SelectItem>
-                        <SelectItem value="community_manager">Community Manager</SelectItem>
-                        <SelectItem value="technical_support">Technical Support</SelectItem>
-                        <SelectItem value="replit_development">Replit Development</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {role === "client" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="productService">Product/Service</Label>
-                      <Select value={productService} onValueChange={setProductService}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select product/service" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="website_development">Website Development</SelectItem>
-                          <SelectItem value="dpl_outright">DPL Outright</SelectItem>
-                          <SelectItem value="dpl_partnership">DPL Partnership</SelectItem>
-                          <SelectItem value="direct_marketing">Direct Marketing</SelectItem>
-                          <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="clientType">Client Type</Label>
-                      <Select value={clientType} onValueChange={setClientType}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select client type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="project_client">Project Client</SelectItem>
-                          <SelectItem value="support_maintenance_client">Support & Maintenance Client</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-                {role !== "client" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="breakOneTime">Daily Break Time</Label>
-                      <Input
-                        id="breakOneTime"
-                        type="time"
-                        value={breakOneTime}
-                        onChange={(e) => setBreakOneTime(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-              </>
-            )}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full">
-              {isLogin ? "Login" : "Register"}
+              Login
             </Button>
             <div className="flex flex-col gap-2 w-full">
-              <div className="flex justify-between w-full">
+              <div className="flex justify-end w-full">
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setIsLogin(!isLogin)}
+                  onClick={() => setResetMode(true)}
                 >
-                  {isLogin ? "Need an account? Register" : "Already have an account? Login"}
+                  Forgot Password?
                 </Button>
-                {isLogin && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setResetMode(true)}
-                  >
-                    Forgot Password?
-                  </Button>
-                )}
               </div>
             </div>
           </CardFooter>
