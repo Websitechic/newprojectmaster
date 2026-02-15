@@ -604,15 +604,25 @@ export function setupAuth(app: Express) {
   // Request password reset endpoint
   app.post("/api/forgot-password", async (req, res) => {
     try {
-      const { email } = req.body;
+      const { email, username } = req.body;
+      
+      if (!email || !username) {
+        return res.status(400).json({ message: "Email and username are required" });
+      }
+
       const [user] = await db
         .select()
         .from(users)
-        .where(eq(users.email, email))
+        .where(
+          and(
+            eq(users.email, email),
+            sql`LOWER(${users.username}) = LOWER(${username})`
+          )
+        )
         .limit(1);
 
       if (!user) {
-        return res.status(400).json({ message: "No account found with this email" });
+        return res.status(400).json({ message: "No account found with this email and username combination" });
       }
 
       const token = randomBytes(32).toString("hex");

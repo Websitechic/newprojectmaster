@@ -57,7 +57,7 @@ export default function AuthPage() {
       const response = await fetch("/api/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, username }),
       });
 
       const data = await response.json();
@@ -93,6 +93,15 @@ export default function AuthPage() {
           </CardHeader>
           <form onSubmit={handleReset}>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-username">Username</Label>
+                <Input
+                  id="reset-username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
