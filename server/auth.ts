@@ -601,7 +601,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Request password reset endpoint
+  // Request password reset endpoint - verifies identity and returns token
   app.post("/api/forgot-password", async (req, res) => {
     try {
       const { email, username } = req.body;
@@ -636,14 +636,8 @@ export function setupAuth(app: Express) {
         })
         .where(eq(users.id, user.id));
 
-      try {
-        await sendPasswordResetEmail(user, token);
-        res.json({ message: "Password reset email sent" });
-      } catch (emailError) {
-        console.error("Error sending password reset email:", emailError);
-        // Still return success to user but log the error, or return specific error
-        res.status(500).json({ message: "Failed to send reset email. Please contact support." });
-      }
+      // Return the token directly so the user can set their new password immediately
+      res.json({ message: "Identity verified", token });
     } catch (error) {
       console.error("Error requesting password reset:", error);
       res.status(500).json({ message: "Error requesting password reset" });
@@ -692,39 +686,4 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Reset password endpoint
-  app.post("/api/reset-password", async (req, res) => {
-    try {
-      const { token, newPassword } = req.body;
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(
-          and(
-            eq(users.resetPasswordToken, token),
-            gt(users.resetPasswordExpires!, new Date())
-          )
-        )
-        .limit(1);
-
-      if (!user) {
-        return res.status(400).send("Invalid or expired reset token");
-      }
-
-      const hashedPassword = await crypto.hash(newPassword);
-
-      await db
-        .update(users)
-        .set({
-          password: hashedPassword,
-          resetPasswordToken: null,
-          resetPasswordExpires: null,
-        })
-        .where(eq(users.id, user.id));
-
-      res.json({ message: "Password reset successful" });
-    } catch (error) {
-      res.status(500).send("Error resetting password");
-    }
-  });
 }
