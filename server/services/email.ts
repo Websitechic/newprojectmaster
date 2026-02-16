@@ -19,8 +19,21 @@ const createTestAccount = async () => {
 
 let transporter: nodemailer.Transporter;
 
+// Use Gmail SMTP if credentials are provided, otherwise fallback to Ethereal
 export const initializeEmailService = async () => {
-  transporter = await createTestAccount();
+  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    console.log("📧 Initializing Gmail SMTP service...");
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD,
+      },
+    });
+  } else {
+    console.log("📧 Initializing Ethereal test email service...");
+    transporter = await createTestAccount();
+  }
 };
 
 export const sendVerificationEmail = async (user: User, token: string) => {

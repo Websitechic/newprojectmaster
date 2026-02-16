@@ -628,6 +628,7 @@ export function setupAuth(app: Express) {
       const token = randomBytes(32).toString("hex");
       const expires = new Date(Date.now() + 3600000); // 1 hour from now
 
+      // Update reset token and expiration
       await db
         .update(users)
         .set({
@@ -636,8 +637,17 @@ export function setupAuth(app: Express) {
         })
         .where(eq(users.id, user.id));
 
-      // Return the token directly so the user can set their new password immediately
-      res.json({ message: "Identity verified", token });
+      try {
+        await sendPasswordResetEmail(user, token);
+        res.json({ message: "Password reset email sent" });
+      } catch (emailError) {
+        console.error("Error sending password reset email:", emailError);
+        // Fallback for user experience if email fails
+        res.status(500).json({ 
+          message: "Failed to send reset email. Please contact support.",
+          debug_token: process.env.NODE_ENV !== 'production' ? token : undefined 
+        });
+      }
     } catch (error) {
       console.error("Error requesting password reset:", error);
       res.status(500).json({ message: "Error requesting password reset" });
