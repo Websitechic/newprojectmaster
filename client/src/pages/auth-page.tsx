@@ -70,12 +70,11 @@ export default function AuthPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setResetToken(data.token);
-        setResetStep("newPassword");
         toast({
-          title: "Identity Verified",
-          description: "Please enter your new password.",
+          title: "Email Sent",
+          description: "If an account matches those details, a reset link has been sent to your email.",
         });
+        setResetMode(false);
       } else {
         toast({
           title: "Error",
