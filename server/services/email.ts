@@ -37,7 +37,8 @@ export const initializeEmailService = async () => {
 };
 
 export const sendVerificationEmail = async (user: User, token: string) => {
-  const verificationUrl = `${process.env.APP_URL || 'http://localhost:5000'}/verify-email?token=${token}`;
+  const baseUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
+  const verificationUrl = `${baseUrl}/verify-email?token=${token}`;
 
   const info = await transporter.sendMail({
     from: '"ProjectHub" <noreply@projecthub.com>',
@@ -56,7 +57,8 @@ export const sendVerificationEmail = async (user: User, token: string) => {
 };
 
 export const sendPasswordResetEmail = async (user: User, token: string) => {
-  const resetUrl = `${process.env.APP_URL || 'http://localhost:5000'}/reset-password?token=${token}`;
+  const baseUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
+  const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
   const info = await transporter.sendMail({
     from: '"ProjectHub" <noreply@projecthub.com>',
