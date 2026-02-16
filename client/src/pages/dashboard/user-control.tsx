@@ -187,13 +187,14 @@ export default function UserControl() {
       return response.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Success", description: "User account created successfully" });
+      toast({ title: "Success", description: "User account created and setup email sent" });
       queryClient.invalidateQueries({ queryKey: ["/api/user-control/users"] });
       setCreatedUserInfo({
         username: data.user.username,
         setupToken: data.setupToken,
       });
       setShowCreateDialog(false);
+      resetCreateForm();
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -433,7 +434,7 @@ export default function UserControl() {
               Create New User
             </DialogTitle>
             <DialogDescription>
-              Create a new account. The user will receive a setup token to set their own password.
+              Create a new account. An email will be sent to the user with a link to set their own password.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -565,43 +566,22 @@ export default function UserControl() {
         </DialogContent>
       </Dialog>
 
-      {/* Setup Token Result Dialog */}
+      {/* Account Setup Email Notification Dialog */}
       <Dialog open={!!createdUserInfo} onOpenChange={(open) => { if (!open) setCreatedUserInfo(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md text-center">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
-              <CheckCircle className="h-5 w-5" />
+            <DialogTitle className="flex items-center justify-center gap-2 text-green-600">
+              <CheckCircle className="h-6 w-6" />
               Account Created
             </DialogTitle>
-            <DialogDescription>
-              The account for <strong>{createdUserInfo?.username}</strong> has been created. Share the setup token below with the user so they can set their password.
+            <DialogDescription className="text-base pt-2">
+              A setup link has been sent to <strong>{createdUserInfo?.username}</strong>'s email.
+              They can use that link to set their password and access the worktool.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Username</Label>
-              <Input value={createdUserInfo?.username || ""} readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label>Password Setup Token</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={createdUserInfo?.setupToken || ""}
-                  readOnly
-                  className="font-mono text-xs"
-                />
-                <Button variant="outline" size="sm" onClick={handleCopyToken} className="shrink-0">
-                  {copiedToken ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                The new user should go to the password setup page, enter their username and this token to set their password.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setCreatedUserInfo(null)}>
-              Done
+          <DialogFooter className="sm:justify-center">
+            <Button onClick={() => setCreatedUserInfo(null)} className="w-full sm:w-auto px-8">
+              Great, thanks!
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -9,7 +9,7 @@ import { users, type User as SelectUser, UserStatus } from "@db/schema";
 import { db } from "@db";
 import { eq, and, gt, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { sendVerificationEmail, sendPasswordResetEmail } from "./services/email";
+import { sendVerificationEmail, sendPasswordResetEmail, sendAccountSetupEmail } from "./services/email";
 
 const scryptAsync = promisify(scrypt);
 
@@ -514,8 +514,15 @@ export function setupAuth(app: Express) {
         .values(userData)
         .returning();
 
+      // Send account setup email
+      try {
+        await sendAccountSetupEmail(newUser, setupToken);
+      } catch (emailError) {
+        console.error("Error sending account setup email:", emailError);
+      }
+
       return res.json({
-        message: "Account created successfully. The user will need to set their password on first login.",
+        message: "Account created successfully. An email has been sent to the user to set their password.",
         user: {
           id: newUser.id,
           username: newUser.username,

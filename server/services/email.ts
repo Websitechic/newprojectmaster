@@ -73,6 +73,26 @@ export const sendPasswordResetEmail = async (user: User, token: string) => {
     `,
   });
 
-  console.log("Password reset email sent:", nodemailer.getTestMessageUrl(info));
+  console.log("Password reset email sent:", info.messageId);
+  return info;
+};
+
+export const sendAccountSetupEmail = async (user: User, token: string) => {
+  const baseUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
+  const setupUrl = `${baseUrl}/setup-password?token=${token}&username=${encodeURIComponent(user.username)}`;
+
+  const info = await transporter.sendMail({
+    from: '"wcdigital worktool app" <noreply@wcdigital.com>',
+    to: user.email,
+    subject: "Account Setup - wcdigital worktool app",
+    html: `
+      <h1>Welcome to wcdigital worktool app!</h1>
+      <p>An account has been created for you. Please click the link below to set your password and access your workspace:</p>
+      <a href="${setupUrl}">Set Up My Password</a>
+      <p>If you have any questions, please contact your administrator.</p>
+    `,
+  });
+
+  console.log("Account setup email sent:", info.messageId);
   return info;
 };
