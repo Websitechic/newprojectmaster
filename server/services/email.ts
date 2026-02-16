@@ -41,11 +41,11 @@ export const sendVerificationEmail = async (user: User, token: string) => {
   const verificationUrl = `${baseUrl}/verify-email?token=${token}`;
 
   const info = await transporter.sendMail({
-    from: '"ProjectHub" <noreply@projecthub.com>',
+    from: '"wcdigital worktool app" <noreply@wcdigital.com>',
     to: user.email,
     subject: "Verify your email address",
     html: `
-      <h1>Welcome to ProjectHub!</h1>
+      <h1>Welcome to wcdigital worktool app!</h1>
       <p>Please verify your email address by clicking the link below:</p>
       <a href="${verificationUrl}">Verify Email</a>
       <p>If you didn't create this account, you can safely ignore this email.</p>
@@ -61,7 +61,7 @@ export const sendPasswordResetEmail = async (user: User, token: string) => {
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
   const info = await transporter.sendMail({
-    from: '"ProjectHub" <noreply@projecthub.com>',
+    from: '"wcdigital worktool app" <noreply@wcdigital.com>',
     to: user.email,
     subject: "Reset your password",
     html: `
