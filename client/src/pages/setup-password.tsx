@@ -123,7 +123,18 @@ export default function SetupPasswordPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            <input type="hidden" name="username" value={username} />
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your username"
+                readOnly
+                className="bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+            
             <input type="hidden" name="token" value={token} />
             
             <div className="space-y-2">
