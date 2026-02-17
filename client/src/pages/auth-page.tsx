@@ -342,14 +342,7 @@ export default function AuthPage() {
             <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
               {loginMutation.isPending ? "Logging in..." : "Login"}
             </Button>
-            <div className="flex justify-between w-full">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => window.location.href = "/setup-password"}
-              >
-                Set Up Password
-              </Button>
+            <div className="flex justify-center w-full">
               <Button
                 type="button"
                 variant="ghost"
