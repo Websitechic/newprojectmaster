@@ -118,31 +118,14 @@ export default function SetupPasswordPage() {
           </div>
           <h1 className="text-2xl font-bold">Set Your Password</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Your account has been created. Please set your password to get started.
+            Welcome <strong>{username}</strong>! Please create your new password to get started.
           </p>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="token">Setup Token</Label>
-              <Input
-                id="token"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Paste the token provided by your manager"
-                required
-              />
-            </div>
+            <input type="hidden" name="username" value={username} />
+            <input type="hidden" name="token" value={token} />
+            
             <div className="space-y-2">
               <Label htmlFor="newPassword">New Password</Label>
               <div className="relative">
