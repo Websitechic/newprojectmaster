@@ -245,63 +245,77 @@ export default function Dashboard() {
   // Categorize tasks - moved before userTasks to avoid dependency issues
   const activeTask = (tasks ?? []).find((task) => task?.isTimerRunning && (user?.role === 'staff' || user?.role === 'intern' ? task.assigneeId === user?.id : true));
 
-  // Use appropriate task set based on user role
   const userTasks =
-    (user?.role === "staff" || user?.role === "intern" || user?.role === "product_owner"
+    user?.role === "staff" || user?.role === "intern" || user?.role === "product_owner"
       ? (tasks ?? []).filter((task) => task.assigneeId === user?.id)
-      : (tasks ?? [])
-    ).filter((task: Task) => {
-      // Exclude tasks where deadline is missed (status is "Deadline Missed" or handled by logic)
+      : (tasks ?? []);
+
+  const filteredUserTasks = userTasks.filter((task: Task) => {
+    // Apply search filter
+    if (taskSearchQuery) {
+      const query = taskSearchQuery.toLowerCase();
+      const matchesTitle = task.title.toLowerCase().includes(query);
+      
+      // Find assignee name
+      const assignee = (staff ?? []).find(s => s.id === task.assigneeId);
+      const matchesAssignee = assignee?.name.toLowerCase().includes(query);
+      
+      if (!matchesTitle && !matchesAssignee) {
+        return false;
+      }
+    }
+
+    // Apply date filter
+    if (date) {
+      const taskDate = task.startDate ? new Date(task.startDate) : (task.deadline ? new Date(task.deadline) : null);
+      if (!taskDate) return false;
+
+      if (date instanceof Date) {
+        if (!isSameDay(taskDate, date)) return false;
+      } else if (date.from && date.to) {
+        if (!isWithinInterval(taskDate, { start: startOfDay(date.from), end: endOfDay(date.to) })) return false;
+      } else if (date.from) {
+        if (!isSameDay(taskDate, date.from)) return false;
+      }
+    }
+    return true;
+  });
+
+  const tasksInProgress = (filteredUserTasks ?? []).filter(
+    (task) => {
       const isDeadlineMissed = !!(task.deadline &&
         new Date(task.deadline).getTime() < Date.now() &&
         task.status !== "completed" &&
         task.status !== "review");
-      
-      if (isDeadlineMissed) return false;
-
-      // Apply search filter
-      if (taskSearchQuery) {
-        const query = taskSearchQuery.toLowerCase();
-        const matchesTitle = task.title.toLowerCase().includes(query);
-        
-        // Find assignee name
-        const assignee = (staff ?? []).find(s => s.id === task.assigneeId);
-        const matchesAssignee = assignee?.name.toLowerCase().includes(query);
-        
-        if (!matchesTitle && !matchesAssignee) {
-          return false;
-        }
-      }
-
-      // Apply date filter
-      if (date) {
-        const taskDate = task.startDate ? new Date(task.startDate) : (task.deadline ? new Date(task.deadline) : null);
-        if (!taskDate) return false;
-
-        if (date instanceof Date) {
-          if (!isSameDay(taskDate, date)) return false;
-        } else if (date.from && date.to) {
-          if (!isWithinInterval(taskDate, { start: startOfDay(date.from), end: endOfDay(date.to) })) return false;
-        } else if (date.from) {
-          if (!isSameDay(taskDate, date.from)) return false;
-        }
-      }
-      return true;
-    });
-
-  const tasksInProgress = (userTasks ?? []).filter(
-    (task) => task.status === "in_progress"
+      return task.status === "in_progress" && !isDeadlineMissed;
+    }
   );
-  const pendingTasks = (userTasks ?? []).filter((task) => task.status === "pending"); // Changed to filter for 'pending' status
-  const todoTasks = (userTasks ?? []).filter((task) => task.status === "todo"); // Added filtering for 'todo' status
-  const tasksInReview = (userTasks ?? []).filter((task) => task.status === "review");
-  const technicalSupportTasks = (userTasks ?? []).filter(
+
+  const pendingTasks = (filteredUserTasks ?? []).filter((task) => {
+    const isDeadlineMissed = !!(task.deadline &&
+      new Date(task.deadline).getTime() < Date.now() &&
+      task.status !== "completed" &&
+      task.status !== "review");
+    return task.status === "pending" && !isDeadlineMissed;
+  });
+
+  const todoTasks = (filteredUserTasks ?? []).filter((task) => {
+    const isDeadlineMissed = !!(task.deadline &&
+      new Date(task.deadline).getTime() < Date.now() &&
+      task.status !== "completed" &&
+      task.status !== "review");
+    return task.status === "todo" && !isDeadlineMissed;
+  });
+
+  const tasksInReview = (filteredUserTasks ?? []).filter((task) => task.status === "review");
+
+  const technicalSupportTasks = (filteredUserTasks ?? []).filter(
     (task) => task.status === "technical_support",
   );
 
   // Calculate overall progress
-  const totalTasks = (userTasks ?? []).length;
-  const completedTasks = (userTasks ?? []).filter(
+  const totalTasks = (filteredUserTasks ?? []).length;
+  const completedTasks = (filteredUserTasks ?? []).filter(
     (task) => task.status === "completed",
   ).length;
   const overallProgress =
@@ -1469,53 +1483,41 @@ export default function Dashboard() {
                       </TabsList>
                     </div>
 
-                    <TabsContent value="active" className="mt-0">
-                      <TaskList
-                        tasks={
-                          user?.role === "staff" || user?.role === "intern"
-                            ? userTasks.filter((task) => {
-                                const matchesSearch = !taskSearchQuery || 
-                                  task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
-                                  (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
-                                return task?.assigneeId === user?.id &&
-                                  task?.status !== 'completed' && matchesSearch;
-                              })
-                            : userTasks.filter((task) => {
-                                const matchesSearch = !taskSearchQuery || 
-                                  task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
-                                  (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
-                                return task?.status !== 'completed' && matchesSearch;
-                              })
-                        }
-                        projectId={undefined}
-                        showNewTaskButton={false}
-                        showProjectInfo={true}
-                      />
-                    </TabsContent>
+                  <TabsContent value="active" className="mt-0">
+                    <TaskList
+                      tasks={
+                        user?.role === "staff" || user?.role === "intern"
+                          ? filteredUserTasks.filter((task) => {
+                              return task?.assigneeId === user?.id &&
+                                task?.status !== 'completed';
+                            })
+                          : filteredUserTasks.filter((task) => {
+                              return task?.status !== 'completed';
+                            })
+                      }
+                      projectId={undefined}
+                      showNewTaskButton={false}
+                      showProjectInfo={true}
+                    />
+                  </TabsContent>
 
-                    <TabsContent value="completed" className="mt-0">
-                      <TaskList
-                        tasks={
-                          user?.role === "staff" || user?.role === "intern"
-                            ? userTasks.filter((task) => {
-                                const matchesSearch = !taskSearchQuery || 
-                                  task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
-                                  (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
-                                return task?.assigneeId === user?.id &&
-                                  task?.status === 'completed' && matchesSearch;
-                              })
-                            : userTasks.filter((task) => {
-                                const matchesSearch = !taskSearchQuery || 
-                                  task?.title?.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
-                                  (staff?.find(s => s.id === task.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
-                                return task?.status === 'completed' && matchesSearch;
-                              })
-                        }
-                        projectId={undefined}
-                        showNewTaskButton={false}
-                        showProjectInfo={true}
-                      />
-                    </TabsContent>
+                  <TabsContent value="completed" className="mt-0">
+                    <TaskList
+                      tasks={
+                        user?.role === "staff" || user?.role === "intern"
+                          ? filteredUserTasks.filter((task) => {
+                              return task?.assigneeId === user?.id &&
+                                task?.status === 'completed';
+                            })
+                          : filteredUserTasks.filter((task) => {
+                              return task?.status === 'completed';
+                            })
+                      }
+                      projectId={undefined}
+                      showNewTaskButton={false}
+                      showProjectInfo={true}
+                    />
+                  </TabsContent>
                   </Tabs>
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
