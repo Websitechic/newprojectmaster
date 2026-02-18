@@ -476,11 +476,13 @@ export function registerRoutes(app: Express): Server {
     try {
       console.log("Fetching notifications for user:", user.id);
 
-        const userNotifications = await db
-          .select()
-          .from(notifications)
-          .where(and(eq(notifications.userId, user.id), sql`EXISTS (SELECT 1 FROM users WHERE users.id = ${notifications.userId} AND users.is_active = true)`))
-          .orderBy(desc(notifications.createdAt));
+      // Get all unread notifications for this user (filtering out notifications for inactive users)
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .innerJoin(users, eq(notifications.userId, users.id))
+        .where(and(eq(notifications.userId, user.id), eq(users.isActive, true)))
+        .orderBy(desc(notifications.createdAt));
 
       console.log(`Found ${userNotifications.length} notifications for user ${user.id}`);
 
@@ -1112,7 +1114,7 @@ export function registerRoutes(app: Express): Server {
     const staffAndCustomerSupportOfficers = await db
       .select()
       .from(users)
-      .where(whereCondition)
+      .where(and(whereCondition, eq(users.isActive, true)))
       .orderBy(desc(users.lastActive));
 
     res.json(staffAndCustomerSupportOfficers);
@@ -1134,7 +1136,7 @@ export function registerRoutes(app: Express): Server {
           specialization: users.specialization,
         })
         .from(users)
-        .where(eq(users.role, "staff"))
+        .where(and(eq(users.role, "staff"), eq(users.isActive, true)))
         .orderBy(asc(users.name));
 
       res.json(allUsers);
@@ -1165,7 +1167,7 @@ export function registerRoutes(app: Express): Server {
       const clients = await db
         .select()
         .from(users)
-        .where(eq(users.role, "client"))
+        .where(and(eq(users.role, "client"), eq(users.isActive, true)))
         .orderBy(desc(users.createdAt));
 
       res.json(clients);
@@ -1225,6 +1227,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
+      // Filter for active users who are not clients
       const allUsers = await db
         .select({
           id: users.id,
@@ -1234,7 +1237,7 @@ export function registerRoutes(app: Express): Server {
           specialization: users.specialization,
         })
         .from(users)
-        .where(ne(users.role, "client"))
+        .where(and(ne(users.role, "client"), eq(users.isActive, true)))
         .orderBy(asc(users.name));
 
       res.json(allUsers);
@@ -1310,34 +1313,34 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get single user details
-  app.get("/api/users/:id", async (req, res) => {
+  // Get all users (for staff report)
+  app.get("/api/users/staff", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     try {
-      const userId = parseInt(req.params.id);
-      const [user] = await db
+      const allStaff = await db
         .select({
           id: users.id,
           name: users.name,
           email: users.email,
           role: users.role,
           specialization: users.specialization,
+          status: users.status,
+          lastActive: users.lastActive,
         })
         .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
+        .where(and(
+          or(eq(users.role, "staff"), eq(users.role, "intern")),
+          eq(users.isActive, true)
+        ))
+        .orderBy(asc(users.name));
 
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      res.json(user);
+      res.json(allStaff);
     } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ error: "Failed to fetch user" });
+      console.error("Error fetching staff:", error);
+      res.status(500).json({ error: "Failed to fetch staff" });
     }
   });
 
@@ -2491,7 +2494,7 @@ End of Report
       const clients = await db
         .select()
         .from(users)
-        .where(eq(users.role, "client"))
+        .where(and(eq(users.role, "client"), eq(users.isActive, true)))
         .orderBy(desc(users.createdAt));
 
       res.json(clients);
@@ -5688,11 +5691,11 @@ End of Report
           "project"
         );
 
-        // Notify operations managers
-        const opsManagers = await db.select().from(users).where(and(eq(users.isActive, true), or(
-          eq(users.role, "operations_manager"),
-          eq(users.specialization, "operations_manager")
-        )));
+      // Filter for active users
+      const opsManagers = await db.select().from(users).where(and(eq(users.isActive, true), or(
+        eq(users.role, "operations_manager"),
+        eq(users.specialization, "operations_manager")
+      )));
         for (const manager of opsManagers) {
           if (manager.id !== user.id) {
             await createNotification(
@@ -8796,7 +8799,7 @@ End of Report
         })
         .from(projectMembers)
         .innerJoin(users, eq(projectMembers.userId, users.id))
-        .where(eq(projectMembers.projectId, projectId))
+        .where(and(eq(projectMembers.projectId, projectId), eq(users.isActive, true)))
         .orderBy(asc(users.name));
 
       res.json(members);
@@ -8885,7 +8888,8 @@ End of Report
       const projectTasks = await db
         .select()
         .from(tasks)
-        .where(eq(tasks.projectId, projectId))
+        .leftJoin(users, eq(tasks.assigneeId, users.id))
+        .where(and(eq(tasks.projectId, projectId), or(isNull(tasks.assigneeId), eq(users.isActive, true))))
         .orderBy(desc(tasks.updatedAt));
 
       res.json(projectTasks);
@@ -9272,7 +9276,7 @@ End of Report
         })
         .from(projectMembers)
         .innerJoin(users, eq(projectMembers.userId, users.id))
-        .where(eq(projectMembers.projectId, projectId))
+        .where(and(eq(projectMembers.projectId, projectId), eq(users.isActive, true)))
         .orderBy(asc(users.name));
 
       res.json(members);
