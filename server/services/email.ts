@@ -103,7 +103,25 @@ export const sendNotificationEmail = async (user: User, type: string, content: s
     return;
   }
 
-  const title = type.replace(/_/g, ' ').toUpperCase();
+  let title = type.replace(/_/g, ' ').toUpperCase();
+  
+  // Map specific types to more user-friendly titles
+  if (type === 'staff_query' || type === 'penalty') {
+    title = 'STAFF QUERY / PENALTY';
+  } else if (type === 'issue_report' || type === 'app_issue') {
+    title = 'APP ISSUE REPORT';
+  } else if (type === 'message' || type === 'direct_message') {
+    title = 'NEW DIRECT MESSAGE';
+  } else if (type === 'general_channel_message') {
+    title = 'GENERAL CHANNEL MESSAGE';
+  } else if (type === 'memo_received') {
+    title = 'NEW MEMO RECEIVED';
+  } else if (type === 'leave_application') {
+    title = 'LEAVE APPLICATION';
+  } else if (type === 'deadline_extension') {
+    title = 'DEADLINE EXTENSION REQUEST';
+  }
+
   const baseUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
 
   try {

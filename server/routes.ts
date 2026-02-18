@@ -5680,7 +5680,7 @@ End of Report
       try {
         await createNotification(
           parsedStaffId,
-          "task_assigned",
+          "staff_query",
           `You have received a staff query from ${user.name}: ${reason.replace(/_/g, ' ')}`,
           newQuery.id,
           "project"
@@ -5695,7 +5695,7 @@ End of Report
           if (manager.id !== user.id) {
             await createNotification(
               manager.id,
-              "task_assigned",
+              "staff_query",
               `New staff query issued to ${staffName} by ${user.name}: ${reason.replace(/_/g, ' ')}`,
               newQuery.id,
               "project"
@@ -6945,7 +6945,7 @@ End of Report
         for (const manager of managers) {
           await createNotification(
             manager.id,
-            "task_assigned",
+            "issue_report",
             `New issue report from ${user.name}: ${title}`,
             newReport.id,
             "project"
