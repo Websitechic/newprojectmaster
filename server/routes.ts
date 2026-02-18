@@ -55,7 +55,7 @@ import { format } from "date-fns";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { sendOneSignalNotification } from "./onesignal";
 import { sendNotificationEmail } from "./services/email";
-import { IVerifyOptions } from "passport";
+import { type IVerifyOptions } from "passport";
 
 // Helper function to create notifications
 async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
