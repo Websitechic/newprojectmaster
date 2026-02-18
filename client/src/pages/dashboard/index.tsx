@@ -251,6 +251,14 @@ export default function Dashboard() {
       ? (tasks ?? []).filter((task) => task.assigneeId === user?.id)
       : (tasks ?? [])
     ).filter((task: Task) => {
+      // Exclude tasks where deadline is missed (status is "Deadline Missed" or handled by logic)
+      const isDeadlineMissed = !!(task.deadline &&
+        new Date(task.deadline).getTime() < Date.now() &&
+        task.status !== "completed" &&
+        task.status !== "review");
+      
+      if (isDeadlineMissed) return false;
+
       // Apply search filter
       if (taskSearchQuery) {
         const query = taskSearchQuery.toLowerCase();
