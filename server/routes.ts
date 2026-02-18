@@ -54,6 +54,7 @@ import WebSocket from "ws";
 import { format } from "date-fns";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { sendOneSignalNotification } from "./onesignal";
+import { sendNotificationEmail } from "./services/email";
 import { IVerifyOptions } from "passport";
 
 // Helper function to create notifications
@@ -106,6 +107,16 @@ async function createNotification(userId: number, type: string, content: string,
       console.error(`   - Title: ${title}`);
       console.error(`   - Error:`, error instanceof Error ? error.message : error);
       console.error(`   - Stack:`, error instanceof Error ? error.stack : 'No stack trace');
+    }
+
+    // Send email notification
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user) {
+        await sendNotificationEmail(user, type, content);
+      }
+    } catch (error) {
+      console.error(`❌ Error sending notification email to user ${userId}:`, error);
     }
 
     // Send SSE notification if user is connected

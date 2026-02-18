@@ -96,3 +96,37 @@ export const sendAccountSetupEmail = async (user: User, token: string) => {
   console.log("Account setup email sent:", info.messageId);
   return info;
 };
+
+export const sendNotificationEmail = async (user: User, type: string, content: string) => {
+  if (!user.email) {
+    console.error(`❌ Cannot send notification email: User ${user.id} has no email address.`);
+    return;
+  }
+
+  const title = type.replace(/_/g, ' ').toUpperCase();
+  const baseUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
+
+  try {
+    const info = await transporter.sendMail({
+      from: '"wcdigital worktool app" <noreply@wcdigital.com>',
+      to: user.email,
+      subject: `Notification: ${title}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
+          <h2 style="color: #333;">${title}</h2>
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">${content}</p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 14px; color: #888;">
+            You are receiving this because you have a new notification in the wcdigital worktool app.
+          </p>
+          <a href="${baseUrl}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">View in App</a>
+        </div>
+      `,
+    });
+
+    console.log(`📧 Notification email sent to ${user.email}:`, info.messageId);
+    return info;
+  } catch (error) {
+    console.error(`❌ Failed to send notification email to ${user.email}:`, error);
+  }
+};
