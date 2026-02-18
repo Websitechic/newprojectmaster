@@ -37,6 +37,10 @@ export const initializeEmailService = async () => {
 };
 
 export const sendVerificationEmail = async (user: User, token: string) => {
+  if (user.isActive === false) {
+    console.log(`🚫 Skipping verification email for deactivated user ${user.id}`);
+    return;
+  }
   const baseUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
   const verificationUrl = `${baseUrl}/verify-email?token=${token}`;
 
@@ -57,6 +61,10 @@ export const sendVerificationEmail = async (user: User, token: string) => {
 };
 
 export const sendPasswordResetEmail = async (user: User, token: string) => {
+  if (user.isActive === false) {
+    console.log(`🚫 Skipping password reset email for deactivated user ${user.id}`);
+    return;
+  }
   const baseUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
@@ -78,6 +86,10 @@ export const sendPasswordResetEmail = async (user: User, token: string) => {
 };
 
 export const sendAccountSetupEmail = async (user: User, token: string) => {
+  if (user.isActive === false) {
+    console.log(`🚫 Skipping account setup email for deactivated user ${user.id}`);
+    return;
+  }
   const baseUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
   const setupUrl = `${baseUrl}/setup-password?token=${token}&username=${encodeURIComponent(user.username)}`;
 
@@ -98,6 +110,10 @@ export const sendAccountSetupEmail = async (user: User, token: string) => {
 };
 
 export const sendNotificationEmail = async (user: User, type: string, content: string) => {
+  if (user.isActive === false) {
+    console.log(`🚫 Skipping notification email for deactivated user ${user.id}`);
+    return;
+  }
   if (!user.email) {
     console.error(`❌ Cannot send notification email: User ${user.id} has no email address.`);
     return;
