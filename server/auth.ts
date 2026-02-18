@@ -272,11 +272,11 @@ export function setupAuth(app: Express) {
       const [user] = await db
         .select()
         .from(users)
-        .where(eq(users.id, id))
+        .where(and(eq(users.id, id), eq(users.isActive, true)))
         .limit(1);
       
       if (!user) {
-        console.log('User not found during deserialization, ID:', id);
+        console.log('User not found or inactive during deserialization, ID:', id);
         return done(null, false);
       }
       

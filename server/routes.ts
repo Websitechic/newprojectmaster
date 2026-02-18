@@ -347,6 +347,7 @@ export function registerRoutes(app: Express): Server {
           status: users.status,
         })
         .from(users)
+        .where(eq(users.isActive, true))
         .orderBy(asc(users.name));
 
       res.json(allUsers);
