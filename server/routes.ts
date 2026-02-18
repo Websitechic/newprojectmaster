@@ -60,9 +60,17 @@ import { type IVerifyOptions } from "passport";
 // Helper function to create notifications
 async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
   try {
-    // Only create notifications if the type is not 'message', 'reply', or 'general_channel_message'
+    // For message types, only send email notification (no in-app notification)
     if (type === 'message' || type === 'reply' || type === 'general_channel_message') {
-      console.log(`ℹ️ Notification of type "${type}" skipped for user ${userId} as per requirements.`);
+      console.log(`ℹ️ In-app notification of type "${type}" skipped for user ${userId}, but email will be sent.`);
+      try {
+        const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        if (user) {
+          await sendNotificationEmail(user, type, content);
+        }
+      } catch (emailError) {
+        console.error(`❌ Error sending email for ${type} to user ${userId}:`, emailError);
+      }
       return;
     }
 
@@ -4758,7 +4766,7 @@ End of Report
         });
       }
 
-      // Send OneSignal push notifications to all users (except sender)
+      // Send OneSignal push notifications and email to all users (except sender)
       console.log(`\n========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW ==========`);
       console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
       console.log(`📧 Message: ${content.substring(0, 50)}...`);
@@ -4781,6 +4789,21 @@ End of Report
             content.substring(0, 100) + (content.length > 100 ? '...' : '')
           );
           console.log(`✅ OneSignal push sent to ${recipientIds.length} users`);
+
+          // Send email notifications for general channel messages
+          for (const recipientId of recipientIds) {
+            try {
+              await createNotification(
+                recipientId,
+                "general_channel_message",
+                `${sender.name} posted in General Channel: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
+                newMessage.id,
+                "message"
+              );
+            } catch (emailErr) {
+              console.error(`❌ Email for general channel to user ${recipientId} failed:`, emailErr);
+            }
+          }
         }
       } catch (oneSignalError) {
         console.error(`❌ OneSignal general channel notification failed:`, oneSignalError);
@@ -5652,6 +5675,37 @@ End of Report
         .returning();
 
       console.log("Staff query created successfully:", newQuery);
+
+      // Notify the staff member about the query/penalty
+      try {
+        await createNotification(
+          parsedStaffId,
+          "task_assigned",
+          `You have received a staff query from ${user.name}: ${reason.replace(/_/g, ' ')}`,
+          newQuery.id,
+          "project"
+        );
+
+        // Notify operations managers
+        const opsManagers = await db.select().from(users).where(or(
+          eq(users.role, "operations_manager"),
+          eq(users.specialization, "operations_manager")
+        ));
+        for (const manager of opsManagers) {
+          if (manager.id !== user.id) {
+            await createNotification(
+              manager.id,
+              "task_assigned",
+              `New staff query issued to ${staffName} by ${user.name}: ${reason.replace(/_/g, ' ')}`,
+              newQuery.id,
+              "project"
+            );
+          }
+        }
+      } catch (notificationError) {
+        console.error("Error creating staff query notifications:", notificationError);
+      }
+
       res.json({ success: true, queryId: newQuery.id });
     } catch (error) {
       console.error("Error creating staff query:", error);
@@ -5937,15 +5991,13 @@ End of Report
           ));
 
         for (const manager of operationsManagers) {
-          await db
-            .insert(notifications)
-            .values({
-              userId: manager.id,
-              type: "task_assigned", // Using existing type
-              content: `New staff complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
-              referenceId: newComplaint.id,
-              referenceType: "project",
-            });
+          await createNotification(
+            manager.id,
+            "task_assigned",
+            `New staff complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
+            newComplaint.id,
+            "complaint"
+          );
         }
       } catch (notificationError) {
         console.error("Error creating staff complaint notifications:", notificationError);
@@ -6249,6 +6301,53 @@ End of Report
           sentBy: user.id,
         })
         .returning();
+
+      // Send notifications to memo recipients
+      try {
+        if (type === "general") {
+          const allStaff = await db.select().from(users).where(ne(users.id, user.id));
+          for (const staffMember of allStaff) {
+            await createNotification(
+              staffMember.id,
+              "memo_received",
+              `New memo from ${user.name}: "${title}"`,
+              newMemo.id,
+              "memo"
+            );
+          }
+        } else if (type === "individual" && Array.isArray(recipients)) {
+          for (const recipientId of recipients) {
+            if (typeof recipientId === 'number' && recipientId !== user.id) {
+              await createNotification(
+                recipientId,
+                "memo_received",
+                `New memo from ${user.name}: "${title}"`,
+                newMemo.id,
+                "memo"
+              );
+            }
+          }
+        } else if (type === "department" && Array.isArray(recipients)) {
+          const deptUsers = await db.select().from(users).where(ne(users.id, user.id));
+          for (const deptUser of deptUsers) {
+            const matchesDept = recipients.includes("all_staff") ||
+              (deptUser.specialization && recipients.includes(deptUser.specialization)) ||
+              (deptUser.role === "project_manager" && recipients.includes("project_managers")) ||
+              (deptUser.role === "product_owner" && recipients.includes("product_owners"));
+            if (matchesDept) {
+              await createNotification(
+                deptUser.id,
+                "memo_received",
+                `New department memo from ${user.name}: "${title}"`,
+                newMemo.id,
+                "memo"
+              );
+            }
+          }
+        }
+      } catch (notificationError) {
+        console.error("Error creating memo notifications:", notificationError);
+      }
 
       res.json({ success: true, memoId: newMemo.id });
     } catch (error) {
@@ -6667,6 +6766,19 @@ End of Report
           console.error(`❌ OneSignal push failed:`, error);
         }
 
+        // Send email notification for direct message
+        try {
+          await createNotification(
+            parseInt(receiverId),
+            "message",
+            `${user.name} sent you a message: ${messageContent.substring(0, 100)}${messageContent.length > 100 ? '...' : ''}`,
+            newMessage.id,
+            "message"
+          );
+        } catch (emailError) {
+          console.error(`❌ Email notification for DM failed:`, emailError);
+        }
+
         console.log(`========== DIRECT MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);
       } else {
         console.log(`⏸️ Skipping notification - sender and receiver are the same user`);
@@ -6831,15 +6943,13 @@ End of Report
           ));
 
         for (const manager of managers) {
-          await db
-            .insert(notifications)
-            .values({
-              userId: manager.id,
-              type: "task_assigned", // Using existing type
-              content: `New issue report from ${user.name}: ${title}`,
-              referenceId: newReport.id,
-              referenceType: "project",
-            });
+          await createNotification(
+            manager.id,
+            "task_assigned",
+            `New issue report from ${user.name}: ${title}`,
+            newReport.id,
+            "project"
+          );
         }
       } catch (notificationError) {
         console.error("Error creating issue report notifications:", notificationError);
@@ -6906,15 +7016,13 @@ End of Report
       // Create notification for the reporter
       if (existingReport.submitterId) {
         try {
-          await db
-            .insert(notifications)
-            .values({
-              userId: existingReport.submitterId,
-              type: "task_updated",
-              content: `Your issue report "${existingReport.title}" has been updated to ${status}`,
-              referenceId: reportId,
-              referenceType: "project",
-            });
+          await createNotification(
+            existingReport.submitterId,
+            "task_updated",
+            `Your issue report "${existingReport.title}" has been updated to ${status}`,
+            reportId,
+            "project"
+          );
         } catch (notificationError) {
           console.error("Error creating notification for issue report update:", notificationError);
         }
@@ -7168,26 +7276,42 @@ End of Report
         })
         .returning();
 
-      // Broadcast to all participants via SSE
-      if (global.sseClients && participants && Array.isArray(participants)) {
-        participants.forEach((participantId: number) => {
-          const client = global.sseClients.get(participantId);
-          if (client && !client.writableEnded) {
+      // Broadcast to all participants via SSE and send notifications
+      if (participants && Array.isArray(participants)) {
+        for (const participantId of participants) {
+          if (participantId !== user.id) {
             try {
-              client.write(`data: ${JSON.stringify({
-                type: 'booking_created',
-                booking: {
-                  ...newBooking,
-                  schedulerName: user.name
-                }
-              })}\n\n`);
-              console.log(`📅 Booking notification sent to participant ${participantId}`);
-            } catch (error) {
-              console.error(`Error broadcasting booking to participant ${participantId}:`, error);
-              global.sseClients.delete(participantId);
+              await createNotification(
+                participantId,
+                "task_assigned",
+                `${user.name} has scheduled a ${type.replace(/_/g, ' ')}: "${title}"`,
+                newBooking.id,
+                "project"
+              );
+            } catch (notifError) {
+              console.error(`Error creating booking notification for participant ${participantId}:`, notifError);
             }
           }
-        });
+
+          if (global.sseClients) {
+            const client = global.sseClients.get(participantId);
+            if (client && !client.writableEnded) {
+              try {
+                client.write(`data: ${JSON.stringify({
+                  type: 'booking_created',
+                  booking: {
+                    ...newBooking,
+                    schedulerName: user.name
+                  }
+                })}\n\n`);
+                console.log(`📅 Booking notification sent to participant ${participantId}`);
+              } catch (error) {
+                console.error(`Error broadcasting booking to participant ${participantId}:`, error);
+                global.sseClients.delete(participantId);
+              }
+            }
+          }
+        }
       }
 
       res.json({ success: true, bookingId: newBooking.id });
@@ -7941,18 +8065,15 @@ End of Report
 
       // Create notification for the requester
       try {
-        await db
-          .insert(notifications)
-          .values({
-            userId: existingRequest.requesterId,
-            type: "task_updated",
-            content: `Your deadline extension request has been ${status}. Reason: ${decisionReason}`,
-            referenceId: requestId,
-            referenceType: "project",
-          });
+        await createNotification(
+          existingRequest.requesterId,
+          "task_updated",
+          `Your deadline extension request has been ${status}. Reason: ${decisionReason}`,
+          requestId,
+          "project"
+        );
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
-        // Continue execution even if notification fails
       }
 
       res.json({ success: true, request: updatedRequest });
@@ -8199,15 +8320,13 @@ End of Report
           ));
 
         for (const manager of operationsManagers) {
-          await db
-            .insert(notifications)
-            .values({
-              userId: manager.id,
-              type: "task_assigned", // Using existing type
-              content: `New client complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
-              referenceId: newComplaint.id,
-              referenceType: "project", // Using a general type
-            });
+          await createNotification(
+            manager.id,
+            "task_assigned",
+            `New client complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
+            newComplaint.id,
+            "complaint"
+          );
         }
 
         console.log(`Notifications sent to ${operationsManagers.length} operations managers`);
@@ -8376,18 +8495,38 @@ End of Report
 
       for (const pm of projectManagers) {
         try {
-          await db
-            .insert(notifications)
-            .values({
-              userId: pm.id,
-              type: "task_assigned", // Using existing type
-              content: `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
-              referenceId: newApplication.id,
-              referenceType: "leave_application", // Using a more specific type
-            });
+          await createNotification(
+            pm.id,
+            "task_assigned",
+            `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
+            newApplication.id,
+            "project"
+          );
         } catch (notificationError) {
           console.error("Error creating notification:", notificationError);
-          // Continue execution even if notification fails
+        }
+      }
+
+      // Also notify operations managers
+      const opsManagers = await db
+        .select()
+        .from(users)
+        .where(or(
+          eq(users.role, "operations_manager"),
+          eq(users.specialization, "operations_manager")
+        ));
+
+      for (const manager of opsManagers) {
+        try {
+          await createNotification(
+            manager.id,
+            "task_assigned",
+            `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
+            newApplication.id,
+            "project"
+          );
+        } catch (notificationError) {
+          console.error("Error creating notification:", notificationError);
         }
       }
 
@@ -8510,18 +8649,15 @@ End of Report
 
       // Create notification for the applicant
       try {
-        await db
-          .insert(notifications)
-          .values({
-            userId: updatedApplication.userId,
-            type: "task_updated", // Using existing type
-            content: `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
-            referenceId: updatedApplication.id,
-            referenceType: "leave_application", // Using a more specific type
-          });
+        await createNotification(
+          updatedApplication.userId,
+          "task_updated",
+          `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
+          updatedApplication.id,
+          "project"
+        );
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
-        // Continue execution even if notification fails
       }
 
       res.json({ success: true, application: updatedApplication });
