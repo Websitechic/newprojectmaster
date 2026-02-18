@@ -64,7 +64,7 @@ async function createNotification(userId: number, type: string, content: string,
     if (type === 'message' || type === 'reply' || type === 'general_channel_message') {
       console.log(`ℹ️ In-app notification of type "${type}" skipped for user ${userId}, but email will be sent.`);
       try {
-        const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        const [user] = await db.select().from(users).where(and(eq(users.id, userId), eq(users.isActive, true))).limit(1);
         if (user) {
           await sendNotificationEmail(user, type, content);
         }
@@ -119,7 +119,7 @@ async function createNotification(userId: number, type: string, content: string,
 
     // Send email notification
     try {
-      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const [user] = await db.select().from(users).where(and(eq(users.id, userId), eq(users.isActive, true))).limit(1);
       if (user) {
         await sendNotificationEmail(user, type, content);
       }
@@ -274,7 +274,7 @@ export function registerRoutes(app: Express): Server {
       const result = await db.execute(sql`SELECT 1 as test, NOW() as server_time`);
       
       // Count users to verify table access
-      const userCount = await db.select({ count: sql`count(*)` }).from(users);
+      const userCount = await db.select({ count: sql`count(*)` }).from(users).where(eq(users.isActive, true));
       
       res.json({
         status: 'connected',
@@ -408,7 +408,8 @@ export function registerRoutes(app: Express): Server {
         userTasks = await db
           .select()
           .from(tasks)
-          .where(eq(tasks.assigneeId, user.id))
+          .innerJoin(users, eq(tasks.assigneeId, users.id))
+          .where(and(eq(tasks.assigneeId, user.id), eq(users.isActive, true)))
           .orderBy(desc(tasks.updatedAt));
           
         // If they are a role that should see ALL tasks, we should actually fetch ALL tasks
@@ -475,11 +476,11 @@ export function registerRoutes(app: Express): Server {
     try {
       console.log("Fetching notifications for user:", user.id);
 
-      const userNotifications = await db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.userId, user.id))
-        .orderBy(desc(notifications.createdAt));
+        const userNotifications = await db
+          .select()
+          .from(notifications)
+          .where(and(eq(notifications.userId, user.id), sql`EXISTS (SELECT 1 FROM users WHERE users.id = ${notifications.userId} AND users.is_active = true)`))
+          .orderBy(desc(notifications.createdAt));
 
       console.log(`Found ${userNotifications.length} notifications for user ${user.id}`);
 
@@ -5688,10 +5689,10 @@ End of Report
         );
 
         // Notify operations managers
-        const opsManagers = await db.select().from(users).where(or(
+        const opsManagers = await db.select().from(users).where(and(eq(users.isActive, true), or(
           eq(users.role, "operations_manager"),
           eq(users.specialization, "operations_manager")
-        ));
+        )));
         for (const manager of opsManagers) {
           if (manager.id !== user.id) {
             await createNotification(
@@ -6306,7 +6307,7 @@ End of Report
       // Send notifications to memo recipients
       try {
         if (type === "general") {
-          const allStaff = await db.select().from(users).where(ne(users.id, user.id));
+          const allStaff = await db.select().from(users).where(and(eq(users.isActive, true), ne(users.id, user.id)));
           for (const staffMember of allStaff) {
             await createNotification(
               staffMember.id,
@@ -6329,7 +6330,7 @@ End of Report
             }
           }
         } else if (type === "department" && Array.isArray(recipients)) {
-          const deptUsers = await db.select().from(users).where(ne(users.id, user.id));
+          const deptUsers = await db.select().from(users).where(and(eq(users.isActive, true), ne(users.id, user.id)));
           for (const deptUser of deptUsers) {
             const matchesDept = recipients.includes("all_staff") ||
               (deptUser.specialization && recipients.includes(deptUser.specialization)) ||

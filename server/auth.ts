@@ -176,7 +176,7 @@ export function setupAuth(app: Express) {
           const result = await db
             .select()
             .from(users)
-            .where(sql`LOWER(${users.username}) = LOWER(${username})`)
+            .where(and(sql`LOWER(${users.username}) = LOWER(${username})`, eq(users.isActive, true)))
             .limit(1);
           user = result[0];
           
@@ -461,7 +461,7 @@ export function setupAuth(app: Express) {
       const [existingUser] = await db
         .select()
         .from(users)
-        .where(eq(users.username, username))
+        .where(and(eq(users.username, username), eq(users.isActive, true)))
         .limit(1);
 
       if (existingUser) {
@@ -623,7 +623,8 @@ export function setupAuth(app: Express) {
         .where(
           and(
             eq(users.email, email),
-            sql`LOWER(${users.username}) = LOWER(${username})`
+            sql`LOWER(${users.username}) = LOWER(${username})`,
+            eq(users.isActive, true)
           )
         )
         .limit(1);
