@@ -48,6 +48,7 @@ import {
   projectBriefings, // Import the new schema
   stopGapAllocations,
   stopGapTaskAssignments,
+  taskIterations,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull, relations } from "drizzle-orm";
 import WebSocket from "ws";
@@ -10940,6 +10941,125 @@ End of Report
     } catch (error) {
       console.error("Error creating task:", error);
       return res.status(500).json({ error: "Failed to create task" });
+    }
+  });
+
+  // Task reassignment endpoint
+  app.post("/api/tasks/:id/reassign", requireAuth, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const user = req.user!;
+      const { assigneeId, startDate, deadline, workingHours, workingMinutes, notes, description } = req.body;
+
+      if (!assigneeId) {
+        return res.status(400).json({ error: "New assignee is required" });
+      }
+
+      const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Save current assignment as an iteration
+      await db.insert(taskIterations).values({
+        taskId: task.id,
+        iterationNumber: task.iterationNumber || 1,
+        assigneeId: task.assigneeId,
+        assignedBy: task.assignedBy,
+        description: task.description,
+        status: task.status === "review" ? "not_approved" : (task.status || "todo"),
+        startDate: task.startDate,
+        deadline: task.deadline,
+        workingHours: task.workingHours || 0,
+        workingMinutes: task.workingMinutes || 0,
+        timeSpent: task.timeSpent || 0,
+        notes: notes || null,
+        reassignedBy: user.id,
+        createdAt: task.createdAt,
+        completedAt: new Date(),
+      });
+
+      const newIterationNumber = (task.iterationNumber || 1) + 1;
+
+      // Update the task with new assignment details
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          assigneeId: parseInt(assigneeId),
+          assignedBy: user.id,
+          description: description !== undefined ? description : task.description,
+          startDate: startDate ? new Date(startDate) : null,
+          deadline: deadline ? new Date(deadline) : null,
+          workingHours: workingHours ? parseInt(workingHours) : 0,
+          workingMinutes: workingMinutes ? parseInt(workingMinutes) : 0,
+          status: "todo",
+          timeSpent: 0,
+          isTimerRunning: false,
+          timerStartTime: null,
+          hasBeenStarted: false,
+          actualStartTime: null,
+          reviewStartedAt: null,
+          completedAt: null,
+          iterationNumber: newIterationNumber,
+          updatedAt: new Date(),
+        })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      // Notify new assignee
+      await createNotification(
+        parseInt(assigneeId),
+        "task_assigned",
+        `You have been assigned a reassigned task: "${task.title}" (Iteration #${newIterationNumber})`,
+        taskId,
+        "task"
+      );
+
+      // Broadcast update via WebSocket
+      if (global.connectedClients) {
+        global.connectedClients.forEach((client) => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({
+              type: 'task_updated',
+              data: { taskId, projectId: task.projectId }
+            }));
+          }
+        });
+      }
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error reassigning task:", error);
+      res.status(500).json({ error: "Failed to reassign task" });
+    }
+  });
+
+  // Get task iteration history
+  app.get("/api/tasks/:id/iterations", requireAuth, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+
+      const iterations = await db
+        .select({
+          iteration: taskIterations,
+          assigneeName: users.name,
+          assigneeRole: users.role,
+        })
+        .from(taskIterations)
+        .leftJoin(users, eq(taskIterations.assigneeId, users.id))
+        .where(eq(taskIterations.taskId, taskId))
+        .orderBy(asc(taskIterations.iterationNumber));
+
+      const result = iterations.map(row => ({
+        ...row.iteration,
+        assigneeName: row.assigneeName,
+        assigneeRole: row.assigneeRole,
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching task iterations:", error);
+      res.status(500).json({ error: "Failed to fetch task iterations" });
     }
   });
 

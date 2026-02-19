@@ -164,7 +164,8 @@ export const tasks = pgTable("tasks", {
   projectId: integer("project_id").references(() => projects.id),
   assigneeId: integer("assignee_id").references(() => users.id),
   assignedBy: integer("assigned_by").references(() => users.id),
-  status: text("status", { enum: ["todo", "in_progress", "completed", "review", "technical_support", "pending"] }).default("todo"),
+  status: text("status", { enum: ["todo", "in_progress", "completed", "review", "technical_support", "pending", "not_approved"] }).default("todo"),
+  iterationNumber: integer("iteration_number").default(1),
   priority: text("priority", { enum: ["low", "medium", "high"] }).default("medium"),
   progress: integer("progress").default(0),
   startDate: timestamp("start_date"),
@@ -191,6 +192,36 @@ export const taskSessions = pgTable("task_sessions", {
   duration: integer("duration"), // in seconds - calculated when session ends
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const taskIterations = pgTable("task_iterations", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+  iterationNumber: integer("iteration_number").notNull(),
+  assigneeId: integer("assignee_id").references(() => users.id),
+  assignedBy: integer("assigned_by").references(() => users.id),
+  description: text("description"),
+  status: text("status", { enum: ["todo", "in_progress", "completed", "review", "technical_support", "pending", "not_approved"] }),
+  startDate: timestamp("start_date"),
+  deadline: timestamp("deadline"),
+  workingHours: integer("working_hours").default(0),
+  workingMinutes: integer("working_minutes").default(0),
+  timeSpent: integer("time_spent").default(0),
+  notes: text("notes"),
+  reassignedBy: integer("reassigned_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const taskIterationsRelations = relations(taskIterations, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskIterations.taskId],
+    references: [tasks.id],
+  }),
+  assignee: one(users, {
+    fields: [taskIterations.assigneeId],
+    references: [users.id],
+  }),
+}));
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
@@ -272,6 +303,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [users.id],
   }),
   sessions: many(taskSessions),
+  iterations: many(taskIterations),
 }));
 
 export const taskSessionsRelations = relations(taskSessions, ({ one }) => ({
@@ -512,6 +544,8 @@ export const insertProjectSchema = createInsertSchema(projects);
 export const selectProjectSchema = createSelectSchema(projects);
 export const insertTaskSchema = createInsertSchema(tasks);
 export const selectTaskSchema = createSelectSchema(tasks);
+export const insertTaskIterationSchema = createInsertSchema(taskIterations);
+export const selectTaskIterationSchema = createSelectSchema(taskIterations);
 export const insertProjectMemberSchema = createInsertSchema(projectMembers);
 export const selectProjectMemberSchema = createSelectSchema(projectMembers);
 export const insertClientInvitationSchema = createInsertSchema(clientInvitations);
@@ -532,6 +566,7 @@ export const selectDirectMessageSchema = createSelectSchema(directMessages);
 export type User = typeof users.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type TaskIteration = typeof taskIterations.$inferSelect;
 export type TaskSession = typeof taskSessions.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
