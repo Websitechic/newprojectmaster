@@ -602,10 +602,10 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <TableCell>
                     <div className="text-sm leading-tight">
                       {(() => {
-                        if (!task || !task.assigneeId) return "Unassigned";
-                        const assignee = (staff ?? []).find((s) => s && s.id === task.assigneeId);
-                        const name = assignee?.name || "Unassigned";
-                        const role = assignee?.role === 'team_lead' ? ' (Team Lead)' : '';
+                        const assignee = (task as any).assignee;
+                        if (!assignee || !assignee.id) return "Unassigned";
+                        const name = assignee.name || "Unassigned";
+                        const role = assignee.role === 'team_lead' ? ' (Team Lead)' : '';
                         return (name + role).split(' ').map((word: string, idx: number) => (
                           <div key={idx}>{word}</div>
                         ));

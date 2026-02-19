@@ -8882,13 +8882,25 @@ End of Report
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const projectTasks = await db
-        .select()
+        .select({
+          task: tasks,
+          assignee: {
+            id: users.id,
+            name: users.name,
+            role: users.role,
+          }
+        })
         .from(tasks)
         .leftJoin(users, eq(tasks.assigneeId, users.id))
         .where(and(eq(tasks.projectId, projectId), or(isNull(tasks.assigneeId), eq(users.isActive, true))))
         .orderBy(desc(tasks.updatedAt));
 
-      res.json(projectTasks);
+      const formattedTasks = projectTasks.map(row => ({
+        ...row.task,
+        assignee: row.assignee
+      }));
+
+      res.json(formattedTasks);
     } catch (error) {
       console.error("Error fetching project tasks:", error);
       res.status(500).json({ error: "Failed to fetch project tasks" });

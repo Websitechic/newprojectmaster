@@ -6,17 +6,13 @@ import { TaskList } from "@/components/task/task-list";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import type { Task } from "@db/schema";
-
-// Placeholder for user context, replace with actual implementation
-const user = {
-  role: "staff",
-  specialization: "technical_support",
-};
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ProjectTasks() {
   const { id } = useParams();
   const [_, setLocation] = useLocation();
   const projectId = parseInt(id!);
+  const { user } = useAuth();
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: [`/api/projects/${projectId}/tasks`],
