@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -28,13 +28,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Pencil, Trash, Plus, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Trash, Plus, Clock, RefreshCw, ChevronDown, ChevronUp, History } from "lucide-react";
 import type { Task, Project } from "@db/schema";
 
 interface TaskFormData {
   title: string;
   description: string;
-  status: 'todo' | 'in_progress' | 'completed' | 'review' | 'technical_support';
+  status: 'todo' | 'in_progress' | 'completed' | 'review' | 'technical_support' | 'not_approved';
   assigneeId: string;
   startDate: string;
   deadline: string;
@@ -61,6 +61,62 @@ interface TaskListProps {
   showProjectInfo?: boolean;
 }
 
+function IterationHistory({ taskId, userMap }: { taskId: number; userMap: Record<number, string> }) {
+  const { data: iterations, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/tasks", taskId, "iterations"],
+    queryFn: async () => {
+      const res = await fetch(`/api/tasks/${taskId}/iterations`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch iterations");
+      return res.json();
+    },
+  });
+
+  if (isLoading) return <div className="p-3 text-sm text-muted-foreground">Loading history...</div>;
+  if (!iterations || iterations.length === 0) return <div className="p-3 text-sm text-muted-foreground">No previous iterations</div>;
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'not_approved': return 'bg-purple-100 text-purple-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'review': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="p-3 space-y-2">
+      <div className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mb-2">
+        <History className="h-3 w-3" /> Iteration History
+      </div>
+      {iterations.map((iter: any, idx: number) => (
+        <div key={iter.id || idx} className="border rounded-md p-3 bg-background text-sm space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">Iteration #{iter.iterationNumber}</span>
+            <Badge className={getStatusBadgeColor(iter.status || 'todo')}>
+              {(iter.status || 'todo').replace('_', ' ')}
+            </Badge>
+          </div>
+          <div className="text-xs text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+            <div>Assignee: <span className="text-foreground">{iter.assigneeName || userMap[iter.assigneeId] || "Unknown"}</span></div>
+            <div>Time Spent: <span className="text-foreground">{iter.timeSpent ? `${Math.floor(iter.timeSpent / 3600)}h ${Math.floor((iter.timeSpent % 3600) / 60)}m` : "0m"}</span></div>
+            {iter.startDate && <div>Start: <span className="text-foreground">{new Date(iter.startDate).toLocaleDateString()}</span></div>}
+            {iter.deadline && <div>Deadline: <span className="text-foreground">{new Date(iter.deadline).toLocaleDateString()}</span></div>}
+            {iter.workingHours || iter.workingMinutes ? (
+              <div>Allocated: <span className="text-foreground">{iter.workingHours || 0}h {iter.workingMinutes || 0}m</span></div>
+            ) : null}
+            {iter.completedAt && <div>Ended: <span className="text-foreground">{new Date(iter.completedAt).toLocaleString()}</span></div>}
+          </div>
+          {iter.notes && (
+            <div className="text-xs mt-1 p-2 bg-muted rounded">
+              <span className="font-medium">Notes:</span> {iter.notes}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskButton = true, showProjectInfo = false }: TaskListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -70,6 +126,18 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const [formData, setFormData] = useState<TaskFormData>(defaultTask);
 
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
+  const [reassignTask, setReassignTask] = useState<Task | null>(null);
+  const [isReassignOpen, setIsReassignOpen] = useState(false);
+  const [reassignData, setReassignData] = useState({
+    assigneeId: "",
+    startDate: "",
+    deadline: "",
+    workingHours: "",
+    workingMinutes: "0",
+    notes: "",
+    description: "",
+  });
+  const [expandedIterations, setExpandedIterations] = useState<Record<number, boolean>>({});
 
   const toggleDescription = (taskId: number) => {
     setExpandedDescriptions((prev) => ({
@@ -423,6 +491,60 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     },
   });
 
+  const reassignMutation = useMutation({
+    mutationFn: async (data: typeof reassignData) => {
+      if (!reassignTask) throw new Error("No task selected for reassignment");
+      const response = await fetch(`/api/tasks/${reassignTask.id}/reassign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          assigneeId: parseInt(data.assigneeId),
+          startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
+          deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+          workingHours: data.workingHours ? parseInt(data.workingHours) : null,
+          workingMinutes: data.workingMinutes ? parseInt(data.workingMinutes) : null,
+          notes: data.notes || null,
+          description: data.description || undefined,
+        }),
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "Failed to reassign task");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+      }
+      if (reassignTask) {
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks", reassignTask.id, "iterations"] });
+      }
+      setIsReassignOpen(false);
+      setReassignTask(null);
+      toast({ title: "Success", description: "Task reassigned successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleReassign = (task: Task) => {
+    setReassignTask(task);
+    setReassignData({
+      assigneeId: "",
+      startDate: "",
+      deadline: "",
+      workingHours: "",
+      workingMinutes: "0",
+      notes: "",
+      description: task.description || "",
+    });
+    setIsReassignOpen(true);
+  };
+
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -461,6 +583,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       case 'completed': return 'bg-green-100 text-green-800';
       case 'review': return 'bg-yellow-100 text-yellow-800';
       case 'technical_support': return 'bg-red-100 text-red-800';
+      case 'not_approved': return 'bg-purple-100 text-purple-800';
       case 'pending': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -543,12 +666,29 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 task.status !== "review");
 
               return (
-                <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white" : ""}>
+                <React.Fragment key={task.id}>
+                <TableRow className={isDeadlineMissed ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white" : ""}>
                   <TableCell className="font-medium">
-                    <div>{task.title}</div>
+                    <div className="flex items-center gap-1">
+                      {task.title}
+                      {(task as any).iterationNumber > 1 && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-orange-50 text-orange-700 border-orange-300">
+                          #{(task as any).iterationNumber}
+                        </Badge>
+                      )}
+                    </div>
                     <div className="text-[10px] text-muted-foreground leading-tight italic mt-1">
                       Assigned by: {task.assignedBy ? (userMap[task.assignedBy as number] || "Unknown User") : "System"}
                     </div>
+                    {(task as any).iterationNumber > 1 && (
+                      <button
+                        onClick={() => setExpandedIterations(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
+                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 mt-0.5"
+                      >
+                        <History className="h-3 w-3" />
+                        {expandedIterations[task.id] ? "Hide" : "View"} History
+                      </button>
+                    )}
                   </TableCell>
                   <TableCell className="max-w-xs">
                       {formatDescription((task.description as any) || "", task.id)}
@@ -697,6 +837,17 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <TableCell className="text-right">
                     {!isStaffView ? (
                       <div className="flex justify-end gap-2">
+                        {(task.status === 'review' || task.status === 'completed' || task.status === 'not_approved') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Reassign Task"
+                            className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                            onClick={() => handleReassign(task)}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -743,6 +894,14 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     )}
                   </TableCell>
                 </TableRow>
+                {expandedIterations[task.id] && (
+                  <TableRow>
+                    <TableCell colSpan={showProjectInfo ? 10 : 8} className="bg-muted/30 p-0">
+                      <IterationHistory taskId={task.id} userMap={userMap} />
+                    </TableCell>
+                  </TableRow>
+                )}
+                </React.Fragment>
               );
             })}
           </TableBody>
@@ -834,6 +993,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="review">Review</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="not_approved">Not Approved</SelectItem>
                     <SelectItem value="technical_support">Technical Support</SelectItem>
                   </SelectContent>
                 </Select>
@@ -922,6 +1082,128 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isReassignOpen} onOpenChange={setIsReassignOpen}>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-orange-600" />
+              Reassign Task: {reassignTask?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {reassignTask && (
+            <form onSubmit={(e) => { e.preventDefault(); reassignMutation.mutate(reassignData); }} className="space-y-4">
+              <div className="bg-muted/50 rounded-md p-3 text-sm space-y-1">
+                <div className="font-medium">Current Assignment (will be saved as Iteration #{(reassignTask as any).iterationNumber || 1})</div>
+                <div className="text-muted-foreground">
+                  Assignee: {(() => { const a = (reassignTask as any).assignee; return a?.name || userMap[reassignTask.assigneeId as number] || "Unassigned"; })()}
+                </div>
+                <div className="text-muted-foreground">
+                  Status: {reassignTask.status?.replace('_', ' ')}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>New Assignee *</Label>
+                <Select
+                  value={reassignData.assigneeId}
+                  onValueChange={(value) => setReassignData({ ...reassignData, assigneeId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select new assignee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(staff ?? []).map((s) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Updated Task Details</Label>
+                <Textarea
+                  value={reassignData.description}
+                  onChange={(e) => setReassignData({ ...reassignData, description: e.target.value })}
+                  placeholder="Update task description/details if needed"
+                  className="min-h-[80px]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>New Start Date</Label>
+                  <Input
+                    type="datetime-local"
+                    value={reassignData.startDate}
+                    onChange={(e) => setReassignData({ ...reassignData, startDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>New Deadline</Label>
+                  <Input
+                    type="datetime-local"
+                    value={reassignData.deadline}
+                    onChange={(e) => setReassignData({ ...reassignData, deadline: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Working Time Allocation</Label>
+                <div className="flex gap-4 max-w-md">
+                  <div className="flex-1">
+                    <Label className="text-sm text-muted-foreground">Hours</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={reassignData.workingHours}
+                      onChange={(e) => setReassignData({ ...reassignData, workingHours: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-sm text-muted-foreground">Minutes</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={reassignData.workingMinutes}
+                      onChange={(e) => setReassignData({ ...reassignData, workingMinutes: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Reassignment Notes</Label>
+                <Textarea
+                  value={reassignData.notes}
+                  onChange={(e) => setReassignData({ ...reassignData, notes: e.target.value })}
+                  placeholder="Why is this task being reassigned? Any feedback on the previous iteration?"
+                  className="min-h-[60px]"
+                />
+              </div>
+
+              <div className="pt-4 border-t flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={!reassignData.assigneeId || reassignMutation.isPending}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  {reassignMutation.isPending ? "Reassigning..." : "Reassign Task"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setIsReassignOpen(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
