@@ -43,6 +43,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const { user } = useAuth();
   const { playAlarmSound } = useNotificationSound();
   const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
   const [localTimers, setLocalTimers] = useState<Record<number, number>>({});
   const alarmTriggeredRef = useRef<Record<number, boolean>>({});
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
@@ -437,6 +438,31 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <Input
+            placeholder="Search tasks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8"
+          />
+          <svg
+            className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+        </div>
+      </div>
       <div className="rounded-md border overflow-x-auto">
         <div className="min-w-[800px]">
           <Table>
