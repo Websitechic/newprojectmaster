@@ -310,14 +310,17 @@ export function NotificationsDropdown() {
                             )}
                           </div>
                           <div className="flex flex-col space-y-1 flex-1 min-w-0">
-                            <p className="text-sm pr-6 leading-tight text-foreground dark:text-white">{notification.content}</p>
+                            <p className="text-sm pr-6 leading-tight text-slate-900 dark:text-white font-medium">
+                              {notification.content || (notification as any).notifications?.content}
+                            </p>
                             <div className="text-[11px] text-muted-foreground font-medium">
                               {(() => {
-                                if (!notification.createdAt) return 'Just now';
+                                const createdAt = notification.createdAt || (notification as any).notifications?.createdAt;
+                                if (!createdAt) return 'Just now';
                                 try {
-                                  const date = typeof notification.createdAt === 'string'
-                                    ? parseISO(notification.createdAt)
-                                    : new Date(notification.createdAt);
+                                  const date = typeof createdAt === 'string'
+                                    ? parseISO(createdAt)
+                                    : new Date(createdAt);
                                   if (!isValid(date)) return 'Just now';
                                   return formatDistanceToNow(date, { addSuffix: true });
                                 } catch (error) {
@@ -326,14 +329,14 @@ export function NotificationsDropdown() {
                               })()}
                             </div>
                           </div>
-                          {!notification.read && (
+                          {!(notification.read || (notification as any).notifications?.read) && (
                             <div className="absolute top-4 right-10 h-2 w-2 rounded-full bg-blue-500" />
                           )}
                           <Button
                             variant="ghost"
                             size="icon"
                             className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
-                            onClick={(e) => deleteNotification(notification.id, e)}
+                            onClick={(e) => deleteNotification(notification.id || (notification as any).notifications?.id, e)}
                           >
                             <X className="h-3 w-3" />
                           </Button>

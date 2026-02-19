@@ -505,7 +505,20 @@ export function registerRoutes(app: Express): Server {
 
       console.log(`Found ${userNotifications.length} notifications for user ${user.id}`);
 
-      res.json(userNotifications);
+      // Map the joined data back to a flat notification object structure
+      const flatNotifications = userNotifications.map(row => ({
+        ...row.notifications,
+        // Ensure id and content are top-level as expected by frontend
+        id: row.notifications.id,
+        content: row.notifications.content,
+        type: row.notifications.type,
+        read: row.notifications.read,
+        createdAt: row.notifications.createdAt,
+        referenceId: row.notifications.referenceId,
+        referenceType: row.notifications.referenceType
+      }));
+
+      res.json(flatNotifications);
     } catch (error) {
       console.error("Error fetching notifications:", error);
       res.status(500).json({ error: "Failed to fetch notifications" });
