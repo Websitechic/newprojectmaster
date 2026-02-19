@@ -889,7 +889,14 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                         </AlertDialog>
                       </div>
                     ) : (
-                      <span className="text-xs text-muted-foreground">View Only</span>
+                      <div className="flex justify-end">
+                        <span className="text-xs text-muted-foreground mr-2">View Only</span>
+                        {(task as any).iterationNumber > 1 && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-orange-50 text-orange-700 border-orange-300">
+                            Iter #{(task as any).iterationNumber}
+                          </Badge>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
