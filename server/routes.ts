@@ -400,33 +400,53 @@ export function registerRoutes(app: Express): Server {
     try {
       let userTasks = [];
 
-      if (user.role === "staff" || user.role === "intern" || user.role === "product_owner") {
-        // Staff, interns and product owners see tasks assigned to them (and product owners see all via the other branch)
-        // Wait, if they are a product owner they should see ALL tasks based on the previous logic I added.
-        // Let's refine the logic to ensure product owners see ALL tasks but if they are specifically assigned one, it shows in their dashboard.
-        
-        userTasks = await db
-          .select()
+      // Operations managers, team leads, project managers, customer support officers, product owners and admins see all tasks
+      if (
+        user.role === "operations_manager" ||
+        user.specialization === "operations_manager" ||
+        user.role === "team_lead" ||
+        user.role === "customer_support_officer" ||
+        user.role === "project_manager" ||
+        user.role === "admin" ||
+        user.role === "product_owner"
+      ) {
+        const allTasks = await db
+          .select({
+            task: tasks,
+            assignee: {
+              id: users.id,
+              name: users.name,
+              role: users.role,
+            }
+          })
+          .from(tasks)
+          .leftJoin(users, eq(tasks.assigneeId, users.id))
+          .where(or(isNull(tasks.assigneeId), eq(users.isActive, true)))
+          .orderBy(desc(tasks.updatedAt));
+
+        userTasks = allTasks.map(row => ({
+          ...row.task,
+          assignee: row.assignee
+        }));
+      } else if (user.role === "staff" || user.role === "intern") {
+        const staffTasksList = await db
+          .select({
+            task: tasks,
+            assignee: {
+              id: users.id,
+              name: users.name,
+              role: users.role,
+            }
+          })
           .from(tasks)
           .innerJoin(users, eq(tasks.assigneeId, users.id))
           .where(and(eq(tasks.assigneeId, user.id), eq(users.isActive, true)))
           .orderBy(desc(tasks.updatedAt));
-          
-        // If they are a role that should see ALL tasks, we should actually fetch ALL tasks
-        if (
-          user.role === "operations_manager" ||
-          user.specialization === "operations_manager" ||
-          user.role === "team_lead" ||
-          user.role === "customer_support_officer" ||
-          user.role === "project_manager" ||
-          user.role === "admin" ||
-          user.role === "product_owner"
-        ) {
-           userTasks = await db
-            .select()
-            .from(tasks)
-            .orderBy(desc(tasks.updatedAt));
-        }
+
+        userTasks = staffTasksList.map(row => ({
+          ...row.task,
+          assignee: row.assignee
+        }));
       } else if (user.role === "client") {
         // Clients see tasks in their projects
         const clientProjects = await db
@@ -436,26 +456,25 @@ export function registerRoutes(app: Express): Server {
 
         const projectIds = clientProjects.map(p => p.id);
         if (projectIds.length > 0) {
-          userTasks = await db
-            .select()
+          const clientTasks = await db
+            .select({
+              task: tasks,
+              assignee: {
+                id: users.id,
+                name: users.name,
+                role: users.role,
+              }
+            })
             .from(tasks)
-            .where(inArray(tasks.projectId, projectIds))
+            .leftJoin(users, eq(tasks.assigneeId, users.id))
+            .where(and(inArray(tasks.projectId, projectIds), or(isNull(tasks.assigneeId), eq(users.isActive, true))))
             .orderBy(desc(tasks.updatedAt));
+
+          userTasks = clientTasks.map(row => ({
+            ...row.task,
+            assignee: row.assignee
+          }));
         }
-      } else if (
-        user.role === "operations_manager" ||
-        user.specialization === "operations_manager" ||
-        user.role === "team_lead" ||
-        user.role === "customer_support_officer" ||
-        user.role === "project_manager" ||
-        user.role === "admin" ||
-        user.role === "product_owner"
-      ) {
-        // Operations managers, team leads, project managers, customer support officers, product owners and admins see all tasks
-        userTasks = await db
-          .select()
-          .from(tasks)
-          .orderBy(desc(tasks.updatedAt));
       }
 
       res.json(userTasks);
