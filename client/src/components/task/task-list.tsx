@@ -499,12 +499,11 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          assigneeId: parseInt(data.assigneeId),
+          assigneeId: reassignTask.assigneeId,
           startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
           deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
           workingHours: data.workingHours ? parseInt(data.workingHours) : null,
           workingMinutes: data.workingMinutes ? parseInt(data.workingMinutes) : null,
-          notes: data.notes || null,
           description: data.description || undefined,
         }),
       });
@@ -837,7 +836,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <TableCell className="text-right">
                     {!isStaffView ? (
                       <div className="flex justify-end gap-2">
-                        {(task.status === 'review' || task.status === 'completed' || task.status === 'not_approved') && (
+                        {(task.status === 'review' || task.status === 'completed' || task.status === 'not_approved' || isDeadlineMissed) && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1106,25 +1105,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               </div>
 
               <div className="space-y-2">
-                <Label>New Assignee *</Label>
-                <Select
-                  value={reassignData.assigneeId}
-                  onValueChange={(value) => setReassignData({ ...reassignData, assigneeId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select new assignee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(staff ?? []).map((s) => (
-                      <SelectItem key={s.id} value={s.id.toString()}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <Label>Updated Task Details</Label>
                 <Textarea
                   value={reassignData.description}
@@ -1180,20 +1160,10 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Reassignment Notes</Label>
-                <Textarea
-                  value={reassignData.notes}
-                  onChange={(e) => setReassignData({ ...reassignData, notes: e.target.value })}
-                  placeholder="Why is this task being reassigned? Any feedback on the previous iteration?"
-                  className="min-h-[60px]"
-                />
-              </div>
-
               <div className="pt-4 border-t flex gap-2">
                 <Button
                   type="submit"
-                  disabled={!reassignData.assigneeId || reassignMutation.isPending}
+                  disabled={reassignMutation.isPending}
                   className="bg-orange-600 hover:bg-orange-700"
                 >
                   {reassignMutation.isPending ? "Reassigning..." : "Reassign Task"}

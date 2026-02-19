@@ -10985,7 +10985,7 @@ End of Report
       const [updatedTask] = await db
         .update(tasks)
         .set({
-          assigneeId: parseInt(assigneeId),
+          assigneeId: task.assigneeId,
           assignedBy: user.id,
           description: description !== undefined ? description : task.description,
           startDate: startDate ? new Date(startDate) : null,
@@ -11006,14 +11006,16 @@ End of Report
         .where(eq(tasks.id, taskId))
         .returning();
 
-      // Notify new assignee
-      await createNotification(
-        parseInt(assigneeId),
-        "task_assigned",
-        `You have been assigned a reassigned task: "${task.title}" (Iteration #${newIterationNumber})`,
-        taskId,
-        "task"
-      );
+      // Notify assignee
+      if (task.assigneeId) {
+        await createNotification(
+          task.assigneeId,
+          "task_assigned",
+          `Your task has been reassigned for a new iteration: "${task.title}" (Iteration #${newIterationNumber})`,
+          taskId,
+          "task"
+        );
+      }
 
       // Broadcast update via WebSocket
       if (global.connectedClients) {
