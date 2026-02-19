@@ -166,10 +166,11 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   }, {} as Record<number, string>) || {};
 
   const { data: stopGapAssignments = {} } = useQuery({
-    queryKey: ["/api/stop-gap/assignments", tasks.map(t => t.id)],
+    queryKey: ["/api/stop-gap/assignments", (tasks || []).map(t => t.id)],
     queryFn: async () => {
       const assignments: Record<number, any> = {};
-      for (const task of tasks) {
+      for (const task of (tasks || [])) {
+        if (!task || !task.id) continue;
         const res = await fetch(`/api/stop-gap/task/${task.id}`);
         if (res.ok) {
           const data = await res.json();
@@ -180,7 +181,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       }
       return assignments;
     },
-    enabled: tasks.length > 0,
+    enabled: Array.isArray(tasks) && tasks.length > 0,
   });
 
   const handleEditClick = (task: Task) => {
@@ -442,8 +443,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const itemsPerPage = 10;
 
   const filteredTasks = isStaffView
-    ? tasks.filter((task) => task.assigneeId === (user as any)?.staffId)
-    : tasks;
+    ? (tasks || []).filter((task) => task.assigneeId === (user as any)?.staffId)
+    : (tasks || []);
 
   const sortedTasks = [...filteredTasks].sort((a, b) => b.id - a.id);
 

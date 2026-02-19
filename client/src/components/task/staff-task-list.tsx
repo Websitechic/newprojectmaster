@@ -126,10 +126,11 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   });
 
   const { data: stopGapAssignments = {} } = useQuery({
-    queryKey: ["/api/stop-gap/assignments", filteredTasks.map(t => t.id)],
+    queryKey: ["/api/stop-gap/assignments", (filteredTasks || []).map(t => t.id)],
     queryFn: async () => {
       const assignments: Record<number, any> = {};
-      for (const task of filteredTasks) {
+      for (const task of (filteredTasks || [])) {
+        if (!task || !task.id) continue;
         const res = await fetch(`/api/stop-gap/task/${task.id}`);
         if (res.ok) {
           const data = await res.json();
@@ -140,7 +141,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
       }
       return assignments;
     },
-    enabled: filteredTasks.length > 0,
+    enabled: Array.isArray(filteredTasks) && filteredTasks.length > 0,
   });
 
   const { data: allUsers = [] } = useQuery<any[]>({
