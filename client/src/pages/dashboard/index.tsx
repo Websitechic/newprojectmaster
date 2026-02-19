@@ -254,11 +254,11 @@ export default function Dashboard() {
     // Apply search filter
     if (taskSearchQuery) {
       const query = taskSearchQuery.toLowerCase();
-      const matchesTitle = task.title.toLowerCase().includes(query);
+      const matchesTitle = (task.title || "").toLowerCase().includes(query);
       
       // Find assignee name
       const assignee = (staff ?? []).find(s => s.id === task.assigneeId);
-      const matchesAssignee = assignee?.name.toLowerCase().includes(query);
+      const matchesAssignee = (assignee?.name || "").toLowerCase().includes(query);
       
       if (!matchesTitle && !matchesAssignee) {
         return false;
