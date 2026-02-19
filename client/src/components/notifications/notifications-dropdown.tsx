@@ -292,10 +292,10 @@ export function NotificationsDropdown() {
                             {notification.type === "break_overtime" && (
                               <AlertTriangle className="h-4 w-4 text-red-500" />
                             )}
-                            {notification.type === "task_assignment" && (
+                            {(notification.type === "task_assignment" || notification.type === "task_update") && (
                               <CheckSquare className="h-4 w-4 text-blue-500" />
                             )}
-                            {notification.type === "message" && (
+                            {(notification.type === "message" || notification.type === "mention") && (
                               <MessageSquare className="h-4 w-4 text-green-500" />
                             )}
                             {(notification.type === "deadline_reminder" || notification.type === "task_overdue") && (
@@ -305,12 +305,12 @@ export function NotificationsDropdown() {
                               <CheckSquare className="h-4 w-4 text-green-500" />
                             )}
                             {/* Default icon if type is unknown or for general notifications */}
-                            {(!notification.type || ["mention", "system"].includes(notification.type)) && (
+                            {(!notification.type || ["system"].includes(notification.type)) && (
                                <Bell className="h-4 w-4 text-gray-500" />
                             )}
                           </div>
                           <div className="flex flex-col space-y-1 flex-1 min-w-0">
-                            <p className="text-sm pr-6 leading-tight">{notification.content}</p>
+                            <p className="text-sm pr-6 leading-tight text-foreground dark:text-white">{notification.content}</p>
                             <div className="text-[11px] text-muted-foreground font-medium">
                               {(() => {
                                 if (!notification.createdAt) return 'Just now';
