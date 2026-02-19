@@ -104,6 +104,16 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
   const itemsPerPage = 10;
 
   const filteredTasks = tasks
+    .filter((task) => {
+      // Apply search filter
+      if (typeof searchQuery === 'string' && searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesTitle = (task.title || "").toLowerCase().includes(query);
+        const matchesDescription = (task.description || "").toLowerCase().includes(query);
+        if (!matchesTitle && !matchesDescription) return false;
+      }
+      return true;
+    })
     .sort((a, b) => b.id - a.id);
 
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
