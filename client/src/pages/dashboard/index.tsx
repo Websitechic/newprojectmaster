@@ -148,19 +148,19 @@ export default function Dashboard() {
 
       // If the status change should pause the timer and it was running, send a WebSocket message
       if (statusToPauseTimer.includes(newStatus) && originalIsTimerRunning) {
-        sendMessage(JSON.stringify({
+        sendMessage({
           type: "TASK_TIMER_PAUSED",
           payload: { taskId: taskId, projectId: projectId, userId: user?.id },
-        }), user?.id);
+        });
       }
     } catch (error) {
       console.error("Error updating task status:", error);
       // Revert optimistic update if error occurs
-    queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) =>
-      (oldTasks ?? []).map(task =>
-        task?.id === taskId ? { ...((tasks ?? []).find(t => t?.id === taskId) as Task), status: originalStatus, isTimerRunning: originalIsTimerRunning } : task
-      )
-    );
+      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) =>
+        (oldTasks ?? []).map(task =>
+          task?.id === taskId ? { ...(tasks ?? []).find(t => t?.id === taskId), status: originalStatus, isTimerRunning: originalIsTimerRunning } : task
+        )
+      );
     }
   };
 
@@ -316,7 +316,7 @@ export default function Dashboard() {
   // Calculate overall progress
   const totalTasks = (filteredUserTasks ?? []).length;
   const completedTasks = (filteredUserTasks ?? []).filter(
-    (task) => (task.status as string) === "completed",
+    (task) => task.status === "completed",
   ).length;
   const overallProgress =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -344,16 +344,9 @@ export default function Dashboard() {
   }) => (
     <div className="border rounded-lg p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
       <div className="flex justify-between items-start mb-2">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <h4 className="font-medium text-sm truncate text-gray-800 dark:text-gray-200">{task.title}</h4>
-          {task.iterationNumber && task.iterationNumber > 1 && (
-            <Badge variant="outline" className="text-[10px] px-1 h-4 border-orange-200 text-orange-700 bg-orange-50 shrink-0">
-              v{task.iterationNumber}
-            </Badge>
-          )}
-        </div>
+        <h4 className="font-medium text-sm truncate flex-1 text-gray-800 dark:text-gray-200">{task.title}</h4>
         {showTimer && task.isTimerRunning && (
-          <div className="flex items-center gap-1 text-green-600 text-xs shrink-0 ml-2">
+          <div className="flex items-center gap-1 text-green-600 text-xs">
             <Clock className="h-3 w-3" />
             <span>{formatTime(task.timeSpent || 0)}</span>
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -433,7 +426,7 @@ export default function Dashboard() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
                           {tasksInProgress.map((task) => (
-                            <TaskCard key={task.id} task={task} showTimer />
+                            <TaskCard key={task.id} task={task} />
                           ))}
                         </CollapsibleContent>
                       </Collapsible>
@@ -479,7 +472,7 @@ export default function Dashboard() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
                           {pendingTasks.map((task) => (
-                            <TaskCard key={task.id} task={task} showTimer />
+                            <TaskCard key={task.id} task={task} />
                           ))}
                         </CollapsibleContent>
                       </Collapsible>
@@ -1038,7 +1031,7 @@ export default function Dashboard() {
                               (projects ?? []).filter((project) => {
                                 // Projects completed in the last month
                                 return (
-                                  (project?.status as string) === "completed" ||
+                                  project?.status === "completed" ||
                                   (project?.progress === 100 &&
                                     project?.updatedAt &&
                                     new Date(project.updatedAt) >= oneMonthAgo)
@@ -1140,7 +1133,7 @@ export default function Dashboard() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
                           {tasksInProgress.map((task) => (
-                            <TaskCard key={task.id} task={task} showTimer />
+                            <TaskCard key={task.id} task={task} />
                           ))}
                         </CollapsibleContent>
                       </Collapsible>
@@ -1186,7 +1179,7 @@ export default function Dashboard() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
                           {pendingTasks.map((task) => (
-                            <TaskCard key={task.id} task={task} showTimer />
+                            <TaskCard key={task.id} task={task} />
                           ))}
                         </CollapsibleContent>
                       </Collapsible>
