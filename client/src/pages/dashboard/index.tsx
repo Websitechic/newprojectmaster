@@ -148,19 +148,19 @@ export default function Dashboard() {
 
       // If the status change should pause the timer and it was running, send a WebSocket message
       if (statusToPauseTimer.includes(newStatus) && originalIsTimerRunning) {
-        sendMessage({
+        sendMessage(JSON.stringify({
           type: "TASK_TIMER_PAUSED",
           payload: { taskId: taskId, projectId: projectId, userId: user?.id },
-        });
+        }), user?.id);
       }
     } catch (error) {
       console.error("Error updating task status:", error);
       // Revert optimistic update if error occurs
-      queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) =>
-        (oldTasks ?? []).map(task =>
-          task?.id === taskId ? { ...(tasks ?? []).find(t => t?.id === taskId), status: originalStatus, isTimerRunning: originalIsTimerRunning } : task
-        )
-      );
+    queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) =>
+      (oldTasks ?? []).map(task =>
+        task?.id === taskId ? { ...((tasks ?? []).find(t => t?.id === taskId) as Task), status: originalStatus, isTimerRunning: originalIsTimerRunning } : task
+      )
+    );
     }
   };
 
@@ -316,7 +316,7 @@ export default function Dashboard() {
   // Calculate overall progress
   const totalTasks = (filteredUserTasks ?? []).length;
   const completedTasks = (filteredUserTasks ?? []).filter(
-    (task) => task.status === "completed",
+    (task) => (task.status as string) === "completed",
   ).length;
   const overallProgress =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -1038,7 +1038,7 @@ export default function Dashboard() {
                               (projects ?? []).filter((project) => {
                                 // Projects completed in the last month
                                 return (
-                                  project?.status === "completed" ||
+                                  (project?.status as string) === "completed" ||
                                   (project?.progress === 100 &&
                                     project?.updatedAt &&
                                     new Date(project.updatedAt) >= oneMonthAgo)
