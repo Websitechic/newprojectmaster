@@ -344,9 +344,16 @@ export default function Dashboard() {
   }) => (
     <div className="border rounded-lg p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
       <div className="flex justify-between items-start mb-2">
-        <h4 className="font-medium text-sm truncate flex-1 text-gray-800 dark:text-gray-200">{task.title}</h4>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <h4 className="font-medium text-sm truncate text-gray-800 dark:text-gray-200">{task.title}</h4>
+          {task.iterationNumber && task.iterationNumber > 1 && (
+            <Badge variant="outline" className="text-[10px] px-1 h-4 border-orange-200 text-orange-700 bg-orange-50 shrink-0">
+              v{task.iterationNumber}
+            </Badge>
+          )}
+        </div>
         {showTimer && task.isTimerRunning && (
-          <div className="flex items-center gap-1 text-green-600 text-xs">
+          <div className="flex items-center gap-1 text-green-600 text-xs shrink-0 ml-2">
             <Clock className="h-3 w-3" />
             <span>{formatTime(task.timeSpent || 0)}</span>
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -426,7 +433,7 @@ export default function Dashboard() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
                           {tasksInProgress.map((task) => (
-                            <TaskCard key={task.id} task={task} />
+                            <TaskCard key={task.id} task={task} showTimer />
                           ))}
                         </CollapsibleContent>
                       </Collapsible>
@@ -472,7 +479,7 @@ export default function Dashboard() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
                           {pendingTasks.map((task) => (
-                            <TaskCard key={task.id} task={task} />
+                            <TaskCard key={task.id} task={task} showTimer />
                           ))}
                         </CollapsibleContent>
                       </Collapsible>
@@ -1133,7 +1140,7 @@ export default function Dashboard() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
                           {tasksInProgress.map((task) => (
-                            <TaskCard key={task.id} task={task} />
+                            <TaskCard key={task.id} task={task} showTimer />
                           ))}
                         </CollapsibleContent>
                       </Collapsible>
@@ -1179,7 +1186,7 @@ export default function Dashboard() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-2 mt-3">
                           {pendingTasks.map((task) => (
-                            <TaskCard key={task.id} task={task} />
+                            <TaskCard key={task.id} task={task} showTimer />
                           ))}
                         </CollapsibleContent>
                       </Collapsible>
