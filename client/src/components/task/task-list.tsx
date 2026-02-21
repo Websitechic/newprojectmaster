@@ -670,23 +670,30 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-1">
                       {task.title}
-                      {(task as any).iterationNumber > 1 && (
+                      {(task.iterationNumber && task.iterationNumber > 1) && (
                         <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-orange-50 text-orange-700 border-orange-300">
-                          #{(task as any).iterationNumber}
+                          #{task.iterationNumber}
                         </Badge>
                       )}
                     </div>
                     <div className="text-[10px] text-muted-foreground leading-tight italic mt-1">
                       Assigned by: {task.assignedBy ? (userMap[task.assignedBy as number] || "Unknown User") : "System"}
                     </div>
-                    {(task as any).iterationNumber > 1 && (
-                      <button
-                        onClick={() => setExpandedIterations(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
-                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 mt-0.5"
-                      >
-                        <History className="h-3 w-3" />
-                        {expandedIterations[task.id] ? "Hide" : "View"} History
-                      </button>
+                    {(task.iterationNumber && task.iterationNumber > 1) && (
+                      <div className="mt-1">
+                        <button
+                          onClick={() => setExpandedIterations(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
+                          className="text-[10px] text-orange-600 hover:underline flex items-center gap-0.5"
+                        >
+                          <History className="h-3 w-3" />
+                          {expandedIterations[task.id] ? "Hide History" : "View History"}
+                        </button>
+                        {expandedIterations[task.id] && (
+                          <div className="mt-2 bg-muted/30 rounded-md border border-orange-100">
+                            <IterationHistory taskId={task.id} userMap={userMap} />
+                          </div>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell className="max-w-xs">
