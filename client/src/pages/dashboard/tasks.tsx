@@ -215,10 +215,10 @@ export default function Tasks() {
             </div>
           </div>
 
-          {selectedProject ? (
-            <TaskList tasks={filteredTasks || []} projectId={parseInt(selectedProject)} />
+            {selectedProject ? (
+            <TaskList tasks={filteredTasks || []} projectId={parseInt(selectedProject)} isStaffView={user?.role === 'staff'} />
           ) : (
-            <TaskList tasks={filteredTasks || []} projectId={undefined} showNewTaskButton={false} showProjectInfo={true} />
+            <TaskList tasks={filteredTasks || []} projectId={undefined} showNewTaskButton={false} showProjectInfo={true} isStaffView={user?.role === 'staff'} />
           )}
         </div>
       </div>
