@@ -770,26 +770,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                             <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
                           )}
                         </div>
-                        {task.iterationNumber && task.iterationNumber > 1 && (
-                          <div className="mt-1 flex flex-col gap-1">
-                            <Badge variant="outline" className="text-[10px] h-5 px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200 w-fit">
-                              Iteration #{task.iterationNumber}
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 px-1 text-[10px] text-muted-foreground hover:text-foreground w-fit justify-start"
-                              onClick={() => setExpandedIterations(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
-                            >
-                              {expandedIterations[task.id] ? "Hide History" : "View History"}
-                            </Button>
-                          </div>
-                        )}
-                        {expandedIterations[task.id] && (
-                          <div className="mt-2 border rounded-md bg-muted/30 max-w-md overflow-hidden">
-                            <IterationHistory taskId={task.id} userMap={userMap} />
-                          </div>
-                        )}
                         {stopGapAssignments[task.id] && (
                           <div className="text-xs text-blue-600 font-medium">
                             Stop Gap: +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
