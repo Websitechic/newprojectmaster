@@ -3464,8 +3464,8 @@ End of Report
         updateData.assigneeId = assigneeId && assigneeId !== 'unassigned' ? parseInt(assigneeId) : null;
       }
 
-      // If status is changing to 'pending' or 'on_hold' and timer is running, pause the timer
-      if ((status === 'pending' || status === 'on_hold') && existingTask.isTimerRunning && existingTask.timerStartTime) {
+      // If status is changing to 'pending' and timer is running, pause the timer
+      if (status === 'pending' && existingTask.isTimerRunning && existingTask.timerStartTime) {
         const elapsedSeconds = Math.floor((new Date().getTime() - new Date(existingTask.timerStartTime).getTime()) / 1000);
         const newTimeSpent = (existingTask.timeSpent || 0) + elapsedSeconds;
 
