@@ -34,7 +34,7 @@ import type { Task, Project } from "@db/schema";
 interface TaskFormData {
   title: string;
   description: string;
-  status: 'todo' | 'in_progress' | 'completed' | 'review' | 'technical_support' | 'not_approved';
+  status: 'todo' | 'in_progress' | 'completed' | 'review' | 'technical_support' | 'not_approved' | 'on_hold';
   assigneeId: string;
   startDate: string;
   deadline: string;
@@ -76,6 +76,7 @@ function IterationHistory({ taskId, userMap }: { taskId: number; userMap: Record
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
+      case 'on_hold': return 'bg-orange-100 text-orange-800';
       case 'not_approved': return 'bg-purple-100 text-purple-800';
       case 'completed': return 'bg-green-100 text-green-800';
       case 'review': return 'bg-yellow-100 text-yellow-800';
@@ -553,6 +554,15 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prompt for deadline update if moving out of on_hold
+    if (editTask && editTask.status === 'on_hold' && formData.status !== 'on_hold') {
+      const newDeadline = prompt("Task is being moved off hold. Please update the deadline:", formData.deadline);
+      if (newDeadline) {
+        formData.deadline = new Date(newDeadline).toISOString();
+      }
+    }
+
     if (editTask) {
       updateTask.mutate(formData);
     } else {
@@ -582,6 +592,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       case 'completed': return 'bg-green-100 text-green-800';
       case 'review': return 'bg-yellow-100 text-yellow-800';
       case 'technical_support': return 'bg-red-100 text-red-800';
+      case 'on_hold': return 'bg-orange-100 text-orange-800';
       case 'not_approved': return 'bg-purple-100 text-purple-800';
       case 'pending': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -662,7 +673,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               const isDeadlineMissed = !!(task.deadline &&
                 new Date(task.deadline).getTime() < Date.now() &&
                 task.status !== "completed" &&
-                task.status !== "review");
+                task.status !== "review" &&
+                task.status !== "on_hold");
 
               return (
                 <React.Fragment key={task.id}>
@@ -998,6 +1010,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     <SelectItem value="todo">To Do</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="review">Review</SelectItem>
+                    <SelectItem value="on_hold">On Hold</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="not_approved">Not Approved</SelectItem>
                     <SelectItem value="technical_support">Technical Support</SelectItem>
