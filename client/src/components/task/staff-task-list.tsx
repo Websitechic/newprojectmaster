@@ -176,7 +176,8 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
         const isDeadlineMissed = task.deadline &&
           new Date(task.deadline).getTime() < Date.now() &&
           task.status !== "completed" &&
-          task.status !== "review";
+          task.status !== "review" &&
+          task.status !== "on_hold";
 
         if (isDeadlineMissed && task.isTimerRunning) {
           pauseTimer.mutate(task.id);
@@ -486,7 +487,8 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
               const isDeadlineMissed = task.deadline &&
                 new Date(task.deadline).getTime() < Date.now() &&
                 task.status !== "completed" &&
-                task.status !== "review";
+                task.status !== "review" &&
+                task.status !== "on_hold";
 
               const isExpanded = expandedDescriptions[task.id] || false;
               const description = task.description || "No description";
@@ -553,7 +555,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       <Select
                         value={task.status || 'todo'}
                         onValueChange={(status) => {
-                          if (status === 'technical_support' && task.isTimerRunning) {
+                          if ((status === 'technical_support' || status === 'on_hold') && task.isTimerRunning) {
                             pauseTimer.mutate(task.id);
                           }
                           if (status === 'pending' && task.isTimerRunning) {
@@ -583,6 +585,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                             <SelectItem value="completed">Completed</SelectItem>
                           )}
                           <SelectItem value="technical_support">Technical Support</SelectItem>
+                          <SelectItem value="on_hold">On Hold</SelectItem>
                         </SelectContent>
                       </Select>
                     )}

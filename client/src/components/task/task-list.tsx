@@ -79,6 +79,7 @@ function IterationHistory({ taskId, userMap }: { taskId: number; userMap: Record
       case 'not_approved': return 'bg-purple-100 text-purple-800';
       case 'completed': return 'bg-green-100 text-green-800';
       case 'review': return 'bg-yellow-100 text-yellow-800';
+      case 'on_hold': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -375,7 +376,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       const hours = parseInt(data.workingHours) || 0;
       const minutes = parseInt(data.workingMinutes || '0') || 0;
 
-      if ((data.status === 'review' || data.status === 'completed' || data.status === 'technical_support') &&
+      if ((data.status === 'review' || data.status === 'completed' || data.status === 'technical_support' || data.status === 'on_hold') &&
           editTask.isTimerRunning) {
         try {
           await fetch(`/api/tasks/${editTask.id}/pause-timer`, {
@@ -574,6 +575,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const paginatedTasks = sortedTasks.slice(startIndex, startIndex + itemsPerPage);
 
   const getStatusColor = (status: string | null, isDeadlineMissed: boolean = false) => {
+    if (status === 'on_hold') return 'bg-orange-100 text-orange-800';
     if (isDeadlineMissed) return 'bg-red-600 text-white font-bold';
     if (!status) return 'bg-gray-100 text-gray-800';
     switch (status) {
@@ -583,6 +585,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       case 'review': return 'bg-yellow-100 text-yellow-800';
       case 'technical_support': return 'bg-red-100 text-red-800';
       case 'not_approved': return 'bg-purple-100 text-purple-800';
+      case 'on_hold': return 'bg-orange-100 text-orange-800';
       case 'pending': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -662,7 +665,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
               const isDeadlineMissed = !!(task.deadline &&
                 new Date(task.deadline).getTime() < Date.now() &&
                 task.status !== "completed" &&
-                task.status !== "review");
+                task.status !== "review" &&
+                task.status !== "on_hold");
 
               return (
                 <React.Fragment key={task.id}>
@@ -1001,6 +1005,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="not_approved">Not Approved</SelectItem>
                     <SelectItem value="technical_support">Technical Support</SelectItem>
+                    <SelectItem value="on_hold">On Hold</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
