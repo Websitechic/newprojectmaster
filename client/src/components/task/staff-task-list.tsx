@@ -585,7 +585,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                             <SelectItem value="completed">Completed</SelectItem>
                           )}
                           <SelectItem value="technical_support">Technical Support</SelectItem>
-                          {(user?.role !== "staff" && user?.role !== "intern") && (
+                          {((user?.role !== "staff" && user?.role !== "intern") || task.status === "on_hold") && (
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           )}
                         </SelectContent>
