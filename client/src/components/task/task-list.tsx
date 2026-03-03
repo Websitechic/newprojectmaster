@@ -1005,7 +1005,9 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="not_approved">Not Approved</SelectItem>
                     <SelectItem value="technical_support">Technical Support</SelectItem>
-                    <SelectItem value="on_hold">On Hold</SelectItem>
+                    {(user?.role !== "staff" && user?.role !== "intern") && (
+                      <SelectItem value="on_hold">On Hold</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
