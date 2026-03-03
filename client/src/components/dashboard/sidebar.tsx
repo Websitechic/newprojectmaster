@@ -469,6 +469,18 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "operations-kpi-report",
     },
     {
+      icon: <FileText size={20} />,
+      label: "Memos",
+      href: "/dashboard/memos",
+      key: "operations-memos",
+    },
+    {
+      icon: <CalendarDays size={20} />,
+      label: "Bookings",
+      href: "/dashboard/bookings",
+      key: "operations-bookings",
+    },
+    {
       icon: <MessageSquare size={20} />,
       label: "Penalty",
       href: "/dashboard/staff-queries",
