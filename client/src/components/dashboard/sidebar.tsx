@@ -430,6 +430,33 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
   // Operations Manager menu items (full access)
   const operationsManagerMenuItems = (user?.specialization === "operations_manager" || user?.role === "operations_manager") && user?.role !== "team_lead" ? [
     {
+      icon: <LayoutDashboard size={20} />,
+      label: "Dashboard",
+      href: "/dashboard",
+      key: "operations-dashboard",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Projects",
+      href: "/dashboard/projects",
+      badge: totalUnreadProjectMessages,
+      key: "operations-projects",
+    },
+    {
+      icon: <Clock size={20} />,
+      label: "Deadline Extension Request",
+      href: "/dashboard/deadline-extension-requests",
+      hasUpdate: indicators.extensionRequests,
+      key: "operations-deadline-extension-requests",
+    },
+    {
+      icon: <MessageSquare size={20} />,
+      label: "General Channel",
+      href: "/dashboard/general-channel",
+      badge: generalChannelUnread,
+      key: "operations-general-channel",
+    },
+    {
       icon: <Users size={20} />,
       label: "Staff Report",
       href: "/dashboard/staff-report",
@@ -437,55 +464,9 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
     {
       icon: <BarChart3 size={20} />,
-      label: "KPI Report",
+      label: "KPI report",
       href: "/dashboard/kpi-report",
       key: "operations-kpi-report",
-    },
-    {
-      icon: <Building2 size={20} />,
-      label: "Client Accounts",
-      href: "/dashboard/client-accounts",
-      key: "operations-client-accounts",
-    },
-    {
-      icon: <FileText size={20} />,
-      label: "Memos",
-      href: "/dashboard/memos",
-      key: "operations-memos",
-    },
-    {
-      icon: <Wrench size={20} />,
-      label: "Technical Management",
-      href: "/dashboard/technical-management",
-      hasUpdate: indicators.technicalManagement,
-      key: "operations-technical-management",
-    },
-    {
-      icon: <CalendarDays size={20} />,
-      label: "Bookings",
-      href: "/dashboard/bookings",
-      key: "operations-bookings",
-    },
-    {
-      icon: <Calendar size={20} />,
-      label: "Leave Management",
-      href: "/dashboard/leave-management",
-      hasUpdate: indicators.leaveManagement,
-      key: "operations-leave-management",
-    },
-    {
-      icon: <Clock size={20} />,
-      label: "Deadline Extension Requests",
-      href: "/dashboard/deadline-extension-requests",
-      hasUpdate: indicators.extensionRequests,
-      key: "operations-deadline-extension-requests",
-    },
-    {
-      icon: <TrendingUp size={20} />,
-      label: "Client Sentiment Tracker",
-      href: "/dashboard/client-sentiment-tracker",
-      hasUpdate: indicators.clientSentimentTracker,
-      key: "operations-client-sentiment-tracker",
     },
     {
       icon: <MessageSquare size={20} />,
@@ -495,17 +476,12 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "operations-staff-queries",
     },
     {
-      icon: <Phone size={20} />,
-      label: "Communication Tracker",
-      href: "/dashboard/communication-tracker",
-      key: "operations-communication-tracker",
-    },
-    {
-      icon: <MessageSquareX size={20} />,
-      label: "Client Complaints",
-      href: "/dashboard/client-complaints",
-      hasUpdate: indicators.clientComplaints,
-      key: "operations-client-complaints",
+      icon: <MessageCircle size={20} />,
+      label: "Direct Messages",
+      href: "/dashboard/direct-messages",
+      badge: unreadDirectMessages,
+      hasUpdate: indicators.directMessages,
+      key: "operations-direct-messages",
     },
     {
       icon: <AlertTriangle size={20} />,
@@ -513,6 +489,33 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/staff-complaints",
       hasUpdate: indicators.staffComplaints,
       key: "operations-staff-complaints",
+    },
+    {
+      icon: <Calendar size={20} />,
+      label: "Leave Management",
+      href: "/dashboard/leave-management",
+      hasUpdate: indicators.leaveManagement,
+      key: "operations-leave-management",
+    },
+    {
+      icon: <Building2 size={20} />,
+      label: "Client Accounts",
+      href: "/dashboard/client-accounts",
+      key: "operations-client-accounts",
+    },
+    {
+      icon: <TrendingUp size={20} />,
+      label: "Client Sentiment Tracker",
+      href: "/dashboard/client-sentiment-tracker",
+      hasUpdate: indicators.clientSentimentTracker,
+      key: "operations-client-sentiment-tracker",
+    },
+    {
+      icon: <MessageSquareX size={20} />,
+      label: "Client Complaints",
+      href: "/dashboard/client-complaints",
+      hasUpdate: indicators.clientComplaints,
+      key: "operations-client-complaints",
     },
     {
       icon: <StickyNote size={20} />,
@@ -525,6 +528,49 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "SOP",
       href: "/dashboard/sop",
       key: "operations-sop",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "New Project briefing",
+      href: "/dashboard/project-briefing",
+      key: "operations-project-briefing",
+    },
+    {
+      icon: <Phone size={20} />,
+      label: "Communication tracker",
+      href: "/dashboard/communication-tracker",
+      key: "operations-communication-tracker",
+    },
+    {
+      icon: <Wrench size={20} />,
+      label: "Technical Management",
+      href: "/dashboard/technical-management",
+      hasUpdate: indicators.technicalManagement,
+      key: "operations-technical-management",
+    },
+    {
+      icon: <PlayCircle size={20} />,
+      label: "Guide videos",
+      href: "/dashboard/guide-videos",
+      key: "operations-guide-videos",
+    },
+    {
+      icon: <Bell size={20} />,
+      label: "One signal test",
+      href: "/dashboard/onesignal-test",
+      key: "operations-onesignal-test",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Report App",
+      href: "/dashboard/report-management",
+      key: "operations-report-management",
+    },
+    {
+      icon: <Bug size={20} />,
+      label: "App Issue",
+      href: "/dashboard/report-issues",
+      key: "operations-report-issues",
     },
   ] : [];
 
@@ -681,6 +727,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "dashboard",
     },
     ...clientMenuItems,
+  ] : (user?.role === "operations_manager" || user?.specialization === "operations_manager") ? [
+    ...operationsManagerMenuItems
   ] : [
     ...baseMenuItems.slice(0, 2),
     ...pmMenuItems,
