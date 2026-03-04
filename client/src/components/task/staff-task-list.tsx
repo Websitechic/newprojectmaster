@@ -597,6 +597,21 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                       </Button>
                     )}
                   </TableCell>
+                  <TableCell className="py-4 align-top text-right w-[200px]">
+                    <div className="flex justify-end gap-1">
+                      {task.status !== 'completed' && task.status !== 'review' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => submitTask.mutate(task.id)}
+                          disabled={submitTask.isPending}
+                          className="h-7 text-[10px] font-bold uppercase bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                        >
+                          <Send className="h-3.5 w-3.5 mr-1" /> Submit
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               );
             })}
