@@ -415,12 +415,20 @@ export default function GeneralChannel() {
 
   const handleReplyToMessage = (msg: GeneralChannelMessage) => {
     let cleanContent = msg.content;
+    
+    // If the message being replied to is itself a reply, 
+    // extract only the actual message content, ignoring the quoted part
     if (msg.content.startsWith('> Replying to')) {
       const parts = msg.content.split('\n\n');
-      cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : msg.content;
+      if (parts.length > 1) {
+        // The first part is the quote block, the rest is the actual message
+        cleanContent = parts.slice(1).join('\n\n');
+      }
     }
 
     setReplyingTo({ ...msg, content: cleanContent });
+    // Explicitly clear the current message input to prevent mixing
+    setMessage("");
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
@@ -481,7 +489,13 @@ export default function GeneralChannel() {
     }
     
     if (replyingTo) {
-      const quotedMessage = `> Replying to ${replyingTo.senderName}:\n> ${replyingTo.content}\n\n${messageToSend}`;
+      // Clean up the content to be quoted: remove existing quote markers if any
+      const contentToQuote = replyingTo.content
+        .split('\n')
+        .map(line => line.startsWith('> ') ? line.substring(2) : line)
+        .join('\n');
+
+      const quotedMessage = `> Replying to ${replyingTo.senderName}:\n> ${contentToQuote}\n\n${messageToSend}`;
       messageToSend = quotedMessage;
     }
 
