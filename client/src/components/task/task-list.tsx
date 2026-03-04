@@ -574,6 +574,29 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTasks = sortedTasks.slice(startIndex, startIndex + itemsPerPage);
 
+  const formatDescription = (description: string, taskId: number) => {
+    if (!description) return <span className="italic text-slate-400">No description provided</span>;
+
+    const isExpanded = expandedDescriptions[taskId];
+    const shouldTruncate = description.length > 100;
+
+    return (
+      <div className="space-y-1">
+        <div className={`text-sm text-slate-600 leading-relaxed ${!isExpanded && shouldTruncate ? "line-clamp-2" : ""}`}>
+          {description}
+        </div>
+        {shouldTruncate && (
+          <button
+            onClick={() => toggleDescription(taskId)}
+            className="text-blue-600 hover:text-blue-800 text-xs font-semibold transition-colors mt-1"
+          >
+            {isExpanded ? "Show less" : "Show more"}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   const getStatusBadgeColor = (status: string | null, isDeadlineMissed: boolean = false) => {
     if (isDeadlineMissed) return 'bg-red-100 text-red-700 border-red-200';
     switch (status) {
