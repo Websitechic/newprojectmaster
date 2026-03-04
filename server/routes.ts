@@ -3974,6 +3974,22 @@ End of Report
         return res.status(404).json({ error: "Message not found" });
       }
 
+      // Broadcast update via SSE
+      if (global.sseClients) {
+        global.sseClients.forEach((client, id) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'general_channel_message_updated',
+                data: updatedMessage
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error broadcasting to user ${id}:`, error);
+            }
+          }
+        });
+      }
+
       res.json(updatedMessage);
     } catch (error) {
       console.error("Error pinning message:", error);
@@ -4003,6 +4019,22 @@ End of Report
 
       if (!updatedMessage) {
         return res.status(404).json({ error: "Message not found" });
+      }
+
+      // Broadcast update via SSE
+      if (global.sseClients) {
+        global.sseClients.forEach((client, id) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'general_channel_message_updated',
+                data: updatedMessage
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error broadcasting to user ${id}:`, error);
+            }
+          }
+        });
       }
 
       res.json(updatedMessage);
@@ -4979,12 +5011,12 @@ End of Report
   });
 
   // Reaction to general channel message
-  app.post("/api/general-channel/messages/:id/react", async (req, res) => {
+  app.post("/api/general-channel/messages/:messageId/react", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
-    const messageId = parseInt(req.params.id);
+    const messageId = parseInt(req.params.messageId);
     const { emoji } = req.body;
     const userId = req.user!.id;
 
@@ -5007,7 +5039,7 @@ End of Report
       const existingReactionIndex = reactions.findIndex(r => r.emoji === emoji);
 
       if (existingReactionIndex > -1) {
-        const userIds = reactions[existingReactionIndex].userIds;
+        const userIds = reactions[existingReactionIndex].userIds || [];
         const userIndex = userIds.indexOf(userId);
 
         if (userIndex > -1) {

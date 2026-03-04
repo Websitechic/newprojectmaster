@@ -197,6 +197,30 @@ export default function GeneralChannel() {
     return () => clearTimeout(timer);
   }, [messages.length, user?.id]); // Only re-run when message count changes
 
+  // SSE for real-time updates
+  useEffect(() => {
+    const eventSource = new EventSource("/api/sse");
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'general_channel_message_updated') {
+          queryClient.setQueryData(["/api/general-channel/messages"], (old: any) => {
+            if (!old) return old;
+            return old.map((msg: any) => 
+              msg.id === payload.data.id ? payload.data : msg
+            );
+          });
+        } else if (payload.type === 'general_channel_message_new') {
+          queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
+        }
+      } catch (err) {
+        console.error("SSE Error:", err);
+      }
+    };
+
+    return () => eventSource.close();
+  }, [queryClient]);
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users"],
     enabled: !!user,
@@ -237,10 +261,9 @@ export default function GeneralChannel() {
       queryClient.setQueryData(["/api/general-channel/messages"], (old: any) => {
         if (!old) return old;
         return old.map((msg: any) => 
-          msg.id === data.id ? { ...msg, isPinned: data.isPinned } : msg
+          msg.id === data.id ? data : msg
         );
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
       toast({ title: "Success", description: "Message pinned successfully" });
     },
     onError: (error: Error) => {
@@ -250,7 +273,7 @@ export default function GeneralChannel() {
 
   const unpinMessageMutation = useMutation({
     mutationFn: async (messageId: number) => {
-      const response = await fetch(`/api/general-channel/messages/${messageId}/unpin`, {
+      const response = await fetch(`/api/general-channel/messages/${messageId}/pin`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -261,10 +284,9 @@ export default function GeneralChannel() {
       queryClient.setQueryData(["/api/general-channel/messages"], (old: any) => {
         if (!old) return old;
         return old.map((msg: any) => 
-          msg.id === data.id ? { ...msg, isPinned: data.isPinned } : msg
+          msg.id === data.id ? data : msg
         );
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
       toast({ title: "Success", description: "Message unpinned successfully" });
     },
     onError: (error: Error) => {
@@ -478,15 +500,12 @@ export default function GeneralChannel() {
       return response.json();
     },
     onSuccess: (data) => {
-      console.log("Reaction update data:", data);
       queryClient.setQueryData(["/api/general-channel/messages"], (old: any) => {
         if (!old) return old;
         return old.map((msg: any) => 
-          msg.id === data.id ? { ...msg, reactions: data.reactions } : msg
+          msg.id === data.id ? data : msg
         );
       });
-      // Also invalidate to be sure
-      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
     },
     onError: (error: Error) => {
       toast({ title: "Failed to react", description: error.message, variant: "destructive" });
@@ -659,27 +678,10 @@ export default function GeneralChannel() {
   };
 
   const handlePinMessage = async (message: GeneralChannelMessage) => {
-    try {
-      const response = await fetch(`/api/general-channel/messages/${message.id}/pin`, {
-        method: message.isPinned ? 'DELETE' : 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) throw new Error('Failed to update pin status');
-
-      // Refetch messages to update UI
-      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
-      
-      toast({ 
-        title: "Success", 
-        description: message.isPinned ? "Message unpinned" : "Message pinned successfully" 
-      });
-    } catch (error: any) {
-      toast({ 
-        title: "Error", 
-        description: error.message || "Failed to update pin status", 
-        variant: "destructive" 
-      });
+    if (message.isPinned) {
+      unpinMessageMutation.mutate(message.id);
+    } else {
+      pinMessageMutation.mutate(message.id);
     }
   };
 
@@ -915,12 +917,8 @@ export default function GeneralChannel() {
                                       >
                                         <EmojiPicker 
                                           onSelect={(emoji) => {
-                                            console.log("Emoji selected:", emoji, "for message:", msg.id);
                                             reactToMessageMutation.mutate({ messageId: msg.id, emoji });
                                           }} 
-                                          onClose={() => {
-                                            // Any logic to close if needed, but the popover handles it
-                                          }}
                                         />
                                       </PopoverContent>
                                     </Popover>
