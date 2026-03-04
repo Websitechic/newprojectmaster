@@ -496,119 +496,230 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
 
               return (
                 <TableRow key={task.id} className={isDeadlineMissed ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white" : ""}>
-                  <TableCell className="py-4 align-top w-[200px]">
+                  <TableCell className="w-[200px]">
                     <div className="space-y-1">
-                      <div className="font-bold text-slate-900 text-sm leading-tight">{task.title}</div>
-                      <div className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">
-                        {task.projectId ? (projectMap[task.projectId] || `Project: ${task.projectId}`) : "General"}
+                      <div className="font-medium text-sm">{task.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`) : "No Project"}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[280px]">
+                  <TableCell className="w-[280px]">
                     <div className="space-y-1">
-                      <div className={`text-sm text-slate-600 leading-relaxed ${!isExpanded ? "line-clamp-2" : ""}`}>
-                        {description || <span className="italic text-slate-400">No description provided</span>}
+                      <div className="text-sm text-gray-700">
+                        {isLongDescription && !isExpanded
+                          ? `${description.substring(0, 100)}...`
+                          : description
+                        }
                       </div>
-                      {description.length > 60 && (
-                        <button
-                          onClick={() => setExpandedDescriptions(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
-                          className="text-blue-600 hover:text-blue-800 text-xs font-semibold transition-colors mt-1"
+                      {isLongDescription && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setExpandedDescriptions(prev => ({
+                            ...prev,
+                            [task.id]: !prev[task.id]
+                          }))}
+                          className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
                         >
-                          {isExpanded ? "Show less" : "Show more"}
-                        </button>
+                          {isExpanded ? (
+                            <>
+                              <ChevronUp className="h-3 w-3 mr-1" />
+                              Show less
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-3 w-3 mr-1" />
+                              Show more
+                            </>
+                          )}
+                        </Button>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[140px]">
-                    <div className="text-sm font-medium text-slate-700 leading-tight">
+                  <TableCell className="w-[140px]">
+                    <div className="text-sm leading-tight">
                       {task.assignedBy
-                        ? (allUsers?.find(u => u.id === task.assignedBy)?.name || "Unknown")
-                        : "System"}
+                        ? (allUsers?.find(u => u.id === task.assignedBy)?.name || "Unknown").split(' ').map((word: string, idx: number) => (
+                            <div key={idx}>{word}</div>
+                          ))
+                        : "Not specified"}
                     </div>
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[180px]">
-                    <Badge 
-                      variant="outline" 
-                      className={`uppercase text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                        isDeadlineMissed 
-                        ? "bg-red-100 text-red-700 border-red-200" 
-                        : (task.status === 'in_progress' ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-slate-100 text-slate-600 border-slate-200")
-                      }`}
-                    >
-                      {(task.status || 'todo').replace('_', ' ')}
-                    </Badge>
+                  <TableCell className="w-[180px]">
+                    {isDeadlineMissed ? (
+                      <Badge variant="destructive" className="w-full justify-center py-1">
+                        Deadline Missed
+                      </Badge>
+                    ) : (
+                      <Select
+                        value={task.status || 'todo'}
+                        onValueChange={(status) => {
+                          if ((status === 'technical_support' || status === 'on_hold') && task.isTimerRunning) {
+                            pauseTimer.mutate(task.id);
+                          }
+                          if (status === 'pending' && task.isTimerRunning) {
+                            pauseTimer.mutate(task.id);
+                          }
+                          if (status === 'in_progress' && !task.isTimerRunning) {
+                            startTimer.mutate(task.id);
+                          }
+                          updateTaskStatus.mutate({ taskId: task.id, status });
+                        }}
+                        disabled={updateTaskStatus.isPending || pauseTimer.isPending || startTimer.isPending}
+                      >
+                        <SelectTrigger className="w-full h-8 text-xs px-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(!task.hasBeenStarted && (task.timeSpent || 0) === 0) && (
+                            <SelectItem value="todo">To Do</SelectItem>
+                          )}
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="review">Review</SelectItem>
+                          {task.status === "completed" && (
+                            <SelectItem value="completed" disabled>Completed</SelectItem>
+                          )}
+                          {(user?.role !== "staff" && user?.role !== "intern") && task.status !== "completed" && (
+                            <SelectItem value="completed">Completed</SelectItem>
+                          )}
+                          <SelectItem value="technical_support">Technical Support</SelectItem>
+                          {((user?.role !== "staff" && user?.role !== "intern") || task.status === "on_hold") && (
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[180px]">
-                    <div className="space-y-2">
-                      <div className={`text-lg font-mono tracking-tight ${getTimerColor(task, currentTime)}`}>
-                        {formatTime(currentTime)}
-                      </div>
-                      <div className="flex gap-1">
-                        {task.isTimerRunning ? (
-                          <Button size="sm" variant="outline" className="h-7 px-2 border-slate-200" onClick={() => pauseTimer.mutate(task.id)}>
-                            <Pause className="h-3 w-3 mr-1" /> Pause
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline" className="h-7 px-2 border-slate-200" onClick={() => startTimer.mutate(task.id)}>
-                            <Play className="h-3 w-3 mr-1" /> Start
-                          </Button>
+                  <TableCell className="w-[180px]">
+                    <div className="space-y-1">
+                      <div className={`flex items-center gap-1 text-sm ${getTimerColor(task, currentTime)}`}>
+                        <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className={timeOverLimit || isDeadlineMissed ? "animate-pulse font-semibold" : ""}>
+                          {formatTime(currentTime)}
+                        </span>
+                        {task.isTimerRunning && (
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
                         )}
                       </div>
+                      <div className="text-xs text-gray-600">
+                        {task.workingHours || task.workingMinutes ? (() => {
+                          const hours = task.workingHours || 0;
+                          const minutes = task.workingMinutes || 0;
+                          if (hours > 0 && minutes > 0) return `${hours}hr ${minutes}mins`;
+                          if (hours > 0) return `${hours}hr`;
+                          if (minutes > 0) return `${minutes}mins`;
+                          return "Not set";
+                        })() : "Not set"}
+                      </div>
+                      {stopGapAssignments[task.id] && (
+                        <div className="text-xs text-blue-600 font-medium">
+                          Stop Gap: +{Math.floor(stopGapAssignments[task.id].stopGapHours / 60)}h {stopGapAssignments[task.id].stopGapHours % 60}m
+                        </div>
+                      )}
+                      {(timeOverLimit || isDeadlineMissed) && (
+                        <div className="text-xs text-red-600 font-medium">
+                          {isDeadlineMissed ? "Deadline Missed" : "Over limit!"}
+                        </div>
+                      )}
                     </div>
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[140px]">
-                    <div className="text-[11px] leading-tight font-medium">
-                      <div className="text-slate-400 uppercase mb-0.5 text-[9px] tracking-tight">Start Date</div>
-                      <div className="text-slate-900">{task.startDate ? new Date(task.startDate).toLocaleDateString() : "-"}</div>
-                      <div className="text-green-600 font-bold">{task.startDate ? new Date(task.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ""}</div>
-                    </div>
+                  <TableCell className="w-[140px]">
+                    {task.startDate ? (
+                      <div className="text-xs">
+                        <div>{new Date(task.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        <div className="text-muted-foreground flex flex-col">
+                          <span>{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="text-[10px] text-blue-500 font-semibold mt-0.5">
+                            Started: {task.actualStartTime 
+                              ? new Date(task.actualStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                              : (task.startDate ? new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Not started')}
+                          </span>
+                        </div>
+                      </div>
+                    ) : <span className="text-muted-foreground text-xs">Not set</span>}
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[140px]">
-                    <div className="text-[11px] leading-tight font-medium">
-                      <div className="text-slate-400 uppercase mb-0.5 text-[9px] tracking-tight">Deadline</div>
-                      <div className={`text-slate-900 ${isDeadlineMissed ? "text-red-600 font-bold" : ""}`}>{task.deadline ? new Date(task.deadline).toLocaleDateString() : "-"}</div>
-                      <div className={`${isDeadlineMissed ? "text-red-600 font-bold" : "text-slate-500"}`}>{task.deadline ? new Date(task.deadline).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ""}</div>
-                    </div>
+                  <TableCell className="w-[140px]">
+                    {task.deadline ? (
+                      <div className={`text-xs whitespace-nowrap ${isDeadlineMissed ? "text-red-600 font-bold" : ""}`}>
+                        <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        <div className="text-muted-foreground flex flex-col">
+                          <span>{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                          {task.status === 'review' && task.reviewStartedAt && (
+                            <span className="text-[10px] text-green-600 font-semibold mt-0.5">Ended: {new Date(task.reviewStartedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                          )}
+                        </div>
+                      </div>
+                    ) : <span className="text-muted-foreground text-xs">None</span>}
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[200px]">
+                  <TableCell className="w-[200px]">
                     {task.status === "completed" ? (
-                      <Badge variant="secondary" className="bg-green-100 text-green-800 text-[10px] font-bold uppercase px-2 py-0.5 border-green-200 w-full justify-center rounded-full">
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs whitespace-nowrap border-green-200 w-full justify-center">
                         Completed
                       </Badge>
                     ) : stopGapAssignments[task.id] ? (
                       <div className="space-y-1">
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-[10px] font-bold uppercase px-2 py-0.5 border-blue-200 w-full justify-center rounded-full">
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs whitespace-nowrap">
                           +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
                         </Badge>
+                        <div className="text-xs text-muted-foreground">Applied</div>
                       </div>
                     ) : stopGapAllocation && stopGapAllocation.remainingHours === 0 ? (
-                      <span className="text-[10px] text-slate-400 uppercase font-medium">No hours left</span>
+                      <span className="text-xs text-muted-foreground">No hours left</span>
                     ) : (
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 text-[10px] font-bold uppercase w-full border-slate-200 text-slate-600 hover:bg-slate-50"
                         onClick={() => {
                           setSelectedTaskForStopGap(task.id);
                           setStopGapDialogOpen(true);
                         }}
+                        className="h-7 text-xs px-2"
                       >
-                        Add Stop Gap
+                        Apply Stop Gap
                       </Button>
                     )}
                   </TableCell>
-                  <TableCell className="py-4 align-top text-right w-[200px]">
-                    <div className="flex justify-end gap-1">
-                      {task.status !== 'completed' && task.status !== 'review' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => submitTask.mutate(task.id)}
-                          disabled={submitTask.isPending}
-                          className="h-7 text-[10px] font-bold uppercase bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                        >
-                          <Send className="h-3.5 w-3.5 mr-1" /> Submit
-                        </Button>
+                  <TableCell className="text-right w-[200px]">
+                    <div className="flex justify-end gap-2">
+                      {isDeadlineMissed ? (
+                        <Badge variant="destructive" className="bg-red-100 text-red-800 text-xs whitespace-nowrap border-red-200">
+                          Deadline Missed
+                        </Badge>
+                      ) : (
+                        <>
+                          {task.isTimerRunning ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => pauseTimer.mutate(task.id)}
+                              disabled={pauseTimer.isPending}
+                              className="h-8 text-xs px-2 bg-yellow-50 text-yellow-700 border-yellow-200"
+                            >
+                              <Pause className="h-3 w-3 mr-1" /> Pause
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => startTimer.mutate(task.id)}
+                              disabled={startTimer.isPending || task.status === 'completed' || task.status === 'review'}
+                              className="h-8 text-xs px-2 bg-blue-50 text-blue-700 border-blue-200"
+                            >
+                              <Play className="h-3 w-3 mr-1" /> Start
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => submitTask.mutate(task.id)}
+                            disabled={submitTask.isPending || task.status === 'completed' || task.status === 'review'}
+                            className="h-8 text-xs px-2 bg-green-50 text-green-700 border-green-200"
+                          >
+                            <Send className="h-3 w-3 mr-1" /> Submit
+                          </Button>
+                        </>
                       )}
                     </div>
                   </TableCell>

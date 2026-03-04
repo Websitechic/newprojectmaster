@@ -561,117 +561,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     }
   };
 
-  const TaskForm = ({ onSuccess, onCancel }: { onSuccess: () => void, onCancel: () => void }) => (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
-        <Input
-          id="title"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          rows={4}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="status">Status</Label>
-          <Select
-            value={formData.status}
-            onValueChange={(value: any) => setFormData({ ...formData, status: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todo">To Do</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="review">Review</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="technical_support">Technical Support</SelectItem>
-              <SelectItem value="not_approved">Not Approved</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="assignee">Assignee</Label>
-          <Select
-            value={formData.assigneeId}
-            onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select assignee" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="unassigned">Unassigned</SelectItem>
-              {allUsers.map((u) => (
-                <SelectItem key={u.id} value={u.id.toString()}>
-                  {u.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="startDate">Start Date</Label>
-          <Input
-            id="startDate"
-            type="datetime-local"
-            value={formData.startDate}
-            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="deadline">Deadline</Label>
-          <Input
-            id="deadline"
-            type="datetime-local"
-            value={formData.deadline}
-            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="workingHours">Working Hours</Label>
-          <Input
-            id="workingHours"
-            type="number"
-            value={formData.workingHours}
-            onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="workingMinutes">Working Minutes</Label>
-          <Input
-            id="workingMinutes"
-            type="number"
-            value={formData.workingMinutes}
-            onChange={(e) => setFormData({ ...formData, workingMinutes: e.target.value })}
-          />
-        </div>
-      </div>
-      <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={createTask.isPending || updateTask.isPending}>
-          {editTask ? "Update Task" : "Create Task"}
-        </Button>
-      </div>
-    </form>
-  );
-
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -684,43 +573,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const totalPages = Math.ceil(sortedTasks.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTasks = sortedTasks.slice(startIndex, startIndex + itemsPerPage);
-
-  const formatDescription = (description: string, taskId: number) => {
-    if (!description) return <span className="italic text-slate-400">No description provided</span>;
-
-    const isExpanded = expandedDescriptions[taskId];
-    const shouldTruncate = description.length > 100;
-
-    return (
-      <div className="space-y-1">
-        <div className={`text-sm text-slate-600 leading-relaxed ${!isExpanded && shouldTruncate ? "line-clamp-2" : ""}`}>
-          {description}
-        </div>
-        {shouldTruncate && (
-          <button
-            onClick={() => toggleDescription(taskId)}
-            className="text-blue-600 hover:text-blue-800 text-xs font-semibold transition-colors mt-1"
-          >
-            {isExpanded ? "Show less" : "Show more"}
-          </button>
-        )}
-      </div>
-    );
-  };
-
-  const getStatusBadgeColor = (status: string | null, isDeadlineMissed: boolean = false) => {
-    if (isDeadlineMissed) return 'bg-red-100 text-red-700 border-red-200';
-    switch (status) {
-      case 'todo': return 'bg-slate-100 text-slate-600 border-slate-200';
-      case 'in_progress': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'review': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'completed': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'technical_support': return 'bg-rose-100 text-rose-700 border-rose-200';
-      case 'not_approved': return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'on_hold': return 'bg-orange-100 text-orange-700 border-orange-200';
-      default: return 'bg-slate-100 text-slate-600 border-slate-200';
-    }
-  };
 
   const getStatusColor = (status: string | null, isDeadlineMissed: boolean = false) => {
     if (status === 'on_hold') return 'bg-orange-100 text-orange-800';
@@ -737,6 +589,28 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       case 'pending': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const formatDescription = (description: string | null | undefined, taskId: number) => {
+    if (!description) return "No description";
+    const isExpanded = expandedDescriptions[taskId];
+    const maxLength = 50;
+
+    if (description.length <= maxLength) {
+      return description;
+    }
+
+    return (
+      <span>
+        {isExpanded ? description : description.substring(0, maxLength) + "..."}
+        <button
+          onClick={() => toggleDescription(taskId)}
+          className="ml-2 text-blue-500 hover:underline"
+        >
+          {isExpanded ? "Show less" : "Show more"}
+        </button>
+      </span>
+    );
   };
 
   return (
@@ -773,21 +647,17 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         <div className="min-w-[800px]">
           <Table>
           <TableHeader>
-            <TableRow className="bg-slate-50/50">
-              <TableHead className="w-[200px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Task & Assignee</TableHead>
-              <TableHead className="w-[280px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Description</TableHead>
-              <TableHead className="w-[140px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Status</TableHead>
-              <TableHead className="w-[140px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Assignee</TableHead>
-              {showProjectInfo && (
-                <TableHead className="w-[180px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Project</TableHead>
-              )}
-              {showProjectInfo && (
-                <TableHead className="w-[180px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Time Spent</TableHead>
-              )}
-              <TableHead className="w-[140px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Start Date</TableHead>
-              <TableHead className="w-[140px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Deadline</TableHead>
-              <TableHead className="w-[140px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Allocated</TableHead>
-              <TableHead className="text-right font-bold text-slate-900 uppercase text-[11px] tracking-wider">Actions</TableHead>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Assignee</TableHead>
+              {showProjectInfo && <TableHead>Project</TableHead>}
+              {showProjectInfo && <TableHead>Time Spent</TableHead>}
+              <TableHead>Start Date</TableHead>
+              <TableHead>Deadline</TableHead>
+              <TableHead>Working Hours</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -800,151 +670,255 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
               return (
                 <React.Fragment key={task.id}>
-                <TableRow className={`${isDeadlineMissed ? "bg-red-50/50" : ""} hover:bg-slate-50/50 transition-colors border-b`}>
-                  <TableCell className="py-4 align-top w-[200px]">
+                <TableRow className={isDeadlineMissed ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white" : ""}>
+                  <TableCell className="font-medium">
                     <div className="flex items-center gap-1">
-                      <div className="font-bold text-slate-900 text-sm leading-tight">{task.title}</div>
+                      {task.title}
                       {(task as any).iterationNumber > 1 && (
                         <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-orange-50 text-orange-700 border-orange-300">
                           #{(task as any).iterationNumber}
                         </Badge>
                       )}
                     </div>
-                    <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">
-                      Assigned by: {task.assignedBy ? (userMap[task.assignedBy as number] || "Unknown") : "System"}
+                    <div className="text-[10px] text-muted-foreground leading-tight italic mt-1">
+                      Assigned by: {task.assignedBy ? (userMap[task.assignedBy as number] || "Unknown User") : "System"}
                     </div>
                     {(task as any).iterationNumber > 1 && (
                       <button
                         onClick={() => setExpandedIterations(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
-                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 mt-0.5 font-semibold"
+                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 mt-0.5"
                       >
                         <History className="h-3 w-3" />
                         {expandedIterations[task.id] ? "Hide" : "View"} History
                       </button>
                     )}
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[280px]">
-                    {formatDescription((task.description as any) || "", task.id)}
+                  <TableCell className="max-w-xs">
+                      {formatDescription((task.description as any) || "", task.id)}
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[140px]">
-                    <Badge 
-                      variant="outline" 
-                      className={`uppercase text-[10px] font-bold px-2 py-0.5 rounded-full border ${getStatusBadgeColor(task.status, isDeadlineMissed)}`}
-                    >
-                      {(task.status || 'todo').replace('_', ' ')}
-                    </Badge>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <Badge className={getStatusColor(task.status, isDeadlineMissed)}>
+                        <div className="text-center leading-tight">
+                          {isDeadlineMissed ? (
+                            <div className="flex flex-col items-center">
+                              <div>Deadline</div>
+                              <div>Missed</div>
+                            </div>
+                          ) : (
+                            (task.status?.replace('_', ' ') || 'todo').split(' ').map((word: string, idx: number) => (
+                              <div key={idx}>{word}</div>
+                            ))
+                          )}
+                        </div>
+                      </Badge>
+                      {/* Show pending review time for tasks in review */}
+                      {task.status === 'review' && (task as any).reviewStartedAt && (
+                        <div className="text-xs text-black dark:text-white font-medium">
+                          Pending: {(() => {
+                            const reviewStart = new Date((task as any).reviewStartedAt).getTime();
+                            const now = Date.now();
+                            const diffMs = now - reviewStart;
+                            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                            if (diffHours > 0) return `${diffHours}h ${diffMins}m`;
+                            return `${diffMins}m`;
+                          })()}
+                        </div>
+                      )}
+                      {/* Show total review time for completed tasks */}
+                      {task.status === 'completed' && (task as any).reviewStartedAt && (task as any).completedAt && (
+                        <div className="text-xs text-black dark:text-white font-medium">
+                          Review: {(() => {
+                            const reviewStart = new Date((task as any).reviewStartedAt).getTime();
+                            const completedAt = new Date((task as any).completedAt).getTime();
+                            const diffMs = completedAt - reviewStart;
+                            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                            if (diffHours > 0) return `${diffHours}h`;
+                            return `${diffMins}m`;
+                          })()}
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[140px]">
-                    <div className="text-sm font-medium text-slate-700 leading-tight">
+                  <TableCell>
+                    <div className="text-sm leading-tight">
                       {(() => {
                         const assignee = (task as any).assignee;
                         if (!assignee || !assignee.id) return "Unassigned";
-                        return assignee.name || "Unassigned";
+                        const name = assignee.name || "Unassigned";
+                        const role = assignee.role === 'team_lead' ? ' (Team Lead)' : '';
+                        return (name + role).split(' ').map((word: string, idx: number) => (
+                          <div key={idx}>{word}</div>
+                        ));
                       })()}
                     </div>
                   </TableCell>
                   {showProjectInfo && (
-                    <TableCell className="py-4 align-top w-[180px]">
-                      <div className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">
-                        {task && task.projectId ? (projectMap[task.projectId] || `Project: ${task.projectId}`) : "General"}
+                    <TableCell>
+                      <div className="text-sm leading-tight">
+                        {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word: string, idx: number) => (
+                          <div key={idx}>{word}</div>
+                        )) : "No Project"}
                       </div>
                     </TableCell>
                   )}
                   {showProjectInfo && (
-                    <TableCell className="py-4 align-top w-[180px]">
+                    <TableCell>
                       <div className="space-y-1">
-                        <div className={`text-sm font-mono ${task.isTimerRunning ? 'text-blue-600 font-bold' : isDeadlineMissed ? 'text-red-600 font-bold' : 'text-slate-600'}`}>
-                          {formatTime(localTimers[task.id] || task.timeSpent || 0)}
+                        <div className={`flex items-center gap-1 ${task.isTimerRunning ? 'text-blue-600 font-medium' : isDeadlineMissed ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
+                          <Clock className="h-4 w-4" />
+                          <span className={isDeadlineMissed ? "animate-pulse" : ""}>{formatTime(localTimers[task.id] || task.timeSpent || 0)}</span>
+                          {task.isTimerRunning && (
+                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
+                          )}
                         </div>
                         {stopGapAssignments[task.id] && (
-                          <div className="text-[10px] text-blue-600 font-bold uppercase">
+                          <div className="text-xs text-blue-600 font-medium">
                             Stop Gap: +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
+                          </div>
+                        )}
+                        {isDeadlineMissed && (
+                          <div className="text-xs text-red-600 font-medium">
+                            Deadline Missed
                           </div>
                         )}
                       </div>
                     </TableCell>
                   )}
-                  <TableCell className="py-4 align-top w-[140px]">
-                    <div className="text-[11px] leading-tight font-medium">
-                      <div className="text-slate-900">{task.startDate ? new Date(task.startDate).toLocaleDateString() : "-"}</div>
-                      <div className="text-green-600 font-bold">{task.startDate ? new Date(task.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ""}</div>
-                    </div>
+                  <TableCell>
+                    {task.startDate ? (
+                      <div className="text-sm">
+                        <div>{new Date(task.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        <div className="text-muted-foreground">{new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                        {/* Show actual start time when work was started */}
+                        {(task as any).actualStartTime && (
+                          <div className="text-[10px] text-green-600 font-semibold mt-1">
+                                                        Started: {task.actualStartTime 
+                              ? new Date(task.actualStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                              : (task.startDate ? new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Not started')}
+                          </div>
+                        )}
+                      </div>
+                    ) : "Not set"}
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[140px]">
-                    <div className="text-[11px] leading-tight font-medium">
-                      <div className={`text-slate-900 ${isDeadlineMissed ? "text-red-600 font-bold" : ""}`}>{task.deadline ? new Date(task.deadline).toLocaleDateString() : "-"}</div>
-                      <div className={`${isDeadlineMissed ? "text-red-600 font-bold" : "text-slate-500"}`}>{task.deadline ? new Date(task.deadline).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ""}</div>
-                    </div>
+                  <TableCell>
+                    {task.deadline ? (
+                      <div className={`text-sm ${isDeadlineMissed ? "text-red-600 font-bold" : ""}`}>
+                        <div>{new Date(task.deadline).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        <div className="text-muted-foreground flex flex-col">
+                          <span>{new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                          {task.status === 'review' && (task as any).reviewStartedAt && (
+                            <span className="text-[10px] text-green-600 font-semibold mt-0.5">
+                              Ended: {new Date((task as any).reviewStartedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col">
+                        <span className="text-muted-foreground text-sm">No deadline</span>
+                        {task.status === 'review' && (task as any).reviewStartedAt && (
+                          <span className="text-[10px] text-green-600 font-semibold mt-0.5">
+                            Ended: {new Date((task as any).reviewStartedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
-                  <TableCell className="py-4 align-top w-[140px]">
-                    <div className="text-[11px] font-bold text-slate-700">
-                      {task.workingHours || task.workingMinutes ? `${task.workingHours || 0}h ${task.workingMinutes || 0}m` : "-"}
-                    </div>
+                  <TableCell>
+                    {task.workingHours || task.workingMinutes ? (() => {
+                      const hours = task.workingHours || 0;
+                      const minutes = task.workingMinutes || 0;
+                      if (hours > 0 && minutes > 0) return `${hours}hr ${minutes}mins`;
+                      if (hours > 0) return `${hours}hr`;
+                      if (minutes > 0) return `${minutes}mins`;
+                      return "Not set";
+                    })() : "Not set"}
                   </TableCell>
-                  <TableCell className="py-4 align-top text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                        onClick={() => handleEditClick(task)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                        onClick={() => handleReassign(task)}
-                        title="Reassign Task"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                  <TableCell className="text-right">
+                    {!isStaffView ? (
+                      <div className="flex justify-end gap-2">
+                        {(task.status === 'review' || task.status === 'completed' || task.status === 'not_approved' || isDeadlineMissed) && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                            title="Reassign Task"
+                            className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                            onClick={() => handleReassign(task)}
                           >
-                            <Trash className="h-4 w-4" />
+                            <RefreshCw className="h-4 w-4" />
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the task.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteTask.mutate(task.id)}
-                              className="bg-red-600 hover:bg-red-700 text-white"
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (task && task.id) {
+                              handleEditClick(task);
+                            }
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the task
+                                "{task.title}" and remove its data from our servers.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-red-600 hover:bg-red-700"
+                                onClick={() => deleteTask.mutate(task.id)}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end">
+                        <span className="text-xs text-muted-foreground mr-2">View Only</span>
+                        {(task as any).iterationNumber > 1 && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-orange-50 text-orange-700 border-orange-300">
+                            Iter #{(task as any).iterationNumber}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
                 {expandedIterations[task.id] && (
                   <TableRow>
-                    <TableCell colSpan={showProjectInfo ? 10 : 8} className="p-0 bg-slate-50/30 border-b">
+                    <TableCell colSpan={showProjectInfo ? 10 : 8} className="bg-muted/30 p-0">
                       <IterationHistory taskId={task.id} userMap={userMap} />
                     </TableCell>
                   </TableRow>
                 )}
-              </React.Fragment>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
-  </div>
+                </React.Fragment>
+              );
+            })}
+          </TableBody>
+        </Table>
+        </div>
+      </div>
+
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-4">
           <div className="text-sm text-muted-foreground">
@@ -987,18 +961,235 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[800px] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editTask ? "Edit Task" : "New Task"}</DialogTitle>
+            <DialogTitle>{editTask ? "Edit Task" : "Create New Task"}</DialogTitle>
           </DialogHeader>
-          <TaskForm
-            onSuccess={() => setIsDialogOpen(false)}
-            onCancel={() => setIsDialogOpen(false)}
-          />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Enter task title"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Task Details</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Enter task details"
+                className="min-h-[100px]"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: TaskFormData["status"]) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="review">Review</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="not_approved">Not Approved</SelectItem>
+                    <SelectItem value="technical_support">Technical Support</SelectItem>
+                    {((user?.role !== "staff" && user?.role !== "intern") || (editTask && editTask.status === "on_hold")) && (
+                      <SelectItem value="on_hold">On Hold</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assignee">Assignee</Label>
+                <Select
+                  value={formData.assigneeId}
+                  onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select staff member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {(staff ?? []).map((s) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input
+                  id="startDate"
+                  type="datetime-local"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="deadline">Deadline</Label>
+                <Input
+                  id="deadline"
+                  type="datetime-local"
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Working Time Allocation</Label>
+              <div className="flex gap-4 max-w-md">
+                <div className="flex-1">
+                  <Label htmlFor="workingHours" className="text-sm text-muted-foreground">Hours</Label>
+                  <Input
+                    id="workingHours"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.workingHours}
+                    onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="workingMinutes" className="text-sm text-muted-foreground">Minutes</Label>
+                  <Input
+                    id="workingMinutes"
+                    type="number"
+                    min="0"
+                    max="59"
+                    step="1"
+                    value={formData.workingMinutes || '0'}
+                    onChange={(e) => setFormData({ ...formData, workingMinutes: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Total: {formData.workingHours || '0'}h {formData.workingMinutes || '0'}m
+              </p>
+            </div>
+
+            <div className="pt-4 border-t">
+              <Button type="submit" className="w-full md:w-auto md:min-w-[200px]">
+                {editTask ? "Update Task" : "Create Task"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isReassignOpen} onOpenChange={setIsReassignOpen}>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-orange-600" />
+              Reassign Task: {reassignTask?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {reassignTask && (
+            <form onSubmit={(e) => { e.preventDefault(); reassignMutation.mutate(reassignData); }} className="space-y-4">
+              <div className="bg-muted/50 rounded-md p-3 text-sm space-y-1">
+                <div className="font-medium">Current Assignment (will be saved as Iteration #{(reassignTask as any).iterationNumber || 1})</div>
+                <div className="text-muted-foreground">
+                  Assignee: {(() => { const a = (reassignTask as any).assignee; return a?.name || userMap[reassignTask.assigneeId as number] || "Unassigned"; })()}
+                </div>
+                <div className="text-muted-foreground">
+                  Status: {reassignTask.status?.replace('_', ' ')}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Updated Task Details</Label>
+                <Textarea
+                  value={reassignData.description}
+                  onChange={(e) => setReassignData({ ...reassignData, description: e.target.value })}
+                  placeholder="Update task description/details if needed"
+                  className="min-h-[80px]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>New Start Date</Label>
+                  <Input
+                    type="datetime-local"
+                    value={reassignData.startDate}
+                    onChange={(e) => setReassignData({ ...reassignData, startDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>New Deadline</Label>
+                  <Input
+                    type="datetime-local"
+                    value={reassignData.deadline}
+                    onChange={(e) => setReassignData({ ...reassignData, deadline: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Working Time Allocation</Label>
+                <div className="flex gap-4 max-w-md">
+                  <div className="flex-1">
+                    <Label className="text-sm text-muted-foreground">Hours</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={reassignData.workingHours}
+                      onChange={(e) => setReassignData({ ...reassignData, workingHours: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-sm text-muted-foreground">Minutes</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={reassignData.workingMinutes}
+                      onChange={(e) => setReassignData({ ...reassignData, workingMinutes: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={reassignMutation.isPending}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  {reassignMutation.isPending ? "Reassigning..." : "Reassign Task"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setIsReassignOpen(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
   );
 }
-
-export default TaskList;
