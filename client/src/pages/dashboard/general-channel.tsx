@@ -416,8 +416,6 @@ export default function GeneralChannel() {
   const handleReplyToMessage = (msg: GeneralChannelMessage) => {
     let cleanContent = msg.content;
     
-    // If the message being replied to is itself a reply, 
-    // extract only the actual message content, ignoring the quoted part
     if (msg.content.startsWith('> Replying to')) {
       const firstDoubleNewline = msg.content.indexOf('\n\n');
       if (firstDoubleNewline !== -1) {
@@ -425,28 +423,31 @@ export default function GeneralChannel() {
       }
     }
 
-    setReplyingTo({ ...msg, content: cleanContent });
-    
-    // CRITICAL FIX: Aggressively clear state and DOM
+    // Capture the target reply state immediately
+    const targetReply = { ...msg, content: cleanContent };
+
+    // RESET STATE AND DOM AGGRESSIVELY
     setMessage("");
     if (inputRef.current) {
       inputRef.current.value = "";
     }
     
-    // Multiple synchronized clears to prevent any race conditions or state lag
-    const clear = () => {
+    // Set the reply target
+    setReplyingTo(targetReply);
+    
+    // Multiple delayed clears to fight any browser/React state persistence
+    const clearInput = () => {
       setMessage("");
       if (inputRef.current) {
         inputRef.current.value = "";
       }
     };
 
-    clear();
+    setTimeout(clearInput, 10);
     setTimeout(() => {
-      clear();
+      clearInput();
       inputRef.current?.focus();
-    }, 50);
-    setTimeout(clear, 150);
+    }, 150);
   };
 
   const handleForwardToDM = async () => {
@@ -490,52 +491,56 @@ export default function GeneralChannel() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    // Use the current value from the ref as the primary source of truth
-    // fall back to state if ref isn't available
-    const currentInputVal = inputRef.current?.value !== undefined ? inputRef.current.value : message;
-    if (!currentInputVal.trim()) return;
-
-    let messageToSend = currentInputVal.trim();
     
-    // Replace @all or @everyone with mentions of all users (excluding self) - case insensitive
-    const everyoneRegex = /@(everyone|all)\b/gi;
-    if (everyoneRegex.test(messageToSend)) {
-      const allUserNames = allUsers
-        .filter((u: any) => u.id !== user?.id && u.role !== 'client')
-        .map((u: any) => `@${u.name}`)
-        .join(' ');
-      
-      messageToSend = messageToSend.replace(/@(everyone|all)\b/gi, allUserNames);
-    }
-    
-    if (replyingTo) {
-      // Clean up the content to be quoted: remove existing quote markers if any
-      const contentToQuote = replyingTo.content
-        .split('\n')
-        .map(line => line.startsWith('> ') ? line.substring(2) : line)
-        .join('\n');
+    // Capturing the current input state safely and IMMEDIATELY
+    const currentInput = message.trim();
+    if (!currentInput) return;
 
-      // Use a unique marker for the reply header to ensure clean splitting
-      const quotedMessage = `> Replying to ${replyingTo.senderName}:\n> ${contentToQuote}\n\n${messageToSend}`;
-      messageToSend = quotedMessage;
-    }
-
-    sendMessageMutation.mutate(messageToSend);
+    // Capture the current reply state
+    const currentReply = replyingTo;
     
-    // RESET EVERYTHING IMMEDIATELY AND AGGRESSIVELY
+    // RESET STATE AND DOM IMMEDIATELY
+    // We clear the state AND the input field before doing any processing
     setMessage(""); 
     setReplyingTo(null);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
+
+    let finalMessageBody = currentInput;
     
-    // Second pass to ensure UI is cleared even if state updates are batched
+    // Handle mentions
+    const everyoneRegex = /@(everyone|all)/gi;
+    if (everyoneRegex.test(finalMessageBody)) {
+      const allUserNames = allUsers
+        .filter((u: any) => u.id !== user?.id && u.role !== 'client')
+        .map((u: any) => `@${u.name}`)
+        .join(' ');
+      
+      finalMessageBody = finalMessageBody.replace(everyoneRegex, allUserNames);
+    }
+    
+    // Wrap with quote if replying
+    // We use the local currentInput which we know is JUST what the user typed
+    if (currentReply) {
+      const contentToQuote = currentReply.content
+        .split('\n')
+        .map(line => line.startsWith('> ') ? line.substring(2) : line)
+        .join('\n');
+
+      finalMessageBody = `> Replying to ${currentReply.senderName}:\n> ${contentToQuote}\n\n${currentInput}`;
+    }
+
+    // Send via mutation
+    sendMessageMutation.mutate(finalMessageBody);
+    
+    // Final cleanup pass to ensure DOM is empty
     setTimeout(() => {
       setMessage("");
       if (inputRef.current) {
         inputRef.current.value = "";
       }
-    }, 10);
+    }, 50);
   };
 
   const reactToMessageMutation = useMutation({
@@ -571,6 +576,7 @@ export default function GeneralChannel() {
     const value = e.target.value;
     const cursorPos = e.target.selectionStart;
 
+    // Use the actual event value to update state
     setMessage(value);
     setMentionCursorPosition(cursorPos);
 
