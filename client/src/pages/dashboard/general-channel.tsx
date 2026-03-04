@@ -875,12 +875,18 @@ export default function GeneralChannel() {
                                   <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                                     <Popover>
                                       <PopoverTrigger asChild>
-                                        <div className="flex items-center w-full cursor-pointer">
+                                        <div className="flex items-center w-full cursor-pointer px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground">
                                           <Smile className="h-4 w-4 mr-2" />
                                           React
                                         </div>
                                       </PopoverTrigger>
-                                      <PopoverContent className="p-0 border-none w-auto" side="left">
+                                      <PopoverContent 
+                                        className="p-0 border-none w-auto z-[100]" 
+                                        side="left" 
+                                        align="start"
+                                        sideOffset={10}
+                                        onInteractOutside={(e) => e.preventDefault()}
+                                      >
                                         <EmojiPicker 
                                           onSelect={(emoji) => {
                                             reactToMessageMutation.mutate({ messageId: msg.id, emoji });
