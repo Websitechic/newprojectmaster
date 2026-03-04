@@ -939,6 +939,8 @@ export const generalChannelMessages = pgTable("general_channel_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at"),
   isEdited: boolean("is_edited").default(false),
+  isPinned: boolean("is_pinned").default(false),
+  reactions: jsonb("reactions").default([]), // Array of { emoji: string, userIds: number[] }
 });
 
 export const generalChannelReadReceipts = pgTable("general_channel_read_receipts", {

@@ -7,7 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, CheckCheck, Pin, Search } from "lucide-react";
+import { Send, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, CheckCheck, Pin, Search, Smile } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import data from '@emoji-mart/data'
+import Picker from '@emoji-mart/react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,6 +89,7 @@ interface GeneralChannelMessage {
   updatedAt?: string;
   isEdited?: boolean;
   isPinned?: boolean;
+  reactions?: { emoji: string, userIds: number[] }[];
 }
 
 export default function GeneralChannel() {
@@ -406,6 +414,29 @@ export default function GeneralChannel() {
     }
 
     sendMessageMutation.mutate(messageToSend);
+  };
+
+  const reactToMessageMutation = useMutation({
+    mutationFn: async ({ messageId, emoji }: { messageId: number, emoji: string }) => {
+      const response = await fetch(`/api/general-channel/messages/${messageId}/react`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoji }),
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to react to message");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to react", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleEmojiSelect = (emoji: any) => {
+    setMessage(prev => prev + emoji.native);
   };
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -760,6 +791,27 @@ export default function GeneralChannel() {
                                 renderMessageContent(msg.content)
                               )}
                             </div>
+
+                            {msg.reactions && msg.reactions.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {msg.reactions.map((reaction, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => reactToMessageMutation.mutate({ messageId: msg.id, emoji: reaction.emoji })}
+                                    className={cn(
+                                      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-colors border",
+                                      reaction.userIds.includes(user?.id!)
+                                        ? "bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
+                                        : "bg-gray-50 border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
+                                    )}
+                                  >
+                                    <span>{reaction.emoji}</span>
+                                    <span>{reaction.userIds.length}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
                             {msg.isEdited && <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>}
                             {/* Read Receipt - Show double tick if viewed by at least one user */}
                             {msg.senderId === user?.id && (
@@ -783,6 +835,25 @@ export default function GeneralChannel() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <div className="flex items-center w-full cursor-pointer">
+                                          <Smile className="h-4 w-4 mr-2" />
+                                          React
+                                        </div>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="p-0 border-none w-auto" side="left">
+                                        <Picker 
+                                          data={data} 
+                                          onEmojiSelect={(emoji: any) => {
+                                            reactToMessageMutation.mutate({ messageId: msg.id, emoji: emoji.native });
+                                          }} 
+                                          theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+                                        />
+                                      </PopoverContent>
+                                    </Popover>
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleCopyMessage(msg.content)}>
                                     <Copy className="h-4 w-4 mr-2" />
                                     Copy
@@ -920,26 +991,40 @@ export default function GeneralChannel() {
                 )}
 
                 <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
-                  <Textarea
-                    ref={inputRef}
-                    value={message}
-                    onChange={handleMessageChange}
-                    placeholder="Type your message... (Use @ to mention someone, Shift+Enter for new line, Enter to send)"
-                    className="flex-1 min-h-[60px] max-h-[200px] resize-y"
-                    disabled={sendMessageMutation.isPending}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey && !showMentionSuggestions) {
-                        e.preventDefault();
-                        handleSendMessage(e);
-                      } else if (e.key === 'Escape' && showMentionSuggestions) {
-                        setShowMentionSuggestions(false);
-                      } else if (e.key === 'ArrowDown' && showMentionSuggestions) {
-                        e.preventDefault();
-                      } else if (e.key === 'ArrowUp' && showMentionSuggestions) {
-                        e.preventDefault();
-                      }
-                    }}
-                  />
+                  <div className="flex-1 relative">
+                    <Textarea
+                      ref={inputRef}
+                      value={message}
+                      onChange={handleMessageChange}
+                      placeholder="Type your message... (Use @ to mention someone, Shift+Enter for new line, Enter to send)"
+                      className="min-h-[60px] max-h-[200px] resize-y pr-10"
+                      disabled={sendMessageMutation.isPending}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey && !showMentionSuggestions) {
+                          e.preventDefault();
+                          handleSendMessage(e);
+                        } else if (e.key === 'Escape' && showMentionSuggestions) {
+                          setShowMentionSuggestions(false);
+                        }
+                      }}
+                    />
+                    <div className="absolute right-2 bottom-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                            <Smile className="h-5 w-5" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0 border-none w-auto" side="top" align="end">
+                          <Picker 
+                            data={data} 
+                            onEmojiSelect={handleEmojiSelect}
+                            theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
                   <Button type="submit" disabled={!message.trim() || sendMessageMutation.isPending} size="sm" className="mb-1">
                     {sendMessageMutation.isPending ? (
                       <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />

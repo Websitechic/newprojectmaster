@@ -4968,6 +4968,82 @@ End of Report
     }
   });
 
+  // Reaction to general channel message
+  app.post("/api/general-channel/messages/:id/react", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const messageId = parseInt(req.params.id);
+    const { emoji } = req.body;
+    const userId = req.user!.id;
+
+    if (!emoji) {
+      return res.status(400).json({ error: "Emoji is required" });
+    }
+
+    try {
+      const [message] = await db
+        .select()
+        .from(generalChannelMessages)
+        .where(eq(generalChannelMessages.id, messageId))
+        .limit(1);
+
+      if (!message) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      let reactions = (message.reactions as any[]) || [];
+      const existingReactionIndex = reactions.findIndex(r => r.emoji === emoji);
+
+      if (existingReactionIndex > -1) {
+        const userIds = reactions[existingReactionIndex].userIds;
+        const userIndex = userIds.indexOf(userId);
+
+        if (userIndex > -1) {
+          // Remove reaction
+          userIds.splice(userIndex, 1);
+          if (userIds.length === 0) {
+            reactions.splice(existingReactionIndex, 1);
+          }
+        } else {
+          // Add reaction
+          userIds.push(userId);
+        }
+      } else {
+        // New emoji reaction
+        reactions.push({ emoji, userIds: [userId] });
+      }
+
+      const [updatedMessage] = await db
+        .update(generalChannelMessages)
+        .set({ reactions })
+        .where(eq(generalChannelMessages.id, messageId))
+        .returning();
+
+      // Broadcast reaction via SSE
+      if (global.sseClients) {
+        global.sseClients.forEach((client, id) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'general_channel_message_updated',
+                data: updatedMessage
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error broadcasting to user ${id}:`, error);
+            }
+          }
+        });
+      }
+
+      res.json(updatedMessage);
+    } catch (error) {
+      console.error("Error reacting to message:", error);
+      res.status(500).json({ error: "Failed to react to message" });
+    }
+  });
+
   // Mark messages as read
   app.post("/api/general-channel/mark-read", async (req, res) => {
     if (!req.isAuthenticated()) {
