@@ -574,6 +574,20 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTasks = sortedTasks.slice(startIndex, startIndex + itemsPerPage);
 
+  const getStatusBadgeColor = (status: string | null, isDeadlineMissed: boolean = false) => {
+    if (isDeadlineMissed) return 'bg-red-100 text-red-700 border-red-200';
+    switch (status) {
+      case 'todo': return 'bg-slate-100 text-slate-600 border-slate-200';
+      case 'in_progress': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'review': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'completed': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'technical_support': return 'bg-rose-100 text-rose-700 border-rose-200';
+      case 'not_approved': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'on_hold': return 'bg-orange-100 text-orange-700 border-orange-200';
+      default: return 'bg-slate-100 text-slate-600 border-slate-200';
+    }
+  };
+
   const getStatusColor = (status: string | null, isDeadlineMissed: boolean = false) => {
     if (status === 'on_hold') return 'bg-orange-100 text-orange-800';
     if (isDeadlineMissed) return 'bg-red-600 text-white font-bold';
@@ -589,28 +603,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       case 'pending': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
-  };
-
-  const formatDescription = (description: string | null | undefined, taskId: number) => {
-    if (!description) return "No description";
-    const isExpanded = expandedDescriptions[taskId];
-    const maxLength = 50;
-
-    if (description.length <= maxLength) {
-      return description;
-    }
-
-    return (
-      <span>
-        {isExpanded ? description : description.substring(0, maxLength) + "..."}
-        <button
-          onClick={() => toggleDescription(taskId)}
-          className="ml-2 text-blue-500 hover:underline"
-        >
-          {isExpanded ? "Show less" : "Show more"}
-        </button>
-      </span>
-    );
   };
 
   return (
@@ -647,17 +639,21 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         <div className="min-w-[800px]">
           <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Assignee</TableHead>
-              {showProjectInfo && <TableHead>Project</TableHead>}
-              {showProjectInfo && <TableHead>Time Spent</TableHead>}
-              <TableHead>Start Date</TableHead>
-              <TableHead>Deadline</TableHead>
-              <TableHead>Working Hours</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+            <TableRow className="bg-slate-50/50">
+              <TableHead className="w-[200px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Task & Assignee</TableHead>
+              <TableHead className="w-[280px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Description</TableHead>
+              <TableHead className="w-[140px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Status</TableHead>
+              <TableHead className="w-[140px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Assignee</TableHead>
+              {showProjectInfo && (
+                <TableHead className="w-[180px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Project</TableHead>
+              )}
+              {showProjectInfo && (
+                <TableHead className="w-[180px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Time Spent</TableHead>
+              )}
+              <TableHead className="w-[140px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Start Date</TableHead>
+              <TableHead className="w-[140px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Deadline</TableHead>
+              <TableHead className="w-[140px] font-bold text-slate-900 uppercase text-[11px] tracking-wider">Allocated</TableHead>
+              <TableHead className="text-right font-bold text-slate-900 uppercase text-[11px] tracking-wider">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -670,117 +666,148 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
               return (
                 <React.Fragment key={task.id}>
-                <TableRow className={isDeadlineMissed ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white" : ""}>
-                  <TableCell className="font-medium">
+                <TableRow className={`${isDeadlineMissed ? "bg-red-50/50" : ""} hover:bg-slate-50/50 transition-colors border-b`}>
+                  <TableCell className="py-4 align-top w-[200px]">
                     <div className="flex items-center gap-1">
-                      {task.title}
+                      <div className="font-bold text-slate-900 text-sm leading-tight">{task.title}</div>
                       {(task as any).iterationNumber > 1 && (
                         <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-orange-50 text-orange-700 border-orange-300">
                           #{(task as any).iterationNumber}
                         </Badge>
                       )}
                     </div>
-                    <div className="text-[10px] text-muted-foreground leading-tight italic mt-1">
-                      Assigned by: {task.assignedBy ? (userMap[task.assignedBy as number] || "Unknown User") : "System"}
+                    <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">
+                      Assigned by: {task.assignedBy ? (userMap[task.assignedBy as number] || "Unknown") : "System"}
                     </div>
                     {(task as any).iterationNumber > 1 && (
                       <button
                         onClick={() => setExpandedIterations(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
-                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 mt-0.5"
+                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 mt-0.5 font-semibold"
                       >
                         <History className="h-3 w-3" />
                         {expandedIterations[task.id] ? "Hide" : "View"} History
                       </button>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-xs">
-                      {formatDescription((task.description as any) || "", task.id)}
+                  <TableCell className="py-4 align-top w-[280px]">
+                    {formatDescription((task.description as any) || "", task.id)}
                   </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <Badge className={getStatusColor(task.status, isDeadlineMissed)}>
-                        <div className="text-center leading-tight">
-                          {isDeadlineMissed ? (
-                            <div className="flex flex-col items-center">
-                              <div>Deadline</div>
-                              <div>Missed</div>
-                            </div>
-                          ) : (
-                            (task.status?.replace('_', ' ') || 'todo').split(' ').map((word: string, idx: number) => (
-                              <div key={idx}>{word}</div>
-                            ))
-                          )}
-                        </div>
-                      </Badge>
-                      {/* Show pending review time for tasks in review */}
-                      {task.status === 'review' && (task as any).reviewStartedAt && (
-                        <div className="text-xs text-black dark:text-white font-medium">
-                          Pending: {(() => {
-                            const reviewStart = new Date((task as any).reviewStartedAt).getTime();
-                            const now = Date.now();
-                            const diffMs = now - reviewStart;
-                            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                            if (diffHours > 0) return `${diffHours}h ${diffMins}m`;
-                            return `${diffMins}m`;
-                          })()}
-                        </div>
-                      )}
-                      {/* Show total review time for completed tasks */}
-                      {task.status === 'completed' && (task as any).reviewStartedAt && (task as any).completedAt && (
-                        <div className="text-xs text-black dark:text-white font-medium">
-                          Review: {(() => {
-                            const reviewStart = new Date((task as any).reviewStartedAt).getTime();
-                            const completedAt = new Date((task as any).completedAt).getTime();
-                            const diffMs = completedAt - reviewStart;
-                            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                            if (diffHours > 0) return `${diffHours}h`;
-                            return `${diffMins}m`;
-                          })()}
-                        </div>
-                      )}
-                    </div>
+                  <TableCell className="py-4 align-top w-[140px]">
+                    <Badge 
+                      variant="outline" 
+                      className={`uppercase text-[10px] font-bold px-2 py-0.5 rounded-full border ${getStatusBadgeColor(task.status, isDeadlineMissed)}`}
+                    >
+                      {(task.status || 'todo').replace('_', ' ')}
+                    </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="text-sm leading-tight">
+                  <TableCell className="py-4 align-top w-[140px]">
+                    <div className="text-sm font-medium text-slate-700 leading-tight">
                       {(() => {
                         const assignee = (task as any).assignee;
                         if (!assignee || !assignee.id) return "Unassigned";
-                        const name = assignee.name || "Unassigned";
-                        const role = assignee.role === 'team_lead' ? ' (Team Lead)' : '';
-                        return (name + role).split(' ').map((word: string, idx: number) => (
-                          <div key={idx}>{word}</div>
-                        ));
+                        return assignee.name || "Unassigned";
                       })()}
                     </div>
                   </TableCell>
                   {showProjectInfo && (
-                    <TableCell>
-                      <div className="text-sm leading-tight">
-                        {task && task.projectId ? (projectMap[task.projectId] || `Project ID: ${task.projectId}`).split(' ').map((word: string, idx: number) => (
-                          <div key={idx}>{word}</div>
-                        )) : "No Project"}
+                    <TableCell className="py-4 align-top w-[180px]">
+                      <div className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">
+                        {task && task.projectId ? (projectMap[task.projectId] || `Project: ${task.projectId}`) : "General"}
                       </div>
                     </TableCell>
                   )}
                   {showProjectInfo && (
-                    <TableCell>
+                    <TableCell className="py-4 align-top w-[180px]">
                       <div className="space-y-1">
-                        <div className={`flex items-center gap-1 ${task.isTimerRunning ? 'text-blue-600 font-medium' : isDeadlineMissed ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
-                          <Clock className="h-4 w-4" />
-                          <span className={isDeadlineMissed ? "animate-pulse" : ""}>{formatTime(localTimers[task.id] || task.timeSpent || 0)}</span>
-                          {task.isTimerRunning && (
-                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></div>
-                          )}
+                        <div className={`text-sm font-mono ${task.isTimerRunning ? 'text-blue-600 font-bold' : isDeadlineMissed ? 'text-red-600 font-bold' : 'text-slate-600'}`}>
+                          {formatTime(localTimers[task.id] || task.timeSpent || 0)}
                         </div>
                         {stopGapAssignments[task.id] && (
-                          <div className="text-xs text-blue-600 font-medium">
+                          <div className="text-[10px] text-blue-600 font-bold uppercase">
                             Stop Gap: +{Math.floor((stopGapAssignments[task.id].stopGapHours || 0) / 60)}h {(stopGapAssignments[task.id].stopGapHours || 0) % 60}m
                           </div>
                         )}
-                        {isDeadlineMissed && (
-                          <div className="text-xs text-red-600 font-medium">
+                      </div>
+                    </TableCell>
+                  )}
+                  <TableCell className="py-4 align-top w-[140px]">
+                    <div className="text-[11px] leading-tight font-medium">
+                      <div className="text-slate-900">{task.startDate ? new Date(task.startDate).toLocaleDateString() : "-"}</div>
+                      <div className="text-green-600 font-bold">{task.startDate ? new Date(task.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ""}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4 align-top w-[140px]">
+                    <div className="text-[11px] leading-tight font-medium">
+                      <div className={`text-slate-900 ${isDeadlineMissed ? "text-red-600 font-bold" : ""}`}>{task.deadline ? new Date(task.deadline).toLocaleDateString() : "-"}</div>
+                      <div className={`${isDeadlineMissed ? "text-red-600 font-bold" : "text-slate-500"}`}>{task.deadline ? new Date(task.deadline).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ""}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4 align-top w-[140px]">
+                    <div className="text-[11px] font-bold text-slate-700">
+                      {task.workingHours || task.workingMinutes ? `${task.workingHours || 0}h ${task.workingMinutes || 0}m` : "-"}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4 align-top text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                        onClick={() => handleEditClick(task)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                        onClick={() => handleReassign(task)}
+                        title="Reassign Task"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the task.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteTask.mutate(task.id)}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+                {expandedIterations[task.id] && (
+                  <TableRow>
+                    <TableCell colSpan={showProjectInfo ? 10 : 8} className="p-0 bg-slate-50/30 border-b">
+                      <IterationHistory taskId={task.id} userMap={userMap} />
+                    </TableCell>
+                  </TableRow>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </TableBody>                          <div className="text-xs text-red-600 font-medium">
                             Deadline Missed
                           </div>
                         )}
