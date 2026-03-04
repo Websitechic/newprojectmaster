@@ -13,8 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import data from '@emoji-mart/data'
-import Picker from '@emoji-mart/react'
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +46,44 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
+
+// Lightweight emoji picker — no external dependencies
+const EMOJI_CATEGORIES = [
+  { label: "Smileys", emojis: ["😀","😂","😍","😎","🤔","😅","😊","🙃","😏","😢","😡","🤯","🥳","😴","🤗","😷","🥺","😤","🤩","😶"] },
+  { label: "Gestures", emojis: ["👍","👎","👏","🙏","🤝","✌️","🤞","👌","🤙","💪","🖐️","✋","🫡","🫶","❤️","💔","💯","🔥","⭐","✅"] },
+  { label: "Objects", emojis: ["📌","📎","✏️","🗒️","📅","💡","🔔","🔕","📢","📣","📧","📱","💻","🖥️","🖨️","⌨️","🖱️","🗂️","📂","📁"] },
+  { label: "Symbols", emojis: ["❗","❓","‼️","⁉️","🔴","🟠","🟡","🟢","🔵","🟣","⚫","⚪","🔶","🔷","🔸","🔹","🔺","🔻","💠","🔘"] },
+];
+
+function EmojiPicker({ onSelect, onClose }: { onSelect: (emoji: string) => void; onClose?: () => void }) {
+  const [activeCategory, setActiveCategory] = useState(0);
+  return (
+    <div className="w-72 rounded-lg border bg-popover shadow-md p-2 flex flex-col gap-1">
+      <div className="flex gap-1 border-b pb-1 mb-1">
+        {EMOJI_CATEGORIES.map((cat, i) => (
+          <button
+            key={i}
+            onClick={() => setActiveCategory(i)}
+            className={cn("flex-1 text-xs px-1 py-0.5 rounded", activeCategory === i ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-10 gap-0.5 max-h-36 overflow-y-auto">
+        {EMOJI_CATEGORIES[activeCategory].emojis.map((emoji) => (
+          <button
+            key={emoji}
+            onClick={() => { onSelect(emoji); onClose?.(); }}
+            className="text-lg hover:bg-muted rounded p-0.5 leading-none"
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // Helper function to check if we should show a date separator
 const shouldShowDateSeparator = (currentMsg: any, previousMsg: any): boolean => {
@@ -435,8 +472,8 @@ export default function GeneralChannel() {
     },
   });
 
-  const handleEmojiSelect = (emoji: any) => {
-    setMessage(prev => prev + emoji.native);
+  const handleEmojiSelect = (emoji: string) => {
+    setMessage(prev => prev + emoji);
   };
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -844,12 +881,10 @@ export default function GeneralChannel() {
                                         </div>
                                       </PopoverTrigger>
                                       <PopoverContent className="p-0 border-none w-auto" side="left">
-                                        <Picker 
-                                          data={data} 
-                                          onEmojiSelect={(emoji: any) => {
-                                            reactToMessageMutation.mutate({ messageId: msg.id, emoji: emoji.native });
+                                        <EmojiPicker 
+                                          onSelect={(emoji) => {
+                                            reactToMessageMutation.mutate({ messageId: msg.id, emoji });
                                           }} 
-                                          theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
                                         />
                                       </PopoverContent>
                                     </Popover>
@@ -1016,11 +1051,7 @@ export default function GeneralChannel() {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="p-0 border-none w-auto" side="top" align="end">
-                          <Picker 
-                            data={data} 
-                            onEmojiSelect={handleEmojiSelect}
-                            theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
-                          />
+                          <EmojiPicker onSelect={handleEmojiSelect} />
                         </PopoverContent>
                       </Popover>
                     </div>
