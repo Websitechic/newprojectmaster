@@ -58,24 +58,24 @@ const EMOJI_CATEGORIES = [
 function EmojiPicker({ onSelect, onClose }: { onSelect: (emoji: string) => void; onClose?: () => void }) {
   const [activeCategory, setActiveCategory] = useState(0);
   return (
-    <div className="w-72 rounded-lg border bg-popover shadow-md p-2 flex flex-col gap-1">
-      <div className="flex gap-1 border-b pb-1 mb-1">
+    <div className="w-80 rounded-lg border bg-popover shadow-md p-3 flex flex-col gap-2">
+      <div className="flex gap-1 border-b pb-2 mb-1 overflow-x-auto no-scrollbar">
         {EMOJI_CATEGORIES.map((cat, i) => (
           <button
             key={i}
             onClick={() => setActiveCategory(i)}
-            className={cn("flex-1 text-xs px-1 py-0.5 rounded", activeCategory === i ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+            className={cn("whitespace-nowrap text-xs px-2 py-1 rounded transition-colors", activeCategory === i ? "bg-primary text-primary-foreground font-medium" : "hover:bg-muted text-muted-foreground")}
           >
             {cat.label}
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-10 gap-0.5 max-h-36 overflow-y-auto">
+      <div className="grid grid-cols-8 gap-1 max-h-60 overflow-y-auto pr-1">
         {EMOJI_CATEGORIES[activeCategory].emojis.map((emoji) => (
           <button
             key={emoji}
             onClick={() => { onSelect(emoji); onClose?.(); }}
-            className="text-lg hover:bg-muted rounded p-0.5 leading-none"
+            className="text-2xl hover:bg-muted rounded p-1.5 leading-none transition-transform hover:scale-110 active:scale-95 flex items-center justify-center"
           >
             {emoji}
           </button>
