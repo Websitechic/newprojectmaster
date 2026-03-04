@@ -144,7 +144,6 @@ export default function GeneralChannel() {
   const [mentionSearchQuery, setMentionSearchQuery] = useState("");
   const [mentionCursorPosition, setMentionCursorPosition] = useState(0);
   const [readCounts, setReadCounts] = useState<{ [key: number]: number }>({});
-  const [pinnedMessages, setPinnedMessages] = useState<GeneralChannelMessage[]>([]);
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -193,7 +192,7 @@ export default function GeneralChannel() {
     const timer = setTimeout(fetchReadCounts, 500);
     
     // Filter pinned messages
-    setPinnedMessages(messages.filter(msg => msg.isPinned));
+    // setPinnedMessages is no longer needed since we use a derived constant
     
     return () => clearTimeout(timer);
   }, [messages.length, user?.id]); // Only re-run when message count changes
