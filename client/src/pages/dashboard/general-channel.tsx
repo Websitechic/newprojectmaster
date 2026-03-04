@@ -154,9 +154,11 @@ export default function GeneralChannel() {
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery<GeneralChannelMessage[]>({
     queryKey: ["/api/general-channel/messages"],
-    refetchInterval: 5000, // Poll every 5 seconds instead of 2
+    refetchInterval: 5000,
     enabled: !!user,
   });
+
+  const pinnedMessages = messages.filter(msg => msg.isPinned);
 
   // Fetch read counts for recent user messages only
   useEffect(() => {
@@ -232,7 +234,13 @@ export default function GeneralChannel() {
       if (!response.ok) throw new Error("Failed to pin message");
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/general-channel/messages"], (old: any) => {
+        if (!old) return old;
+        return old.map((msg: any) => 
+          msg.id === data.id ? { ...msg, isPinned: data.isPinned } : msg
+        );
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
       toast({ title: "Success", description: "Message pinned successfully" });
     },
@@ -250,7 +258,13 @@ export default function GeneralChannel() {
       if (!response.ok) throw new Error("Failed to unpin message");
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/general-channel/messages"], (old: any) => {
+        if (!old) return old;
+        return old.map((msg: any) => 
+          msg.id === data.id ? { ...msg, isPinned: data.isPinned } : msg
+        );
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
       toast({ title: "Success", description: "Message unpinned successfully" });
     },
@@ -464,7 +478,15 @@ export default function GeneralChannel() {
       if (!response.ok) throw new Error("Failed to react to message");
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Reaction update data:", data);
+      queryClient.setQueryData(["/api/general-channel/messages"], (old: any) => {
+        if (!old) return old;
+        return old.map((msg: any) => 
+          msg.id === data.id ? { ...msg, reactions: data.reactions } : msg
+        );
+      });
+      // Also invalidate to be sure
       queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
     },
     onError: (error: Error) => {
@@ -777,7 +799,12 @@ export default function GeneralChannel() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm">{msg.senderName || "Unknown User"}</span>
                           <span className="text-xs text-muted-foreground">{formatMessageTime(msg.createdAt || new Date())}</span>
-                          {msg.isPinned && <Pin className="h-4 w-4 text-blue-500" />}
+                          {msg.isPinned && (
+                            <div className="flex items-center gap-1 mt-1 px-2 py-0.5 bg-blue-500/10 text-blue-500 rounded-full w-fit">
+                              <Pin className="h-3 w-3" />
+                              <span className="text-[10px] font-medium uppercase tracking-wider">Pinned</span>
+                            </div>
+                          )}
                         </div>
                         {editingMessageId === msg.id ? (
                           <div className="space-y-2">
@@ -889,8 +916,12 @@ export default function GeneralChannel() {
                                       >
                                         <EmojiPicker 
                                           onSelect={(emoji) => {
+                                            console.log("Emoji selected:", emoji, "for message:", msg.id);
                                             reactToMessageMutation.mutate({ messageId: msg.id, emoji });
                                           }} 
+                                          onClose={() => {
+                                            // Any logic to close if needed, but the popover handles it
+                                          }}
                                         />
                                       </PopoverContent>
                                     </Popover>

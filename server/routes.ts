@@ -3964,12 +3964,17 @@ End of Report
     try {
       const messageId = parseInt(req.params.messageId);
 
-      await db
+      const [updatedMessage] = await db
         .update(generalChannelMessages)
-        .set({ isPinned: true })
-        .where(eq(generalChannelMessages.id, messageId));
+        .set({ isPinned: true, updatedAt: new Date() })
+        .where(eq(generalChannelMessages.id, messageId))
+        .returning();
 
-      res.json({ success: true });
+      if (!updatedMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      res.json(updatedMessage);
     } catch (error) {
       console.error("Error pinning message:", error);
       res.status(500).json({ error: "Failed to pin message" });
@@ -3990,12 +3995,17 @@ End of Report
     try {
       const messageId = parseInt(req.params.messageId);
 
-      await db
+      const [updatedMessage] = await db
         .update(generalChannelMessages)
-        .set({ isPinned: false })
-        .where(eq(generalChannelMessages.id, messageId));
+        .set({ isPinned: false, updatedAt: new Date() })
+        .where(eq(generalChannelMessages.id, messageId))
+        .returning();
 
-      res.json({ success: true });
+      if (!updatedMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      res.json(updatedMessage);
     } catch (error) {
       console.error("Error unpinning message:", error);
       res.status(500).json({ error: "Failed to unpin message" });
