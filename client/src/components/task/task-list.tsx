@@ -878,11 +878,11 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingTask ? "Edit Task" : "New Task"}</DialogTitle>
+            <DialogTitle>{editTask ? "Edit Task" : "New Task"}</DialogTitle>
           </DialogHeader>
           <TaskForm
-            projectId={projectId || editingTask?.projectId || undefined}
-            task={editingTask || undefined}
+            projectId={projectId || editTask?.projectId || undefined}
+            task={editTask || undefined}
             onSuccess={() => setIsDialogOpen(false)}
             onCancel={() => setIsDialogOpen(false)}
           />
