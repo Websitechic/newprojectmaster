@@ -419,17 +419,34 @@ export default function GeneralChannel() {
     // If the message being replied to is itself a reply, 
     // extract only the actual message content, ignoring the quoted part
     if (msg.content.startsWith('> Replying to')) {
-      const parts = msg.content.split('\n\n');
-      if (parts.length > 1) {
-        // The first part is the quote block, the rest is the actual message
-        cleanContent = parts.slice(1).join('\n\n');
+      const firstDoubleNewline = msg.content.indexOf('\n\n');
+      if (firstDoubleNewline !== -1) {
+        cleanContent = msg.content.substring(firstDoubleNewline + 2);
       }
     }
 
     setReplyingTo({ ...msg, content: cleanContent });
-    // Explicitly clear the current message input to prevent mixing
+    
+    // CRITICAL FIX: Aggressively clear state and DOM
     setMessage("");
-    setTimeout(() => inputRef.current?.focus(), 100);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+    
+    // Multiple synchronized clears to prevent any race conditions or state lag
+    const clear = () => {
+      setMessage("");
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+    };
+
+    clear();
+    setTimeout(() => {
+      clear();
+      inputRef.current?.focus();
+    }, 50);
+    setTimeout(clear, 150);
   };
 
   const handleForwardToDM = async () => {
@@ -473,9 +490,12 @@ export default function GeneralChannel() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    // Use the current value from the ref as the primary source of truth
+    // fall back to state if ref isn't available
+    const currentInputVal = inputRef.current?.value !== undefined ? inputRef.current.value : message;
+    if (!currentInputVal.trim()) return;
 
-    let messageToSend = message.trim();
+    let messageToSend = currentInputVal.trim();
     
     // Replace @all or @everyone with mentions of all users (excluding self) - case insensitive
     const everyoneRegex = /@(everyone|all)\b/gi;
@@ -495,11 +515,27 @@ export default function GeneralChannel() {
         .map(line => line.startsWith('> ') ? line.substring(2) : line)
         .join('\n');
 
+      // Use a unique marker for the reply header to ensure clean splitting
       const quotedMessage = `> Replying to ${replyingTo.senderName}:\n> ${contentToQuote}\n\n${messageToSend}`;
       messageToSend = quotedMessage;
     }
 
     sendMessageMutation.mutate(messageToSend);
+    
+    // RESET EVERYTHING IMMEDIATELY AND AGGRESSIVELY
+    setMessage(""); 
+    setReplyingTo(null);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+    
+    // Second pass to ensure UI is cleared even if state updates are batched
+    setTimeout(() => {
+      setMessage("");
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+    }, 10);
   };
 
   const reactToMessageMutation = useMutation({
@@ -604,58 +640,86 @@ export default function GeneralChannel() {
   };
 
   const renderMessageContent = (content: string) => {
-    // Combined regex for URLs and mentions
-    const combinedRegex = /(https?:\/\/[^\s]+)|(@[a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
-
-    return content.split(combinedRegex).filter(Boolean).map((part, index) => {
-      // Check if it's a URL
-      if (/^https?:\/\/[^\s]+$/.test(part)) {
-        return (
-          <a 
-            key={`url-${index}`}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 hover:text-blue-700 underline break-all"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {part}
-          </a>
-        );
+    // Check if the message is a reply (starts with > Replying to)
+    const isReply = content.startsWith('> Replying to');
+    
+    let displayContent = content;
+    let quotePart = "";
+    
+    if (isReply) {
+      // Find the first occurrence of double newline which separates quote from message
+      const firstDoubleNewline = content.indexOf('\n\n');
+      if (firstDoubleNewline !== -1) {
+        quotePart = content.substring(0, firstDoubleNewline);
+        displayContent = content.substring(firstDoubleNewline + 2);
       }
+    }
 
-      // Check if it's a mention
-      if (/^@[a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*$/.test(part)) {
-        const mentionedName = part.substring(1).trim();
-
-        // Find the mentioned user
-        const mentionedUser = allUsers.find((u: any) => 
-          u.name && (
-            u.name.toLowerCase() === mentionedName.toLowerCase() ||
-            u.name.toLowerCase().startsWith(mentionedName.toLowerCase())
-          )
-        );
-
-        if (mentionedUser) {
-          const isSelfMention = mentionedUser.id === user?.id;
-
+    const renderText = (text: string) => {
+      const combinedRegex = /(https?:\/\/[^\s]+)|(@[a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
+      return text.split(combinedRegex).filter(Boolean).map((part, index) => {
+        if (/^https?:\/\/[^\s]+$/.test(part)) {
           return (
-            <span 
-              key={`mention-${index}`}
-              className={`${
-                isSelfMention 
-                  ? 'bg-blue-700 text-white font-bold px-1.5 py-0.5 rounded mx-0.5' 
-                  : 'bg-blue-500 text-white font-medium px-1.5 py-0.5 rounded mx-0.5'
-              }`}
+            <a 
+              key={`url-${index}`}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:text-blue-700 underline break-all"
+              onClick={(e) => e.stopPropagation()}
             >
               {part}
-            </span>
+            </a>
           );
         }
-      }
+        if (/^@[a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*$/.test(part)) {
+          const mentionedName = part.substring(1).trim();
+          const mentionedUser = allUsers.find((u: any) => 
+            u.name && (
+              u.name.toLowerCase() === mentionedName.toLowerCase() ||
+              u.name.toLowerCase().startsWith(mentionedName.toLowerCase())
+            )
+          );
+          if (mentionedUser) {
+            const isSelfMention = mentionedUser.id === user?.id;
+            return (
+              <span 
+                key={`mention-${index}`}
+                className={cn(
+                  "px-1 rounded font-medium",
+                  isSelfMention ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                )}
+              >
+                {part}
+              </span>
+            );
+          }
+        }
+        return part;
+      });
+    };
 
-      return <span key={`text-${index}`}>{part}</span>;
-    });
+    return (
+      <div className="flex flex-col gap-1">
+        {quotePart && (
+          <div 
+            className="border-l-4 border-primary/30 pl-3 py-1 mb-1 bg-muted/30 rounded-r text-sm text-muted-foreground italic line-clamp-3 cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => {
+              const replyLines = quotePart.split('\n');
+              const quotedText = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
+              handleClickRepliedMessage(quotedText);
+            }}
+          >
+            {quotePart.split('\n').map((line, i) => (
+              <div key={i}>{line.startsWith('> ') ? line.substring(2) : line}</div>
+            ))}
+          </div>
+        )}
+        <div className="whitespace-pre-wrap break-words">
+          {renderText(displayContent)}
+        </div>
+      </div>
+    );
   };
 
   const handleClickRepliedMessage = (quotedContent: string) => {
@@ -844,32 +908,7 @@ export default function GeneralChannel() {
                         ) : (
                           <div className="relative">
                             <div className={cn("text-sm rounded-lg p-3 whitespace-pre-wrap break-words", msg.senderId === user?.id ? "bg-primary/20" : "bg-muted/50")}>
-                              {msg.content.startsWith('> Replying to') ? (
-                                <div>
-                                  {msg.content.split('\n\n').map((part, idx) => {
-                                    if (idx === 0) {
-                                      // Extract quoted content for navigation
-                                      const replyLines = part.split('\n');
-                                      const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
-
-                                      return (
-                                        <div 
-                                          key={idx} 
-                                          className="border-l-4 border-primary pl-3 mb-2 text-muted-foreground italic cursor-pointer hover:bg-muted/50 transition-colors rounded"
-                                          onClick={() => handleClickRepliedMessage(quotedContent)}
-                                        >
-                                          {part.split('\n').map((line, lineIdx) => (
-                                            <div key={lineIdx}>{line.replace(/^> /, '')}</div>
-                                          ))}
-                                        </div>
-                                      );
-                                    }
-                                    return <div key={idx}>{renderMessageContent(part)}</div>;
-                                  })}
-                                </div>
-                              ) : (
-                                renderMessageContent(msg.content)
-                              )}
+                              {renderMessageContent(msg.content)}
                             </div>
 
                             {msg.reactions && msg.reactions.length > 0 && (
@@ -1080,8 +1119,8 @@ export default function GeneralChannel() {
                       ref={inputRef}
                       value={message}
                       onChange={handleMessageChange}
-                      placeholder="Type your message... (Use @ to mention someone, Shift+Enter for new line, Enter to send)"
-                      className="min-h-[60px] max-h-[200px] resize-y pr-10"
+                      placeholder={replyingTo ? `Replying to ${replyingTo.senderName}...` : "Type your message... (Use @ to mention someone, Shift+Enter for new line, Enter to send)"}
+                      className="min-h-[80px] max-h-[250px] resize-y pr-10"
                       disabled={sendMessageMutation.isPending}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey && !showMentionSuggestions) {
