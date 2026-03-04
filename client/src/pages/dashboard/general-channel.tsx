@@ -500,6 +500,7 @@ export default function GeneralChannel() {
       return response.json();
     },
     onSuccess: (data) => {
+      // Update local cache immediately
       queryClient.setQueryData(["/api/general-channel/messages"], (old: any) => {
         if (!old) return old;
         return old.map((msg: any) => 

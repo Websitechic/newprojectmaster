@@ -5063,7 +5063,7 @@ End of Report
         .where(eq(generalChannelMessages.id, messageId))
         .returning();
 
-      // Broadcast reaction via SSE
+      // Broadcast reaction via SSE first to ensure everyone (including initiator if they miss the direct response) gets it
       if (global.sseClients) {
         global.sseClients.forEach((client, id) => {
           if (client && !client.writableEnded) {
