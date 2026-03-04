@@ -561,6 +561,117 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     }
   };
 
+  const TaskForm = ({ onSuccess, onCancel }: { onSuccess: () => void, onCancel: () => void }) => (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="title">Title</Label>
+        <Input
+          id="title"
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          rows={4}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <Select
+            value={formData.status}
+            onValueChange={(value: any) => setFormData({ ...formData, status: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todo">To Do</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="review">Review</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="technical_support">Technical Support</SelectItem>
+              <SelectItem value="not_approved">Not Approved</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="assignee">Assignee</Label>
+          <Select
+            value={formData.assigneeId}
+            onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select assignee" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
+              {allUsers.map((u) => (
+                <SelectItem key={u.id} value={u.id.toString()}>
+                  {u.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="startDate">Start Date</Label>
+          <Input
+            id="startDate"
+            type="datetime-local"
+            value={formData.startDate}
+            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="deadline">Deadline</Label>
+          <Input
+            id="deadline"
+            type="datetime-local"
+            value={formData.deadline}
+            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="workingHours">Working Hours</Label>
+          <Input
+            id="workingHours"
+            type="number"
+            value={formData.workingHours}
+            onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="workingMinutes">Working Minutes</Label>
+          <Input
+            id="workingMinutes"
+            type="number"
+            value={formData.workingMinutes}
+            onChange={(e) => setFormData({ ...formData, workingMinutes: e.target.value })}
+          />
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={createTask.isPending || updateTask.isPending}>
+          {editTask ? "Update Task" : "Create Task"}
+        </Button>
+      </div>
+    </form>
+  );
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -881,8 +992,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
             <DialogTitle>{editTask ? "Edit Task" : "New Task"}</DialogTitle>
           </DialogHeader>
           <TaskForm
-            projectId={projectId || editTask?.projectId || undefined}
-            task={editTask || undefined}
             onSuccess={() => setIsDialogOpen(false)}
             onCancel={() => setIsDialogOpen(false)}
           />
