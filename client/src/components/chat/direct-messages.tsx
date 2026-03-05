@@ -482,8 +482,11 @@ export function DirectMessages() {
       let messageContent = messageToSend;
 
       if (replyingTo) {
-        // Only include the clean content in the reply, not nested quotes
-        messageContent = `> Replying to ${replyingTo.senderName}:\n> ${replyingTo.content}\n\n${messageToSend}`;
+        const quotedLines = replyingTo.content
+          .split('\n')
+          .map(line => `> ${line}`)
+          .join('\n');
+        messageContent = `> Replying to ${replyingTo.senderName}:\n${quotedLines}\n\n${messageToSend}`;
       }
 
       // Create optimistic message for immediate UI update
@@ -595,8 +598,10 @@ export function DirectMessages() {
     // Extract only the actual message content, not any nested quotes
     let cleanContent = message.content;
     if (message.content.startsWith('> Replying to')) {
-      const parts = message.content.split('\n\n');
-      cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : message.content;
+      const firstDoubleNewline = message.content.indexOf('\n\n');
+      cleanContent = firstDoubleNewline !== -1
+        ? message.content.substring(firstDoubleNewline + 2)
+        : message.content;
     }
 
     setReplyingTo({
@@ -634,27 +639,32 @@ export function DirectMessages() {
   };
 
   const renderMessageContent = (message: DirectMessage) => {
-    const maxLength = 100;
+    const maxLength = 150;
     let quotedContent = "";
     let quotedSenderName = "";
     let actualMessageContent = message.content;
 
-    if (message.replyToMessageId && message.content.startsWith('> Replying to')) {
-      const parts = message.content.split('\n\n');
-      const replyToLine = parts[0];
-      const originalMessage = parts.slice(1).join('\n\n');
+    if (message.content.startsWith('> Replying to')) {
+      const firstDoubleNewline = message.content.indexOf('\n\n');
+      if (firstDoubleNewline !== -1) {
+        const quotePart = message.content.substring(0, firstDoubleNewline);
+        actualMessageContent = message.content.substring(firstDoubleNewline + 2);
 
-      const replyToMatch = replyToLine.match(/^> Replying to (.*?):/);
-      if (replyToMatch && replyToMatch[1]) {
-        quotedSenderName = replyToMatch[1];
-      }
+        const replyToMatch = quotePart.match(/^> Replying to (.*?):/);
+        if (replyToMatch && replyToMatch[1]) {
+          quotedSenderName = replyToMatch[1];
+        }
 
-      if (originalMessage.length > maxLength) {
-        quotedContent = originalMessage.substring(0, maxLength) + "...";
-      } else {
-        quotedContent = originalMessage;
+        const rawQuote = quotePart
+          .split('\n')
+          .slice(1)
+          .map(l => l.startsWith('> ') ? l.substring(2) : l)
+          .join('\n');
+
+        quotedContent = rawQuote.length > maxLength
+          ? rawQuote.substring(0, maxLength) + "..."
+          : rawQuote;
       }
-      actualMessageContent = parts.slice(1).join('\n\n');
     }
 
     const isOwnMessage = message.senderId === user?.id;
@@ -669,7 +679,7 @@ export function DirectMessages() {
             : "bg-secondary"
         )}
       >
-        {message.replyToMessageId && quotedContent && (
+        {quotedContent && (
           <div
             className={cn(
               "mb-2 p-2 rounded-md text-sm break-words whitespace-pre-wrap cursor-pointer hover:bg-muted/30 transition-all",
@@ -750,34 +760,30 @@ export function DirectMessages() {
                     return part;
                   })}
                 </div>
-              ) : message.content.startsWith('> Replying to') ? (
+              ) : quotedContent ? (
                 <div>
-                  {message.content.split('\n\n').slice(1).map((part, idx) => (
-                    <div key={idx}>
-                      {part.split(/(https?:\/\/[^\s]+)/g).map((urlPart, urlIdx) => {
-                        if (/^https?:\/\/[^\s]+$/.test(urlPart)) {
-                          return (
-                            <a
-                              key={urlIdx}
-                              href={urlPart}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={cn(
-                                "underline hover:opacity-80 break-all",
-                                isOwnMessage
-                                  ? "text-primary-foreground"
-                                  : "text-blue-600"
-                              )}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {urlPart}
-                            </a>
-                          );
-                        }
-                        return urlPart;
-                      })}
-                    </div>
-                  ))}
+                  {actualMessageContent.split(/(https?:\/\/[^\s]+)/g).map((urlPart, urlIdx) => {
+                    if (/^https?:\/\/[^\s]+$/.test(urlPart)) {
+                      return (
+                        <a
+                          key={urlIdx}
+                          href={urlPart}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "underline hover:opacity-80 break-all",
+                            isOwnMessage
+                              ? "text-primary-foreground"
+                              : "text-blue-600"
+                          )}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {urlPart}
+                        </a>
+                      );
+                    }
+                    return urlPart;
+                  })}
                 </div>
               ) : (
                 message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
