@@ -164,8 +164,32 @@ export default function AuthPage() {
   if (resetMode) {
     if (resetStep === "newPassword") {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-          <Card className="auth-form-container">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 relative overflow-hidden">
+          {/* Background decoration matching reference */}
+          <div className="absolute inset-0 z-0 opacity-40">
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-50 via-white to-purple-50" />
+            <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style={{ stopColor: '#06b6d4', stopOpacity: 0.1 }} />
+                  <stop offset="100%" style={{ stopColor: '#a855f7', stopOpacity: 0.1 }} />
+                </linearGradient>
+              </defs>
+              <circle cx="20" cy="30" r="0.5" fill="#06b6d4" />
+              <circle cx="80" cy="20" r="0.5" fill="#a855f7" />
+              <circle cx="50" cy="80" r="0.5" fill="#3b82f6" />
+              <circle cx="10" cy="70" r="0.5" fill="#06b6d4" />
+              <circle cx="90" cy="60" r="0.5" fill="#a855f7" />
+              
+              <line x1="20" y1="30" x2="10" y2="70" stroke="url(#grad1)" strokeWidth="0.1" />
+              <line x1="20" y1="30" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+              <line x1="80" y1="20" x2="90" y2="60" stroke="url(#grad1)" strokeWidth="0.1" />
+              <line x1="80" y1="20" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+              <line x1="10" y1="70" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+              <line x1="90" y1="60" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+            </svg>
+          </div>
+          <Card className="auth-form-container relative z-10 shadow-xl border-none bg-white/80 backdrop-blur-sm">
             <CardHeader className="text-center">
               <h1 className="text-2xl font-bold">Set New Password</h1>
               <p className="text-sm text-muted-foreground mt-1">
@@ -239,8 +263,33 @@ export default function AuthPage() {
     }
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <Card className="auth-form-container">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 relative overflow-hidden">
+        {/* Background decoration matching reference */}
+        <div className="absolute inset-0 z-0 opacity-40">
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-50 via-white to-purple-50" />
+          <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style={{ stopColor: '#06b6d4', stopOpacity: 0.1 }} />
+                <stop offset="100%" style={{ stopColor: '#a855f7', stopOpacity: 0.1 }} />
+              </linearGradient>
+            </defs>
+            <circle cx="20" cy="30" r="0.5" fill="#06b6d4" />
+            <circle cx="80" cy="20" r="0.5" fill="#a855f7" />
+            <circle cx="50" cy="80" r="0.5" fill="#3b82f6" />
+            <circle cx="10" cy="70" r="0.5" fill="#06b6d4" />
+            <circle cx="90" cy="60" r="0.5" fill="#a855f7" />
+            
+            <line x1="20" y1="30" x2="10" y2="70" stroke="url(#grad1)" strokeWidth="0.1" />
+            <line x1="20" y1="30" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+            <line x1="80" y1="20" x2="90" y2="60" stroke="url(#grad1)" strokeWidth="0.1" />
+            <line x1="80" y1="20" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+            <line x1="10" y1="70" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+            <line x1="90" y1="60" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+          </svg>
+        </div>
+
+        <Card className="auth-form-container relative z-10 shadow-xl border-none bg-white/80 backdrop-blur-sm">
           <CardHeader className="text-center">
             <h1 className="text-2xl font-bold">Reset Password</h1>
             <p className="text-sm text-muted-foreground mt-1">
@@ -292,8 +341,33 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="auth-form-container">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 relative overflow-hidden">
+      {/* Background decoration matching reference */}
+      <div className="absolute inset-0 z-0 opacity-40">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-50 via-white to-purple-50" />
+        <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style={{ stopColor: '#06b6d4', stopOpacity: 0.1 }} />
+              <stop offset="100%" style={{ stopColor: '#a855f7', stopOpacity: 0.1 }} />
+            </linearGradient>
+          </defs>
+          <circle cx="20" cy="30" r="0.5" fill="#06b6d4" />
+          <circle cx="80" cy="20" r="0.5" fill="#a855f7" />
+          <circle cx="50" cy="80" r="0.5" fill="#3b82f6" />
+          <circle cx="10" cy="70" r="0.5" fill="#06b6d4" />
+          <circle cx="90" cy="60" r="0.5" fill="#a855f7" />
+          
+          <line x1="20" y1="30" x2="10" y2="70" stroke="url(#grad1)" strokeWidth="0.1" />
+          <line x1="20" y1="30" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+          <line x1="80" y1="20" x2="90" y2="60" stroke="url(#grad1)" strokeWidth="0.1" />
+          <line x1="80" y1="20" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+          <line x1="10" y1="70" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+          <line x1="90" y1="60" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.1" />
+        </svg>
+      </div>
+
+      <Card className="auth-form-container relative z-10 shadow-xl border-none bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center">
           <h1 className="text-2xl font-bold">Login</h1>
           <p className="text-sm text-muted-foreground mt-1">
