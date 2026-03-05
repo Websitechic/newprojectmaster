@@ -521,12 +521,15 @@ export default function GeneralChannel() {
     }
     
     // Wrap with quote if replying
-    // We use the local currentInput which we know is JUST what the user typed
     if (currentReply) {
-      const contentToQuote = currentReply.content
+      // Strip any existing > prefix from each line, then re-join with \n>
+      // so every line carries the > prefix. This prevents any \n\n inside
+      // the quoted content from being confused with the quote/message separator.
+      const strippedLines = currentReply.content
         .split('\n')
-        .map(line => line.startsWith('> ') ? line.substring(2) : line)
-        .join('\n');
+        .map((line: string) => line.startsWith('> ') ? line.substring(2) : line);
+
+      const contentToQuote = strippedLines.join('\n> ');
 
       finalMessageBody = `> Replying to ${currentReply.senderName}:\n> ${contentToQuote}\n\n${currentInput}`;
     }
