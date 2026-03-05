@@ -19,6 +19,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -145,6 +149,7 @@ export default function GeneralChannel() {
   const [forwardingMessage, setForwardingMessage] = useState<GeneralChannelMessage | null>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
+  const [openReactionId, setOpenReactionId] = useState<number | null>(null);
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
   const [mentionSearchQuery, setMentionSearchQuery] = useState("");
   const [mentionCursorPosition, setMentionCursorPosition] = useState(0);
@@ -1010,44 +1015,52 @@ export default function GeneralChannel() {
                                 )}
                               </div>
                             )}
-                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute -top-3 right-2 opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center gap-0.5 bg-background/95 backdrop-blur-sm border shadow-sm rounded-lg p-1 z-30 before:content-[''] before:absolute before:-bottom-2 before:left-0 before:right-0 before:h-2">
+                              <Popover open={openReactionId === msg.id} onOpenChange={(open) => setOpenReactionId(open ? msg.id : null)}>
+                                <PopoverTrigger asChild>
+                                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:text-primary hover:bg-primary/10 rounded-md">
+                                    <Smile className="h-4.5 w-4.5" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent 
+                                  className="p-0 border-none w-auto z-[300]" 
+                                  side="top" 
+                                  align="end" 
+                                  avoidCollisions
+                                  sideOffset={5}
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <div onClick={(e) => e.stopPropagation()}>
+                                    <EmojiPicker 
+                                      onSelect={(emoji) => {
+                                        reactToMessageMutation.mutate({ messageId: msg.id, emoji });
+                                        setOpenReactionId(null);
+                                      }} 
+                                    />
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0 hover:text-primary hover:bg-primary/10 rounded-md"
+                                onClick={() => handleReplyToMessage(msg)}
+                              >
+                                <Reply className="h-4.5 w-4.5" />
+                              </Button>
+
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                                    <MoreVertical className="h-4 w-4" />
+                                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-muted rounded-md">
+                                    <MoreVertical className="h-4.5 w-4.5" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <div className="flex items-center w-full cursor-pointer px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground">
-                                          <Smile className="h-4 w-4 mr-2" />
-                                          React
-                                        </div>
-                                      </PopoverTrigger>
-                                      <PopoverContent 
-                                        className="p-0 border-none w-auto z-[200]" 
-                                        side="bottom"
-                                        align="end"
-                                        avoidCollisions={true}
-                                        collisionPadding={8}
-                                      >
-                                        <EmojiPicker 
-                                          onSelect={(emoji) => {
-                                            reactToMessageMutation.mutate({ messageId: msg.id, emoji });
-                                          }} 
-                                        />
-                                      </PopoverContent>
-                                    </Popover>
-                                  </DropdownMenuItem>
+                                <DropdownMenuContent align="end" className="z-[250]">
                                   <DropdownMenuItem onClick={() => handleCopyMessage(msg.content)}>
                                     <Copy className="h-4 w-4 mr-2" />
                                     Copy
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleReplyToMessage(msg)}>
-                                    <Reply className="h-4 w-4 mr-2" />
-                                    Reply
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => setForwardingMessage(msg)}>
                                     <Forward className="h-4 w-4 mr-2" />
