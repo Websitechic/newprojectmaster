@@ -237,14 +237,35 @@ export default function GeneralChannel() {
       if (!response.ok) throw new Error("Failed to send message");
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
-      setMessage("");
-      setReplyingTo(null);
-      toast({ title: "Success", description: "Message sent successfully" });
+    onMutate: async (content: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/general-channel/messages"] });
+      const previousMessages = queryClient.getQueryData(["/api/general-channel/messages"]);
+
+      const optimisticMessage: GeneralChannelMessage = {
+        id: Date.now(),
+        content,
+        senderId: user?.id || 0,
+        senderName: user?.name || "You",
+        senderEmail: user?.email || "",
+        createdAt: new Date().toISOString(),
+        isPinned: false,
+        reactions: [],
+      };
+
+      queryClient.setQueryData(["/api/general-channel/messages"], (old: GeneralChannelMessage[] | undefined) =>
+        old ? [...old, optimisticMessage] : [optimisticMessage]
+      );
+
+      return { previousMessages };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _content, context: any) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(["/api/general-channel/messages"], context.previousMessages);
+      }
       toast({ title: "Failed to send message", description: error.message, variant: "destructive" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
     },
   });
 
@@ -1130,7 +1151,6 @@ export default function GeneralChannel() {
                       onChange={handleMessageChange}
                       placeholder={replyingTo ? `Replying to ${replyingTo.senderName}...` : "Type your message... (Use @ to mention someone, Shift+Enter for new line, Enter to send)"}
                       className="min-h-[80px] max-h-[250px] resize-y pr-10"
-                      disabled={sendMessageMutation.isPending}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey && !showMentionSuggestions) {
                           e.preventDefault();
@@ -1153,12 +1173,8 @@ export default function GeneralChannel() {
                       </Popover>
                     </div>
                   </div>
-                  <Button type="submit" disabled={!message.trim() || sendMessageMutation.isPending} size="sm" className="mb-1">
-                    {sendMessageMutation.isPending ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
+                  <Button type="submit" disabled={!message.trim()} size="sm" className="mb-1">
+                    <Send className="h-4 w-4" />
                   </Button>
                 </form>
               </div>
