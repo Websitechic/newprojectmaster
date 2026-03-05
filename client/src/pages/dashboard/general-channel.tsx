@@ -1000,7 +1000,7 @@ export default function GeneralChannel() {
                               </div>
                             )}
 
-                            {msg.isEdited && <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>}
+                            {msg.isEdited && <p className="text-xs text-muted-foreground italic mt-0.5">• edited</p>}
                             {/* Read Receipt - Show double tick if viewed by at least one user */}
                             {msg.senderId === user?.id && (
                               <div className="flex items-center gap-1 mt-1">

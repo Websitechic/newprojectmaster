@@ -28,6 +28,7 @@ interface DirectMessage {
   read: boolean;
   createdAt: string;
   senderName: string;
+  updatedAt?: string;
 }
 
 interface Conversation {
@@ -297,6 +298,9 @@ export function ReachUsChat() {
                     <p className="text-sm">{message.content}</p>
                     <p className="text-xs opacity-70 mt-1">
                       {new Date(message.createdAt).toLocaleTimeString()}
+                      {message.updatedAt && new Date(message.updatedAt).getTime() > new Date(message.createdAt).getTime() + 1000 && (
+                        <span className="italic ml-1">• edited</span>
+                      )}
                     </p>
                   </div>
                 </div>

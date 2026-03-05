@@ -813,7 +813,7 @@ export function DirectMessages() {
             <div className="flex items-center gap-2 mt-1">
               <p className="text-xs opacity-70">
                 {new Date(message.createdAt).toLocaleTimeString()}
-                {message.updatedAt && message.updatedAt !== message.createdAt && (
+                {message.updatedAt && new Date(message.updatedAt).getTime() > new Date(message.createdAt).getTime() + 1000 && (
                   <span className="italic ml-1">• edited</span>
                 )}
               </p>

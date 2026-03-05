@@ -1133,7 +1133,7 @@ export default function TeamChat() {
                               )}
                             </div>
                             {msg.isEdited && (
-                              <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>
+                              <p className="text-xs text-muted-foreground italic mt-0.5">• edited</p>
                             )}
                             {/* Read Receipt */}
                             {msg.senderId === user?.id && readCounts[msg.id] > 0 && (
