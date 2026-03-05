@@ -634,7 +634,7 @@ export function StaffTaskList({ tasks, projectId }: StaffTaskListProps) {
                           <span className="text-[10px] text-blue-500 font-semibold mt-0.5">
                             Started: {task.actualStartTime 
                               ? new Date(task.actualStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-                              : (task.startDate ? new Date(task.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Not started')}
+                              : 'Not started'}
                           </span>
                         </div>
                       </div>
