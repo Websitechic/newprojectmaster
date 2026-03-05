@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/hooks/use-user";
+import { useAuth } from "@/hooks/use-auth";
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -28,7 +29,8 @@ interface UnreadMessage {
 }
 
 export function Header() {
-  const { user, logout } = useUser();
+  const { user } = useUser();
+  const { logoutMutation } = useAuth();
   const [_, setLocation] = useLocation();
   const { playNotificationSound, isUnlocked, isInitialized } = useNotificationSound();
   const [showUnlockButton, setShowUnlockButton] = useState(false);
@@ -189,21 +191,10 @@ export function Header() {
     return result;
   }, [user, teamChatUnreads, mentionCounts, directMessagesData, projects, generalChannelUnread]);
 
-  const handleLogout = async () => {
-    try {
-      // Clear audio unlock state completely
-      sessionStorage.removeItem('audioUnlocked');
-      setShowUnlockButton(false);
-
-      await logout();
-      window.location.href = "/auth";
-    } catch (error) {
-      console.error("Logout failed:", error);
-      // Still clear audio unlock state on error
-      sessionStorage.removeItem('audioUnlocked');
-      setShowUnlockButton(false);
-      window.location.href = "/auth";
-    }
+  const handleLogout = () => {
+    sessionStorage.removeItem('audioUnlocked');
+    setShowUnlockButton(false);
+    logoutMutation.mutate();
   };
 
   const handleMessageClick = (message: UnreadMessage) => {
