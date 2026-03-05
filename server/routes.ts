@@ -4773,6 +4773,8 @@ End of Report
           createdAt: generalChannelMessages.createdAt,
           updatedAt: generalChannelMessages.updatedAt,
           isEdited: generalChannelMessages.isEdited,
+          isPinned: generalChannelMessages.isPinned,
+          reactions: generalChannelMessages.reactions,
           senderName: users.name,
           senderEmail: users.email,
         })

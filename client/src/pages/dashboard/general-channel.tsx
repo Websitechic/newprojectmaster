@@ -58,24 +58,29 @@ const EMOJI_CATEGORIES = [
 function EmojiPicker({ onSelect, onClose }: { onSelect: (emoji: string) => void; onClose?: () => void }) {
   const [activeCategory, setActiveCategory] = useState(0);
   return (
-    <div className="w-80 rounded-lg border bg-popover shadow-md p-3 flex flex-col gap-2">
-      <div className="flex gap-1 border-b pb-2 mb-1 overflow-x-auto no-scrollbar">
+    <div className="w-[min(320px,90vw)] rounded-lg border bg-popover shadow-md p-2 flex flex-col gap-2">
+      <div className="flex gap-1 border-b pb-2 mb-1 overflow-x-auto">
         {EMOJI_CATEGORIES.map((cat, i) => (
           <button
             key={i}
             onClick={() => setActiveCategory(i)}
-            className={cn("whitespace-nowrap text-xs px-2 py-1 rounded transition-colors", activeCategory === i ? "bg-primary text-primary-foreground font-medium" : "hover:bg-muted text-muted-foreground")}
+            className={cn(
+              "whitespace-nowrap text-xs px-2 py-1 rounded transition-colors flex-shrink-0",
+              activeCategory === i
+                ? "bg-primary text-primary-foreground font-medium"
+                : "hover:bg-muted text-muted-foreground"
+            )}
           >
             {cat.label}
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-8 gap-1 max-h-60 overflow-y-auto pr-1">
+      <div className="grid grid-cols-8 gap-0.5 max-h-52 overflow-y-auto">
         {EMOJI_CATEGORIES[activeCategory].emojis.map((emoji) => (
           <button
             key={emoji}
             onClick={() => { onSelect(emoji); onClose?.(); }}
-            className="text-2xl hover:bg-muted rounded p-1.5 leading-none transition-transform hover:scale-110 active:scale-95 flex items-center justify-center"
+            className="text-xl hover:bg-muted rounded p-1 leading-none transition-transform hover:scale-110 active:scale-95 flex items-center justify-center"
           >
             {emoji}
           </button>
@@ -578,17 +583,46 @@ export default function GeneralChannel() {
       if (!response.ok) throw new Error("Failed to react to message");
       return response.json();
     },
-    onSuccess: (data) => {
-      // Update local cache immediately
-      queryClient.setQueryData(["/api/general-channel/messages"], (old: any) => {
+    onMutate: async ({ messageId, emoji }: { messageId: number, emoji: string }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/general-channel/messages"] });
+      const previousMessages = queryClient.getQueryData(["/api/general-channel/messages"]);
+
+      queryClient.setQueryData(["/api/general-channel/messages"], (old: GeneralChannelMessage[] | undefined) => {
         if (!old) return old;
-        return old.map((msg: any) => 
-          msg.id === data.id ? data : msg
-        );
+        return old.map((msg) => {
+          if (msg.id !== messageId) return msg;
+          const reactions = [...(msg.reactions || [])];
+          const existingIdx = reactions.findIndex((r) => r.emoji === emoji);
+          if (existingIdx > -1) {
+            const userIds = [...reactions[existingIdx].userIds];
+            const userIdx = userIds.indexOf(user?.id!);
+            if (userIdx > -1) {
+              userIds.splice(userIdx, 1);
+              if (userIds.length === 0) {
+                reactions.splice(existingIdx, 1);
+              } else {
+                reactions[existingIdx] = { ...reactions[existingIdx], userIds };
+              }
+            } else {
+              reactions[existingIdx] = { ...reactions[existingIdx], userIds: [...userIds, user?.id!] };
+            }
+          } else {
+            reactions.push({ emoji, userIds: [user?.id!] });
+          }
+          return { ...msg, reactions };
+        });
       });
+
+      return { previousMessages };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _vars, context: any) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(["/api/general-channel/messages"], context.previousMessages);
+      }
       toast({ title: "Failed to react", description: error.message, variant: "destructive" });
+    },
+    onSettled: (_data, _error, { messageId }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
     },
   });
 
@@ -993,11 +1027,11 @@ export default function GeneralChannel() {
                                         </div>
                                       </PopoverTrigger>
                                       <PopoverContent 
-                                        className="p-0 border-none w-auto z-[100]" 
-                                        side="left" 
-                                        align="start"
-                                        sideOffset={10}
-                                        onInteractOutside={(e) => e.preventDefault()}
+                                        className="p-0 border-none w-auto z-[200]" 
+                                        side="bottom"
+                                        align="end"
+                                        avoidCollisions={true}
+                                        collisionPadding={8}
                                       >
                                         <EmojiPicker 
                                           onSelect={(emoji) => {
