@@ -1435,24 +1435,33 @@ export function registerRoutes(app: Express): Server {
           sql`${taskSessions.startTime} <= ${end.toISOString()}` // Ensure end date is correctly handled
         ));
 
-      // For Productivity Score tab: Get tasks based on startDate within date range
-      const tasksByStartDate = await db
+      // For Productivity Score tab: Get ALL tasks assigned to the staff member
+      const allAssignedTasks = await db
         .select()
         .from(tasks)
         .where(
           and(
             eq(tasks.assigneeId, staffIdNum),
-            gte(tasks.startDate, start),
-            sql`${tasks.startDate} <= ${end.toISOString()}`
+            or(
+              and(
+                gte(tasks.startDate, start),
+                sql`${tasks.startDate} <= ${end.toISOString()}`
+              ),
+              and(
+                gte(tasks.createdAt, start),
+                sql`${tasks.createdAt} <= ${end.toISOString()}`
+              ),
+              // Also include tasks that were completed in this range even if started before
+              and(
+                isNotNull(tasks.completedAt),
+                gte(tasks.completedAt, start),
+                sql`${tasks.completedAt} <= ${end.toISOString()}`
+              ),
+              // Also include tasks currently in progress
+              eq(tasks.status, "in_progress")
+            )
           )
         );
-
-      // For Daily Details tab: Get tasks that were actually worked on (have sessions)
-      const taskIdsFromSessions = [...new Set(allSessions.map(s => s.taskId).filter(Boolean))];
-      const allTasksWorkedOn = taskIdsFromSessions.length > 0 ? await db
-        .select()
-        .from(tasks)
-        .where(inArray(tasks.id, taskIdsFromSessions)) : [];
 
       // Process daily productivity data
       const dailyMap = new Map();
@@ -1481,16 +1490,17 @@ export function registerRoutes(app: Express): Server {
         });
       });
 
-      // Build taskDetails for Productivity Score from tasks filtered by startDate
+      // Build taskDetails for Productivity Score from ALL assigned tasks in range
       const taskDetailsMap = new Map();
 
-      tasksByStartDate.forEach(task => {
+      allAssignedTasks.forEach(task => {
         taskDetailsMap.set(task.id, {
           id: task.id,
           title: task.title,
           workingHours: task.workingHours || 0,
           workingMinutes: task.workingMinutes || 0,
-          timeSpent: task.timeSpent || 0 // Use task's timeSpent field directly
+          timeSpent: task.timeSpent || 0, // Use task's timeSpent field directly
+          isCompleted: task.status === 'completed'
         });
       });
 
@@ -1507,7 +1517,10 @@ export function registerRoutes(app: Express): Server {
 
         const dailyData = dailyMap.get(dateKey);
         dailyData.taskIds = dailyData.taskIds || new Set<number>();
-        const task = allTasksWorkedOn.find(t => t.id === session.taskId);
+        
+        // Find task from either allTasksWorkedOn or allAssignedTasks
+        let task = allTasksWorkedOn.find(t => t.id === session.taskId) || 
+                   allAssignedTasks.find(t => t.id === session.taskId);
 
         if (task && task.title) {
           // Only add task title if not already in the list for this day
@@ -1599,29 +1612,34 @@ export function registerRoutes(app: Express): Server {
       const dailyData = Array.from(dailyMap.values()).map((day: any) => {
         const tasksFromDay = (day.tasks || []) as any[];
         const validTasks = tasksFromDay.filter((task: any) => task && typeof task === 'string' && task.trim().length > 0) as string[];
+        
+        // Add task breakdown details for this day
+        const dayTaskBreakdown = Array.from(day.taskIds as Set<number> || []).map(taskId => {
+          const task = allAssignedTasks.find(t => t.id === taskId) || (allTasksWorkedOn as any[]).find(t => t.id === taskId);
+          if (!task) return null;
+          return {
+            id: task.id,
+            title: task.title,
+            timeSpent: task.timeSpent || 0,
+            workingHours: task.workingHours || 0,
+            workingMinutes: task.workingMinutes || 0,
+            isCompleted: task.status === 'completed',
+            status: task.status
+          };
+        }).filter(Boolean);
+
         return {
           date: day.date,
           totalSpanHours: day.totalSpanHours,
           actualWorkHours: day.actualWorkHours,
           performanceStatus: day.performanceStatus,
           performanceColor: day.performanceColor,
-          taskCount: validTasks.length, // Count of unique tasks worked on that day
-          tasks: validTasks, // Only include valid task titles
-          taskDetails: Array.from(taskDetailsMap.values()), // Include all task details
+          taskCount: validTasks.length,
+          tasks: validTasks,
+          taskDetails: Array.from(taskDetailsMap.values()),
+          taskBreakdown: dayTaskBreakdown,
           workdayStart: day.workdayStart,
-          workdayEnd: day.workdayEnd,
-          taskBreakdown: validTasks.map(title => {
-            const task = (allTasksWorkedOn as any[]).find(t => t.title === title);
-            return task ? {
-              id: task.id,
-              title: task.title,
-              timeSpent: task.timeSpent || 0,
-              workingHours: task.workingHours || 0,
-              workingMinutes: task.workingMinutes || 0,
-              isCompleted: task.status === 'completed',
-              status: task.status
-            } : null;
-          }).filter((t: any): t is any => !!t)
+          workdayEnd: day.workdayEnd
         };
       });
 
@@ -1636,7 +1654,7 @@ export function registerRoutes(app: Express): Server {
             day: dateKey,
             dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()],
             hours: dayData.actualWorkHours,
-            totalSpanHours: dayData.actualWorkHours, // This seems to be a typo, should be totalSpanHours if that's what it represents
+            totalSpanHours: dayData.totalSpanHours,
             performanceStatus: dayData.performanceStatus,
             performanceColor: dayData.performanceColor,
             taskCount: dayData.taskCount
@@ -1660,7 +1678,8 @@ export function registerRoutes(app: Express): Server {
           goodDays,
           fairDays,
           poorDays
-        }
+        },
+        taskDetails: Array.from(taskDetailsMap.values())
       };
 
       res.json(productivityData);
