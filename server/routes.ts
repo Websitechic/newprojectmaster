@@ -8610,8 +8610,18 @@ End of Report
         return res.status(400).json({ error: "Start date cannot be after end date" });
       }
 
-      // Calculate total days
-      const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      // Calculate total working days (excluding weekends)
+      let totalDays = 0;
+      const current = new Date(start);
+      
+      while (current <= end) {
+        const dayOfWeek = current.getDay();
+        // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          totalDays++;
+        }
+        current.setDate(current.getDate() + 1);
+      }
 
       // Check leave of absence limit (14 days per year)
       if (leaveType === "leave_of_absence") {
