@@ -317,7 +317,7 @@ export default function LeaveApplication() {
               <CardHeader>
                 <CardTitle className="text-lg">Leave Balance ({currentYear})</CardTitle>
                 <CardDescription>
-                  Your available leave days for this year
+                  Your available working days (Monday-Friday only)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -340,7 +340,7 @@ export default function LeaveApplication() {
                       {remainingLeaveOfAbsenceDays} days
                     </p>
                     <p className="text-sm text-green-600">
-                      {leaveOfAbsenceDaysUsed} of 14 days used
+                      {leaveOfAbsenceDaysUsed} of 14 working days used
                     </p>
                   </div>
                 </div>
@@ -352,7 +352,7 @@ export default function LeaveApplication() {
               <CardHeader>
                 <CardTitle>Submit Leave Application</CardTitle>
                 <CardDescription>
-                  Fill out the form below to apply for leave
+                  Fill out the form below to apply for leave (only working days Monday-Friday are counted)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -427,12 +427,12 @@ export default function LeaveApplication() {
                     {requestedDays > 0 && (
                       <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                         <p className="text-sm text-blue-800">
-                          <strong>Requested Days:</strong> {requestedDays} day{requestedDays !== 1 ? 's' : ''}
+                          <strong>Requested Working Days:</strong> {requestedDays} day{requestedDays !== 1 ? 's' : ''} <span className="text-xs text-blue-600">(weekends excluded)</span>
                         </p>
                         {leaveType === "leave_of_absence" && requestedDays > remainingLeaveOfAbsenceDays && (
                           <p className="text-sm text-red-600 mt-1">
                             <AlertCircle className="h-4 w-4 inline mr-1" />
-                            You have only {remainingLeaveOfAbsenceDays} leave of absence days remaining this year
+                            You have only {remainingLeaveOfAbsenceDays} leave of absence working days remaining this year
                           </p>
                         )}
                       </div>
