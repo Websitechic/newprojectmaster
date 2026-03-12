@@ -8680,7 +8680,7 @@ End of Report
         try {
           await createNotification(
             pm.id,
-            "task_assigned",
+            "leave_application",
             `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
             newApplication.id,
             "project"
@@ -8703,7 +8703,7 @@ End of Report
         try {
           await createNotification(
             manager.id,
-            "task_assigned",
+            "leave_application",
             `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
             newApplication.id,
             "project"

@@ -133,9 +133,23 @@ export const sendNotificationEmail = async (user: User, type: string, content: s
   } else if (type === 'memo_received') {
     title = 'NEW MEMO RECEIVED';
   } else if (type === 'leave_application') {
-    title = 'LEAVE APPLICATION';
+    title = 'LEAVE APPLICATION SUBMITTED';
   } else if (type === 'deadline_extension') {
     title = 'DEADLINE EXTENSION REQUEST';
+  } else if (type === 'task_updated') {
+    title = 'TASK SUBMITTED FOR REVIEW';
+  } else if (type === 'task_assigned') {
+    title = 'NEW TASK ASSIGNED';
+  } else if (type === 'task_reassigned') {
+    title = 'TASK REASSIGNED';
+  } else if (type === 'task_review_approved') {
+    title = 'TASK REVIEW APPROVED';
+  } else if (type === 'task_review_rejected') {
+    title = 'TASK REVIEW NEEDS REVISION';
+  } else if (type === 'leave_approved') {
+    title = 'LEAVE APPLICATION APPROVED';
+  } else if (type === 'leave_rejected') {
+    title = 'LEAVE APPLICATION REJECTED';
   }
 
   const baseUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
