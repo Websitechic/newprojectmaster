@@ -620,9 +620,9 @@ export default function LeaveManagement() {
 
             {selectedApplication && (
               <div className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <h4 className="font-medium mb-2">Application Details</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <div className="bg-gray-50 dark:bg-slate-900 p-4 rounded-md">
+                  <h4 className="font-medium mb-2 dark:text-white">Application Details</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm dark:text-white">
                     <div>
                       <span className="font-medium">Period:</span>{" "}
                       {formatDate(selectedApplication.startDate, "MMM d")} - {formatDate(selectedApplication.endDate, "MMM d, yyyy")}
@@ -648,7 +648,7 @@ export default function LeaveManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="review-comments">
+                  <Label htmlFor="review-comments" className="dark:text-white">
                     Comments {reviewAction === "rejected" ? "(Required)" : "(Optional)"}
                   </Label>
                   <Textarea
@@ -661,19 +661,20 @@ export default function LeaveManagement() {
                     value={reviewComments}
                     onChange={(e) => setReviewComments(e.target.value)}
                     required={reviewAction === "rejected"}
+                    className="dark:bg-slate-800 dark:text-white dark:border-slate-700"
                   />
                 </div>
               </div>
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)} className="dark:text-white dark:border-slate-600 dark:hover:bg-slate-800">
                 Cancel
               </Button>
               <Button
                 onClick={confirmReview}
                 disabled={reviewApplication.isPending || (reviewAction === "rejected" && !reviewComments.trim())}
-                className={reviewAction === "approved" ? "bg-green-600 hover:bg-green-700" : ""}
+                className={reviewAction === "approved" ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800" : ""}
                 variant={reviewAction === "rejected" ? "destructive" : "default"}
               >
                 {reviewApplication.isPending
