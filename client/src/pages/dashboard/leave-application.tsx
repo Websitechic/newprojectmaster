@@ -322,24 +322,24 @@ export default function LeaveApplication() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                  <div className="bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-slate-700 rounded-md p-4">
                     <div className="flex items-center gap-2">
                       <CalendarDays className="h-5 w-5 text-blue-600" />
-                      <h3 className="font-medium text-blue-800">Day Off</h3>
+                      <h3 className="font-medium text-blue-800 dark:text-blue-400">Day Off</h3>
                     </div>
-                    <p className="text-2xl font-bold text-blue-800 mt-2">Unlimited</p>
-                    <p className="text-sm text-blue-600">Subject to approval</p>
+                    <p className="text-2xl font-bold text-blue-800 dark:text-blue-400 mt-2">Unlimited</p>
+                    <p className="text-sm text-blue-600 dark:text-blue-300">Subject to approval</p>
                   </div>
                   
-                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                  <div className="bg-green-50 dark:bg-slate-900 border border-green-200 dark:border-slate-700 rounded-md p-4">
                     <div className="flex items-center gap-2">
                       <CalendarDays className="h-5 w-5 text-green-600" />
-                      <h3 className="font-medium text-green-800">Leave of Absence</h3>
+                      <h3 className="font-medium text-green-800 dark:text-green-400">Leave of Absence</h3>
                     </div>
-                    <p className="text-2xl font-bold text-green-800 mt-2">
+                    <p className="text-2xl font-bold text-green-800 dark:text-green-400 mt-2">
                       {remainingLeaveOfAbsenceDays} days
                     </p>
-                    <p className="text-sm text-green-600">
+                    <p className="text-sm text-green-600 dark:text-green-300">
                       {leaveOfAbsenceDaysUsed} of 14 working days used
                     </p>
                   </div>
@@ -425,12 +425,12 @@ export default function LeaveApplication() {
                     </div>
 
                     {requestedDays > 0 && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                        <p className="text-sm text-blue-800">
-                          <strong>Requested Working Days:</strong> {requestedDays} day{requestedDays !== 1 ? 's' : ''} <span className="text-xs text-blue-600">(weekends excluded)</span>
+                      <div className="bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-slate-700 rounded-md p-3">
+                        <p className="text-sm text-blue-800 dark:text-blue-300">
+                          <strong>Requested Working Days:</strong> {requestedDays} day{requestedDays !== 1 ? 's' : ''} <span className="text-xs text-blue-600 dark:text-blue-400">(weekends excluded)</span>
                         </p>
                         {leaveType === "leave_of_absence" && requestedDays > remainingLeaveOfAbsenceDays && (
-                          <p className="text-sm text-red-600 mt-1">
+                          <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                             <AlertCircle className="h-4 w-4 inline mr-1" />
                             You have only {remainingLeaveOfAbsenceDays} leave of absence working days remaining this year
                           </p>
@@ -600,17 +600,17 @@ export default function LeaveApplication() {
                                   <div className="space-y-4">
                                     <div>
                                       <Label className="font-medium">Leave Type</Label>
-                                      <p className="mt-1">{leaveTypeLabels[application.leaveType]}</p>
+                                      <p className="mt-1 dark:text-white">{leaveTypeLabels[application.leaveType]}</p>
                                     </div>
                                     <div>
                                       <Label className="font-medium">Period</Label>
-                                      <p className="mt-1">
+                                      <p className="mt-1 dark:text-white">
                                         {formatDate(application.startDate, "MMM d, yyyy")} - {formatDate(application.endDate, "MMM d, yyyy")}
                                       </p>
                                     </div>
                                     <div>
                                       <Label className="font-medium">Total Days</Label>
-                                      <p className="mt-1">{application.totalDays}</p>
+                                      <p className="mt-1 dark:text-white">{application.totalDays}</p>
                                     </div>
                                     <div>
                                       <Label className="font-medium">Status</Label>
@@ -623,12 +623,12 @@ export default function LeaveApplication() {
                                     </div>
                                     <div>
                                       <Label className="font-medium">Reason</Label>
-                                      <p className="mt-1 text-sm">{application.reason}</p>
+                                      <p className="mt-1 text-sm dark:text-white">{application.reason}</p>
                                     </div>
                                     {application.reviewComments && (
                                       <div>
                                         <Label className="font-medium">Review Comments</Label>
-                                        <p className="mt-1 text-sm">{application.reviewComments}</p>
+                                        <p className="mt-1 text-sm dark:text-white">{application.reviewComments}</p>
                                       </div>
                                     )}
                                     {application.proofImageUrl && (
