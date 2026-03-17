@@ -1003,6 +1003,9 @@ export function DirectMessages() {
     // Mark messages as read
     fetch(`/api/direct-messages/${selectedUser.id}/read`, {
       method: "PUT",
+    }).then(() => {
+      // Invalidate unread count cache so header badge updates immediately
+      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
     });
 
     // Update unread count in conversations

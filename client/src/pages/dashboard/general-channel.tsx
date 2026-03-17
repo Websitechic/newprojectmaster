@@ -380,6 +380,8 @@ export default function GeneralChannel() {
         if (response.ok) {
           const data = await response.json();
           setReadCounts(prevCounts => ({ ...prevCounts, ...data.readCounts }));
+          // Invalidate unread count cache so header badge updates immediately
+          queryClient.invalidateQueries({ queryKey: ["/api/general-channel/unread-count"] });
         }
       } catch (error) {
         console.error("Error marking messages as read:", error);

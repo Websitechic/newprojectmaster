@@ -56,7 +56,7 @@ export function Header() {
       return await response.json();
     },
     enabled: !!user,
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 
   const { data: directMessagesData = [] } = useQuery({
@@ -67,7 +67,7 @@ export function Header() {
       return await response.json();
     },
     enabled: !!user,
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 
   // Fetch general channel unread count
@@ -80,7 +80,7 @@ export function Header() {
       return data.count || 0;
     },
     enabled: !!user,
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 
   // Fetch project details for team chats
