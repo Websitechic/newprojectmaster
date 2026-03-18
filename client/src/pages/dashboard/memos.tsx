@@ -219,7 +219,7 @@ export default function Memos() {
   });
 
   // Fetch responses for selected memo and check if user has already responded
-  const { data: responses = [], isLoading: isLoadingResponses } = useQuery<MemoResponse[]>({
+  const { data: responses = [], isLoading: isLoadingResponses, isError: isResponsesError } = useQuery<MemoResponse[]>({
     queryKey: ["/api/memos", selectedMemo?.id, "responses"],
     queryFn: async () => {
       if (!selectedMemo) return [];
@@ -231,7 +231,7 @@ export default function Memos() {
   });
 
   // Check if current user has already responded
-  const userHasResponded = responses.some(r => r.userId === user?.id);
+  const userHasResponded = responses && responses.length > 0 && responses.some(r => r.userId === user?.id);
 
   // Create response mutation
   const createResponseMutation = useMutation({
@@ -741,7 +741,9 @@ export default function Memos() {
             {/* Response Form */}
             {!isOperationsManager && (
               <div className="border-t pt-4">
-                {userHasResponded ? (
+                {isLoadingResponses ? (
+                  <p className="text-sm text-gray-500">Loading form...</p>
+                ) : userHasResponded ? (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                     <p className="text-sm text-blue-700 font-medium">
                       ✓ You have already responded to this memo
