@@ -6435,6 +6435,13 @@ End of Report
         index === self.findIndex(m => m.id === memo.id)
       );
 
+      // Sort by newest first
+      uniqueMemos.sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA; // Newest first
+      });
+
       // Check read status for each memo
       const memosWithReadStatus = await Promise.all(
         uniqueMemos.map(async (memo) => {
