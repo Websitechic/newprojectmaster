@@ -38,6 +38,7 @@ interface Memo {
   senderName: string;
   reads?: MemoRead[];
   readCount?: number;
+  responseCount?: number;
   isRead?: boolean;
   readAt?: string;
 }
@@ -563,42 +564,49 @@ export default function Memos() {
                     </CardHeader>
 
                     <CardContent className="space-y-4">
-                      {isOperationsManager && <p className="text-gray-600 line-clamp-3">{memo.content}</p>}
+                      {isOperationsManager && (
+                        <>
+                          <p className="text-gray-600 line-clamp-3">{memo.content}</p>
+                          <div className="border-t pt-3" />
+                        </>
+                      )}
 
-                      {/* Recipients Display */}
-                      <div className="border-t pt-3">
-                        <div className="flex items-start gap-2">
-                          <Users className="w-4 h-4 text-gray-400 mt-1" />
-                          <div className="flex-1">
-                            <p className="text-xs text-gray-500 mb-1">Recipients:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {memo.type === "general" ? (
-                                <Badge variant="outline" className="text-xs">General (All Users)</Badge>
-                              ) : memo.type === "department" ? (
-                                memo.recipients.map((deptId: string) => {
-                                  const dept = DEPARTMENTS.find(d => d.value === deptId);
-                                  return (
-                                    <Badge key={deptId} variant="outline" className="text-xs">
-                                      {dept?.label || deptId}
-                                    </Badge>
-                                  );
-                                })
-                              ) : memo.type === "individual" ? (
-                                memo.recipients.map((userId: number) => {
-                                  const user = users.find(u => u.id === userId);
-                                  return (
-                                    <Badge key={userId} variant="outline" className="text-xs">
-                                      {user?.name || `User ${userId}`}
-                                    </Badge>
-                                  );
-                                })
-                              ) : (
-                                <Badge variant="outline" className="text-xs">Unknown</Badge>
-                              )}
+                      {/* Recipients Display - Only for operations managers */}
+                      {isOperationsManager && (
+                        <div className="border-t pt-3">
+                          <div className="flex items-start gap-2">
+                            <Users className="w-4 h-4 text-gray-400 mt-1" />
+                            <div className="flex-1">
+                              <p className="text-xs text-gray-500 mb-1">Recipients:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {memo.type === "general" ? (
+                                  <Badge variant="outline" className="text-xs">General (All Users)</Badge>
+                                ) : memo.type === "department" ? (
+                                  memo.recipients.map((deptId: string) => {
+                                    const dept = DEPARTMENTS.find(d => d.value === deptId);
+                                    return (
+                                      <Badge key={deptId} variant="outline" className="text-xs">
+                                        {dept?.label || deptId}
+                                      </Badge>
+                                    );
+                                  })
+                                ) : memo.type === "individual" ? (
+                                  memo.recipients.map((userId: number) => {
+                                    const user = users.find(u => u.id === userId);
+                                    return (
+                                      <Badge key={userId} variant="outline" className="text-xs">
+                                        {user?.name || `User ${userId}`}
+                                      </Badge>
+                                    );
+                                  })
+                                ) : (
+                                  <Badge variant="outline" className="text-xs">Unknown</Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div className="flex items-center gap-2">
@@ -612,6 +620,13 @@ export default function Memos() {
                           <div className="flex items-center gap-2">
                             <Eye className="w-4 h-4 text-gray-400" />
                             <p className="text-gray-500">{memo.readCount} read</p>
+                          </div>
+                        )}
+
+                        {isOperationsManager && memo.responseCount !== undefined && memo.responseCount > 0 && (
+                          <div className="flex items-center gap-2">
+                            <MessageCircle className="w-4 h-4 text-blue-500" />
+                            <p className="text-blue-600 font-medium">{memo.responseCount} response{memo.responseCount !== 1 ? 's' : ''}</p>
                           </div>
                         )}
 

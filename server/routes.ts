@@ -6288,7 +6288,7 @@ End of Report
           .where(eq(memos.sentBy, user.id))
           .orderBy(desc(memos.createdAt));
 
-        // Get read count and reader details for each memo
+        // Get read count, reader details, and response count for each memo
         const memosWithReadInfo = await Promise.all(
           sentMemos.map(async (memo) => {
             const readInfo = await db
@@ -6310,9 +6310,16 @@ End of Report
               .where(eq(memoReads.memoId, memo.id))
               .orderBy(desc(memoReads.readAt));
 
+            // Get response count
+            const responseCount = await db
+              .select({ count: sql<number>`count(*)` })
+              .from(memoResponses)
+              .where(eq(memoResponses.memoId, memo.id));
+
             return {
               ...memo,
               readCount: readInfo[0]?.count || 0,
+              responseCount: responseCount[0]?.count || 0,
               reads: readers,
             };
           })
