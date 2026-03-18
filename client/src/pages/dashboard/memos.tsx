@@ -217,7 +217,7 @@ export default function Memos() {
     enabled: !!selectedMemoForReceipts && showReadReceipts,
   });
 
-  // Fetch responses for selected memo
+  // Fetch responses for selected memo and check if user has already responded
   const { data: responses = [], isLoading: isLoadingResponses } = useQuery<MemoResponse[]>({
     queryKey: ["/api/memos", selectedMemo?.id, "responses"],
     queryFn: async () => {
@@ -228,6 +228,9 @@ export default function Memos() {
     },
     enabled: !!selectedMemo && isViewDialogOpen,
   });
+
+  // Check if current user has already responded
+  const userHasResponded = responses.some(r => r.userId === user?.id);
 
   // Create response mutation
   const createResponseMutation = useMutation({
@@ -521,7 +524,7 @@ export default function Memos() {
                   <Card key={memo.id} className="hover:shadow-md transition-shadow">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
-                        <div className="space-y-1">
+                        <div className="space-y-1 flex-1">
                           <div className="flex items-center gap-2">
                             <CardTitle className="text-xl">{memo.title}</CardTitle>
                             {!isOperationsManager && !memo.isRead && (
@@ -560,7 +563,7 @@ export default function Memos() {
                     </CardHeader>
 
                     <CardContent className="space-y-4">
-                      <p className="text-gray-600 line-clamp-3">{memo.content}</p>
+                      {isOperationsManager && <p className="text-gray-600 line-clamp-3">{memo.content}</p>}
 
                       {/* Recipients Display */}
                       <div className="border-t pt-3">
@@ -621,6 +624,20 @@ export default function Memos() {
                           </div>
                         )}
                       </div>
+
+                      {/* Show viewer names for operations managers */}
+                      {isOperationsManager && memo.reads && memo.reads.length > 0 && (
+                        <div className="border-t pt-3">
+                          <p className="text-xs text-gray-500 mb-2">Viewed by:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {memo.reads.map((read) => (
+                              <Badge key={read.userId} variant="secondary" className="text-xs">
+                                {read.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))
@@ -709,27 +726,35 @@ export default function Memos() {
             {/* Response Form */}
             {!isOperationsManager && (
               <div className="border-t pt-4">
-                <form onSubmit={handleSubmitResponse} className="space-y-3">
-                  <Label htmlFor="response">Your Response</Label>
-                  <Textarea
-                    id="response"
-                    placeholder="Type your response here..."
-                    value={responseContent}
-                    onChange={(e) => setResponseContent(e.target.value)}
-                    className="min-h-[100px]"
-                    disabled={createResponseMutation.isPending}
-                  />
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={
-                      !responseContent.trim() || createResponseMutation.isPending
-                    }
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    {createResponseMutation.isPending ? "Sending..." : "Send Response"}
-                  </Button>
-                </form>
+                {userHasResponded ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <p className="text-sm text-blue-700 font-medium">
+                      ✓ You have already responded to this memo
+                    </p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmitResponse} className="space-y-3">
+                    <Label htmlFor="response">Your Response</Label>
+                    <Textarea
+                      id="response"
+                      placeholder="Type your response here..."
+                      value={responseContent}
+                      onChange={(e) => setResponseContent(e.target.value)}
+                      className="min-h-[100px]"
+                      disabled={createResponseMutation.isPending}
+                    />
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={
+                        !responseContent.trim() || createResponseMutation.isPending
+                      }
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      {createResponseMutation.isPending ? "Sending..." : "Send Response"}
+                    </Button>
+                  </form>
+                )}
               </div>
             )}
           </div>

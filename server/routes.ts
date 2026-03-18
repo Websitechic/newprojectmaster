@@ -6288,22 +6288,37 @@ End of Report
           .where(eq(memos.sentBy, user.id))
           .orderBy(desc(memos.createdAt));
 
-        // Get read count for each memo
-        const memosWithReadCount = await Promise.all(
+        // Get read count and reader details for each memo
+        const memosWithReadInfo = await Promise.all(
           sentMemos.map(async (memo) => {
-            const readCount = await db
-              .select({ count: sql<number>`count(*)` })
+            const readInfo = await db
+              .select({
+                count: sql<number>`count(*)`,
+              })
               .from(memoReads)
               .where(eq(memoReads.memoId, memo.id));
 
+            // Get reader names and read times
+            const readers = await db
+              .select({
+                userId: memoReads.userId,
+                name: users.name,
+                readAt: memoReads.readAt,
+              })
+              .from(memoReads)
+              .leftJoin(users, eq(memoReads.userId, users.id))
+              .where(eq(memoReads.memoId, memo.id))
+              .orderBy(desc(memoReads.readAt));
+
             return {
               ...memo,
-              readCount: readCount[0]?.count || 0,
+              readCount: readInfo[0]?.count || 0,
+              reads: readers,
             };
           })
         );
 
-        res.json(memosWithReadCount);
+        res.json(memosWithReadInfo);
       } else {
         return res.status(403).json({ error: "Only operations managers can access this endpoint" });
       }
@@ -6615,6 +6630,22 @@ End of Report
 
       if (!existingMemo) {
         return res.status(404).json({ error: "Memo not found" });
+      }
+
+      // Check if user has already responded to this memo
+      const [existingResponse] = await db
+        .select()
+        .from(memoResponses)
+        .where(
+          and(
+            eq(memoResponses.memoId, memoId),
+            eq(memoResponses.userId, user.id)
+          )
+        )
+        .limit(1);
+
+      if (existingResponse) {
+        return res.status(400).json({ error: "You have already responded to this memo" });
       }
 
       // Create the response
