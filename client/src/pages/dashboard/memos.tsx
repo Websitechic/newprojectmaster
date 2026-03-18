@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Users, AlertTriangle, Plus, Edit, Trash2, FileText, Eye, User as UserIcon } from "lucide-react";
+import { Calendar, Clock, Users, AlertTriangle, Plus, Edit, Trash2, FileText, Eye, User as UserIcon, MessageCircle, Send } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +48,15 @@ interface MemoRead {
   userName: string;
 }
 
+interface MemoResponse {
+  id: number;
+  memoId: number;
+  userId: number;
+  content: string;
+  createdAt: string;
+  userName: string;
+}
+
 const MEMO_TYPES = {
   individual: "Individual",
   general: "General",
@@ -75,6 +84,7 @@ export default function Memos() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedMemo, setSelectedMemo] = useState<Memo | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [responseContent, setResponseContent] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -207,6 +217,56 @@ export default function Memos() {
     enabled: !!selectedMemoForReceipts && showReadReceipts,
   });
 
+  // Fetch responses for selected memo
+  const { data: responses = [], isLoading: isLoadingResponses } = useQuery<MemoResponse[]>({
+    queryKey: ["/api/memos", selectedMemo?.id, "responses"],
+    queryFn: async () => {
+      if (!selectedMemo) return [];
+      const response = await fetch(`/api/memos/${selectedMemo.id}/responses`);
+      if (!response.ok) throw new Error("Failed to fetch responses");
+      return response.json();
+    },
+    enabled: !!selectedMemo && isViewDialogOpen,
+  });
+
+  // Create response mutation
+  const createResponseMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (!selectedMemo) throw new Error("No memo selected");
+      const response = await fetch(`/api/memos/${selectedMemo.id}/responses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create response");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      if (selectedMemo) {
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/memos", selectedMemo.id, "responses"] 
+        });
+      }
+      setResponseContent("");
+      toast({
+        title: "Success",
+        description: "Your response has been sent",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       title: "",
@@ -280,10 +340,18 @@ export default function Memos() {
   const handleViewMemo = (memo: Memo) => {
     setSelectedMemo(memo);
     setIsViewDialogOpen(true);
+    setResponseContent("");
     
     // Mark as read if user is not operations manager and memo is unread
     if (!isOperationsManager && !memo.isRead) {
       markAsReadMutation.mutate(memo.id);
+    }
+  };
+
+  const handleSubmitResponse = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (responseContent.trim()) {
+      createResponseMutation.mutate(responseContent);
     }
   };
 
@@ -599,6 +667,69 @@ export default function Memos() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Responses Section */}
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold">
+                  Responses {responses.length > 0 && `(${responses.length})`}
+                </h3>
+              </div>
+
+              {isLoadingResponses ? (
+                <div className="text-center py-4 text-sm text-gray-500">
+                  Loading responses...
+                </div>
+              ) : responses.length > 0 ? (
+                <div className="space-y-3 max-h-48 overflow-y-auto">
+                  {responses.map((resp) => (
+                    <div key={resp.id} className="bg-gray-50 p-3 rounded-lg">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-medium text-sm">{resp.userName}</span>
+                        <span className="text-xs text-gray-500">
+                          {format(new Date(resp.createdAt), "MMM d, h:mm a")}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {resp.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-sm text-gray-500">
+                  No responses yet
+                </div>
+              )}
+            </div>
+
+            {/* Response Form */}
+            {!isOperationsManager && (
+              <div className="border-t pt-4">
+                <form onSubmit={handleSubmitResponse} className="space-y-3">
+                  <Label htmlFor="response">Your Response</Label>
+                  <Textarea
+                    id="response"
+                    placeholder="Type your response here..."
+                    value={responseContent}
+                    onChange={(e) => setResponseContent(e.target.value)}
+                    className="min-h-[100px]"
+                    disabled={createResponseMutation.isPending}
+                  />
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={
+                      !responseContent.trim() || createResponseMutation.isPending
+                    }
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    {createResponseMutation.isPending ? "Sending..." : "Send Response"}
+                  </Button>
+                </form>
               </div>
             )}
           </div>

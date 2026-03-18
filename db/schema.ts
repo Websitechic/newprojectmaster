@@ -829,12 +829,35 @@ export const staffQueriesRelations = relations(staffQueries, ({ one }) => ({
   }),
 }));
 
+export const memoResponses = pgTable("memo_responses", {
+  id: serial("id").primaryKey(),
+  memoId: integer("memo_id").references(() => memos.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const memoResponsesRelations = relations(memoResponses, ({ one }) => ({
+  memo: one(memos, {
+    fields: [memoResponses.memoId],
+    references: [memos.id],
+  }),
+  user: one(users, {
+    fields: [memoResponses.userId],
+    references: [users.id],
+  }),
+}));
+
 export type Memo = typeof memos.$inferSelect;
 export type MemoRead = typeof memoReads.$inferSelect;
+export type MemoResponse = typeof memoResponses.$inferSelect;
 export const insertMemoSchema = createInsertSchema(memos);
 export const selectMemoSchema = createSelectSchema(memos);
 export const insertMemoReadSchema = createInsertSchema(memoReads);
 export const selectMemoReadSchema = createSelectSchema(memoReads);
+export const insertMemoResponseSchema = createInsertSchema(memoResponses);
+export const selectMemoResponseSchema = createSelectSchema(memoResponses);
 
 export const insertTechnicalSupportRequestSchema = createInsertSchema(technicalSupportRequests);
 export const selectTechnicalSupportRequestSchema = createSelectSchema(technicalSupportRequests);

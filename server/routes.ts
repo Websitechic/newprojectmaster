@@ -35,6 +35,7 @@ import {
   insertTechnicalSupportRequestSchema,
   memos,
   memoReads,
+  memoResponses,
   clientSentiment,
   staffComplaints,
   staffQueries,
@@ -6585,6 +6586,112 @@ End of Report
     } catch (error) {
       console.error("Error deleting memo:", error);
       res.status(500).json({ error: "Failed to delete memo" });
+    }
+  });
+
+  // Memo Responses API Routes
+
+  app.post("/api/memos/:id/responses", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const memoId = parseInt(req.params.id);
+      const { content } = req.body;
+
+      if (!content || content.trim() === "") {
+        return res.status(400).json({ error: "Response content is required" });
+      }
+
+      // Verify the memo exists
+      const [existingMemo] = await db
+        .select()
+        .from(memos)
+        .where(eq(memos.id, memoId))
+        .limit(1);
+
+      if (!existingMemo) {
+        return res.status(404).json({ error: "Memo not found" });
+      }
+
+      // Create the response
+      const [newResponse] = await db
+        .insert(memoResponses)
+        .values({
+          memoId,
+          userId: user.id,
+          content: content.trim(),
+        })
+        .returning();
+
+      // Send notification to memo sender about the response
+      try {
+        await createNotification(
+          existingMemo.sentBy,
+          "memo_received",
+          `${user.name} responded to your memo: "${existingMemo.title}"`,
+          memoId,
+          "memo"
+        );
+      } catch (notificationError) {
+        console.error("Error creating response notification:", notificationError);
+      }
+
+      res.json({
+        id: newResponse.id,
+        memoId: newResponse.memoId,
+        userId: newResponse.userId,
+        content: newResponse.content,
+        createdAt: newResponse.createdAt,
+        userName: user.name,
+      });
+    } catch (error) {
+      console.error("Error creating memo response:", error);
+      res.status(500).json({ error: "Failed to create response" });
+    }
+  });
+
+  app.get("/api/memos/:id/responses", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const memoId = parseInt(req.params.id);
+
+      // Verify the memo exists
+      const [existingMemo] = await db
+        .select()
+        .from(memos)
+        .where(eq(memos.id, memoId))
+        .limit(1);
+
+      if (!existingMemo) {
+        return res.status(404).json({ error: "Memo not found" });
+      }
+
+      // Get all responses for this memo with user info
+      const responses = await db
+        .select({
+          id: memoResponses.id,
+          memoId: memoResponses.memoId,
+          userId: memoResponses.userId,
+          content: memoResponses.content,
+          createdAt: memoResponses.createdAt,
+          userName: users.name,
+        })
+        .from(memoResponses)
+        .leftJoin(users, eq(memoResponses.userId, users.id))
+        .where(eq(memoResponses.memoId, memoId))
+        .orderBy(asc(memoResponses.createdAt));
+
+      res.json(responses);
+    } catch (error) {
+      console.error("Error fetching memo responses:", error);
+      res.status(500).json({ error: "Failed to fetch responses" });
     }
   });
 
