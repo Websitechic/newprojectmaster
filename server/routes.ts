@@ -432,8 +432,8 @@ export function registerRoutes(app: Express): Server {
         .where(
           and(
             eq(bookings.status, "scheduled"),
-            sql`${bookings.endTime} < ${now}`,
-            sql`${bookings.endTime} >= ${oneMinuteAgo}` // Just ended in last minute
+            sql`${bookings.endTime} < ${now.toISOString()}::timestamp`,
+            sql`${bookings.endTime} >= ${oneMinuteAgo.toISOString()}::timestamp` // Just ended in last minute
           )
         );
 

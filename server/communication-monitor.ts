@@ -42,15 +42,15 @@ class CommunicationMonitor {
         ORDER BY pm.project_id
       `);
 
-      for (const project of projectsWithMessages.rows) {
+      for (const project of projectsWithMessages) {
         await this.checkProjectDelayedResponses(
-          project.project_id,
-          project.project_name,
-          project.project_manager_id
+          project.project_id as number,
+          project.project_name as string,
+          project.project_manager_id as number
         );
       }
 
-      console.log(`Checked ${projectsWithMessages.rows.length} projects for delayed responses`);
+      console.log(`Checked ${projectsWithMessages.length} projects for delayed responses`);
     } catch (error) {
       console.error("Error checking delayed responses:", error);
     }
@@ -69,12 +69,12 @@ class CommunicationMonitor {
       `);
 
       // Check each member's response patterns
-      for (const member of members.rows) {
+      for (const member of members) {
         await this.checkMemberResponseDelay(
           projectId,
           projectName,
-          member.id,
-          member.name,
+          member.id as number,
+          member.name as string,
           projectManagerId
         );
       }
@@ -100,7 +100,7 @@ class CommunicationMonitor {
         );
       `);
       
-      if (!tableExists.rows[0]?.exists) {
+      if (!tableExists[0]?.exists) {
         console.log('communication_delays table does not exist, skipping delay tracking');
         return;
       }
@@ -128,13 +128,13 @@ class CommunicationMonitor {
         LIMIT 1
       `);
 
-      if (lastOtherMessage.rows.length === 0) {
+      if (lastOtherMessage.length === 0) {
         return; // No messages from others to respond to
       }
 
-      const lastOtherMessageTime = new Date(lastOtherMessage.rows[0].created_at);
-      const lastResponseTime = lastResponse.rows[0] 
-        ? new Date(lastResponse.rows[0].created_at)
+      const lastOtherMessageTime = new Date(lastOtherMessage[0].created_at as string);
+      const lastResponseTime = lastResponse[0]
+        ? new Date(lastResponse[0].created_at as string)
         : new Date(0); // Beginning of time if no response yet
 
       // Check if there's a delay (other message is after staff's last response + threshold)
@@ -149,7 +149,7 @@ class CommunicationMonitor {
           AND last_response_time = ${lastResponseTime.toISOString()}
         `);
 
-        if (existingDelay.rows.length === 0) {
+        if (existingDelay.length === 0) {
           // Create new delay record
           await db.execute(sql`
             INSERT INTO communication_delays (
@@ -191,10 +191,10 @@ class CommunicationMonitor {
         SELECT username, name FROM users WHERE id = ${staffId}
       `);
 
-      if (staff.rows.length === 0) return;
+      if (staff.length === 0) return;
 
-      const staffUsername = staff.rows[0].username;
-      const staffFullName = staff.rows[0].name;
+      const staffUsername = staff[0].username as string;
+      const staffFullName = staff[0].name as string;
 
       // Check for messages mentioning this staff member that haven't been responded to
       const mentionMessages = await db.execute(sql`
@@ -211,8 +211,8 @@ class CommunicationMonitor {
         ORDER BY pm.created_at DESC
       `);
 
-      for (const mention of mentionMessages.rows) {
-        const mentionTime = new Date(mention.created_at);
+      for (const mention of mentionMessages) {
+        const mentionTime = new Date(mention.created_at as string);
         
         // Check if staff member responded after this mention
         const responseAfterMention = await db.execute(sql`
@@ -226,7 +226,7 @@ class CommunicationMonitor {
         // If no response after mention and it's been more than threshold hours
         const hoursDelayed = (Date.now() - mentionTime.getTime()) / (1000 * 60 * 60);
         
-        if (responseAfterMention.rows.length === 0 && hoursDelayed >= this.DELAY_THRESHOLD_HOURS) {
+        if (responseAfterMention.length === 0 && hoursDelayed >= this.DELAY_THRESHOLD_HOURS) {
           // Check if we already tracked this mention
           const existingMentionDelay = await db.execute(sql`
             SELECT id FROM communication_delays
@@ -235,7 +235,7 @@ class CommunicationMonitor {
             AND mention_message_id = ${mention.id}
           `);
 
-          if (existingMentionDelay.rows.length === 0) {
+          if (existingMentionDelay.length === 0) {
             // Create delay record for unresponded mention
             await db.execute(sql`
               INSERT INTO communication_delays (
