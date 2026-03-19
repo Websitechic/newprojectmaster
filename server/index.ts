@@ -320,9 +320,9 @@ let emailServiceInitialized = false;
     }
 
     // Start the server with error handling
-    const port = parseInt(process.env.PORT || "5000", 10);
+    const port = 5000;
     log(`Attempting to start server on port ${port}...`);
-
+    
     server.listen(port, "0.0.0.0", () => {
       console.log("\n" + "=".repeat(50));
       console.log(`✅ Server successfully started!`);
