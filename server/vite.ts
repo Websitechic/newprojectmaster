@@ -20,10 +20,20 @@ export function log(message: string, source = "express") {
 
 export async function setupVite(app: Express, server: Server) {
   const { createServer: createViteServer, createLogger } = await import("vite");
-  const { default: viteConfig } = await import("../vite.config");
+  const { default: react } = await import("@vitejs/plugin-react");
+  const { default: themePlugin } = await import("@replit/vite-plugin-shadcn-theme-json");
+  const { default: runtimeErrorOverlay } = await import("@replit/vite-plugin-runtime-error-modal");
+
   const viteLogger = createLogger();
   const vite = await createViteServer({
-    ...viteConfig,
+    plugins: [react(), runtimeErrorOverlay(), themePlugin()],
+    resolve: {
+      alias: {
+        "@db": path.resolve(__dirname, "..", "db"),
+        "@": path.resolve(__dirname, "..", "client", "src"),
+      },
+    },
+    root: path.resolve(__dirname, "..", "client"),
     configFile: false,
     customLogger: {
       ...viteLogger,
