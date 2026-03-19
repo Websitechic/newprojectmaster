@@ -89,7 +89,7 @@ export default function SOPPage() {
           <div className="flex-1 flex items-center justify-center w-full">
             <div className="text-center">
               <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h2>
               <p className="text-gray-600">Only operations managers can access SOP management.</p>
             </div>
           </div>
@@ -398,7 +398,7 @@ export default function SOPPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <BookOpen className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
                   Standard Operating Procedures
                 </h1>
@@ -471,7 +471,7 @@ export default function SOPPage() {
                     {/* Segments */}
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-medium text-gray-900">SOP Segments</h3>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">SOP Segments</h3>
                         <Button onClick={addSegment} size="sm" variant="outline">
                           <Plus size={16} className="mr-1" />
                           Add Segment
@@ -629,7 +629,7 @@ export default function SOPPage() {
             ) : Object.keys(filteredSops).length === 0 ? (
               <Card className="p-12 text-center">
                 <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No SOPs Found</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No SOPs Found</h3>
                 <p className="text-gray-600 mb-4">
                   {searchTerm || selectedDepartment !== "all" 
                     ? "No SOPs match your current filters." 
@@ -653,7 +653,7 @@ export default function SOPPage() {
                           <div className="flex items-center gap-3 text-left">
                             <Building className="h-5 w-5 text-blue-600" />
                             <div>
-                              <h2 className="text-xl font-semibold text-gray-900">{department}</h2>
+                              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{department}</h2>
                               <p className="text-sm text-gray-500 mt-1">
                                 {departmentSops.length} SOP{departmentSops.length !== 1 ? 's' : ''}
                               </p>
@@ -826,7 +826,7 @@ export default function SOPPage() {
                   {/* Segments */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium text-gray-900">SOP Segments</h3>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">SOP Segments</h3>
                       <Button onClick={addSegment} size="sm" variant="outline">
                         <Plus size={16} className="mr-1" />
                         Add Segment

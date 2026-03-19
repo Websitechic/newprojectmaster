@@ -291,7 +291,7 @@ export default function UserControl() {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Access Denied</h1>
               <p className="text-gray-600 mt-2">You don't have permission to access this page.</p>
               <Button className="mt-4" onClick={() => setLocation("/dashboard")}>
                 Go to Dashboard
@@ -312,7 +312,7 @@ export default function UserControl() {
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <Users className="h-6 w-6" />
                   User Control
                 </h1>

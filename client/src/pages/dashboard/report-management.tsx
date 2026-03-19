@@ -192,7 +192,7 @@ export default function ReportManagement() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-10">
                 <Bug className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Access Denied</h3>
                 <p className="text-gray-500 text-center">
                   Only operations managers and staff with Replit Development specialization can access report management.
                 </p>
@@ -340,7 +340,7 @@ export default function ReportManagement() {
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-10">
                       <CheckCircle className="h-12 w-12 text-gray-400 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No pending reports</h3>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No pending reports</h3>
                       <p className="text-gray-500 text-center">
                         All issue reports have been reviewed.
                       </p>
@@ -372,7 +372,7 @@ export default function ReportManagement() {
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-10">
                       <Eye className="h-12 w-12 text-gray-400 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No reports under review</h3>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No reports under review</h3>
                     </CardContent>
                   </Card>
                 ) : (
@@ -401,7 +401,7 @@ export default function ReportManagement() {
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-10">
                       <CheckCircle className="h-12 w-12 text-gray-400 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No resolved reports</h3>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No resolved reports</h3>
                     </CardContent>
                   </Card>
                 ) : (
@@ -430,7 +430,7 @@ export default function ReportManagement() {
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-10">
                       <CheckCircle className="h-12 w-12 text-gray-400 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No closed reports</h3>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No closed reports</h3>
                     </CardContent>
                   </Card>
                 ) : (

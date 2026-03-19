@@ -154,7 +154,7 @@ export default function ClientSentimentTracker() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <TrendingUp className="h-6 w-6" />
                   Client Sentiment Tracker
                 </h1>
@@ -249,7 +249,7 @@ export default function ClientSentimentTracker() {
                 {sentiments.length === 0 ? (
                   <div className="text-center py-8">
                     <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No feedback yet</h3>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No feedback yet</h3>
                     <p className="text-gray-600">No client sentiment data available for the selected week.</p>
                   </div>
                 ) : (

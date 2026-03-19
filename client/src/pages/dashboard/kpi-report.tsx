@@ -158,7 +158,7 @@ function PenaltiesSection({
   return (
     <div className="space-y-4">
       <div className="border-b pb-2">
-        <h3 className="text-lg font-semibold text-gray-900">Penalties</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Penalties</h3>
       </div>
 
       {isLoading ? (
@@ -292,7 +292,7 @@ export default function KPIReportPage() {
           <Header />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h2>
               <p className="text-gray-600">Only operations managers and team leads can access KPI reports.</p>
             </div>
           </div>
@@ -1025,7 +1025,7 @@ export default function KPIReportPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">KPI Report</h1>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">KPI Report</h1>
                 <p className="text-gray-600 mt-1">Employee performance and productivity tracking</p>
               </div>
               <div className="flex gap-2">
@@ -1680,7 +1680,7 @@ export default function KPIReportPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                           <div className="border-b pb-2">
-                            <h3 className="text-lg font-semibold text-gray-900">Staff Information</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Staff Information</h3>
                           </div>
 
                           <div className="space-y-3">
@@ -1749,7 +1749,7 @@ export default function KPIReportPage() {
 
                         <div className="space-y-4">
                           <div className="border-b pb-2">
-                            <h3 className="text-lg font-semibold text-gray-900">Performance Breakdown</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Performance Breakdown</h3>
                           </div>
 
                           <div className="space-y-3">
@@ -1780,7 +1780,7 @@ export default function KPIReportPage() {
                       {/* Tasks List */}
                       <div className="space-y-4">
                         <div className="border-b pb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                             List of Tasks Performed ({allTasks.size} tasks)
                           </h3>
                         </div>
@@ -1865,7 +1865,7 @@ export default function KPIReportPage() {
                 <CardContent className="pt-6">
                   <div className="text-center py-8">
                     <User className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Select an Employee</h3>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Select an Employee</h3>
                     <p className="text-gray-600">
                       Choose a department and employee to view their KPI report and productivity data.
                     </p>
