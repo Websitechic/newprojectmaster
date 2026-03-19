@@ -562,7 +562,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
     {
       icon: <PlayCircle size={20} />,
-      label: "Guide videos",
+      label: "Tutorial videos",
       href: "/dashboard/guide-videos",
       key: "operations-guide-videos",
     },
