@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Users, AlertTriangle, Plus, Edit, Trash2, FileText, Eye, User as UserIcon } from "lucide-react";
+import { Calendar, Clock, Users, AlertTriangle, Plus, Edit, Trash2, FileText, Eye, User as UserIcon, MessageCircle, Send } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,7 @@ interface Memo {
   senderName: string;
   reads?: MemoRead[];
   readCount?: number;
+  responseCount?: number;
   isRead?: boolean;
   readAt?: string;
 }
@@ -45,6 +46,15 @@ interface Memo {
 interface MemoRead {
   userId: number;
   readAt: string;
+  userName: string;
+}
+
+interface MemoResponse {
+  id: number;
+  memoId: number;
+  userId: number;
+  content: string;
+  createdAt: string;
   userName: string;
 }
 
@@ -75,6 +85,7 @@ export default function Memos() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedMemo, setSelectedMemo] = useState<Memo | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [responseContent, setResponseContent] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -207,6 +218,59 @@ export default function Memos() {
     enabled: !!selectedMemoForReceipts && showReadReceipts,
   });
 
+  // Fetch responses for selected memo and check if user has already responded
+  const { data: responses = [], isLoading: isLoadingResponses, isError: isResponsesError } = useQuery<MemoResponse[]>({
+    queryKey: ["/api/memos", selectedMemo?.id, "responses"],
+    queryFn: async () => {
+      if (!selectedMemo) return [];
+      const response = await fetch(`/api/memos/${selectedMemo.id}/responses`);
+      if (!response.ok) throw new Error("Failed to fetch responses");
+      return response.json();
+    },
+    enabled: !!selectedMemo && isViewDialogOpen,
+  });
+
+  // Check if current user has already responded
+  const userHasResponded = responses && responses.length > 0 && responses.some(r => r.userId === user?.id);
+
+  // Create response mutation
+  const createResponseMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (!selectedMemo) throw new Error("No memo selected");
+      const response = await fetch(`/api/memos/${selectedMemo.id}/responses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create response");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      if (selectedMemo) {
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/memos", selectedMemo.id, "responses"] 
+        });
+      }
+      setResponseContent("");
+      toast({
+        title: "Success",
+        description: "Your response has been sent",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       title: "",
@@ -280,10 +344,18 @@ export default function Memos() {
   const handleViewMemo = (memo: Memo) => {
     setSelectedMemo(memo);
     setIsViewDialogOpen(true);
+    setResponseContent("");
     
     // Mark as read if user is not operations manager and memo is unread
     if (!isOperationsManager && !memo.isRead) {
       markAsReadMutation.mutate(memo.id);
+    }
+  };
+
+  const handleSubmitResponse = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (responseContent.trim()) {
+      createResponseMutation.mutate(responseContent);
     }
   };
 
@@ -453,7 +525,7 @@ export default function Memos() {
                   <Card key={memo.id} className="hover:shadow-md transition-shadow">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
-                        <div className="space-y-1">
+                        <div className="space-y-1 flex-1">
                           <div className="flex items-center gap-2">
                             <CardTitle className="text-xl">{memo.title}</CardTitle>
                             {!isOperationsManager && !memo.isRead && (
@@ -492,42 +564,49 @@ export default function Memos() {
                     </CardHeader>
 
                     <CardContent className="space-y-4">
-                      <p className="text-gray-600 line-clamp-3">{memo.content}</p>
+                      {isOperationsManager && (
+                        <>
+                          <p className="text-gray-600 line-clamp-3">{memo.content}</p>
+                          <div className="border-t pt-3" />
+                        </>
+                      )}
 
-                      {/* Recipients Display */}
-                      <div className="border-t pt-3">
-                        <div className="flex items-start gap-2">
-                          <Users className="w-4 h-4 text-gray-400 mt-1" />
-                          <div className="flex-1">
-                            <p className="text-xs text-gray-500 mb-1">Recipients:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {memo.type === "general" ? (
-                                <Badge variant="outline" className="text-xs">General (All Users)</Badge>
-                              ) : memo.type === "department" ? (
-                                memo.recipients.map((deptId: string) => {
-                                  const dept = DEPARTMENTS.find(d => d.value === deptId);
-                                  return (
-                                    <Badge key={deptId} variant="outline" className="text-xs">
-                                      {dept?.label || deptId}
-                                    </Badge>
-                                  );
-                                })
-                              ) : memo.type === "individual" ? (
-                                memo.recipients.map((userId: number) => {
-                                  const user = users.find(u => u.id === userId);
-                                  return (
-                                    <Badge key={userId} variant="outline" className="text-xs">
-                                      {user?.name || `User ${userId}`}
-                                    </Badge>
-                                  );
-                                })
-                              ) : (
-                                <Badge variant="outline" className="text-xs">Unknown</Badge>
-                              )}
+                      {/* Recipients Display - Only for operations managers */}
+                      {isOperationsManager && (
+                        <div className="border-t pt-3">
+                          <div className="flex items-start gap-2">
+                            <Users className="w-4 h-4 text-gray-400 mt-1" />
+                            <div className="flex-1">
+                              <p className="text-xs text-gray-500 mb-1">Recipients:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {memo.type === "general" ? (
+                                  <Badge variant="outline" className="text-xs">General (All Users)</Badge>
+                                ) : memo.type === "department" ? (
+                                  memo.recipients.map((deptId: string) => {
+                                    const dept = DEPARTMENTS.find(d => d.value === deptId);
+                                    return (
+                                      <Badge key={deptId} variant="outline" className="text-xs">
+                                        {dept?.label || deptId}
+                                      </Badge>
+                                    );
+                                  })
+                                ) : memo.type === "individual" ? (
+                                  memo.recipients.map((userId: number) => {
+                                    const user = users.find(u => u.id === userId);
+                                    return (
+                                      <Badge key={userId} variant="outline" className="text-xs">
+                                        {user?.name || `User ${userId}`}
+                                      </Badge>
+                                    );
+                                  })
+                                ) : (
+                                  <Badge variant="outline" className="text-xs">Unknown</Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div className="flex items-center gap-2">
@@ -544,6 +623,13 @@ export default function Memos() {
                           </div>
                         )}
 
+                        {isOperationsManager && memo.responseCount !== undefined && memo.responseCount > 0 && (
+                          <div className="flex items-center gap-2">
+                            <MessageCircle className="w-4 h-4 text-blue-500" />
+                            <p className="text-blue-600 font-medium">{memo.responseCount} response{memo.responseCount !== 1 ? 's' : ''}</p>
+                          </div>
+                        )}
+
                         {!isOperationsManager && memo.readAt && (
                           <div className="flex items-center gap-2">
                             <Eye className="w-4 h-4 text-green-400" />
@@ -553,6 +639,20 @@ export default function Memos() {
                           </div>
                         )}
                       </div>
+
+                      {/* Show viewer names for operations managers */}
+                      {isOperationsManager && memo.reads && memo.reads.length > 0 && (
+                        <div className="border-t pt-3">
+                          <p className="text-xs text-gray-500 mb-2">Viewed by:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {memo.reads.map((read) => (
+                              <Badge key={read.userId} variant="secondary" className="text-xs">
+                                {read.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))
@@ -599,6 +699,79 @@ export default function Memos() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Responses Section */}
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold">
+                  Responses {responses.length > 0 && `(${responses.length})`}
+                </h3>
+              </div>
+
+              {isLoadingResponses ? (
+                <div className="text-center py-4 text-sm text-gray-500">
+                  Loading responses...
+                </div>
+              ) : responses.length > 0 ? (
+                <div className="space-y-3 max-h-48 overflow-y-auto">
+                  {responses.map((resp) => (
+                    <div key={resp.id} className="bg-gray-50 p-3 rounded-lg">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-medium text-sm">{resp.userName}</span>
+                        <span className="text-xs text-gray-500">
+                          {format(new Date(resp.createdAt), "MMM d, h:mm a")}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {resp.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-sm text-gray-500">
+                  No responses yet
+                </div>
+              )}
+            </div>
+
+            {/* Response Form */}
+            {!isOperationsManager && (
+              <div className="border-t pt-4">
+                {isLoadingResponses ? (
+                  <p className="text-sm text-gray-500">Loading form...</p>
+                ) : userHasResponded ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <p className="text-sm text-blue-700 font-medium">
+                      ✓ You have already responded to this memo
+                    </p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmitResponse} className="space-y-3">
+                    <Label htmlFor="response">Your Response</Label>
+                    <Textarea
+                      id="response"
+                      placeholder="Type your response here..."
+                      value={responseContent}
+                      onChange={(e) => setResponseContent(e.target.value)}
+                      className="min-h-[100px]"
+                      disabled={createResponseMutation.isPending}
+                    />
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={
+                        !responseContent.trim() || createResponseMutation.isPending
+                      }
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      {createResponseMutation.isPending ? "Sending..." : "Send Response"}
+                    </Button>
+                  </form>
+                )}
               </div>
             )}
           </div>

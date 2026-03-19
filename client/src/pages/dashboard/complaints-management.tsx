@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -139,67 +138,68 @@ export default function ComplaintsManagement() {
   }
 
   return (
-    <div className="flex h-screen w-full max-w-none">
+    <div className="flex h-screen w-full max-w-none overflow-hidden">
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none min-w-0">
-          <div className="w-full max-w-none space-y-4 lg:space-y-6">
-            <div className="flex items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  <AlertTriangle className="h-6 w-6 text-orange-600" />
-                  Complaints Management
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full">
+          <div className="w-full max-w-full space-y-4 lg:space-y-6 min-w-0">
+            <div className="flex flex-col gap-2 w-full max-w-full min-w-0">
+              <div className="w-full max-w-full min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 flex-wrap">
+                  <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 flex-shrink-0" />
+                  <span className="break-words">Complaints Management</span>
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-sm sm:text-base text-muted-foreground mt-1 break-words">
                   Review and manage customer complaints
                 </p>
               </div>
             </div>
 
             {complaints && complaints.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-lg text-gray-600">No complaints submitted yet</p>
+              <Card className="w-full max-w-full">
+                <CardContent className="p-6 sm:p-8 text-center w-full">
+                  <AlertTriangle className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-base sm:text-lg text-gray-600 break-words">No complaints submitted yet</p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6">
+              <div className="grid gap-4 sm:gap-6 w-full max-w-full">
                 {complaints?.map((complaint) => (
-                  <Card key={complaint.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">{complaint.name}</CardTitle>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                            <span>{complaint.email}</span>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              {formatDate(complaint.createdAt)}
+                  <Card key={complaint.id} className="hover:shadow-md transition-shadow w-full max-w-full min-w-0">
+                    <CardHeader className="p-3 sm:p-4 lg:p-6">
+                      <div className="flex flex-col sm:flex-row items-start justify-between gap-3 w-full max-w-full min-w-0">
+                        <div className="flex-1 w-full max-w-full min-w-0">
+                          <CardTitle className="text-base sm:text-lg break-words">{complaint.name}</CardTitle>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mt-1 w-full max-w-full">
+                            <span className="truncate">{complaint.email}</span>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span className="text-xs sm:text-sm">{formatDate(complaint.createdAt)}</span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={getStatusColor(complaint.status)}>
+                        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                          <Badge variant="outline" className={`${getStatusColor(complaint.status)} text-xs sm:text-sm whitespace-nowrap`}>
                             {complaint.status.charAt(0).toUpperCase() + complaint.status.slice(1)}
                           </Badge>
                           <Dialog>
                             <DialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 size="sm"
                                 onClick={() => {
                                   setSelectedComplaint(complaint);
                                   setReviewStatus(complaint.status);
                                   setReviewComments(complaint.reviewComments || "");
                                 }}
+                                className="flex-1 sm:flex-none whitespace-nowrap"
                               >
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
+                                <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                <span className="text-xs sm:text-sm">View Details</span>
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                            <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[85vh] overflow-y-auto w-full">
                               <DialogHeader>
                                 <DialogTitle>Complaint Details</DialogTitle>
                               </DialogHeader>
@@ -256,9 +256,9 @@ export default function ComplaintsManagement() {
                                     <div>
                                       <Label className="font-medium">Screenshot</Label>
                                       <div className="mt-2">
-                                        <img 
-                                          src={selectedComplaint.screenshotUrl} 
-                                          alt="Complaint screenshot" 
+                                        <img
+                                          src={selectedComplaint.screenshotUrl}
+                                          alt="Complaint screenshot"
                                           className="max-w-full h-auto rounded-lg border"
                                         />
                                       </div>
@@ -296,7 +296,7 @@ export default function ComplaintsManagement() {
                                           rows={4}
                                         />
                                       </div>
-                                      <Button 
+                                      <Button
                                         onClick={handleReviewSubmit}
                                         disabled={updateComplaint.isPending}
                                         className="w-full"

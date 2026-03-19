@@ -122,13 +122,14 @@ export function ProjectForm({ project, onSuccess, restrictToSupportMaintenance =
 
   // Update form when existing members are loaded
   useEffect(() => {
-    if (project?.id && membersLoaded && existingMembers.length >= 0) {
+    if (project?.id && membersLoaded && Array.isArray(existingMembers)) {
       const memberIds = existingMembers
-        .filter((member: any) => member.invitationStatus === 'accepted')
-        .map((member: any) => member.userId.toString());
+        .map((member: any) => (member.id || member.userId)?.toString())
+        .filter((id: string | undefined): id is string => id !== undefined);
 
-      console.log('Setting team members:', memberIds);
-      form.setValue('teamMembers', memberIds, { shouldValidate: false });
+      console.log('Setting team members for project:', project.id, memberIds);
+      // Update the field directly and force a re-render
+      form.setValue('teamMembers', memberIds);
     }
   }, [membersLoaded, existingMembers, project?.id, form]);
 

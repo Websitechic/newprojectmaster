@@ -47,6 +47,7 @@ export function ProjectCard({ project, handleClick }: ProjectCardProps) {
   const queryClient = useQueryClient();
   const unreadCount = useProjectUnreadCount(project.id);
 
+  // Project managers can edit any project they can see (backend already filters to projects they manage or are members of)
   const isProjectManager = user?.role === 'project_manager';
 
   // Debug logging

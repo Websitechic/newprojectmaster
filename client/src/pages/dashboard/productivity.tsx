@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell as BarCell } from "recharts";
 import { Clock, CheckCircle, Target, TrendingUp, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ProductivityCard } from "@/components/ui/productivity-card";
@@ -205,7 +205,7 @@ export default function ProductivityPage() {
     item && item.dayName && typeof item.hours === 'number'
   ).map(item => ({
     day: item.dayName || 'Unknown',
-    hours: Math.max(0, item.hours || 0),
+    hours: Math.max(0, item.timeSpent ? item.timeSpent / 3600 : 0), // Convert timeSpent from seconds to hours
     timeSpent: Math.max(0, item.timeSpent || 0),
     taskCount: Math.max(0, item.taskCount || 0),
     tasks: Array.isArray(item.tasks) ? item.tasks : [],
@@ -475,7 +475,7 @@ export default function ProductivityPage() {
                 <CardHeader>
                   <CardTitle>Weekly Activity Tracking</CardTitle>
                   <CardDescription>
-                    Workday span and performance for each day (Monday to Friday)
+                    Total time worked for each day (Monday to Friday)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -497,8 +497,7 @@ export default function ProductivityPage() {
                             formatter={(value: number, name: string, props: any) => {
                               const data = props?.payload;
                               const safeValue = typeof value === 'number' && !isNaN(value) ? value : 0;
-                              const displayName = name === 'totalSpanHours' ? 'Total Span' : 
-                                                name === 'hours' ? 'Actual Work Hours' : name;
+                              const displayName = 'Total Time Worked';
                               return [
                                 `${safeValue.toFixed(2)} hours`,
                                 displayName
@@ -522,23 +521,37 @@ export default function ProductivityPage() {
                                   }
                                 };
 
+                                const formatDate = (dateKey: string) => {
+                                  try {
+                                    return format(new Date(dateKey), 'MMM dd, yyyy');
+                                  } catch (e) {
+                                    return '';
+                                  }
+                                };
+
                                 const performanceStatus = data.performanceStatus || 'unknown';
                                 const hours = data.hours || 0;
-                                const totalSpanHours = data.totalSpanHours || 0;
                                 const taskCount = data.taskCount || 0;
                                 const tasks = data.tasks || [];
+                                const timeInSeconds = data.timeSpent || 0;
 
                                 return (
                                   <div className="space-y-2">
                                     <div className="font-medium">{safeLabel}</div>
+                                    {data.day && (
+                                      <div className="text-xs text-gray-500">{formatDate(data.day)}</div>
+                                    )}
 
-                                    {data.workdayStart && data.workdayEnd ? (
+                                    {data.workdayStart ? (
                                       <div className="text-sm text-gray-600">
                                         <div><strong>Started:</strong> {formatTime(data.workdayStart)}</div>
-                                        <div><strong>Ended:</strong> {formatTime(data.workdayEnd)}</div>
-                                        <div><strong>Total Span:</strong> {totalSpanHours.toFixed(2)}h</div>
-                                        <div><strong>Actual Work:</strong> {hours.toFixed(2)}h</div>
-                                      </div>
+                                        <div><strong>Ended:</strong> {data.workdayEnd ? formatTime(data.workdayEnd) : 'In progress'}</div>
+                                        <div><strong>Total Time Worked:</strong> {(() => {
+                                        const h = Math.floor(timeInSeconds / 3600);
+                                        const m = Math.floor((timeInSeconds % 3600) / 60);
+                                        return `${h}h ${m}m`;
+                                      })()}</div>
+                                    </div>
                                     ) : (
                                       <div className="text-sm text-gray-600">
                                         No timer activity recorded
@@ -585,17 +598,26 @@ export default function ProductivityPage() {
                             }}
                           />
                           <Bar 
-                            dataKey="totalSpanHours" 
-                            fill="#E5E7EB"
-                            radius={[4, 4, 0, 0]}
-                            name="Total Span"
-                          />
-                          <Bar 
                             dataKey="hours" 
-                            fill="#3b82f6"
                             radius={[4, 4, 0, 0]}
-                            name="Actual Work"
-                          />
+                            name="Total Time Worked"
+                          >
+                            {weeklyData.map((entry, index) => {
+                              let fillColor = '#6B7280'; // Default gray
+                              
+                              if (entry.performanceStatus === 'poor') {
+                                fillColor = '#EF4444'; // Red
+                              } else if (entry.performanceStatus === 'fair') {
+                                fillColor = '#F97316'; // Orange
+                              } else if (entry.performanceStatus === 'good') {
+                                fillColor = '#22C55E'; // Green
+                              } else if (entry.performanceStatus === 'excessive') {
+                                fillColor = '#4B5563'; // Dark gray
+                              }
+                              
+                              return <Cell key={`bar-cell-${index}`} fill={fillColor} />;
+                            })}
+                          </Bar>
 
                           {/* Performance status indicators above bars */}
                           {weeklyData.map((entry, index) => {
@@ -626,7 +648,7 @@ export default function ProductivityPage() {
                       {/* Performance Legend */}
                       <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                         <h4 className="text-sm font-medium text-gray-900 mb-3">Daily Performance Status Legend</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                           <div className="flex items-center gap-2">
                             <div className="w-4 h-4 rounded-full bg-red-500"></div>
                             <div className="text-sm">
@@ -645,13 +667,19 @@ export default function ProductivityPage() {
                             <div className="w-4 h-4 rounded-full bg-green-500"></div>
                             <div className="text-sm">
                               <div className="font-medium text-green-700">Good</div>
-                              <div className="text-gray-600">4+ hours worked</div>
+                              <div className="text-gray-600">4-9 hours worked</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded-full bg-gray-600"></div>
+                            <div className="text-sm">
+                              <div className="font-medium text-gray-700">Excessive Hours</div>
+                              <div className="text-gray-600">Over 9 hours worked</div>
                             </div>
                           </div>
                         </div>
                         <div className="mt-3 text-xs text-gray-500">
-                          <strong>Note:</strong> Light gray bars show total workday span (first timer start to last timer end). 
-                          Blue bars show actual work hours. Performance is based on actual work hours.
+                          <strong>Note:</strong> Blue bars show total time worked. Performance is based on total time worked.
                         </div>
                       </div>
                     </div>

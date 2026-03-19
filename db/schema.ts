@@ -90,8 +90,12 @@ export const users = pgTable("users", {
   clientType: text("client_type", {
     enum: ["project_client", "support_maintenance_client"]
   }),
+  mustSetPassword: boolean("must_set_password").default(false),
+  passwordSetupToken: text("password_setup_token"),
   lastActive: timestamp("last_active").defaultNow(),
+  lastSeen: timestamp("last_seen").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
+  isActive: boolean("is_active").default(true),
 });
 
 export const clientInvitations = pgTable("client_invitations", {
@@ -160,7 +164,8 @@ export const tasks = pgTable("tasks", {
   projectId: integer("project_id").references(() => projects.id),
   assigneeId: integer("assignee_id").references(() => users.id),
   assignedBy: integer("assigned_by").references(() => users.id),
-  status: text("status", { enum: ["todo", "in_progress", "completed", "review", "technical_support", "pending"] }).default("todo"),
+  status: text("status", { enum: ["todo", "in_progress", "completed", "review", "technical_support", "pending", "not_approved", "on_hold"] }).default("todo"),
+  iterationNumber: integer("iteration_number").default(1),
   priority: text("priority", { enum: ["low", "medium", "high"] }).default("medium"),
   progress: integer("progress").default(0),
   startDate: timestamp("start_date"),
@@ -171,6 +176,9 @@ export const tasks = pgTable("tasks", {
   isTimerRunning: boolean("is_timer_running").default(false),
   timerStartTime: timestamp("timer_start_time"),
   hasBeenStarted: boolean("has_been_started").default(false),
+  actualStartTime: timestamp("actual_start_time"), // When work actually started (first timer start)
+  reviewStartedAt: timestamp("review_started_at"), // When task entered review status
+  completedAt: timestamp("completed_at"), // When task was marked as completed
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -184,6 +192,36 @@ export const taskSessions = pgTable("task_sessions", {
   duration: integer("duration"), // in seconds - calculated when session ends
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const taskIterations = pgTable("task_iterations", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+  iterationNumber: integer("iteration_number").notNull(),
+  assigneeId: integer("assignee_id").references(() => users.id),
+  assignedBy: integer("assigned_by").references(() => users.id),
+  description: text("description"),
+  status: text("status", { enum: ["todo", "in_progress", "completed", "review", "technical_support", "pending", "not_approved", "on_hold"] }),
+  startDate: timestamp("start_date"),
+  deadline: timestamp("deadline"),
+  workingHours: integer("working_hours").default(0),
+  workingMinutes: integer("working_minutes").default(0),
+  timeSpent: integer("time_spent").default(0),
+  notes: text("notes"),
+  reassignedBy: integer("reassigned_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const taskIterationsRelations = relations(taskIterations, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskIterations.taskId],
+    references: [tasks.id],
+  }),
+  assignee: one(users, {
+    fields: [taskIterations.assigneeId],
+    references: [users.id],
+  }),
+}));
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
@@ -265,6 +303,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [users.id],
   }),
   sessions: many(taskSessions),
+  iterations: many(taskIterations),
 }));
 
 export const taskSessionsRelations = relations(taskSessions, ({ one }) => ({
@@ -505,6 +544,8 @@ export const insertProjectSchema = createInsertSchema(projects);
 export const selectProjectSchema = createSelectSchema(projects);
 export const insertTaskSchema = createInsertSchema(tasks);
 export const selectTaskSchema = createSelectSchema(tasks);
+export const insertTaskIterationSchema = createInsertSchema(taskIterations);
+export const selectTaskIterationSchema = createSelectSchema(taskIterations);
 export const insertProjectMemberSchema = createInsertSchema(projectMembers);
 export const selectProjectMemberSchema = createSelectSchema(projectMembers);
 export const insertClientInvitationSchema = createInsertSchema(clientInvitations);
@@ -525,6 +566,7 @@ export const selectDirectMessageSchema = createSelectSchema(directMessages);
 export type User = typeof users.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type TaskIteration = typeof taskIterations.$inferSelect;
 export type TaskSession = typeof taskSessions.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
@@ -715,9 +757,7 @@ export const memoReads = pgTable("memo_reads", {
   memoId: integer("memo_id").references(() => memos.id, { onDelete: "cascade" }).notNull(),
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   readAt: timestamp("read_at").defaultNow(),
-}, (table) => ({
-  uniqueMemoUser: unique().on(table.memoId, table.userId),
-}));
+});
 
 export const memosRelations = relations(memos, ({ one, many }) => ({
   sender: one(users, {
@@ -789,12 +829,35 @@ export const staffQueriesRelations = relations(staffQueries, ({ one }) => ({
   }),
 }));
 
+export const memoResponses = pgTable("memo_responses", {
+  id: serial("id").primaryKey(),
+  memoId: integer("memo_id").references(() => memos.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const memoResponsesRelations = relations(memoResponses, ({ one }) => ({
+  memo: one(memos, {
+    fields: [memoResponses.memoId],
+    references: [memos.id],
+  }),
+  user: one(users, {
+    fields: [memoResponses.userId],
+    references: [users.id],
+  }),
+}));
+
 export type Memo = typeof memos.$inferSelect;
 export type MemoRead = typeof memoReads.$inferSelect;
+export type MemoResponse = typeof memoResponses.$inferSelect;
 export const insertMemoSchema = createInsertSchema(memos);
 export const selectMemoSchema = createSelectSchema(memos);
 export const insertMemoReadSchema = createInsertSchema(memoReads);
 export const selectMemoReadSchema = createSelectSchema(memoReads);
+export const insertMemoResponseSchema = createInsertSchema(memoResponses);
+export const selectMemoResponseSchema = createSelectSchema(memoResponses);
 
 export const insertTechnicalSupportRequestSchema = createInsertSchema(technicalSupportRequests);
 export const selectTechnicalSupportRequestSchema = createSelectSchema(technicalSupportRequests);
@@ -899,6 +962,8 @@ export const generalChannelMessages = pgTable("general_channel_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at"),
   isEdited: boolean("is_edited").default(false),
+  isPinned: boolean("is_pinned").default(false),
+  reactions: jsonb("reactions").default([]), // Array of { emoji: string, userIds: number[] }
 });
 
 export const generalChannelReadReceipts = pgTable("general_channel_read_receipts", {
@@ -963,8 +1028,10 @@ export const reviewLinks = pgTable("review_links", {
   description: text("description"),
   sentBy: integer("sent_by").notNull().references(() => users.id, { onDelete: "cascade" }),
   assignedTo: integer("assigned_to").notNull().references(() => users.id, { onDelete: "cascade" }),
-  status: text("status", { enum: ["pending", "reviewed"] }).notNull().default("pending"),
+  status: text("status", { enum: ["pending", "reviewed", "needs_revision", "not_approved"] }).notNull().default("pending"),
   reviewedAt: timestamp("reviewed_at"),
+  reviewComment: text("review_comment"),
+  commentedAt: timestamp("commented_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1006,3 +1073,49 @@ export const projectBriefingsRelations = relations(projectBriefings, ({ one }) =
 export type ProjectBriefing = typeof projectBriefings.$inferSelect;
 export const insertProjectBriefingSchema = createInsertSchema(projectBriefings);
 export const selectProjectBriefingSchema = createSelectSchema(projectBriefings);
+
+// Stop Gap System Tables
+export const stopGapAllocations = pgTable("stop_gap_allocations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  monthYear: text("month_year").notNull(), // Format: "YYYY-MM"
+  totalHours: integer("total_hours").notNull().default(5),
+  usedHours: integer("used_hours").notNull().default(0), // Store in minutes for precision
+  remainingHours: integer("remaining_hours").notNull().default(300), // 5 hours = 300 minutes
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const stopGapTaskAssignments = pgTable("stop_gap_task_assignments", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stopGapHours: integer("stop_gap_hours").notNull(), // Store in minutes
+  monthYear: text("month_year").notNull(),
+  appliedAt: timestamp("applied_at").defaultNow(),
+});
+
+export const stopGapAllocationsRelations = relations(stopGapAllocations, ({ one }) => ({
+  user: one(users, {
+    fields: [stopGapAllocations.userId],
+    references: [users.id],
+  }),
+}));
+
+export const stopGapTaskAssignmentsRelations = relations(stopGapTaskAssignments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [stopGapTaskAssignments.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [stopGapTaskAssignments.userId],
+    references: [users.id],
+  }),
+}));
+
+export type StopGapAllocation = typeof stopGapAllocations.$inferSelect;
+export type StopGapTaskAssignment = typeof stopGapTaskAssignments.$inferSelect;
+export const insertStopGapAllocationSchema = createInsertSchema(stopGapAllocations);
+export const selectStopGapAllocationSchema = createSelectSchema(stopGapAllocations);
+export const insertStopGapTaskAssignmentSchema = createInsertSchema(stopGapTaskAssignments);
+export const selectStopGapTaskAssignmentSchema = createSelectSchema(stopGapTaskAssignments);

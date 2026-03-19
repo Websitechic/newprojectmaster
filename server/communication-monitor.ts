@@ -42,7 +42,12 @@ class CommunicationMonitor {
         ORDER BY pm.project_id
       `);
 
-      for (const project of projectsWithMessages) {
+      // Handle both array and rows property cases
+      const projects = Array.isArray(projectsWithMessages) 
+        ? projectsWithMessages 
+        : (projectsWithMessages.rows || []);
+
+      for (const project of projects) {
         await this.checkProjectDelayedResponses(
           project.project_id as number,
           project.project_name as string,
@@ -50,7 +55,7 @@ class CommunicationMonitor {
         );
       }
 
-      console.log(`Checked ${projectsWithMessages.length} projects for delayed responses`);
+      console.log(`Checked ${projects.length} projects for delayed responses`);
     } catch (error) {
       console.error("Error checking delayed responses:", error);
     }
@@ -59,7 +64,7 @@ class CommunicationMonitor {
   private async checkProjectDelayedResponses(projectId: number, projectName: string, projectManagerId: number) {
     try {
       // Get all project members
-      const members = await db.execute(sql`
+      const membersResult = await db.execute(sql`
         SELECT DISTINCT u.id, u.name
         FROM project_members pm
         JOIN users u ON pm.user_id = u.id
@@ -67,6 +72,9 @@ class CommunicationMonitor {
         AND pm.invitation_status = 'accepted'
         AND u.role IN ('staff', 'project_manager')
       `);
+      const members = Array.isArray(membersResult) 
+        ? membersResult 
+        : (membersResult.rows || []);
 
       // Check each member's response patterns
       for (const member of members) {
@@ -92,7 +100,7 @@ class CommunicationMonitor {
   ) {
     try {
       // Check if communication_delays table exists first
-      const tableExists = await db.execute(sql`
+      const tableExistsResult = await db.execute(sql`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' 
@@ -100,7 +108,11 @@ class CommunicationMonitor {
         );
       `);
       
-      if (!tableExists[0]?.exists) {
+      const tableExistsData = Array.isArray(tableExistsResult) 
+        ? tableExistsResult 
+        : (tableExistsResult.rows || []);
+      
+      if (!tableExistsData[0]?.exists) {
         console.log('communication_delays table does not exist, skipping delay tracking');
         return;
       }
@@ -109,7 +121,7 @@ class CommunicationMonitor {
       await this.checkMentionResponses(projectId, projectName, staffId, staffName, projectManagerId);
 
       // Get the last message from this staff member in this project
-      const lastResponse = await db.execute(sql`
+      const lastResponseResult = await db.execute(sql`
         SELECT created_at
         FROM project_messages
         WHERE project_id = ${projectId}
@@ -117,9 +129,12 @@ class CommunicationMonitor {
         ORDER BY created_at DESC
         LIMIT 1
       `);
+      const lastResponse = Array.isArray(lastResponseResult) 
+        ? lastResponseResult 
+        : (lastResponseResult.rows || []);
 
       // Get the last message from others (that might need a response)
-      const lastOtherMessage = await db.execute(sql`
+      const lastOtherMessageResult = await db.execute(sql`
         SELECT created_at, sender_id, content
         FROM project_messages
         WHERE project_id = ${projectId}
@@ -127,14 +142,17 @@ class CommunicationMonitor {
         ORDER BY created_at DESC
         LIMIT 1
       `);
+      const lastOtherMessage = Array.isArray(lastOtherMessageResult) 
+        ? lastOtherMessageResult 
+        : (lastOtherMessageResult.rows || []);
 
       if (lastOtherMessage.length === 0) {
         return; // No messages from others to respond to
       }
 
-      const lastOtherMessageTime = new Date(lastOtherMessage[0].created_at as string);
-      const lastResponseTime = lastResponse[0]
-        ? new Date(lastResponse[0].created_at as string)
+      const lastOtherMessageTime = new Date(lastOtherMessage[0].created_at);
+      const lastResponseTime = lastResponse[0] 
+        ? new Date(lastResponse[0].created_at)
         : new Date(0); // Beginning of time if no response yet
 
       // Check if there's a delay (other message is after staff's last response + threshold)
@@ -142,12 +160,15 @@ class CommunicationMonitor {
 
       if (hoursDelayed >= this.DELAY_THRESHOLD_HOURS && lastOtherMessageTime > lastResponseTime) {
         // Check if we already have a record for this delay
-        const existingDelay = await db.execute(sql`
+        const existingDelayResult = await db.execute(sql`
           SELECT id FROM communication_delays
           WHERE project_id = ${projectId}
           AND staff_id = ${staffId}
           AND last_response_time = ${lastResponseTime.toISOString()}
         `);
+        const existingDelay = Array.isArray(existingDelayResult) 
+          ? existingDelayResult 
+          : (existingDelayResult.rows || []);
 
         if (existingDelay.length === 0) {
           // Create new delay record
@@ -187,17 +208,20 @@ class CommunicationMonitor {
   ) {
     try {
       // Get staff username/name for mention detection
-      const staff = await db.execute(sql`
+      const staffResult = await db.execute(sql`
         SELECT username, name FROM users WHERE id = ${staffId}
       `);
+      const staff = Array.isArray(staffResult) 
+        ? staffResult 
+        : (staffResult.rows || []);
 
       if (staff.length === 0) return;
 
-      const staffUsername = staff[0].username as string;
-      const staffFullName = staff[0].name as string;
+      const staffUsername = staff[0].username;
+      const staffFullName = staff[0].name;
 
       // Check for messages mentioning this staff member that haven't been responded to
-      const mentionMessages = await db.execute(sql`
+      const mentionMessagesResult = await db.execute(sql`
         SELECT pm.id, pm.content, pm.created_at, pm.sender_id, u.name as sender_name
         FROM project_messages pm
         LEFT JOIN users u ON pm.sender_id = u.id
@@ -210,30 +234,39 @@ class CommunicationMonitor {
         )
         ORDER BY pm.created_at DESC
       `);
+      const mentionMessages = Array.isArray(mentionMessagesResult) 
+        ? mentionMessagesResult 
+        : (mentionMessagesResult.rows || []);
 
       for (const mention of mentionMessages) {
-        const mentionTime = new Date(mention.created_at as string);
+        const mentionTime = new Date(mention.created_at);
         
         // Check if staff member responded after this mention
-        const responseAfterMention = await db.execute(sql`
+        const responseAfterMentionResult = await db.execute(sql`
           SELECT id FROM project_messages
           WHERE project_id = ${projectId}
           AND sender_id = ${staffId}
           AND created_at > ${mentionTime.toISOString()}
           LIMIT 1
         `);
+        const responseAfterMention = Array.isArray(responseAfterMentionResult) 
+          ? responseAfterMentionResult 
+          : (responseAfterMentionResult.rows || []);
 
         // If no response after mention and it's been more than threshold hours
         const hoursDelayed = (Date.now() - mentionTime.getTime()) / (1000 * 60 * 60);
         
         if (responseAfterMention.length === 0 && hoursDelayed >= this.DELAY_THRESHOLD_HOURS) {
           // Check if we already tracked this mention
-          const existingMentionDelay = await db.execute(sql`
+          const existingMentionDelayResult = await db.execute(sql`
             SELECT id FROM communication_delays
             WHERE project_id = ${projectId}
             AND staff_id = ${staffId}
             AND mention_message_id = ${mention.id}
           `);
+          const existingMentionDelay = Array.isArray(existingMentionDelayResult) 
+            ? existingMentionDelayResult 
+            : (existingMentionDelayResult.rows || []);
 
           if (existingMentionDelay.length === 0) {
             // Create delay record for unresponded mention

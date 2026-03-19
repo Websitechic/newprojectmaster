@@ -39,7 +39,7 @@ class BreakScheduler {
       const allStaff = await db
         .select()
         .from(users)
-        .where(eq(users.role, 'staff'));
+        .where(and(eq(users.role, 'staff'), eq(users.isActive, true)));
 
       for (const user of allStaff) {
         // First check if user should return from leave

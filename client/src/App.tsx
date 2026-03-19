@@ -2,6 +2,7 @@ import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { Button } from "@/components/ui/button";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
 import NotFound from "@/pages/not-found";
@@ -38,6 +39,11 @@ import ComplaintsManagement from "@/pages/dashboard/complaints-management";
 import ClientAccounts from "@/pages/dashboard/client-accounts";
 import ClientSentiment from "@/pages/dashboard/client-sentiment";
 import ClientSentimentTracker from "@/pages/dashboard/client-sentiment-tracker";
+import ProfilePage from "@/pages/dashboard/profile";
+import UserControl from "@/pages/dashboard/user-control";
+import AllUsersPage from "@/pages/all-users";
+import SetupPasswordPage from "@/pages/setup-password";
+import ResetPasswordPage from "@/pages/reset-password";
 
 import Memos from "@/pages/dashboard/memos";
 import StaffComplaints from "@/pages/dashboard/staff-complaints";
@@ -52,10 +58,14 @@ import ReportIssues from "@/pages/report-issues";
 import ReportManagement from "@/pages/dashboard/report-management";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useBrowserNotification } from "@/hooks/use-browser-notification";
+import { useOneSignal } from "@/hooks/use-onesignal";
 import GeneralChannelPage from "@/pages/dashboard/general-channel";
 import ReviewLinks from "@/pages/dashboard/review-links";
 import ProjectBriefing from "@/pages/dashboard/project-briefing";
+import { EnableNotificationsPrompt } from "./components/notifications/enable-notifications-prompt";
 
+// Lazy load OneSignalTest component
+const OneSignalTest = lazy(() => import("@/pages/dashboard/onesignal-test"));
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -86,32 +96,25 @@ function GlobalNotificationListener() {
   const { showNotification } = useBrowserNotification();
   const audioUnlockedRef = useRef(false);
 
-  // Track audio unlock state
-  useEffect(() => {
-    const wasUnlocked = sessionStorage.getItem('audioUnlocked') === 'true';
-    if (wasUnlocked) {
-      audioUnlockedRef.current = true;
-      console.log('✅ Audio was previously unlocked in this session');
-    }
-  }, []);
+  // Initialize OneSignal for authenticated users
+  useOneSignal(user?.id);
 
-  // Unlock audio on first user interaction - CRITICAL for mobile browsers
+  // Log OneSignal initialization status
+  useEffect(() => {
+    if (user?.id) {
+      console.log('[App] OneSignal should initialize for user:', user.id);
+    }
+  }, [user?.id]);
+
+  // Unlock audio on first user interaction
   useEffect(() => {
     const unlockAudio = () => {
-      if (audioUnlockedRef.current) {
-        console.log('⏭️ Audio already unlocked, skipping');
-        return;
-      }
+      if (audioUnlockedRef.current) return;
 
-      console.log('🔓 Unlocking audio context on user interaction...');
-
-      // Dispatch init-audio event to unlock
+      console.log('🔓 Unlocking audio on user interaction');
       window.dispatchEvent(new Event('init-audio'));
-
-      // Mark as unlocked and persist to sessionStorage
       audioUnlockedRef.current = true;
       sessionStorage.setItem('audioUnlocked', 'true');
-      console.log('✅ Audio context unlock initiated and persisted to sessionStorage');
     };
 
     // Only add listeners if not already unlocked
@@ -160,6 +163,9 @@ function GlobalNotificationListener() {
             // Handle notification events
             if (data.type === 'notification' && data.notification) {
               console.log('🔔 Global notification received:', data.notification);
+
+              // Dispatch event for other components (like NotificationsDropdown) to listen
+              window.dispatchEvent(new CustomEvent('notification-received', { detail: data.notification }));
 
               // Invalidate notifications query to update UI
               queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -222,38 +228,10 @@ function GlobalNotificationListener() {
                   }, 50);
                 }
 
-                // Play sound with retry logic and proper error handling
-                const playSoundWithRetry = async (retries = 5) => {
-                  for (let i = 0; i < retries; i++) {
-                    try {
-                      // Add small delay before first attempt to ensure audio is ready
-                      if (i === 0) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                      }
-
-                      await playNotificationSound();
-                      console.log('✅ Direct message sound played successfully on attempt', i + 1);
-                      return;
-                    } catch (err) {
-                      console.error(`❌ Direct message sound attempt ${i + 1}/${retries} failed:`, {
-                        error: err,
-                        message: err instanceof Error ? err.message : 'Unknown error'
-                      });
-
-                      // If this isn't the last attempt, wait before retrying
-                      if (i < retries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 150));
-
-                        // Try to unlock again before retry
-                        window.dispatchEvent(new Event('init-audio'));
-                      }
-                    }
-                  }
-
-                  console.error('❌ All direct message sound playback attempts failed');
-                };
-
-                playSoundWithRetry();
+                // Play sound immediately - no delays
+                playNotificationSound().catch(err => {
+                  console.error('❌ Direct message sound playback failed:', err);
+                });
 
                 // Show browser notification only if message is TO current user
                 if (data.data.receiverId === user.id) {
@@ -303,23 +281,10 @@ function GlobalNotificationListener() {
                   audioUnlockedRef.current = true;
                 }
 
-                // Play sound with retry logic
-                const playSoundWithRetry = async (retries = 3) => {
-                  for (let i = 0; i < retries; i++) {
-                    try {
-                      await playNotificationSound();
-                      console.log('✅ Team message sound played successfully');
-                      return;
-                    } catch (err) {
-                      console.error(`❌ Team message sound attempt ${i + 1} failed:`, err);
-                      if (i < retries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                      }
-                    }
-                  }
-                };
-
-                playSoundWithRetry();
+                // Play sound immediately - no delays
+                playNotificationSound().catch(err => {
+                  console.error('❌ Team message sound playback failed:', err);
+                });
 
                 // Show browser notification
                 const senderName = data.data.senderName || 'Team member';
@@ -350,12 +315,17 @@ function GlobalNotificationListener() {
 
               // Don't play sound for own messages
               if (data.data?.senderId !== user?.id) {
-                playNotificationSound();
+                console.log('🔊 TRIGGER: Playing sound for general channel message');
+                playNotificationSound().catch(err => {
+                  console.error('❌ General channel sound playback failed:', err);
+                });
 
                 showNotification(
                   'General Channel',
-                  `${data.data?.senderName}: ${data.data?.content?.substring(0, 50)}...`,
-                  '/dashboard/general-channel'
+                  {
+                    body: `${data.data?.senderName}: ${data.data?.content?.substring(0, 50)}...`,
+                    data: { url: '/dashboard/general-channel' }
+                  }
                 );
               }
 
@@ -369,18 +339,70 @@ function GlobalNotificationListener() {
               console.log('🔄 General channel message update:', data);
               queryClient.invalidateQueries({ queryKey: ["/api/general-channel/messages"] });
             }
+            // Review link assigned (team lead receives a new review request)
+            else if (data.type === 'review_link_assigned') {
+              console.log('📋 Review link assigned:', data);
+              playNotificationSound().catch(err => {
+                console.error('❌ Review link assigned sound failed:', err);
+              });
+              showNotification(
+                'New Review Request',
+                {
+                  body: data.data?.message || 'You have a new link to review',
+                  data: { url: '/dashboard/review-links' }
+                }
+              );
+              queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+            }
+            // Review link reviewed (PM notified when approved)
+            else if (data.type === 'review_link_reviewed') {
+              console.log('✅ Review link reviewed:', data);
+              playNotificationSound().catch(err => {
+                console.error('❌ Review link reviewed sound failed:', err);
+              });
+              showNotification(
+                'Review Completed',
+                {
+                  body: data.data?.message || 'Your review link has been approved',
+                  data: { url: '/dashboard/review-links' }
+                }
+              );
+              queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+            }
+            // Review link comment (PM notified when team lead adds feedback)
+            else if (data.type === 'review_link_comment') {
+              console.log('💬 Review link comment:', data);
+              playNotificationSound().catch(err => {
+                console.error('❌ Review link comment sound failed:', err);
+              });
+              showNotification(
+                'Revision Requested',
+                {
+                  body: data.data?.message || 'A team lead commented on your review',
+                  data: { url: '/dashboard/review-links' }
+                }
+              );
+              queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+            }
             // Existing team mention logic
             else if (data.type === 'team_mention') {
               console.log('📌 Team mention notification received:', data);
 
               // Play notification sound for mentions
-              playNotificationSound();
+              playNotificationSound().catch(err => {
+                console.error('❌ Team mention sound playback failed:', err);
+              });
 
               // Show browser notification
               showNotification(
                 'You were mentioned',
-                data.notification?.content || 'Someone mentioned you in a team chat',
-                '/dashboard/projects'
+                {
+                  body: data.notification?.content || 'Someone mentioned you in a team chat',
+                  data: { url: '/dashboard/projects' }
+                }
               );
 
               // Invalidate relevant queries
@@ -456,6 +478,15 @@ function Router() {
         <Switch>
           <Route path="/auth">
             {user ? <Redirect to="/dashboard" /> : <AuthPage />}
+          </Route>
+          <Route path="/all-users">
+            <AllUsersPage />
+          </Route>
+          <Route path="/setup-password">
+            <SetupPasswordPage />
+          </Route>
+          <Route path="/reset-password">
+            <ResetPasswordPage />
           </Route>
           <Route path="/">
             {!user ? <Redirect to="/auth" /> : <Redirect to="/dashboard" />}
@@ -559,8 +590,11 @@ function Router() {
           <Route path="/dashboard/kpi-report" component={KPIReportPage} />
           <Route path="/dashboard/communication-tracker" component={CommunicationTrackerPage} />
           <Route path="/dashboard/report-management" component={ReportManagement} />
+          <Route path="/dashboard/onesignal-test" component={OneSignalTest} />
           <PrivateRoute path="/dashboard/send-complaint" component={SendComplaint} />
           <PrivateRoute path="/dashboard/report-issues" component={ReportIssues} />
+          <Route path="/dashboard/profile" component={ProfilePage} />
+          <Route path="/dashboard/user-control" component={UserControl} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
@@ -575,6 +609,8 @@ function App() {
         <AuthProvider>
           <Router />
           <Toaster />
+          <GlobalNotificationListener />
+          <EnableNotificationsPrompt />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

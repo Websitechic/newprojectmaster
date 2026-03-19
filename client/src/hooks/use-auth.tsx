@@ -32,10 +32,13 @@ type LoginData = {
 type RegisterData = LoginData & {
   name: string;
   email: string;
-  role: "client" | "project_manager" | "staff" | "intern" | "product_owner" | "operations_manager" | "team_lead";
+  role: string;
   specialization?: string;
   productService?: string;
   clientType?: string;
+  breakOneTime?: string;
+  breakTwoTime?: string;
+  projectManagerType?: string;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -90,10 +93,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
+      console.log('🔐 Client: Starting login mutation');
+      
       if (!credentials.username || !credentials.password) {
         throw new Error("Username and password are required");
       }
 
+      console.log('🔐 Client: Sending login request for user:', credentials.username);
       const res = await fetch("/api/login", {
         method: "POST",
         headers: {
@@ -104,14 +110,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include"
       });
 
+      console.log('🔐 Client: Login response status:', res.status);
+
       if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Invalid username or password");
+        let errorMessage;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorData.error || "Login failed";
+          console.error('🔐 Client: Login error response:', errorData);
+        } catch (parseError) {
+          errorMessage = await res.text();
+          console.error('🔐 Client: Login error text:', errorMessage);
+        }
+        throw new Error(errorMessage || "Invalid username or password");
       }
 
-      return res.json();
+      const data = await res.json();
+      console.log('🔐 Client: Login successful for user:', data.user?.username);
+      return data;
     },
     onSuccess: (data) => {
+      console.log('🔐 Client: Setting user data in query cache');
       queryClient.setQueryData(["/api/user"], data.user);
       toast({
         title: "Success",
@@ -119,7 +138,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
-      console.error("Login error:", error);
+      console.error("🔐 Client: Login error:", error);
+      console.error("🔐 Client: Error message:", error.message);
+      console.error("🔐 Client: Error stack:", error.stack);
+      if (error.message === "MUST_SET_PASSWORD") {
+        toast({
+          title: "Password Setup Required",
+          description: "You need to set your password first. Redirecting...",
+        });
+        window.location.href = "/setup-password";
+        return;
+      }
       toast({
         title: "Login Failed",
         description: error.message || "Invalid username or password",
@@ -132,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (data: {
       username: string;
       password: string;
-      role: "client" | "project_manager" | "staff" | "intern" | "operations_manager" | "team_lead";
+      role: string;
       name: string;
       email: string;
       specialization?: string;
@@ -140,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clientType?: string;
       breakOneTime?: string;
       breakTwoTime?: string;
+      projectManagerType?: string;
     }) => {
       const res = await fetch("/api/register", {
         method: "POST",
@@ -177,23 +207,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/logout", {
+      queryClient.setQueryData(["/api/user"], null);
+      queryClient.clear();
+      window.location.href = "/auth";
+      fetch("/api/logout", {
         method: "POST",
         credentials: "include",
         headers: {
           "Accept": "application/json"
         }
-      });
-
-      if (!res.ok) throw new Error("Failed to logout");
-    },
-    onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
-      queryClient.clear(); // Clear all queries on logout
-      toast({
-        title: "Success",
-        description: "Successfully logged out",
-      });
+      }).catch((err) => console.error("Logout request error:", err));
     },
     onError: (error: Error) => {
       console.error("Logout error:", error);
@@ -205,48 +228,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Set up SSE for real-time notifications
-  useEffect(() => {
-    if (!user?.id) return;
-
-    let isMounted = true;
-    console.log("Setting up SSE connection for notifications...");
-    const eventSource = new EventSource("/api/notifications/stream");
-
-    eventSource.onopen = () => {
-      if (isMounted) {
-        console.log("SSE connection opened for notifications");
-      }
-    };
-
-    eventSource.onmessage = (event) => {
-      if (!isMounted) return;
-
-      try {
-        const data = JSON.parse(event.data);
-        console.log("SSE message received:", data);
-
-        if (data.type === "notification") {
-          // Invalidate notifications to refresh the list
-          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }).catch(console.error);
-        }
-      } catch (error) {
-        console.error("Error parsing SSE message:", error);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      if (isMounted) {
-        console.error("SSE error:", error);
-      }
-    };
-
-    return () => {
-      isMounted = false;
-      console.log("Closing SSE connection for notifications");
-      eventSource.close();
-    };
-  }, [user?.id, queryClient]);
+  // SSE connection is now centralized in GlobalNotificationListener (App.tsx)
+  // to prevent multiple connections overwriting each other on the server
 
 
   return (

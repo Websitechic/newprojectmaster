@@ -43,36 +43,38 @@ export function useBrowserNotification() {
 
   // Request notification permission on mount and unlock audio
   useEffect(() => {
-    if ('Notification' in window) {
-      setPermission(Notification.permission);
-      
-      // If permission already granted, unlock audio
-      if (Notification.permission === 'granted') {
-        unlockAudio();
-      }
-      // Request permission if not set
-      else if (Notification.permission === 'default') {
-        Notification.requestPermission().then(async (result) => {
-          setPermission(result);
-          console.log('📬 Notification permission:', result);
-          
-          // Use the permission grant as a user gesture to unlock audio
-          if (result === 'granted') {
-            await unlockAudio();
-          }
-        }).catch((error) => {
-          console.error('❌ Error requesting notification permission:', error);
-        });
-      }
-    } else {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
       console.warn('⚠️ Browser notifications not supported');
+      return;
+    }
+    
+    setPermission(Notification.permission);
+    
+    // If permission already granted, unlock audio
+    if (Notification.permission === 'granted') {
+      unlockAudio();
+    }
+    // Request permission if not set
+    else if (Notification.permission === 'default') {
+      Notification.requestPermission().then(async (result) => {
+        setPermission(result);
+        console.log('📬 Notification permission:', result);
+        
+        // Use the permission grant as a user gesture to unlock audio
+        if (result === 'granted') {
+          await unlockAudio();
+        }
+      }).catch((error) => {
+        console.error('❌ Error requesting notification permission:', error);
+      });
     }
   }, []);
 
   // Also unlock audio on any user interaction (backup)
   useEffect(() => {
     const handleInteraction = () => {
-      if (!(window as any).__audioUnlocked && Notification.permission === 'granted') {
+      if (typeof window !== 'undefined' && 'Notification' in window && 
+          !(window as any).__audioUnlocked && Notification.permission === 'granted') {
         unlockAudio();
       }
     };
@@ -93,7 +95,7 @@ export function useBrowserNotification() {
     try {
       console.log('📬 showNotification called:', title);
       
-      if (!('Notification' in window)) {
+      if (typeof window === 'undefined' || !('Notification' in window)) {
         console.warn('⚠️ Browser notifications not supported');
         return;
       }

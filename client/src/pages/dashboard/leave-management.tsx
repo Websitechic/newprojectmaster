@@ -479,9 +479,9 @@ export default function LeaveManagement() {
             {selectedApplication && (
               <div className="space-y-6">
                 {/* Applicant Information */}
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <h4 className="font-medium mb-3">Applicant Information</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div className="bg-gray-50 dark:bg-slate-900 p-4 rounded-md">
+                  <h4 className="font-medium mb-3 dark:text-white">Applicant Information</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm dark:text-white">
                     <div>
                       <span className="font-medium">Name:</span> {selectedApplication.userName}
                     </div>
@@ -501,9 +501,9 @@ export default function LeaveManagement() {
                 </div>
 
                 {/* Leave Details */}
-                <div className="bg-blue-50 p-4 rounded-md">
-                  <h4 className="font-medium mb-3">Leave Details</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div className="bg-blue-50 dark:bg-slate-900 p-4 rounded-md">
+                  <h4 className="font-medium mb-3 dark:text-white">Leave Details</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm dark:text-white">
                     <div>
                       <span className="font-medium">Type:</span>
                       <Badge variant="outline" className={`ml-2 ${selectedApplication.leaveType === 'day_off' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-purple-100 text-purple-800 border-purple-300'}`}>
@@ -525,8 +525,8 @@ export default function LeaveManagement() {
                 {/* Reason */}
                 <div>
                   <h4 className="font-medium mb-2">Reason for Leave</h4>
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <p className="text-sm">{selectedApplication.reason}</p>
+                  <div className="bg-gray-50 dark:bg-slate-900 p-3 rounded-md">
+                    <p className="text-sm dark:text-white">{selectedApplication.reason}</p>
                   </div>
                 </div>
 
@@ -546,16 +546,16 @@ export default function LeaveManagement() {
 
                 {/* Review Information */}
                 {selectedApplication.status !== "pending" && (
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <h4 className="font-medium mb-3">Review Information</h4>
-                    <div className="space-y-2 text-sm">
+                  <div className="bg-gray-50 dark:bg-slate-900 p-4 rounded-md">
+                    <h4 className="font-medium mb-3 dark:text-white">Review Information</h4>
+                    <div className="space-y-2 text-sm dark:text-white">
                       <div>
                         <span className="font-medium">Reviewed On:</span> {selectedApplication.reviewedAt ? formatDate(selectedApplication.reviewedAt, "MMM d, yyyy 'at' h:mm a") : 'N/A'}
                       </div>
                       {selectedApplication.reviewComments && (
                         <div>
                           <span className="font-medium">Review Comments:</span>
-                          <p className="mt-1 bg-white p-2 rounded border">{selectedApplication.reviewComments}</p>
+                          <p className="mt-1 bg-white dark:bg-slate-800 dark:text-white p-2 rounded border">{selectedApplication.reviewComments}</p>
                         </div>
                       )}
                     </div>
@@ -620,9 +620,9 @@ export default function LeaveManagement() {
 
             {selectedApplication && (
               <div className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <h4 className="font-medium mb-2">Application Details</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <div className="bg-gray-50 dark:bg-slate-900 p-4 rounded-md">
+                  <h4 className="font-medium mb-2 dark:text-white">Application Details</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm dark:text-white">
                     <div>
                       <span className="font-medium">Period:</span>{" "}
                       {formatDate(selectedApplication.startDate, "MMM d")} - {formatDate(selectedApplication.endDate, "MMM d, yyyy")}
@@ -648,7 +648,7 @@ export default function LeaveManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="review-comments">
+                  <Label htmlFor="review-comments" className="dark:text-white">
                     Comments {reviewAction === "rejected" ? "(Required)" : "(Optional)"}
                   </Label>
                   <Textarea
@@ -661,19 +661,20 @@ export default function LeaveManagement() {
                     value={reviewComments}
                     onChange={(e) => setReviewComments(e.target.value)}
                     required={reviewAction === "rejected"}
+                    className="dark:bg-slate-800 dark:text-white dark:border-slate-700"
                   />
                 </div>
               </div>
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)} className="dark:text-white dark:border-slate-600 dark:hover:bg-slate-800">
                 Cancel
               </Button>
               <Button
                 onClick={confirmReview}
                 disabled={reviewApplication.isPending || (reviewAction === "rejected" && !reviewComments.trim())}
-                className={reviewAction === "approved" ? "bg-green-600 hover:bg-green-700" : ""}
+                className={reviewAction === "approved" ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800" : ""}
                 variant={reviewAction === "rejected" ? "destructive" : "default"}
               >
                 {reviewApplication.isPending

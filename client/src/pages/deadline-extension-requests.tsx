@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -118,7 +117,7 @@ export default function DeadlineExtensionRequestsPage() {
 
   const handleSubmitDecision = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedRequest || !decisionForm.decisionReason) {
       toast({
         title: "Error",
@@ -136,7 +135,9 @@ export default function DeadlineExtensionRequestsPage() {
 
     if (decisionType === "approved") {
       if (decisionForm.approvedDeadline) {
-        requestData.approvedDeadline = decisionForm.approvedDeadline;
+        // Parse the local datetime-local string (YYYY-MM-DDTHH:mm) and ensure it's treated as local time
+        const localDate = new Date(decisionForm.approvedDeadline);
+        requestData.approvedDeadline = localDate.toISOString();
       }
       if (decisionForm.approvedWorkingHours) {
         requestData.approvedWorkingHours = decisionForm.approvedWorkingHours;
@@ -195,20 +196,20 @@ export default function DeadlineExtensionRequestsPage() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full max-w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold">Deadline Extension Requests</h1>
-              <p className="text-gray-600 mt-1">Review and manage deadline extension requests from your team</p>
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full">
+          <div className="flex flex-col gap-3 mb-6 w-full max-w-full overflow-hidden">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">Deadline Extension Requests</h1>
+              <p className="text-gray-600 mt-1 text-xs sm:text-sm md:text-base truncate">Review and manage deadline extension requests from your team</p>
             </div>
-            <div className="flex gap-2">
-              <Badge variant="outline" className="flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {pendingRequests.length} Pending
+            <div className="flex gap-2 w-full">
+              <Badge variant="outline" className="flex items-center gap-1 flex-shrink-0">
+                <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{pendingRequests.length} Pending</span>
               </Badge>
             </div>
           </div>
@@ -216,7 +217,7 @@ export default function DeadlineExtensionRequestsPage() {
           <div className="grid gap-6">
             {/* Pending Requests */}
             {pendingRequests.length > 0 && (
-              <Card>
+              <Card className="overflow-hidden">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -224,19 +225,23 @@ export default function DeadlineExtensionRequestsPage() {
                   </CardTitle>
                   <CardDescription>Requests awaiting your decision</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="rounded-md border">
-                    <Table>
+                <CardContent className="p-0 overflow-x-auto">
+                  <div className="w-full overflow-x-auto" style={{ 
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)'
+                  }}>
+                    <Table className="min-w-[900px] w-full">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
                           <TableHead>Project</TableHead>
                           <TableHead>Task</TableHead>
                           <TableHead>Current Deadline</TableHead>
-                          <TableHead>Requested Deadline</TableHead>
+                          <TableHead>Requested<br />Deadline</TableHead>
                           <TableHead>Reason</TableHead>
                           <TableHead>Submitted</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                          <TableHead className="text-right min-w-[200px]">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -254,7 +259,7 @@ export default function DeadlineExtensionRequestsPage() {
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 text-gray-400" />
                                 {request.taskDeadline 
-                                  ? new Date(request.taskDeadline).toLocaleDateString()
+                                  ? new Date(request.taskDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                   : "No deadline"
                                 }
                               </div>
@@ -263,7 +268,7 @@ export default function DeadlineExtensionRequestsPage() {
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 text-gray-400" />
                                 {request.requestedDeadline 
-                                  ? new Date(request.requestedDeadline).toLocaleDateString()
+                                  ? new Date(request.requestedDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                   : "Not specified"
                                 }
                               </div>
@@ -275,7 +280,7 @@ export default function DeadlineExtensionRequestsPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-green-600 border-green-200 hover:bg-green-50"
+                                  className="text-green-600 border-green-200 hover:bg-green-50 flex-shrink-0"
                                   onClick={() => handleDecision(request, "approved")}
                                 >
                                   <CheckCircle className="h-3 w-3 mr-1" />
@@ -284,7 +289,7 @@ export default function DeadlineExtensionRequestsPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-red-600 border-red-200 hover:bg-red-50"
+                                  className="text-red-600 border-red-200 hover:bg-red-50 flex-shrink-0"
                                   onClick={() => handleDecision(request, "declined")}
                                 >
                                   <XCircle className="h-3 w-3 mr-1" />
@@ -302,12 +307,12 @@ export default function DeadlineExtensionRequestsPage() {
             )}
 
             {/* All Requests */}
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle>All Extension Requests</CardTitle>
                 <CardDescription>Complete history of deadline extension requests</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0 overflow-x-auto">
                 {isLoading ? (
                   <div className="text-center py-4">Loading...</div>
                 ) : requests.length === 0 ? (
@@ -315,15 +320,19 @@ export default function DeadlineExtensionRequestsPage() {
                     No extension requests found.
                   </div>
                 ) : (
-                  <div className="rounded-md border">
-                    <Table>
+                  <div className="w-full overflow-x-auto" style={{ 
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1)'
+                  }}>
+                    <Table className="min-w-[1200px] w-full">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Staff Member</TableHead>
                           <TableHead>Project</TableHead>
                           <TableHead>Task</TableHead>
-                          <TableHead>Current Deadline</TableHead>
-                          <TableHead>Requested Deadline</TableHead>
+                          <TableHead>New Deadline</TableHead>
+                          <TableHead>Requested<br />Deadline</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Decision Reason</TableHead>
                           <TableHead>Submitted</TableHead>
@@ -331,7 +340,7 @@ export default function DeadlineExtensionRequestsPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {requests.map((request) => (
+                        {processedRequests.map((request) => (
                           <TableRow key={request.id}>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -345,7 +354,7 @@ export default function DeadlineExtensionRequestsPage() {
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 text-gray-400" />
                                 {request.taskDeadline 
-                                  ? new Date(request.taskDeadline).toLocaleDateString()
+                                  ? new Date(request.taskDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                   : "No deadline"
                                 }
                               </div>
@@ -354,7 +363,7 @@ export default function DeadlineExtensionRequestsPage() {
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 text-gray-400" />
                                 {request.requestedDeadline 
-                                  ? new Date(request.requestedDeadline).toLocaleDateString()
+                                  ? new Date(request.requestedDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                   : "Not specified"
                                 }
                               </div>
@@ -399,7 +408,7 @@ export default function DeadlineExtensionRequestsPage() {
                                       <Label className="font-medium">Current Deadline</Label>
                                       <p className="mt-1">
                                         {request.taskDeadline 
-                                          ? new Date(request.taskDeadline).toLocaleDateString()
+                                          ? new Date(request.taskDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                           : "No deadline"}
                                       </p>
                                     </div>
@@ -407,7 +416,7 @@ export default function DeadlineExtensionRequestsPage() {
                                       <Label className="font-medium">Requested Deadline</Label>
                                       <p className="mt-1">
                                         {request.requestedDeadline 
-                                          ? new Date(request.requestedDeadline).toLocaleDateString()
+                                          ? new Date(request.requestedDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                           : "Not specified"}
                                       </p>
                                     </div>
@@ -436,7 +445,7 @@ export default function DeadlineExtensionRequestsPage() {
                                       <div>
                                         <Label className="font-medium">Approved Deadline</Label>
                                         <p className="mt-1">
-                                          {new Date(request.approvedDeadline).toLocaleDateString()}
+                                          {new Date(request.approvedDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                       </div>
                                     )}
@@ -488,7 +497,7 @@ export default function DeadlineExtensionRequestsPage() {
                       <span className="text-gray-600">Current Deadline:</span>
                       <span className="ml-2 font-medium">
                         {selectedRequest.taskDeadline 
-                          ? new Date(selectedRequest.taskDeadline).toLocaleDateString()
+                          ? new Date(selectedRequest.taskDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                           : "No deadline"
                         }
                       </span>

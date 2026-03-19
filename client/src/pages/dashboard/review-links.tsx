@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, ExternalLink, Trash2, CheckCircle, Clock } from "lucide-react";
+import { Plus, ExternalLink, Trash2, CheckCircle, Clock, MessageSquare, AlertCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
 export default function ReviewLinks() {
@@ -48,6 +48,19 @@ export default function ReviewLinks() {
   const [linkUrl, setLinkUrl] = useState("");
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
+  const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [selectedLinkId, setSelectedLinkId] = useState<number | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const toggleCardExpansion = (linkId: number) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [linkId]: !prev[linkId]
+    }));
+  };
 
   const isProjectManager = user?.role === "project_manager";
   const isTeamLead = user?.role === "team_lead";
@@ -60,7 +73,7 @@ export default function ReviewLinks() {
     "customer_support_officer",
     "team_lead",
   ];
-  const canAccessNewProjectBriefing = allowedRolesForNewProjectBriefing.includes(user?.role);
+  const canAccessNewProjectBriefing = allowedRolesForNewProjectBriefing.includes(user?.role || "");
 
   // Fetch review links
   const { data: reviewLinks = [], isLoading, error } = useQuery({
@@ -94,6 +107,7 @@ export default function ReviewLinks() {
       const response = await fetch("/api/review-links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
       if (!response.ok) {
@@ -128,6 +142,7 @@ export default function ReviewLinks() {
     mutationFn: async (linkId: number) => {
       const response = await fetch(`/api/review-links/${linkId}/reviewed`, {
         method: "PUT",
+        credentials: "include",
       });
       if (!response.ok) {
         throw new Error("Failed to mark as reviewed");
@@ -138,7 +153,35 @@ export default function ReviewLinks() {
       queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
       toast({
         title: "Success",
-        description: "Link marked as reviewed",
+        description: "Link marked as approved",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mark as not approved mutation
+  const markNotApprovedMutation = useMutation({
+    mutationFn: async (linkId: number) => {
+      const response = await fetch(`/api/review-links/${linkId}/not-approved`, {
+        method: "PUT",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to mark as not approved");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
+      toast({
+        title: "Success",
+        description: "Link marked as not approved",
       });
     },
     onError: (error: Error) => {
@@ -155,6 +198,7 @@ export default function ReviewLinks() {
     mutationFn: async (linkId: number) => {
       const response = await fetch(`/api/review-links/${linkId}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!response.ok) {
         throw new Error("Failed to delete review link");
@@ -177,6 +221,81 @@ export default function ReviewLinks() {
     },
   });
 
+  // Add comment mutation (for team leads)
+  const addCommentMutation = useMutation({
+    mutationFn: async ({ linkId, comment }: { linkId: number; comment: string }) => {
+      const response = await fetch(`/api/review-links/${linkId}/comment`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ comment }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = "Failed to add comment";
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorMessage;
+        } catch (e) {
+          // Use original text if not JSON
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/review-links"] });
+      toast({
+        title: "Comment Added",
+        description: "Your feedback has been sent to the project manager",
+      });
+      setCommentDialogOpen(false);
+      setSelectedLinkId(null);
+      setCommentText("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const [actionCommentDialogOpen, setActionCommentDialogOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'approve' | 'not_approve' | null>(null);
+
+  const handleActionWithComment = (linkId: number, type: 'approve' | 'not_approve') => {
+    setSelectedLinkId(linkId);
+    setPendingAction(type);
+    setCommentText("");
+    setActionCommentDialogOpen(true);
+  };
+
+  const handleConfirmAction = () => {
+    if (!selectedLinkId || !pendingAction) return;
+    
+    if (pendingAction === 'approve') {
+      if (commentText.trim()) {
+        addCommentMutation.mutate({ linkId: selectedLinkId, comment: commentText }, {
+          onSuccess: () => markReviewedMutation.mutate(selectedLinkId)
+        });
+      } else {
+        markReviewedMutation.mutate(selectedLinkId);
+      }
+    } else {
+      if (commentText.trim()) {
+        addCommentMutation.mutate({ linkId: selectedLinkId, comment: commentText }, {
+          onSuccess: () => markNotApprovedMutation.mutate(selectedLinkId)
+        });
+      } else {
+        markNotApprovedMutation.mutate(selectedLinkId);
+      }
+    }
+    setActionCommentDialogOpen(false);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !linkUrl || !assignedTo) {
@@ -189,6 +308,16 @@ export default function ReviewLinks() {
     }
     createLinkMutation.mutate({ title, linkUrl, description, assignedTo });
   };
+
+  const filteredLinks = reviewLinks.filter((link: any) => {
+    const matchesSearch = 
+      link.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (link.description && link.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesStatus = statusFilter === "all" || link.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   if (!isProjectManager && !isTeamLead) {
     return (
@@ -205,11 +334,11 @@ export default function ReviewLinks() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72 min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full">
           <div className="mb-6">
             <div className="flex justify-between items-center">
               <div>
@@ -333,6 +462,32 @@ export default function ReviewLinks() {
             </Card>
           </div>
 
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1">
+              <Input
+                placeholder="Search reviews..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="reviewed">Approved</SelectItem>
+                  <SelectItem value="not_approved">Not Approved</SelectItem>
+                  <SelectItem value="needs_revision">Needs Revision</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {/* Links List */}
           <Card>
             <CardHeader>
@@ -346,107 +501,196 @@ export default function ReviewLinks() {
                 <div className="text-center py-8">
                   <p className="text-red-500">Error loading review links: {error.message}</p>
                 </div>
-              ) : reviewLinks.length === 0 ? (
+              ) : filteredLinks.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">No review links found</p>
+                  <p className="text-gray-500">No review links found matching your criteria</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {reviewLinks.map((link: any) => (
-                    <div
-                      key={link.id}
-                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-semibold text-lg">{link.title}</h3>
-                            <Badge
-                              variant={link.status === "reviewed" ? "default" : "secondary"}
-                              className={
-                                link.status === "reviewed"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-yellow-100 text-yellow-700"
-                              }
-                            >
-                              {link.status === "reviewed" ? "Reviewed" : "Pending"}
-                            </Badge>
+                <div className="space-y-4 overflow-x-auto">
+                  {filteredLinks.map((link: any) => {
+                    const maxDescriptionLength = 150;
+                    const shouldTruncate = link.description && link.description.length > maxDescriptionLength;
+                    const displayDescription = shouldTruncate && !expandedCards[link.id]
+                      ? link.description.substring(0, maxDescriptionLength) + "..."
+                      : link.description;
+
+                    return (
+                      <div
+                        key={link.id}
+                        className="border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow min-w-[300px]"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-0 sm:justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <h3 className="font-semibold text-base sm:text-lg break-words">{link.title}</h3>
+                              <Badge
+                                variant={link.status === "reviewed" ? "default" : link.status === "not_approved" ? "destructive" : "secondary"}
+                                className={
+                                  link.status === "reviewed"
+                                    ? "bg-green-100 text-green-700 flex-shrink-0"
+                                    : link.status === "not_approved"
+                                    ? "bg-red-100 text-red-700 flex-shrink-0"
+                                    : link.status === "needs_revision"
+                                    ? "bg-orange-100 text-orange-700 flex-shrink-0"
+                                    : "bg-yellow-100 text-yellow-700 flex-shrink-0"
+                                }
+                              >
+                                {link.status === "reviewed" ? "Reviewed" : link.status === "not_approved" ? "Not Approved" : link.status === "needs_revision" ? "Needs Revision" : "Pending"}
+                              </Badge>
+                            </div>
+                            {link.description && (
+                              <div className="mb-3">
+                                <p className="text-sm text-gray-600 break-words">{displayDescription}</p>
+                                {shouldTruncate && (
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    onClick={() => toggleCardExpansion(link.id)}
+                                    className="p-0 h-auto text-blue-600 hover:text-blue-800 mt-1"
+                                  >
+                                    {expandedCards[link.id] ? "Show less" : "Show more"}
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500">
+                              <span className="break-words">
+                                {isProjectManager
+                                  ? `Assigned to: ${link.assigneeName || "Unknown"}`
+                                  : `Sent by: ${link.senderName || "Unknown"}`}
+                              </span>
+                              <span className="hidden sm:inline">•</span>
+                              <span className="whitespace-nowrap">{new Date(link.createdAt).toLocaleDateString()}</span>
+                              {link.reviewedAt && (
+                                <>
+                                  <span className="hidden sm:inline">•</span>
+                                  <span className="whitespace-nowrap">Reviewed: {new Date(link.reviewedAt).toLocaleDateString()}</span>
+                                </>
+                              )}
+                            </div>
+                            {link.reviewComment && (
+                              <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-sm font-medium text-orange-800">Revision Comment:</p>
+                                    <p className="text-sm text-orange-700 mt-1">{link.reviewComment}</p>
+                                    {link.commentedAt && (
+                                      <p className="text-xs text-orange-500 mt-1">
+                                        Added: {new Date(link.commentedAt).toLocaleDateString()} at {new Date(link.commentedAt).toLocaleTimeString()}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          {link.description && (
-                            <p className="text-sm text-gray-600 mb-3">{link.description}</p>
-                          )}
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <span>
-                              {isProjectManager
-                                ? `Assigned to: ${link.assigneeName || "Unknown"}`
-                                : `Sent by: ${link.senderName || "Unknown"}`}
-                            </span>
-                            <span>•</span>
-                            <span>{new Date(link.createdAt).toLocaleDateString()}</span>
-                            {link.reviewedAt && (
-                              <>
-                                <span>•</span>
-                                <span>Reviewed: {new Date(link.reviewedAt).toLocaleDateString()}</span>
-                              </>
+                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:ml-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(link.linkUrl, "_blank")}
+                              className="flex-shrink-0"
+                            >
+                              <ExternalLink className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">Open Link</span>
+                              <span className="sm:hidden">Open</span>
+                            </Button>
+                            {isTeamLead && (link.status === "pending" || link.status === "needs_revision") && (
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
+                                  onClick={() => handleActionWithComment(link.id, 'approve')}
+                                  disabled={markReviewedMutation.isPending}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
+                                  onClick={() => handleActionWithComment(link.id, 'not_approve')}
+                                  disabled={markNotApprovedMutation.isPending}
+                                >
+                                  <AlertCircle className="h-4 w-4 mr-1" />
+                                  Not Approved
+                                </Button>
+                              </div>
+                            )}
+                            {isProjectManager && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="flex-shrink-0">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Review Link?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this review link? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteLinkMutation.mutate(link.id)}
+                                      disabled={deleteLinkMutation.isPending}
+                                    >
+                                      {deleteLinkMutation.isPending ? "Deleting..." : "Delete"}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 ml-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(link.linkUrl, "_blank")}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Open Link
-                          </Button>
-                          {isTeamLead && link.status === "pending" && (
-                            <Button
-                              size="sm"
-                              onClick={() => markReviewedMutation.mutate(link.id)}
-                              disabled={markReviewedMutation.isPending}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Mark Reviewed
-                            </Button>
-                          )}
-                          {isProjectManager && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Review Link?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete this review link? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteLinkMutation.mutate(link.id)}
-                                    disabled={deleteLinkMutation.isPending}
-                                  >
-                                    {deleteLinkMutation.isPending ? "Deleting..." : "Delete"}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Action Comment Dialog */}
+      <Dialog open={actionCommentDialogOpen} onOpenChange={setActionCommentDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingAction === 'approve' ? "Approve Review" : "Mark as Not Approved"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="action-comment">Add a comment (optional)</Label>
+              <Textarea
+                id="action-comment"
+                placeholder="Your feedback..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setActionCommentDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConfirmAction}
+                className={pendingAction === 'approve' ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+              >
+                Confirm {pendingAction === 'approve' ? "Approval" : "Rejection"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

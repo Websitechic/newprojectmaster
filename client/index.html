@@ -2,7 +2,59 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    
+    <!-- OneSignal SDK with async loading and retry mechanism -->
+    <script>
+      window.oneSignalRetryCount = 0;
+      window.oneSignalMaxRetries = 3;
+      
+      function loadOneSignalSDK() {
+        console.log('[OneSignal HTML] Loading SDK attempt', window.oneSignalRetryCount + 1);
+        
+        var script = document.createElement('script');
+        script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+        script.async = true;
+        
+        script.onerror = function() {
+          console.error('[OneSignal HTML] SDK load failed, attempt', window.oneSignalRetryCount + 1);
+          window.oneSignalRetryCount++;
+          
+          if (window.oneSignalRetryCount < window.oneSignalMaxRetries) {
+            var retryDelay = Math.min(1000 * Math.pow(2, window.oneSignalRetryCount), 5000);
+            console.log('[OneSignal HTML] Retrying in', retryDelay, 'ms...');
+            setTimeout(loadOneSignalSDK, retryDelay);
+          } else {
+            console.error('[OneSignal HTML] Max retries reached, SDK failed to load');
+            window.oneSignalLoadFailed = true;
+          }
+        };
+        
+        script.onload = function() {
+          console.log('[OneSignal HTML] SDK loaded successfully');
+          window.oneSignalLoaded = true;
+        };
+        
+        document.head.appendChild(script);
+      }
+      
+      // Start loading immediately
+      loadOneSignalSDK();
+      
+      // Fallback check after page load
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          if (typeof window.OneSignalDeferred === 'undefined' && !window.oneSignalLoadFailed) {
+            console.warn('[OneSignal HTML] SDK not loaded after page load, initiating fallback retry');
+            window.oneSignalRetryCount = 0;
+            loadOneSignalSDK();
+          }
+        }, 2000);
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

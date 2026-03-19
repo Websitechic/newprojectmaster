@@ -42,13 +42,13 @@ export default function StaffQueries() {
   // Fetch all users for staff selection
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users/all"],
-    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "project_manager",
+    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "project_manager" || user?.role === "team_lead" || user?.role === "customer_support_officer",
   });
 
   // Fetch all departments for department selection
   const { data: departments = [] } = useQuery({
     queryKey: ["/api/departments"],
-    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "project_manager",
+    enabled: user?.role === "operations_manager" || user?.specialization === "operations_manager" || user?.role === "project_manager" || user?.role === "team_lead" || user?.role === "customer_support_officer",
   });
 
   // Fetch staff queries
@@ -141,7 +141,7 @@ export default function StaffQueries() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.staffId || !formData.staffName || !formData.department || !formData.staffUniqueValue ||
+    if (!formData.staffId || !formData.staffName || !formData.department ||
         !formData.reason || !formData.whyQuery || !formData.likelyPenalty) {
       toast({
         title: "Error",
@@ -155,7 +155,7 @@ export default function StaffQueries() {
       staffId: parseInt(formData.staffId),
       staffName: formData.staffName,
       department: formData.department,
-      staffUniqueValue: formData.staffUniqueValue,
+      staffUniqueValue: formData.staffUniqueValue || "",
       reason: formData.reason,
       whyQuery: formData.whyQuery,
       attachmentPath: formData.attachmentFile ? "pending_upload" : null,
@@ -182,9 +182,10 @@ export default function StaffQueries() {
       "substandard_delivery": "Substandard delivery",
       "repeatedly_missed_deadlines": "Repeatedly 3 times in a week missed task deadline",
       "disrespectful_communication": "Disrespectful communication manner to co worker",
-      "disregard_company_policy": "Disregard of the company policy"
+      "disregard_company_policy": "Disregard of the company policy",
+      "others": "Others"
     };
-    return reasonMap[reason] || reason;
+    return reasonMap[reason] || (reason === "others" ? "Others" : reason);
   };
 
   const getStatusColor = (status: string) => {
@@ -199,6 +200,7 @@ export default function StaffQueries() {
   const isOperationsManager = user?.role === "operations_manager" || user?.specialization === "operations_manager";
   const isProjectManager = user?.role === "project_manager";
   const isTeamLead = user?.role === "team_lead";
+  const isCustomerSupportOfficer = user?.role === "customer_support_officer";
 
   if (isLoading) {
     return (
@@ -223,28 +225,28 @@ export default function StaffQueries() {
           <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {(isOperationsManager || isProjectManager || isTeamLead) ? "Staff Queries Management" : "Staff Queries"}
+            {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) ? "Penalty Management" : "Received Penalties"}
           </h1>
           <p className="text-gray-600">
-            {(isOperationsManager || isProjectManager || isTeamLead)
-              ? "Send and manage staff queries and disciplinary actions"
-              : "View all staff queries and disciplinary actions"
+            {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer)
+              ? "Send and manage penalties and disciplinary actions"
+              : "View all penalties and disciplinary actions"
             }
           </p>
         </div>
-        {(isOperationsManager || isProjectManager || isTeamLead) && (
+        {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) && (
           <Button onClick={() => setShowForm(true)} className="flex items-center gap-2">
             <Send size={16} />
-            Send New Query
+            Send New Penalty
           </Button>
         )}
       </div>
 
       {/* Create Query Form */}
-      {showForm && (isOperationsManager || isProjectManager || isTeamLead) && (
+      {showForm && (isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) && (
         <Card>
           <CardHeader>
-            <CardTitle>Send Staff Query</CardTitle>
+            <CardTitle>Send Penalty</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -282,18 +284,7 @@ export default function StaffQueries() {
                 </div>
 
                 <div>
-                  <Label htmlFor="staffUniqueValue">Staff 3 Unique Value *</Label>
-                  <Input
-                    id="staffUniqueValue"
-                    value={formData.staffUniqueValue}
-                    onChange={(e) => setFormData(prev => ({ ...prev, staffUniqueValue: e.target.value }))}
-                    placeholder="Staff unique identifier"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="reason">Reason for Query *</Label>
+                  <Label htmlFor="reason">Reason for Penalty *</Label>
                   <Select onValueChange={(value) => setFormData(prev => ({ ...prev, reason: value }))} value={formData.reason || ""}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select reason" />
@@ -304,18 +295,19 @@ export default function StaffQueries() {
                       <SelectItem value="repeatedly_missed_deadlines">Repeatedly 3 times in a week missed task deadline</SelectItem>
                       <SelectItem value="disrespectful_communication">Disrespectful communication manner to co worker</SelectItem>
                       <SelectItem value="disregard_company_policy">Disregard of the company policy</SelectItem>
+                      <SelectItem value="others">Others</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="whyQuery">Why Query *</Label>
+                <Label htmlFor="whyQuery">Why Penalty *</Label>
                 <Textarea
                   id="whyQuery"
                   value={formData.whyQuery}
                   onChange={(e) => setFormData(prev => ({ ...prev, whyQuery: e.target.value }))}
-                  placeholder="Explain why this query is being issued..."
+                  placeholder="Explain why this penalty is being issued..."
                   rows={3}
                   required
                 />
@@ -364,7 +356,7 @@ export default function StaffQueries() {
 
               <div className="flex gap-2">
                 <Button type="submit" disabled={createQueryMutation.isPending}>
-                  {createQueryMutation.isPending ? "Sending..." : "Send Query"}
+                  {createQueryMutation.isPending ? "Sending..." : "Send Penalty"}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                   Cancel
@@ -382,12 +374,12 @@ export default function StaffQueries() {
             <CardContent className="text-center py-8">
               <FileText className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
-                {(isOperationsManager || isProjectManager || isTeamLead) ? "No queries sent" : "No queries available"}
+                {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) ? "No penalties sent" : "No penalties received"}
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                {(isOperationsManager || isProjectManager || isTeamLead)
-                  ? "You haven't sent any staff queries yet."
-                  : "No staff queries have been issued yet."
+                {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer)
+                  ? "You haven't sent any penalties yet."
+                  : "No penalties have been issued yet."
                 }
               </p>
             </CardContent>
@@ -423,7 +415,7 @@ export default function StaffQueries() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle size={16} className="text-red-600" />
-                    <span className="font-medium text-red-600">Reason:</span>
+                    <span className="font-medium text-red-600">Reason for Penalty:</span>
                   </div>
                   <p className="text-sm bg-red-50 p-3 rounded-md">
                     {getReasonLabel(query.reason)}
@@ -431,7 +423,7 @@ export default function StaffQueries() {
                 </div>
 
                 <div>
-                  <span className="font-medium">Why Query:</span>
+                  <span className="font-medium">Why Penalty:</span>
                   <p className="text-sm text-gray-700 mt-1">{query.whyQuery}</p>
                 </div>
 
@@ -456,7 +448,8 @@ export default function StaffQueries() {
                   </div>
                 )}
 
-                {!(isOperationsManager || isProjectManager || isTeamLead) && query.status === "pending" && query.staffId === user?.id && (
+                {/* Staff/Interns can only acknowledge their own pending penalties */}
+                {!(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) && query.status === "pending" && query.staffId === user?.id && (
                   <div className="flex gap-2 pt-4 border-t">
                     <Button
                       size="sm"
@@ -465,6 +458,12 @@ export default function StaffQueries() {
                     >
                       Acknowledge
                     </Button>
+                  </div>
+                )}
+
+                {/* Team leads and operations managers can resolve pending or acknowledged penalties */}
+                {(isOperationsManager || isTeamLead) && (query.status === "acknowledged" || query.status === "pending") && (
+                  <div className="flex gap-2 pt-4 border-t">
                     <Button
                       size="sm"
                       variant="outline"
@@ -476,9 +475,9 @@ export default function StaffQueries() {
                   </div>
                 )}
 
-                {(isOperationsManager || isProjectManager || isTeamLead) && (
+                {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) && (
                   <div className="text-xs text-gray-500 pt-2 border-t">
-                    Query ID: {query.id}
+                    Penalty ID: {query.id}
                   </div>
                 )}
               </CardContent>

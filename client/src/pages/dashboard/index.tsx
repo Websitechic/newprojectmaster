@@ -23,7 +23,7 @@ import {
   AlertCircle,
   CheckCircle,
   HelpCircle,
-  Search, // Added Search icon import
+  Search,
   CheckSquare,
 } from "lucide-react";
 import {
@@ -39,20 +39,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import type { Project, Task } from "@db/schema";
+import { StopGapCard } from "@/components/dashboard/stop-gap-card";
+
+import { format, isSameDay, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { Calendar as CalendarIcon } from "lucide-react";
 
 export default function Dashboard() {
   const [location, setLocation] = useLocation();
   const { user } = useUser();
   const { updateStatus, sendMessage } = useWebSocket(user?.id);
+  const [taskSearchQuery, setTaskSearchQuery] = useState("");
+  const [date, setDate] = useState<Date | { from: Date; to: Date } | undefined>();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     inProgress: false,
     pending: false,
     review: false,
     todo: false, // Added state for todo section
   });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [taskSearchQuery, setTaskSearchQuery] = useState(""); // State for task search
 
   // State for managing expanded descriptions
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<number, boolean>>({});
@@ -84,6 +97,9 @@ export default function Dashboard() {
     refetchInterval: 10000, // Refresh every 10 seconds
   });
 
+  // Alias for compatibility - always ensure it's an array
+  const allUsers = staff || [];
+
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
@@ -98,7 +114,7 @@ export default function Dashboard() {
   // Function to handle task status changes, including auto-pausing timer
   const handleTaskStatusChange = async (taskId: number, newStatus: string, projectId?: number) => {
     const statusToPauseTimer = ["review", "completed", "technical_support"];
-    let taskToUpdate = tasks?.find(task => task.id === taskId);
+    let taskToUpdate = (tasks ?? []).find(task => task?.id === taskId);
 
     if (!taskToUpdate) return;
 
@@ -109,7 +125,7 @@ export default function Dashboard() {
     queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) =>
       oldTasks?.map(task =>
         task.id === taskId ? { ...task, status: newStatus, isTimerRunning: statusToPauseTimer.includes(newStatus) ? false : task.isTimerRunning } : task
-      )
+      ) ?? []
     );
 
     try {
@@ -141,8 +157,8 @@ export default function Dashboard() {
       console.error("Error updating task status:", error);
       // Revert optimistic update if error occurs
       queryClient.setQueryData(["/api/tasks"], (oldTasks: Task[] | undefined) =>
-        oldTasks?.map(task =>
-          task.id === taskId ? { ...tasks?.find(t => t.id === taskId), status: originalStatus, isTimerRunning: originalIsTimerRunning } : task
+        (oldTasks ?? []).map(task =>
+          task?.id === taskId ? { ...(tasks ?? []).find(t => t?.id === taskId), status: originalStatus, isTimerRunning: originalIsTimerRunning } : task
         )
       );
     }
@@ -186,10 +202,10 @@ export default function Dashboard() {
     };
 
 
-    window.addEventListener('websocket:task_update', handleTaskUpdate);
-    window.addEventListener('websocket:task_created', handleTaskUpdate);
-    window.addEventListener('websocket:task_deleted', handleTaskUpdate);
-    window.addEventListener('websocket:task_updated', handleTaskUpdate);
+    window.addEventListener('websocket:task_update', () => handleTaskUpdate());
+    window.addEventListener('websocket:task_created', () => handleTaskUpdate());
+    window.addEventListener('websocket:task_deleted', () => handleTaskUpdate());
+    window.addEventListener('websocket:task_updated', () => handleTaskUpdate());
     window.addEventListener('websocket:project_message', handleProjectMessage);
     window.addEventListener('websocket:task_timer_started', handleTimerEvent);
     window.addEventListener('websocket:task_timer_paused', handleTimerEvent);
@@ -220,53 +236,86 @@ export default function Dashboard() {
     };
   }, [updateStatus]);
 
-  // Filter tasks for staff/intern user or all tasks for managers and support maintenance clients
+  // Filter tasks for staff/intern user or all tasks for managers, PMs, CSOs, and support maintenance clients
   const staffTasks =
     user?.role === "staff" || user?.role === "intern"
-      ? tasks?.filter((task) => task.assigneeId === user?.id) || []
-      : tasks || [];
+      ? ((tasks ?? []).filter((task) => task.assigneeId === user?.id))
+      : (tasks ?? []);
 
-  // Apply search filter to tasks (works for both staff and managers)
-  const filteredTasks = user?.role === "staff" || user?.role === "intern"
-    ? staffTasks?.filter((task) =>
-        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
-      )
-    : tasks?.filter((task) =>
-        taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
-      );
+  // Categorize tasks - moved before userTasks to avoid dependency issues
+  const activeTask = (tasks ?? []).find((task) => task?.isTimerRunning && (user?.role === 'staff' || user?.role === 'intern' ? task.assigneeId === user?.id : true));
 
-  // Use appropriate task set based on user role - support maintenance clients see all tasks like managers
   const userTasks =
-    user?.role === "staff" || user?.role === "intern"
-      ? staffTasks
-      : user?.role === "client" &&
-          user?.clientType === "support_maintenance_client"
-        ? tasks || []
-        : user?.role === "operations_manager" ||
-            user?.specialization === "operations_manager" ||
-            user?.role === "team_lead"
-          ? tasks || []
-          : user?.role === "project_manager"
-            ? tasks || []
-            : user?.role === "product_owner"
-              ? tasks || []
-              : tasks || [];
+    user?.role === "staff" || user?.role === "intern" || user?.role === "product_owner"
+      ? (tasks ?? []).filter((task) => task.assigneeId === user?.id)
+      : (tasks ?? []);
 
-  // Categorize tasks
-  const activeTask = staffTasks.find((task) => task.isTimerRunning);
-  const tasksInProgress = userTasks.filter(
-    (task) => task.status === "in_progress"
+  const filteredUserTasks = userTasks.filter((task: Task) => {
+    // Apply search filter
+    if (taskSearchQuery) {
+      const query = taskSearchQuery.toLowerCase();
+      const matchesTitle = (task.title || "").toLowerCase().includes(query);
+      
+      // Find assignee name
+      const assignee = (staff ?? []).find(s => s.id === task.assigneeId);
+      const matchesAssignee = (assignee?.name || "").toLowerCase().includes(query);
+      
+      if (!matchesTitle && !matchesAssignee) {
+        return false;
+      }
+    }
+
+    // Apply date filter
+    if (date) {
+      const taskDate = task.startDate ? new Date(task.startDate) : (task.deadline ? new Date(task.deadline) : null);
+      if (!taskDate) return false;
+
+      if (date instanceof Date) {
+        if (!isSameDay(taskDate, date)) return false;
+      } else if (date.from && date.to) {
+        if (!isWithinInterval(taskDate, { start: startOfDay(date.from), end: endOfDay(date.to) })) return false;
+      } else if (date.from) {
+        if (!isSameDay(taskDate, date.from)) return false;
+      }
+    }
+    return true;
+  });
+
+  const tasksInProgress = (filteredUserTasks ?? []).filter(
+    (task) => {
+      const isDeadlineMissed = !!(task.deadline &&
+        new Date(task.deadline).getTime() < Date.now() &&
+        task.status !== "completed" &&
+        task.status !== "review");
+      return task.status === "in_progress" && !isDeadlineMissed;
+    }
   );
-  const pendingTasks = userTasks.filter((task) => task.status === "pending"); // Changed to filter for 'pending' status
-  const todoTasks = userTasks.filter((task) => task.status === "todo"); // Added filtering for 'todo' status
-  const tasksInReview = userTasks.filter((task) => task.status === "review");
-  const technicalSupportTasks = userTasks.filter(
+
+  const pendingTasks = (filteredUserTasks ?? []).filter((task) => {
+    const isDeadlineMissed = !!(task.deadline &&
+      new Date(task.deadline).getTime() < Date.now() &&
+      task.status !== "completed" &&
+      task.status !== "review");
+    return task.status === "pending" && !isDeadlineMissed;
+  });
+
+  const todoTasks = (filteredUserTasks ?? []).filter((task) => {
+    const isDeadlineMissed = !!(task.deadline &&
+      new Date(task.deadline).getTime() < Date.now() &&
+      task.status !== "completed" &&
+      task.status !== "review");
+    return task.status === "todo" && !isDeadlineMissed;
+  });
+
+  const tasksInReview = (filteredUserTasks ?? []).filter((task) => task.status === "review");
+
+  const technicalSupportTasks = (filteredUserTasks ?? []).filter(
     (task) => task.status === "technical_support",
   );
 
   // Calculate overall progress
-  const totalTasks = userTasks.length;
-  const completedTasks = userTasks.filter(
+  const totalTasks = (filteredUserTasks ?? []).length;
+  const completedTasks = (filteredUserTasks ?? []).filter(
     (task) => task.status === "completed",
   ).length;
   const overallProgress =
@@ -328,18 +377,13 @@ export default function Dashboard() {
     </div>
   );
 
-  // Filter tasks for staff/intern role based on search query
-  const filteredStaffTasks = staffTasks.filter((task) =>
-    taskSearchQuery ? task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) : true
-  );
-
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background w-full max-w-full overflow-hidden">
       <Sidebar currentPath={location} />
 
-      <div className="flex-1 flex flex-col lg:pl-64">
+      <div className="flex-1 flex flex-col lg:pl-64 min-w-0 max-w-full">
         <Header />
-        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
+        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full max-w-full">
           <BookingAlert />
           {user?.role === "staff" ||
           (user?.role === "client" &&
@@ -347,12 +391,11 @@ export default function Dashboard() {
           user?.role === "intern" ? ( // Added intern role here
             <>
               {/* Staff & Support Maintenance Client & Intern Dashboard */}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full overflow-hidden">
                 {/* Tasks in Progress */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full min-w-0">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                         <AlertCircle className="h-5 w-5" />
                         Tasks in Progress
@@ -362,7 +405,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {tasksInProgress.length > 0 ? (
                       <Collapsible
                         open={openSections.inProgress}
@@ -396,9 +439,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Pending Tasks (paused timer) */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full min-w-0">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
                         <Clock className="h-5 w-5" />
                         Pending Tasks
@@ -408,7 +451,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {pendingTasks.length > 0 ? (
                       <Collapsible
                         open={openSections.pending}
@@ -442,9 +485,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Todo Tasks */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full min-w-0">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
                         <Clock className="h-5 w-5" />
                         Todo Tasks
@@ -454,7 +497,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {todoTasks.length > 0 ? (
                       <Collapsible
                         open={openSections.todo}
@@ -478,7 +521,12 @@ export default function Dashboard() {
                             {todoTasks.map((task) => (
                               <div
                                 key={task.id}
-                                className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                                className={cn(
+                                  "text-xs p-2 rounded",
+                                  task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== "completed" && task.status !== "review"
+                                    ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white"
+                                    : "bg-gray-50 dark:bg-gray-800"
+                                )}
                               >
                                 <div className="font-medium truncate">
                                   {task.title}
@@ -502,9 +550,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Tasks in Review */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full min-w-0">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
                         <CheckCircle className="h-5 w-5" />
                         Tasks in Review
@@ -512,7 +560,7 @@ export default function Dashboard() {
                       <Badge variant="secondary">{tasksInReview.length}</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {tasksInReview.length > 0 ? (
                       <Collapsible
                         open={openSections.review}
@@ -545,98 +593,177 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Technical Support */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                        <HelpCircle className="h-5 w-5" />
-                        Technical Support
-                      </div>
-                      <Badge variant="secondary">
-                        {technicalSupportTasks.length}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {technicalSupportTasks.length > 0 ? (
-                      <div className="space-y-3">
-                        <Select>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a support task..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {technicalSupportTasks.map((task) => (
-                              <SelectItem
-                                key={task.id}
-                                value={task.id.toString()}
+                {/* Technical Support Card - Only for staff and interns */}
+                {(user.role === "staff" || user.role === "intern") && user.specialization !== "technical_support" && (
+                  <Card className="w-full min-w-0">
+                    <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                      <CardTitle className="flex items-center justify-between text-sm sm:text-base">
+                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                          <HelpCircle className="h-5 w-5" />
+                          Technical Support
+                        </div>
+                        <Badge variant="secondary">
+                          {technicalSupportTasks.length}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                      {technicalSupportTasks.length > 0 ? (
+                        <div className="space-y-3">
+                          <Collapsible
+                            open={openSections.technical}
+                            onOpenChange={() => toggleSection("technical")}
+                          >
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-between"
                               >
-                                <div className="flex flex-col items-start">
-                                  <span className="font-medium text-sm text-foreground">{task.title}</span>
-                                  <span className="text-xs text-muted-foreground truncate">{task.description?.substring(0, 50)}...</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Collapsible
-                          open={openSections.technical}
-                          onOpenChange={() => toggleSection("technical")}
-                        >
-                          <CollapsibleTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full justify-between"
-                            >
-                              View All
-                              {openSections.technical ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="space-y-2 mt-3">
-                            {technicalSupportTasks.map((task) => (
-                              <TaskCard key={task.id} task={task} />
-                            ))}
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </div>
-                    ) : (
-                      <div className="text-center text-muted-foreground py-4">
-                        <p className="text-sm">No technical support tasks</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                                View All
+                                {openSections.technical ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="space-y-2 mt-3">
+                              {technicalSupportTasks.map((task) => (
+                                <TaskCard key={task.id} task={task} />
+                              ))}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </div>
+                      ) : (
+                        <div className="text-center text-muted-foreground py-4">
+                          <p className="text-sm">No technical support tasks</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Stop Gap Card - Only for staff and interns */}
+                {(user.role === "staff" || user.role === "intern") && (
+                  <StopGapCard />
+                )}
+
+                {/* Active Tasks Card */}
               </div>
 
-              {/* Full Task List */}
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-foreground">
+              {/* Full Task List with Completed Tab */}
+              <div className="space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="text"
-                      placeholder="Search tasks..."
-                      className="w-64"
-                      value={taskSearchQuery}
-                      onChange={(e) => setTaskSearchQuery(e.target.value)}
-                    />
-                    <Search className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex flex-wrap gap-2 w-full md:w-auto items-center">
+                    <div className="relative w-full md:w-64">
+                      <Input
+                        type="text"
+                        placeholder="Search task or staff..."
+                        className="w-full pr-8"
+                        value={taskSearchQuery}
+                        onChange={(e) => setTaskSearchQuery(e.target.value)}
+                      />
+                      <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2 hover:border-primary/50 transition-colors shrink-0",
+                            !date && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                          {date instanceof Date ? (
+                            format(date, "PPP")
+                          ) : (date as any)?.from ? (
+                            (date as any).to ? (
+                              <>
+                                {format((date as any).from, "LLL dd, y")} -{" "}
+                                {format((date as any).to, "LLL dd, y")}
+                              </>
+                            ) : (
+                              format((date as any).from, "PPP")
+                            )
+                          ) : (
+                            <span className="font-semibold text-primary">Filter tasks by date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0 w-auto" align="end">
+                        <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
+                          selected={date as any}
+                          onSelect={setDate as any}
+                          numberOfMonths={user?.role === 'admin' || user?.role === 'project_manager' ? 2 : 1}
+                        />
+                        {date && (
+                          <div className="p-3 border-t">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDate(undefined)}
+                            >
+                              Clear Date Selection
+                            </Button>
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
 
-                {staffTasks && staffTasks.length > 0 ? (
-                  <StaffTaskList tasks={filteredTasks || staffTasks} projectId={undefined} />
-                ) : (
-                  <div className="text-center text-muted-foreground mt-8">
-                    No tasks assigned to you yet.
+                <Tabs defaultValue="active" className="w-full">
+                  <div className="flex items-center justify-between mb-4">
+                    <TabsList className="flex w-full p-1 bg-muted">
+                      <TabsTrigger value="active" className="flex-1 text-xs sm:text-sm px-4 py-2">Active Tasks</TabsTrigger>
+                      <TabsTrigger value="completed" className="flex-1 text-xs sm:text-sm px-4 py-2">Completed</TabsTrigger>
+                    </TabsList>
                   </div>
-                )}
+
+                  <TabsContent value="active" className="mt-0">
+                    {staffTasks && staffTasks.filter(t => t.status !== 'completed').length > 0 ? (
+                      <StaffTaskList
+                        tasks={userTasks.filter(t => {
+                          const matchesSearch = !taskSearchQuery || 
+                            t.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                            (staff?.find(s => s.id === t.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
+                          return t.status !== 'completed' && matchesSearch;
+                        })}
+                        projectId={undefined}
+                      />
+                    ) : (
+                      <div className="text-center text-muted-foreground mt-8">
+                        No active tasks assigned to you yet.
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="completed" className="mt-0">
+                    {staffTasks && staffTasks.filter(t => t.status === 'completed').length > 0 ? (
+                      <StaffTaskList
+                        tasks={userTasks.filter(t => {
+                          const matchesSearch = !taskSearchQuery || 
+                            t.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                            (staff?.find(s => s.id === t.assigneeId)?.name || "").toLowerCase().includes(taskSearchQuery.toLowerCase());
+                          return t.status === 'completed' && matchesSearch;
+                        })}
+                        projectId={undefined}
+                      />
+                    ) : (
+                      <div className="text-center text-muted-foreground mt-8">
+                        No completed tasks yet.
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </div>
             </>
           ) : (
@@ -650,12 +777,12 @@ export default function Dashboard() {
                     <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Project Status</h2>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full overflow-hidden">
                   {/* Active Projects */}
 
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center justify-between">
+                  <Card className="w-full min-w-0">
+                    <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                      <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                         <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                           <Play className="h-5 w-5" />
                           Active Projects
@@ -671,7 +798,7 @@ export default function Dashboard() {
                                     (task.status === "in_progress" || task.isTimerRunning)
                                 );
 
-                                // Check for recent team chat messages or resources (last 24 hours)
+                                // Check for recent team chat messages and resources (last 24 hours)
                                 const activity = projectActivity?.[project.id];
                                 const hasRecentActivity = activity && (activity.hasMessages || activity.hasResources);
 
@@ -682,21 +809,21 @@ export default function Dashboard() {
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="max-h-48 overflow-y-auto">
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 max-h-48 overflow-y-auto">
                       {(() => {
                         const activeProjects =
-                          projects?.filter((project) => {
-                            const hasActiveTasks = tasks?.some(
+                          (projects ?? []).filter((project) => {
+                            const hasActiveTasks = (tasks ?? []).some(
                               (task) =>
-                                task.projectId === project.id &&
-                                (task.status === "in_progress" || task.isTimerRunning)
+                                task?.projectId === project?.id &&
+                                (task?.status === "in_progress" || task?.isTimerRunning)
                             );
 
                             const activity = projectActivity?.[project.id];
                             const hasRecentActivity = activity && (activity.hasMessages || activity.hasResources);
 
                             return hasActiveTasks || hasRecentActivity;
-                          }) || [];
+                          });
 
                         if (activeProjects.length === 0) {
                           return (
@@ -709,13 +836,13 @@ export default function Dashboard() {
                         return (
                           <div className="space-y-2">
                             {activeProjects.map((project) => {
-                              const hasRunningTimer = tasks?.some(
+                              const hasRunningTimer = (tasks ?? []).some(
                                 (task) =>
-                                  task.projectId === project.id && task.isTimerRunning
+                                  task?.projectId === project?.id && task?.isTimerRunning
                               );
-                              const hasInProgress = tasks?.some(
+                              const hasInProgress = (tasks ?? []).some(
                                 (task) =>
-                                  task.projectId === project.id && task.status === "in_progress"
+                                  task?.projectId === project?.id && task?.status === "in_progress"
                               );
 
                               const activity = projectActivity?.[project.id];
@@ -760,9 +887,9 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Pending Projects */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center justify-between">
+                  <Card className="w-full min-w-0">
+                    <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                      <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                         <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
                           <Clock className="h-5 w-5" />
                           Pending Projects
@@ -806,15 +933,15 @@ export default function Dashboard() {
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="max-h-48 overflow-y-auto">
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 max-h-48 overflow-y-auto">
                       {(() => {
                         const oneWeekAgo = new Date();
                         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-                        const pendingProjects = projects?.filter((project) => {
-                          const projectTasks = tasks?.filter(
-                            (task) => task.projectId === project.id
-                          ) || [];
+                        const pendingProjects = (projects ?? []).filter((project) => {
+                          const projectTasks = (tasks ?? []).filter(
+                            (task) => task?.projectId === project?.id
+                          );
 
                           // If no tasks, it's pending
                           if (projectTasks.length === 0) {
@@ -824,21 +951,21 @@ export default function Dashboard() {
                           // If has tasks, check if any has been worked on in the last week
                           const hasRecentWork = projectTasks.some((task) => {
                             // Check if task has been started and worked on recently
-                            if (task.hasBeenStarted && task.timerStartTime) {
+                            if (task?.hasBeenStarted && task?.timerStartTime) {
                               const lastWorked = new Date(task.timerStartTime);
                               return lastWorked >= oneWeekAgo;
                             }
                             // Also check updatedAt for recent activity
-                            if (task.updatedAt) {
+                            if (task?.updatedAt) {
                               const lastUpdated = new Date(task.updatedAt);
-                              return lastUpdated >= oneWeekAgo && (task.hasBeenStarted || task.status !== 'todo');
+                              return lastUpdated >= oneWeekAgo && (task?.hasBeenStarted || (task?.status as any) !== 'todo');
                             }
                             return false;
                           });
 
                           // If no recent work, it's pending
                           return !hasRecentWork;
-                        }) || [];
+                        });
 
                         if (pendingProjects.length === 0) {
                           return (
@@ -851,9 +978,9 @@ export default function Dashboard() {
                         return (
                           <div className="space-y-2">
                             {pendingProjects.map((project) => {
-                              const projectTasks = tasks?.filter(
-                                (task) => task.projectId === project.id
-                              ) || [];
+                              const projectTasks = (tasks ?? []).filter(
+                                (task) => task?.projectId === project?.id
+                              );
 
                               const reasonText = projectTasks.length === 0
                                 ? "No tasks assigned"
@@ -888,9 +1015,9 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Completed Projects */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center justify-between">
+                  <Card className="w-full min-w-0">
+                    <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                      <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                         <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                           <CheckCircle className="h-5 w-5" />
                           Completed Projects
@@ -901,34 +1028,34 @@ export default function Dashboard() {
                             oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
                             return (
-                              projects?.filter((project) => {
+                              (projects ?? []).filter((project) => {
                                 // Projects completed in the last month
                                 return (
-                                  project.status === "completed" ||
-                                  (project.progress === 100 &&
-                                    project.updatedAt &&
+                                  project?.status === "completed" ||
+                                  (project?.progress === 100 &&
+                                    project?.updatedAt &&
                                     new Date(project.updatedAt) >= oneMonthAgo)
                                 );
-                              }).length || 0
+                              }).length
                             );
                           })()}
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="max-h-48 overflow-y-auto">
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 max-h-48 overflow-y-auto">
                       {(() => {
                         const oneMonthAgo = new Date();
                         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
                         const completedProjects =
-                          projects?.filter((project) => {
+                          (projects ?? []).filter((project) => {
                             return (
-                              project.status === "completed" ||
-                              (project.progress === 100 &&
-                                project.updatedAt &&
+                              project?.status === ("completed" as any) ||
+                              (project?.progress === 100 &&
+                                project?.updatedAt &&
                                 new Date(project.updatedAt) >= oneMonthAgo)
                             );
-                          }) || [];
+                          });
 
                         if (completedProjects.length === 0) {
                           return (
@@ -971,11 +1098,11 @@ export default function Dashboard() {
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Task Status</h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full overflow-hidden">
                 {/* Tasks in Progress */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full min-w-0">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                         <AlertCircle className="h-5 w-5" />
                         Tasks in Progress
@@ -985,7 +1112,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {tasksInProgress.length > 0 ? (
                       <Collapsible
                         open={openSections.inProgress}
@@ -1019,9 +1146,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Pending Tasks (paused timer) */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full min-w-0">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
                         <Clock className="h-5 w-5" />
                         Pending Tasks
@@ -1031,7 +1158,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {pendingTasks.length > 0 ? (
                       <Collapsible
                         open={openSections.pending}
@@ -1065,9 +1192,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Todo Tasks */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full min-w-0">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
                         <Clock className="h-5 w-5" />
                         Todo Tasks
@@ -1077,7 +1204,7 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {todoTasks.length > 0 ? (
                       <Collapsible
                         open={openSections.todo}
@@ -1101,7 +1228,12 @@ export default function Dashboard() {
                             {todoTasks.map((task) => (
                               <div
                                 key={task.id}
-                                className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                                className={cn(
+                                  "text-xs p-2 rounded",
+                                  task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== "completed" && task.status !== "review"
+                                    ? "bg-red-50 dark:bg-red-900/20 text-foreground dark:text-white"
+                                    : "bg-gray-50 dark:bg-gray-800"
+                                )}
                               >
                                 <div className="font-medium truncate">
                                   {task.title}
@@ -1125,9 +1257,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Tasks in Review */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full min-w-0">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
                         <CheckCircle className="h-5 w-5" />
                         Tasks in Review
@@ -1135,7 +1267,7 @@ export default function Dashboard() {
                       <Badge variant="secondary">{tasksInReview.length}</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {tasksInReview.length > 0 ? (
                       <Collapsible
                         open={openSections.review}
@@ -1169,9 +1301,9 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Technical Support */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between">
+                <Card className="w-full min-w-0">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center justify-between text-sm sm:text-base">
                       <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                         <HelpCircle className="h-5 w-5" />
                         Technical Support
@@ -1181,27 +1313,9 @@ export default function Dashboard() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     {technicalSupportTasks.length > 0 ? (
                       <div className="space-y-3">
-                        <Select>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a support task..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {technicalSupportTasks.map((task) => (
-                              <SelectItem
-                                key={task.id}
-                                value={task.id.toString()}
-                              >
-                                <div className="flex flex-col items-start">
-                                  <span className="font-medium text-sm text-foreground">{task.title}</span>
-                                  <span className="text-xs text-muted-foreground truncate">{task.description?.substring(0, 50)}...</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
                         <Collapsible
                           open={openSections.technical}
                           onOpenChange={() => toggleSection("technical")}
@@ -1237,14 +1351,14 @@ export default function Dashboard() {
 
               {/* Overall Progress */}
               <div className="grid grid-cols-1 gap-6 mb-6">
-                <Card className="max-w-md">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                <Card className="max-w-md w-full">
+                  <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                    <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400 text-sm sm:text-base">
                       <CheckCircle className="h-5 w-5" />
                       Overall Progress
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                     <div className="space-y-4">
                       <div className="text-center">
                         <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
@@ -1275,9 +1389,9 @@ export default function Dashboard() {
                     </p>
                   </div>
 
-                  {tasks && tasks.filter(task => task.assigneeId === user.id).length > 0 ? (
+                  {(tasks ?? []).filter(task => task?.assigneeId === user?.id).length > 0 ? (
                     <StaffTaskList
-                      tasks={tasks.filter(task => task.assigneeId === user.id)}
+                      tasks={userTasks.filter(task => task?.assigneeId === user?.id)}
                       projectId={undefined}
                     />
                   ) : (
@@ -1289,19 +1403,70 @@ export default function Dashboard() {
               )}
 
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-foreground">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                     {user?.role === "staff" || user?.role === "intern" ? "All Your Tasks" : "All Tasks"}
                   </h2>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="text"
-                      placeholder="Search tasks..."
-                      className="w-64"
-                      value={taskSearchQuery}
-                      onChange={(e) => setTaskSearchQuery(e.target.value)}
-                    />
-                    <Search className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex flex-wrap gap-2 w-full md:w-auto items-center">
+                    <div className="relative w-full md:w-64">
+                      <Input
+                        type="text"
+                        placeholder="Search task or staff..."
+                        className="w-full pr-8"
+                        value={taskSearchQuery}
+                        onChange={(e) => setTaskSearchQuery(e.target.value)}
+                      />
+                      <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full sm:w-[240px] h-10 justify-start text-left font-normal border-2 hover:border-primary/50 transition-colors shrink-0",
+                            !date && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                          {date instanceof Date ? (
+                            format(date, "PPP")
+                          ) : (date as any)?.from ? (
+                            (date as any).to ? (
+                              <>
+                                {format((date as any).from, "LLL dd, y")} -{" "}
+                                {format((date as any).to, "LLL dd, y")}
+                              </>
+                            ) : (
+                              format((date as any).from, "PPP")
+                            )
+                          ) : (
+                            <span className="font-semibold text-primary">Filter tasks by date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0 w-auto" align="end">
+                        <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={(date as any)?.from || (date instanceof Date ? date : undefined)}
+                          selected={date as any}
+                          onSelect={setDate as any}
+                          numberOfMonths={user?.role === 'admin' || user?.role === 'project_manager' ? 2 : 1}
+                        />
+                        {date && (
+                          <div className="p-3 border-t">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDate(undefined)}
+                            >
+                              Clear Date Selection
+                            </Button>
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
 
@@ -1309,22 +1474,51 @@ export default function Dashboard() {
                   <div className="text-center text-muted-foreground mt-8">
                     Loading tasks...
                   </div>
-                ) : tasks && tasks.length > 0 ? (
-                  <TaskList
-                    tasks={
-                      user?.role === "staff" || user?.role === "intern"
-                        ? tasks.filter((task) =>
-                            task.assigneeId === user?.id &&
-                            (!taskSearchQuery || task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()))
-                          )
-                        : tasks.filter((task) =>
-                            !taskSearchQuery || task.title.toLowerCase().includes(taskSearchQuery.toLowerCase())
-                          )
-                    }
-                    projectId={undefined}
-                    showNewTaskButton={false}
-                    showProjectInfo={true}
-                  />
+                ) : (tasks ?? []).length > 0 ? (
+                  <Tabs defaultValue="active" className="w-full mt-4 mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <TabsList className="flex w-full p-1 bg-muted">
+                        <TabsTrigger value="active" className="flex-1 text-xs sm:text-sm px-4 py-2">Active Tasks</TabsTrigger>
+                        <TabsTrigger value="completed" className="flex-1 text-xs sm:text-sm px-4 py-2">Completed</TabsTrigger>
+                      </TabsList>
+                    </div>
+
+                  <TabsContent value="active" className="mt-0">
+                    <TaskList
+                      tasks={
+                        user?.role === "staff" || user?.role === "intern"
+                          ? filteredUserTasks.filter((task) => {
+                              return task?.assigneeId === user?.id &&
+                                task?.status !== 'completed';
+                            })
+                          : filteredUserTasks.filter((task) => {
+                              return task?.status !== 'completed';
+                            })
+                      }
+                      projectId={undefined}
+                      showNewTaskButton={false}
+                      showProjectInfo={true}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="completed" className="mt-0">
+                    <TaskList
+                      tasks={
+                        user?.role === "staff" || user?.role === "intern"
+                          ? filteredUserTasks.filter((task) => {
+                              return task?.assigneeId === user?.id &&
+                                task?.status === 'completed';
+                            })
+                          : filteredUserTasks.filter((task) => {
+                              return task?.status === 'completed';
+                            })
+                      }
+                      projectId={undefined}
+                      showNewTaskButton={false}
+                      showProjectInfo={true}
+                    />
+                  </TabsContent>
+                  </Tabs>
                 ) : (
                   <div className="text-center text-muted-foreground mt-8">
                     No tasks available. Tasks from all projects will appear here.

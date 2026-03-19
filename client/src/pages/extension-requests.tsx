@@ -105,6 +105,9 @@ export default function ExtensionRequestsPage() {
 
   const createRequest = useMutation({
     mutationFn: async (data: FormData) => {
+      // Parse the local datetime-local string (YYYY-MM-DDTHH:mm) and ensure it's treated as local time
+      const requestedDeadline = data.requestedDeadline ? new Date(data.requestedDeadline).toISOString() : null;
+
       const response = await fetch("/api/deadline-extension-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -112,7 +115,7 @@ export default function ExtensionRequestsPage() {
         body: JSON.stringify({
           taskId: parseInt(data.taskId),
           reason: data.reason,
-          requestedDeadline: data.requestedDeadline || null,
+          requestedDeadline: requestedDeadline,
         }),
       });
 
@@ -239,13 +242,13 @@ export default function ExtensionRequestsPage() {
                             <TableCell>{request.taskTitle}</TableCell>
                             <TableCell>
                               {request.taskDeadline 
-                                ? new Date(request.taskDeadline).toLocaleDateString()
+                                ? new Date(request.taskDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                 : "No deadline"
                               }
                             </TableCell>
                             <TableCell>
                               {request.requestedDeadline 
-                                ? new Date(request.requestedDeadline).toLocaleDateString()
+                                ? new Date(request.requestedDeadline).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                                 : "Not specified"
                               }
                             </TableCell>
@@ -261,7 +264,7 @@ export default function ExtensionRequestsPage() {
                               {request.decisionReason || "Pending review"}
                             </TableCell>
                             <TableCell>
-                              {new Date(request.createdAt).toLocaleDateString()}
+                              {new Date(request.createdAt).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </TableCell>
                           </TableRow>
                         ))}

@@ -4,118 +4,41 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"client" | "project_manager" | "staff" | "intern" | "product_owner" | "customer_support_officer" | "operations_manager" | "team_lead">("staff");
-  const [specialization, setSpecialization] = useState("");
-  const [productService, setProductService] = useState("");
-  const [clientType, setClientType] = useState("");
-  const [breakOneTime, setBreakOneTime] = useState("");
-  const [breakTwoTime, setBreakTwoTime] = useState("");
   const [resetMode, setResetMode] = useState(false);
+  const [resetStep, setResetStep] = useState<"verify" | "newPassword">("verify");
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { loginMutation, registerMutation } = useAuth();
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { loginMutation } = useAuth();
   const { toast } = useToast();
-
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-    role: "staff",
-    name: "",
-    email: "",
-    specialization: "",
-    gender: "",
-    productService: "",
-    clientType: "",
-    projectManagerType: "",
-  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      if (isLogin) {
-        // Validate login credentials
-        if (!formData.username || !formData.password) {
-          toast({
-            title: "Error",
-            description: "Please enter both username and password",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        await loginMutation.mutateAsync({ 
-          username: formData.username, 
-          password: formData.password 
+      if (!username || !password) {
+        toast({
+          title: "Error",
+          description: "Please enter both username and password",
+          variant: "destructive",
         });
-      } else {
-        // Validate specialization for staff and intern users
-        if ((role === "staff" || role === "intern") && !specialization) {
-          toast({
-            title: "Error",
-            description: "Please select a specialization",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Validate project manager type for project manager users
-        if (role === "project_manager" && !formData.projectManagerType) {
-          toast({
-            title: "Error",
-            description: "Please select a project manager type",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Validate product/service and client type for client users
-        if (role === "client") {
-          if (!productService || !clientType) {
-            toast({
-              title: "Error",
-              description: "Please select both Product/Service and Client Type",
-              variant: "destructive",
-            });
-            return;
-          }
-        }
-
-        // Validate break time for non-client users
-        if (role !== "client") {
-          if (!breakOneTime) {
-            toast({
-              title: "Error",
-              description: "Please select a break time",
-              variant: "destructive",
-            });
-            return;
-          }
-        }
-
-        await registerMutation.mutateAsync({
-          username: formData.username,
-          password: formData.password,
-          name: formData.name,
-          email: formData.email,
-          role: role,
-          specialization: (role === "staff" || role === "intern") ? specialization : undefined,
-          productService: role === "client" ? productService : undefined,
-          clientType: role === "client" ? clientType : undefined,
-          breakOneTime: role !== "client" ? breakOneTime : undefined,
-          breakTwoTime: undefined,
-          projectManagerType: role === "project_manager" ? formData.projectManagerType : undefined,
-        });
+        return;
       }
+
+      await loginMutation.mutateAsync({
+        username,
+        password,
+      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -125,24 +48,265 @@ export default function AuthPage() {
     }
   };
 
-  const handleReset = async (e: React.FormEvent) => {
+  const handleVerifyIdentity = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Not implemented",
-      description: "Password reset functionality will be added soon.",
-      variant: "destructive",
-    });
+    if (!username || !email) {
+      toast({
+        title: "Error",
+        description: "Please enter both your username and email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, username }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Email Sent",
+          description: "If an account matches those details, a reset link has been sent to your email.",
+        });
+        setResetMode(false);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Could not verify your identity. Please check your username and email.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || !confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Please fill in both password fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetToken, password: newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Password Reset Successful",
+          description: "Your password has been updated. You can now log in.",
+        });
+        setResetMode(false);
+        setResetStep("verify");
+        setResetToken("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setEmail("");
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to reset password. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (resetMode) {
+    if (resetStep === "newPassword") {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 relative overflow-hidden">
+          {/* Background decoration matching reference */}
+          <div className="absolute inset-0 z-0">
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-100/50 via-white to-purple-100/50" />
+            <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style={{ stopColor: '#06b6d4', stopOpacity: 0.2 }} />
+                  <stop offset="100%" style={{ stopColor: '#a855f7', stopOpacity: 0.2 }} />
+                </linearGradient>
+              </defs>
+              <circle cx="20" cy="30" r="0.6" fill="#06b6d4" fillOpacity="0.4" />
+              <circle cx="80" cy="20" r="0.6" fill="#a855f7" fillOpacity="0.4" />
+              <circle cx="50" cy="80" r="0.6" fill="#3b82f6" fillOpacity="0.4" />
+              <circle cx="10" cy="70" r="0.6" fill="#06b6d4" fillOpacity="0.4" />
+              <circle cx="90" cy="60" r="0.6" fill="#a855f7" fillOpacity="0.4" />
+              
+              <line x1="20" y1="30" x2="10" y2="70" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+              <line x1="20" y1="30" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+              <line x1="80" y1="20" x2="90" y2="60" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+              <line x1="80" y1="20" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+              <line x1="10" y1="70" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+              <line x1="90" y1="60" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+            </svg>
+          </div>
+          <Card className="auth-form-container relative z-10 shadow-2xl border border-white/50 bg-white/90 backdrop-blur-md">
+            <CardHeader className="text-center">
+              <h1 className="text-2xl font-bold">Set New Password</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter your new password below
+              </p>
+            </CardHeader>
+            <form onSubmit={handleSetNewPassword}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="new-password"
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col gap-4">
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Resetting..." : "Reset Password"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setResetMode(false);
+                    setResetStep("verify");
+                    setResetToken("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  }}
+                  className="w-full"
+                >
+                  Back to Login
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        </div>
+      );
+    }
+
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <Card className="auth-form-container">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 relative overflow-hidden">
+        {/* Background decoration matching reference */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-100/50 via-white to-purple-100/50" />
+          <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style={{ stopColor: '#06b6d4', stopOpacity: 0.2 }} />
+                <stop offset="100%" style={{ stopColor: '#a855f7', stopOpacity: 0.2 }} />
+              </linearGradient>
+            </defs>
+            <circle cx="20" cy="30" r="0.6" fill="#06b6d4" fillOpacity="0.4" />
+            <circle cx="80" cy="20" r="0.6" fill="#a855f7" fillOpacity="0.4" />
+            <circle cx="50" cy="80" r="0.6" fill="#3b82f6" fillOpacity="0.4" />
+            <circle cx="10" cy="70" r="0.6" fill="#06b6d4" fillOpacity="0.4" />
+            <circle cx="90" cy="60" r="0.6" fill="#a855f7" fillOpacity="0.4" />
+            
+            <line x1="20" y1="30" x2="10" y2="70" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+            <line x1="20" y1="30" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+            <line x1="80" y1="20" x2="90" y2="60" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+            <line x1="80" y1="20" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+            <line x1="10" y1="70" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+            <line x1="90" y1="60" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+          </svg>
+        </div>
+
+        <Card className="auth-form-container relative z-10 shadow-2xl border border-white/50 bg-white/90 backdrop-blur-md">
           <CardHeader className="text-center">
             <h1 className="text-2xl font-bold">Reset Password</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Enter your username and email to verify your identity
+            </p>
           </CardHeader>
-          <form onSubmit={handleReset}>
+          <form onSubmit={handleVerifyIdentity}>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-username">Username</Label>
+                <Input
+                  id="reset-username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -155,13 +319,16 @@ export default function AuthPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full">
-                Send Reset Link
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? "Verifying..." : "Verify Identity"}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setResetMode(false)}
+                onClick={() => {
+                  setResetMode(false);
+                  setResetStep("verify");
+                }}
                 className="w-full"
               >
                 Back to Login
@@ -174,12 +341,38 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="auth-form-container">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 relative overflow-hidden">
+      {/* Background decoration matching reference */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-100/50 via-white to-purple-100/50" />
+        <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style={{ stopColor: '#06b6d4', stopOpacity: 0.2 }} />
+              <stop offset="100%" style={{ stopColor: '#a855f7', stopOpacity: 0.2 }} />
+            </linearGradient>
+          </defs>
+          <circle cx="20" cy="30" r="0.6" fill="#06b6d4" fillOpacity="0.4" />
+          <circle cx="80" cy="20" r="0.6" fill="#a855f7" fillOpacity="0.4" />
+          <circle cx="50" cy="80" r="0.6" fill="#3b82f6" fillOpacity="0.4" />
+          <circle cx="10" cy="70" r="0.6" fill="#06b6d4" fillOpacity="0.4" />
+          <circle cx="90" cy="60" r="0.6" fill="#a855f7" fillOpacity="0.4" />
+          
+          <line x1="20" y1="30" x2="10" y2="70" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+          <line x1="20" y1="30" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+          <line x1="80" y1="20" x2="90" y2="60" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+          <line x1="80" y1="20" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+          <line x1="10" y1="70" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+          <line x1="90" y1="60" x2="50" y2="80" stroke="url(#grad1)" strokeWidth="0.2" strokeOpacity="0.3" />
+        </svg>
+      </div>
+
+      <Card className="auth-form-container relative z-10 shadow-2xl border border-white/50 bg-white/90 backdrop-blur-md">
         <CardHeader className="text-center">
-          <h1 className="text-2xl font-bold">
-            {isLogin ? "Login" : "Register"}
-          </h1>
+          <h1 className="text-2xl font-bold">Login</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Contact your manager if you need an account
+          </p>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
@@ -187,8 +380,8 @@ export default function AuthPage() {
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>
@@ -198,8 +391,8 @@ export default function AuthPage() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                   className="pr-10"
                 />
@@ -218,154 +411,19 @@ export default function AuthPage() {
                 </Button>
               </div>
             </div>
-            {!isLogin && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={(value: "client" | "project_manager" | "staff" | "intern" | "product_owner" | "customer_support_officer" | "operations_manager" | "team_lead") => setRole(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="client">Client</SelectItem>
-                      <SelectItem value="project_manager">Project Manager</SelectItem>
-                      <SelectItem value="product_owner">Product Owner</SelectItem>
-                      <SelectItem value="customer_support_officer">Customer Support Officer</SelectItem>
-                      <SelectItem value="operations_manager">Operations Manager</SelectItem>
-                      <SelectItem value="team_lead">Team Lead</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="intern">Intern</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {role === "project_manager" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="projectManagerType">Project Manager Type *</Label>
-                    <Select
-                      value={formData.projectManagerType || ""}
-                      onValueChange={(value) => setFormData({ ...formData, projectManagerType: value })}
-                      required
-                    >
-                      <SelectTrigger id="projectManagerType">
-                        <SelectValue placeholder="Select project manager type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="main">Main</SelectItem>
-                        <SelectItem value="supervisor">Supervisor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {(role === "staff" || role === "intern") && (
-                  <div className="space-y-2">
-                    <Label htmlFor="specialization">Specialization</Label>
-                    <Select value={specialization} onValueChange={setSpecialization}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your specialization" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="automation">Automation</SelectItem>
-                        <SelectItem value="copywriting">Copy Writing</SelectItem>
-                        <SelectItem value="design">Design</SelectItem>
-                        <SelectItem value="media_buying">Media Buying</SelectItem>
-                        <SelectItem value="development">Development</SelectItem>
-                        <SelectItem value="community_manager">Community Manager</SelectItem>
-                        <SelectItem value="technical_support">Technical Support</SelectItem>
-                        <SelectItem value="replit_development">Replit Development</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {role === "client" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="productService">Product/Service</Label>
-                      <Select value={productService} onValueChange={setProductService}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select product/service" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="website_development">Website Development</SelectItem>
-                          <SelectItem value="dpl_outright">DPL Outright</SelectItem>
-                          <SelectItem value="dpl_partnership">DPL Partnership</SelectItem>
-                          <SelectItem value="direct_marketing">Direct Marketing</SelectItem>
-                          <SelectItem value="support_maintenance">Support & Maintenance</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="clientType">Client Type</Label>
-                      <Select value={clientType} onValueChange={setClientType}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select client type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="project_client">Project Client</SelectItem>
-                          <SelectItem value="support_maintenance_client">Support & Maintenance Client</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-                {role !== "client" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="breakOneTime">Daily Break Time</Label>
-                      <Input
-                        id="breakOneTime"
-                        type="time"
-                        value={breakOneTime}
-                        onChange={(e) => setBreakOneTime(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-              </>
-            )}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full">
-              {isLogin ? "Login" : "Register"}
+            <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? "Logging in..." : "Login"}
             </Button>
-            <div className="flex justify-between w-full">
+            <div className="flex justify-center w-full">
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => setResetMode(true)}
               >
-                {isLogin ? "Need an account? Register" : "Already have an account? Login"}
+                Forgot Password?
               </Button>
-              {isLogin && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setResetMode(true)}
-                >
-                  Forgot Password?
-                </Button>
-              )}
             </div>
           </CardFooter>
         </form>

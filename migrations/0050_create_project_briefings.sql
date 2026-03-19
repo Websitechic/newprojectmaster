@@ -1,9 +1,6 @@
 
--- Drop existing table if it exists
-DROP TABLE IF EXISTS project_briefings CASCADE;
-
 -- Create table with snake_case column names to match schema
-CREATE TABLE project_briefings (
+CREATE TABLE IF NOT EXISTS project_briefings (
   id SERIAL PRIMARY KEY,
   project_name TEXT NOT NULL,
   client_name TEXT NOT NULL,

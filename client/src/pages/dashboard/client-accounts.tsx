@@ -314,38 +314,38 @@ export default function ClientAccounts() {
   }
 
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72 min-w-0 max-w-full overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto space-y-6 p-4 md:p-6">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full">
           {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Client Accounts</h1>
-          <p className="text-sm md:text-base text-gray-600">
+      <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">Client Accounts</h1>
+          <p className="text-xs sm:text-sm md:text-base text-gray-600 truncate">
             Manage and create client accounts for your projects
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full">
           <Button 
             variant="outline" 
             onClick={exportToExcel}
             disabled={filteredClients.length === 0}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto flex-shrink-0"
           >
-            <Download className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Export to Excel</span>
-            <span className="sm:hidden">Export</span>
+            <Download className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="hidden sm:inline truncate">Export to Excel</span>
+            <span className="sm:hidden truncate">Export</span>
           </Button>
 
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">
-                <Plus className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Create Client Account</span>
-                <span className="sm:hidden">Create Client</span>
+              <Button className="w-full sm:w-auto flex-shrink-0">
+                <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span className="hidden sm:inline truncate">Create Client Account</span>
+                <span className="sm:hidden truncate">Create Client</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md mx-4">
@@ -556,7 +556,7 @@ export default function ClientAccounts() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full -webkit-overflow-scrolling-touch" style={{ scrollbarWidth: 'thin' }}>
             <table className="w-full min-w-[1200px]">
               <thead>
                 <tr className="border-b bg-muted/50">

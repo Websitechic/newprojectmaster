@@ -65,7 +65,7 @@ export function setupWebSocket(wss: WebSocketServer) {
     try {
       console.log('WebSocket connection established');
 
-      let userId: number | null = null;
+      let userId: number | undefined = undefined;
       const extWs = ws as ExtendedWebSocket;
       extWs.isAlive = true;
 
@@ -93,7 +93,7 @@ export function setupWebSocket(wss: WebSocketServer) {
 
         // Set a timeout to close unauthenticated connections
         const authTimeout = setTimeout(() => {
-          if (!userId && ws.readyState === ws.OPEN) {
+          if (!userId && ws.readyState === WebSocket.OPEN) {
             console.log('Closing unauthenticated WebSocket connection after timeout');
             try {
               ws.close(1008, 'Authentication timeout');
@@ -159,7 +159,9 @@ export function setupWebSocket(wss: WebSocketServer) {
         if (!global.connectedClients) {
           global.connectedClients = new Map();
         }
-        global.connectedClients.set(userId, extWs);
+        if (userId) {
+          global.connectedClients.set(userId, extWs);
+        }
 
         // Handle pong responses
         ws.on('pong', () => {
@@ -196,7 +198,7 @@ export function setupWebSocket(wss: WebSocketServer) {
       };
 
       // Handle messages
-      const handleMainMessages = (data: Buffer) => {
+      const handleMainMessages = async (data: Buffer) => {
         try {
           const message = JSON.parse(data.toString());
           console.log('Received WebSocket message from authenticated user:', message);
@@ -209,71 +211,50 @@ export function setupWebSocket(wss: WebSocketServer) {
             // Handle other message types here
             console.log('Received message:', message);
             
-            // Handle project messages
-            if (message.type === 'project_message' && message.projectId && message.content && userId) {
-              const projectId = message.projectId;
-              const senderUserId = userId;
+            // Handle task created
+            if (message.type === 'task_created' && message.task) {
               if (global.connectedClients) {
-                global.connectedClients.forEach((client, clientId) => {
-                  if (client.userId === senderUserId) return; // Don't send back to sender
+                global.connectedClients.forEach((wsClient) => {
+                  const client = wsClient as ExtendedWebSocket;
+                  if (client.userId === userId) return;
                   if (client.readyState === WebSocket.OPEN) {
                     try {
                       client.send(JSON.stringify({
-                        type: 'project_message',
+                        type: 'task_created',
+                        projectId: message.task.projectId,
                         data: {
-                          projectId: projectId,
-                          content: message.content,
-                          senderId: senderUserId,
-                          createdAt: new Date().toISOString()
+                          task: message.task,
+                          createdBy: userId
                         }
                       }));
                     } catch (sendError) {
-                      console.error(`Error sending project message to client ${clientId}:`, sendError);
+                      console.error(`Error sending task creation to client ${client.userId}:`, sendError);
                     }
                   }
                 });
               }
             }
-            
-            // Handle direct messages
-            if (message.type === 'direct_message' && message.receiverId && message.content && userId) {
-              const receiverId = message.receiverId;
-              const receiverClient = global.connectedClients?.get(receiverId);
-              if (receiverClient && receiverClient.readyState === WebSocket.OPEN) {
-                try {
-                  receiverClient.send(JSON.stringify({
-                    type: 'direct_message',
-                    data: {
-                      senderId: userId,
-                      receiverId: receiverId,
-                      content: message.content,
-                      createdAt: new Date().toISOString()
-                    }
-                  }));
-                } catch (sendError) {
-                  console.error(`Error sending direct message to user ${receiverId}:`, sendError);
-                }
-              }
-            }
-            
+
             // Handle task status updates
-            if (message.type === 'task_update' && message.taskId && userId) {
+            if ((message.type === 'task_update' || message.type === 'task_updated') && (message.taskId || message.task?.id) && userId) {
               if (global.connectedClients) {
-                global.connectedClients.forEach((client, clientId) => {
+                global.connectedClients.forEach((wsClient) => {
+                  const client = wsClient as ExtendedWebSocket;
                   if (client.userId === userId) return; // Don't send back to sender
                   if (client.readyState === WebSocket.OPEN) {
                     try {
                       client.send(JSON.stringify({
-                        type: 'task_update',
+                        type: 'task_updated',
                         data: {
-                          taskId: message.taskId,
-                          status: message.status,
+                          task: message.task,
+                          taskId: message.taskId || message.task?.id,
+                          status: message.status || message.task?.status,
                           updatedBy: userId,
                           updatedAt: new Date().toISOString()
                         }
                       }));
                     } catch (sendError) {
-                      console.error(`Error sending task update to client ${clientId}:`, sendError);
+                      console.error(`Error sending task update to client ${client.userId}:`, sendError);
                     }
                   }
                 });

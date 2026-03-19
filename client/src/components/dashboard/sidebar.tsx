@@ -34,7 +34,7 @@ import {
   Bug,
   ExternalLink,
 } from "lucide-react";
-import { useUser } from "@/hooks/use-user";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useUnreadMessageCounts } from "@/hooks/use-unread-messages";
@@ -75,17 +75,17 @@ function SidebarItem({ icon, label, href, active, badge, external, onClick, hasU
   const content = (
     <div
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative cursor-pointer",
+        "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 relative cursor-pointer",
         active
           ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 shadow-sm"
           : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
       )}
       onClick={onClick}
     >
-      <div className={cn("w-5 h-5 flex-shrink-0", active ? "text-purple-700 dark:text-purple-300" : "text-gray-500 dark:text-gray-400")}>
+      <div className={cn("w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0", active ? "text-purple-700 dark:text-purple-300" : "text-gray-500 dark:text-gray-400")}>
         {icon}
       </div>
-      <span className="flex-1 truncate">{label}</span>
+      <span className="flex-1 truncate text-left">{label}</span>
       {((badge && badge > 0) || hasUpdate) ? (
         <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
       ) : null}
@@ -108,7 +108,7 @@ function SidebarItem({ icon, label, href, active, badge, external, onClick, hasU
 }
 
 export function AppSidebar({ currentPath }: { currentPath: string }) {
-  const { logout, user } = useUser();
+  const { logoutMutation, user } = useAuth();
   const [, setLocation] = useLocation();
   const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -177,81 +177,23 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     fetchUnreadCount();
   }, []);
 
-  // SSE connection for real-time updates
+  // Listen for direct message events from GlobalNotificationListener (App.tsx)
+  // instead of creating our own SSE connection
   useEffect(() => {
     if (!user || !user.id) return;
 
-    let eventSource: EventSource | null = null;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
-    let isConnecting = false;
-
-    const connectSSE = () => {
-      if (isConnecting || !user?.id) return;
-
-      isConnecting = true;
-
-      try {
-        eventSource = new EventSource('/api/notifications/stream', {
-          withCredentials: true
-        });
-
-        eventSource.onopen = () => {
-          console.log('Sidebar SSE connection opened');
-          isConnecting = false;
-        };
-
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'direct_message' && data.data) {
-              // Only increment if message is TO current user
-              if (data.data.receiverId === user.id) {
-                setUnreadDirectMessages(prev => prev + 1);
-              }
-            }
-          } catch (error) {
-            console.error('Failed to parse SSE message:', error);
-          }
-        };
-
-        eventSource.onerror = (error) => {
-          console.error('Sidebar SSE connection error:', error);
-          isConnecting = false;
-
-          if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
-            eventSource.close();
-          }
-          eventSource = null;
-
-          if (user?.id && !reconnectTimeout) {
-            reconnectTimeout = setTimeout(() => {
-              reconnectTimeout = null;
-              connectSSE();
-            }, 5000);
-          }
-        };
-      } catch (error) {
-        console.error('Failed to create SSE connection:', error);
-        isConnecting = false;
+    const handleDirectMessage = (event: CustomEvent) => {
+      const data = event.detail;
+      // Only increment if message is TO current user
+      if (data.receiverId === user.id) {
+        setUnreadDirectMessages(prev => prev + 1);
       }
     };
 
-    // Wait for authentication to be fully established
-    const connectionDelay = setTimeout(() => {
-      connectSSE();
-    }, 1000);
+    window.addEventListener('direct-message-received', handleDirectMessage as EventListener);
 
     return () => {
-      clearTimeout(connectionDelay);
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-        reconnectTimeout = null;
-      }
-      if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
-        eventSource.close();
-      }
-      eventSource = null;
-      isConnecting = false;
+      window.removeEventListener('direct-message-received', handleDirectMessage as EventListener);
     };
   }, [user]);
 
@@ -297,19 +239,19 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "projects",
     },
     {
+      icon: <MessageSquare size={20} />,
+      label: "General Channel",
+      href: "/dashboard/general-channel",
+      badge: generalChannelUnread,
+      key: "general-channel",
+    },
+    {
       icon: <MessageCircle size={20} />,
       label: "Direct Messages",
       href: "/dashboard/direct-messages",
       badge: unreadDirectMessages,
       hasUpdate: indicators.directMessages,
       key: "direct-messages",
-    },
-    {
-      icon: <MessageSquare size={20} />,
-      label: "General Channel",
-      href: "/dashboard/general-channel",
-      badge: generalChannelUnread,
-      key: "general-channel",
     },
     {
       icon: <PlayCircle size={20} />,
@@ -385,6 +327,13 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       href: "/dashboard/technical-management",
       hasUpdate: indicators.technicalManagement,
       key: "technical-management",
+    },
+    {
+      icon: <MessageSquare size={20} />,
+      label: "Penalty",
+      href: "/dashboard/staff-queries",
+      hasUpdate: indicators.myQueries,
+      key: "staff-queries-pm",
     }
   ] : [];
 
@@ -411,7 +360,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
     {
       icon: <FileText size={20} />,
-      label: "My Queries",
+      label: "Received Penalties",
       href: "/dashboard/staff-queries",
       hasUpdate: indicators.myQueries,
       key: "staff-queries",
@@ -436,13 +385,6 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "Client Accounts",
       href: "/dashboard/client-accounts",
       key: "client-accounts",
-    },
-    {
-      icon: <FileText size={20} />,
-      label: "My Queries",
-      href: "/dashboard/staff-queries",
-      hasUpdate: indicators.myQueries,
-      key: "customer-support-officer-queries",
     }
   ] : [];
 
@@ -471,7 +413,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     }
   ] : [];
 
-  const extensionMenuItems = (user?.role === "project_manager" && user?.role !== "team_lead") ? [{
+  const extensionMenuItems = (user?.role === "project_manager" && user?.role !== "team_lead") || user?.role === "customer_support_officer" ? [{
     icon: <Clock size={20} />,
     label: "Deadline Extension Requests",
     href: "/dashboard/deadline-extension-requests",
@@ -488,6 +430,33 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
   // Operations Manager menu items (full access)
   const operationsManagerMenuItems = (user?.specialization === "operations_manager" || user?.role === "operations_manager") && user?.role !== "team_lead" ? [
     {
+      icon: <LayoutDashboard size={20} />,
+      label: "Dashboard",
+      href: "/dashboard",
+      key: "operations-dashboard",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Projects",
+      href: "/dashboard/projects",
+      badge: totalUnreadProjectMessages,
+      key: "operations-projects",
+    },
+    {
+      icon: <Clock size={20} />,
+      label: "Deadline Extension Request",
+      href: "/dashboard/deadline-extension-requests",
+      hasUpdate: indicators.extensionRequests,
+      key: "operations-deadline-extension-requests",
+    },
+    {
+      icon: <MessageSquare size={20} />,
+      label: "General Channel",
+      href: "/dashboard/general-channel",
+      badge: generalChannelUnread,
+      key: "operations-general-channel",
+    },
+    {
       icon: <Users size={20} />,
       label: "Staff Report",
       href: "/dashboard/staff-report",
@@ -495,15 +464,9 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
     },
     {
       icon: <BarChart3 size={20} />,
-      label: "KPI Report",
+      label: "KPI report",
       href: "/dashboard/kpi-report",
       key: "operations-kpi-report",
-    },
-    {
-      icon: <Building2 size={20} />,
-      label: "Client Accounts",
-      href: "/dashboard/client-accounts",
-      key: "operations-client-accounts",
     },
     {
       icon: <FileText size={20} />,
@@ -512,17 +475,32 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "operations-memos",
     },
     {
-      icon: <Wrench size={20} />,
-      label: "Technical Management",
-      href: "/dashboard/technical-management",
-      hasUpdate: indicators.technicalManagement,
-      key: "operations-technical-management",
-    },
-    {
       icon: <CalendarDays size={20} />,
       label: "Bookings",
       href: "/dashboard/bookings",
       key: "operations-bookings",
+    },
+    {
+      icon: <MessageSquare size={20} />,
+      label: "Penalty",
+      href: "/dashboard/staff-queries",
+      hasUpdate: indicators.myQueries,
+      key: "operations-staff-queries",
+    },
+    {
+      icon: <MessageCircle size={20} />,
+      label: "Direct Messages",
+      href: "/dashboard/direct-messages",
+      badge: unreadDirectMessages,
+      hasUpdate: indicators.directMessages,
+      key: "operations-direct-messages",
+    },
+    {
+      icon: <AlertTriangle size={20} />,
+      label: "Staff Complaints",
+      href: "/dashboard/staff-complaints",
+      hasUpdate: indicators.staffComplaints,
+      key: "operations-staff-complaints",
     },
     {
       icon: <Calendar size={20} />,
@@ -532,10 +510,10 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "operations-leave-management",
     },
     {
-      icon: <Clock size={20} />,
-      label: "Deadline Extension Requests",
-      href: "/dashboard/deadline-extension-requests",
-      key: "operations-deadline-extension-requests",
+      icon: <Building2 size={20} />,
+      label: "Client Accounts",
+      href: "/dashboard/client-accounts",
+      key: "operations-client-accounts",
     },
     {
       icon: <TrendingUp size={20} />,
@@ -545,31 +523,11 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "operations-client-sentiment-tracker",
     },
     {
-      icon: <MessageSquare size={20} />,
-      label: "Staff Queries",
-      href: "/dashboard/staff-queries",
-      hasUpdate: indicators.myQueries,
-      key: "operations-staff-queries",
-    },
-    {
-      icon: <Phone size={20} />,
-      label: "Communication Tracker",
-      href: "/dashboard/communication-tracker",
-      key: "operations-communication-tracker",
-    },
-    {
       icon: <MessageSquareX size={20} />,
       label: "Client Complaints",
       href: "/dashboard/client-complaints",
       hasUpdate: indicators.clientComplaints,
       key: "operations-client-complaints",
-    },
-    {
-      icon: <AlertTriangle size={20} />,
-      label: "Staff Complaints",
-      href: "/dashboard/staff-complaints",
-      hasUpdate: indicators.staffComplaints,
-      key: "operations-staff-complaints",
     },
     {
       icon: <StickyNote size={20} />,
@@ -582,6 +540,49 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       label: "SOP",
       href: "/dashboard/sop",
       key: "operations-sop",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "New Project briefing",
+      href: "/dashboard/project-briefing",
+      key: "operations-project-briefing",
+    },
+    {
+      icon: <Phone size={20} />,
+      label: "Communication tracker",
+      href: "/dashboard/communication-tracker",
+      key: "operations-communication-tracker",
+    },
+    {
+      icon: <Wrench size={20} />,
+      label: "Technical Management",
+      href: "/dashboard/technical-management",
+      hasUpdate: indicators.technicalManagement,
+      key: "operations-technical-management",
+    },
+    {
+      icon: <PlayCircle size={20} />,
+      label: "Guide videos",
+      href: "/dashboard/guide-videos",
+      key: "operations-guide-videos",
+    },
+    {
+      icon: <Bell size={20} />,
+      label: "One signal test",
+      href: "/dashboard/onesignal-test",
+      key: "operations-onesignal-test",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Report App",
+      href: "/dashboard/report-management",
+      key: "operations-report-management",
+    },
+    {
+      icon: <Bug size={20} />,
+      label: "App Issue",
+      href: "/dashboard/report-issues",
+      key: "operations-report-issues",
     },
   ] : [];
 
@@ -635,11 +636,12 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       icon: <Clock size={20} />,
       label: "Deadline Extension Requests",
       href: "/dashboard/deadline-extension-requests",
+      hasUpdate: indicators.extensionRequests,
       key: "team-lead-deadline-extension-requests",
     },
     {
       icon: <MessageSquare size={20} />,
-      label: "Staff Queries",
+      label: "Penalty",
       href: "/dashboard/staff-queries",
       hasUpdate: indicators.myQueries,
       key: "team-lead-staff-queries",
@@ -737,6 +739,8 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       key: "dashboard",
     },
     ...clientMenuItems,
+  ] : (user?.role === "operations_manager" || user?.specialization === "operations_manager") ? [
+    ...operationsManagerMenuItems
   ] : [
     ...baseMenuItems.slice(0, 2),
     ...pmMenuItems,
@@ -795,20 +799,20 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
   const SidebarContent = () => (
     <>
       {/* Logo Section */}
-      <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">W</span>
+      <div className="flex-shrink-0 px-3 sm:px-4 py-3 sm:py-4 border-b border-border">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-base sm:text-lg">W</span>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-lg font-bold text-foreground truncate">Websitechic</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base sm:text-lg font-bold text-foreground truncate">Websitechic</h1>
             <p className="text-xs text-muted-foreground uppercase tracking-wide truncate">Digital Agency</p>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-2 sm:px-4 py-4 sm:py-6 overflow-y-auto">
+      {/* Navigation - Scrollable */}
+      <nav className="flex-1 overflow-y-auto px-2 sm:px-3 py-3 sm:py-4">
         <div className="space-y-1">
           {menuItems.map((item) => {
             const { key, ...itemProps } = item;
@@ -821,6 +825,15 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
               />
             );
           })}
+
+          {/* OneSignal Test - Available to all users */}
+          <SidebarItem
+            icon={<Bell size={20} />}
+            label="OneSignal Test"
+            href="/dashboard/onesignal-test"
+            onClick={() => handleMenuItemClick("/dashboard/onesignal-test")}
+            active={currentPath === "/dashboard/onesignal-test"}
+          />
 
           {/* Report Issues - Available to all users */}
           <SidebarItem
@@ -846,21 +859,21 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
         </div>
       </nav>
 
-      {/* User Profile */}
-      <div className="px-2 sm:px-4 py-4 border-t border-border">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-accent">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-primary-foreground text-sm font-medium">
+      {/* User Profile - Fixed at bottom */}
+      <div className="flex-shrink-0 px-2 sm:px-3 py-3 border-t border-border">
+        <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 rounded-lg bg-accent">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-primary-foreground text-xs sm:text-sm font-medium">
               {user?.name?.charAt(0) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+            <p className="text-xs sm:text-sm font-medium text-foreground truncate">{user?.name}</p>
             <p className="text-xs text-muted-foreground capitalize truncate">
               {user?.role === 'client' ?
-                `${user?.clientType?.replace('_', ' ') || 'Client'} • ${user?.productService?.replace('_', ' ') || 'Service not specified'}` :
+                `${user?.clientType?.replace('_', ' ') || 'Client'}` :
                 user?.role === 'project_manager' && user?.projectManagerType ?
-                `${user?.role?.replace('_', ' ')} • ${user?.projectManagerType}` :
+                `${user?.role?.replace('_', ' ')}` :
                 user?.role?.replace('_', ' ')
               }
             </p>
@@ -868,18 +881,13 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
         </div>
         <Button
           variant="ghost"
-          className="w-full justify-start mt-2 text-muted-foreground hover:text-foreground hover:bg-accent"
-          onClick={async () => {
-            try {
-              await logout();
-              window.location.href = '/auth';
-            } catch (error) {
-              console.error("Logout failed:", error);
-              window.location.href = '/auth';
-            }
+          size="sm"
+          className="w-full justify-start mt-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
+          onClick={() => {
+            logoutMutation.mutate();
           }}
         >
-          <LogOut size={16} className="mr-3 flex-shrink-0" />
+          <LogOut size={14} className="mr-2 flex-shrink-0" />
           <span className="truncate">Logout</span>
         </Button>
       </div>
@@ -915,8 +923,10 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
 
       {/* Mobile Sidebar */}
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <SheetContent side="left" className="w-64 p-0 bg-background">
-          <SidebarContent />
+        <SheetContent side="left" className="w-72 sm:w-80 p-0 bg-background h-full overflow-hidden">
+          <div className="h-full flex flex-col overflow-hidden">
+            <SidebarContent />
+          </div>
         </SheetContent>
       </Sheet>
     </>

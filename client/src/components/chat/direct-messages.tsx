@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy, Reply, Forward } from "lucide-react";
+import { Send, MessageCircle, Users, Search, MoreVertical, Edit2, Trash2, X, Check, CornerUpLeft, Copy, Forward, CheckCheck, Reply } from "lucide-react";
+import { OnlineStatus } from "@/components/ui/online-status";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -65,6 +66,8 @@ export function DirectMessages() {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [view, setView] = useState<"conversations" | "new">("conversations");
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState("");
@@ -72,7 +75,10 @@ export function DirectMessages() {
   const [forwardingMessage, setForwardingMessage] = useState<DirectMessage | null>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
+  const [readCounts, setReadCounts] = useState<Record<number, number>>({});
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -87,7 +93,7 @@ export function DirectMessages() {
   const { data: fetchedConversations } = useQuery({
     queryKey: ["/api/direct-messages/conversations"],
     enabled: !!user,
-    refetchInterval: 2000, // Poll every 2 seconds like team chat
+    refetchInterval: 5000, // Poll every 5 seconds instead of 2
   });
 
   // Update conversations state when data changes
@@ -111,23 +117,87 @@ export function DirectMessages() {
   }, [fetchedUsers]);
 
   // Fetch messages when a user is selected with polling backup
-  const { data: fetchedMessages } = useQuery({
+  const { data: fetchedMessages } = useQuery<DirectMessage[]>({
     queryKey: [`/api/direct-messages/${selectedUser?.id}`],
     enabled: !!selectedUser,
-    refetchInterval: 2000, // Poll every 2 seconds like team chat
+    refetchInterval: 5000, // Poll every 5 seconds instead of 2
   });
 
   // Update messages state when data changes
   useEffect(() => {
     if (fetchedMessages) {
       setMessages(fetchedMessages);
+
+      // Fetch read counts for each message
+      fetchedMessages.forEach(async (msg) => {
+        try {
+          const response = await fetch(`/api/direct-messages/${msg.id}/read-count`);
+          if (response.ok) {
+            const data = await response.json();
+            setReadCounts(prev => ({ ...prev, [msg.id]: data.count }));
+          }
+        } catch (error) {
+          console.error("Error fetching read count:", error);
+        }
+      });
     }
   }, [fetchedMessages]);
 
+  // Fetch read counts for messages - optimized to only fetch for recent messages
+  useEffect(() => {
+    const fetchReadCounts = async () => {
+      if (!messages.length || !user?.id) return;
+
+      // Only fetch read counts for the last 20 messages from current user
+      const recentUserMessages = messages
+        .filter(msg => msg.senderId === user.id)
+        .slice(-20);
+
+      if (recentUserMessages.length === 0) return;
+
+      const counts: Record<number, number> = {};
+      for (const msg of recentUserMessages) {
+        try {
+          const response = await fetch(`/api/direct-messages/${msg.id}/read-count`);
+          if (response.ok) {
+            const data = await response.json();
+            counts[msg.id] = data.count || 0;
+          }
+        } catch (error) {
+          console.error(`Error fetching read count for message ${msg.id}:`, error);
+        }
+      }
+      setReadCounts(counts);
+    };
+
+    // Debounce the fetch to avoid excessive calls
+    const timer = setTimeout(fetchReadCounts, 500);
+    return () => clearTimeout(timer);
+  }, [messages.length, user?.id]); // Only re-run when message count changes
+
+  // Filter messages by search query
+  const filteredMessages = messages.filter(msg =>
+    msg.content.toLowerCase().includes(messageSearchQuery.toLowerCase())
+  );
+
   // Scroll to bottom when messages change
   useEffect(() => {
+    if (!showScrollButton) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, showScrollButton]);
+
+  // Detect scroll position
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
+  };
+
+  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    setShowScrollButton(false);
+  };
 
   // Listen for real-time message updates via SSE and custom events
   useEffect(() => {
@@ -174,10 +244,10 @@ export function DirectMessages() {
 
       // If viewing a conversation, check if message is part of it
       if (selectedUser) {
-        const isMessageInConversation = 
+        const isMessageInConversation =
           (messageData.senderId === selectedUser.id && messageData.receiverId === user.id) ||
           (messageData.senderId === user.id && messageData.receiverId === selectedUser.id);
-        
+
         if (isMessageInConversation) {
           console.log("✅ Adding message to current conversation immediately");
           setMessages(prev => {
@@ -192,7 +262,7 @@ export function DirectMessages() {
           });
         }
       }
-      
+
       // Invalidate queries to ensure fresh data on next poll
       queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
       queryClient.invalidateQueries({ queryKey: [`/api/direct-messages/${selectedUser?.id}`] });
@@ -394,7 +464,12 @@ export function DirectMessages() {
     }
   };
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    // Prevent default form submission if event is provided
+    if (e) {
+      e.preventDefault();
+    }
+
     if (!newMessage.trim() || !selectedUser) {
       console.log("Cannot send message: missing content or selected user");
       return;
@@ -403,23 +478,36 @@ export function DirectMessages() {
     try {
       console.log("Sending message to user:", selectedUser.id, "Content:", newMessage);
 
-      let messageContent = newMessage.trim();
-      let quotedPreviewContent = "";
-      let quotedPreviewSenderName = "";
+      const messageToSend = newMessage.trim();
+      let messageContent = messageToSend;
 
       if (replyingTo) {
-        // Use the clean content (without nested quotes) for the new reply
-        const maxLength = 100; // Max length for quoted preview
-        let contentToQuote = replyingTo.content;
-        if (contentToQuote.length > maxLength) {
-          contentToQuote = contentToQuote.substring(0, maxLength) + "...";
-        }
-        quotedPreviewContent = contentToQuote;
-        quotedPreviewSenderName = replyingTo.senderName;
-
-        // Only include the clean content in the reply, not nested quotes
-        messageContent = `> Replying to ${replyingTo.senderName}:\n> ${replyingTo.content}\n\n${messageContent}`;
+        const quotedLines = replyingTo.content
+          .split('\n')
+          .map(line => `> ${line}`)
+          .join('\n');
+        messageContent = `> Replying to ${replyingTo.senderName}:\n${quotedLines}\n\n${messageToSend}`;
       }
+
+      // Create optimistic message for immediate UI update
+      const optimisticMessage: DirectMessage = {
+        id: Date.now(), // Temporary ID
+        content: messageContent,
+        senderId: user!.id,
+        receiverId: selectedUser.id,
+        read: false,
+        createdAt: new Date().toISOString(),
+        senderName: user!.name,
+        replyToMessageId: replyingTo?.id,
+        replyToSenderName: replyingTo?.senderName,
+      };
+
+      // Add message to UI immediately (optimistic update)
+      setMessages(prev => [...prev, optimisticMessage]);
+
+      // Clear input immediately for better UX
+      setNewMessage("");
+      setReplyingTo(null);
 
       const response = await fetch("/api/direct-messages", {
         method: "POST",
@@ -440,20 +528,12 @@ export function DirectMessages() {
         const sentMessage = await response.json();
         console.log("Message sent successfully:", sentMessage);
 
-        // Clear the input and reply state immediately
-        setNewMessage("");
-        setReplyingTo(null);
+        // Replace optimistic message with real message from server
+        setMessages(prev => 
+          prev.map(m => m.id === optimisticMessage.id ? sentMessage : m)
+        );
 
-        // Add sent message to UI immediately
-        setMessages(prev => {
-          const exists = prev.some(m => m.id === sentMessage.id);
-          if (!exists) {
-            return [...prev, sentMessage];
-          }
-          return prev;
-        });
-
-        // Update conversations list immediately
+        // Update conversations list
         setConversations(prev => {
           const updated = [...prev];
           const existingIndex = updated.findIndex(conv => conv.user.id === selectedUser.id);
@@ -494,10 +574,18 @@ export function DirectMessages() {
       } else {
         const errorText = await response.text();
         console.error("Failed to send message:", response.status, errorText);
+        // Remove optimistic message on failure
+        setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+        // Restore the message if sending failed
+        setNewMessage(messageToSend);
         throw new Error(`Failed to send message: ${response.status}`);
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+      // Restore input
+      setNewMessage(messageToSend);
       toast({
         title: "Error",
         description: "Failed to send message. Please try again.",
@@ -510,8 +598,10 @@ export function DirectMessages() {
     // Extract only the actual message content, not any nested quotes
     let cleanContent = message.content;
     if (message.content.startsWith('> Replying to')) {
-      const parts = message.content.split('\n\n');
-      cleanContent = parts.length > 1 ? parts.slice(1).join('\n\n') : message.content;
+      const firstDoubleNewline = message.content.indexOf('\n\n');
+      cleanContent = firstDoubleNewline !== -1
+        ? message.content.substring(firstDoubleNewline + 2)
+        : message.content;
     }
 
     setReplyingTo({
@@ -546,6 +636,289 @@ export function DirectMessages() {
         messageElement.classList.remove('highlight-flash');
       }, 2000);
     }
+  };
+
+  const renderMessageContent = (message: DirectMessage) => {
+    const maxLength = 150;
+    let quotedContent = "";
+    let quotedSenderName = "";
+    let actualMessageContent = message.content;
+
+    if (message.content.startsWith('> Replying to')) {
+      const firstDoubleNewline = message.content.indexOf('\n\n');
+      if (firstDoubleNewline !== -1) {
+        const quotePart = message.content.substring(0, firstDoubleNewline);
+        actualMessageContent = message.content.substring(firstDoubleNewline + 2);
+
+        const replyToMatch = quotePart.match(/^> Replying to (.*?):/);
+        if (replyToMatch && replyToMatch[1]) {
+          quotedSenderName = replyToMatch[1];
+        }
+
+        const rawQuote = quotePart
+          .split('\n')
+          .slice(1)
+          .map(l => l.startsWith('> ') ? l.substring(2) : l)
+          .join('\n');
+
+        quotedContent = rawQuote.length > maxLength
+          ? rawQuote.substring(0, maxLength) + "..."
+          : rawQuote;
+      }
+    }
+
+    const isOwnMessage = message.senderId === user?.id;
+    const readCount = readCounts[message.id] || 0;
+
+    return (
+      <div
+        className={cn(
+          "rounded-lg p-3 relative",
+          isOwnMessage
+            ? "bg-primary text-primary-foreground"
+            : "bg-secondary"
+        )}
+      >
+        {quotedContent && (
+          <div
+            className={cn(
+              "mb-2 p-2 rounded-md text-sm break-words whitespace-pre-wrap cursor-pointer hover:bg-muted/30 transition-all",
+              isOwnMessage
+                ? "bg-primary/20"
+                : "bg-secondary/50"
+            )}
+            onClick={() => {
+              if (message.replyToMessageId) {
+                handleClickRepliedMessage(message.replyToMessageId);
+              }
+            }}
+          >
+            <p className="font-semibold text-xs">
+              Replying to {quotedSenderName}
+            </p>
+            <p className="text-xs">
+              {quotedContent}
+            </p>
+          </div>
+        )}
+        {editingMessageId === message.id ? (
+          <div className="space-y-2">
+            <Textarea
+              value={editingContent}
+              onChange={(e) => setEditingContent(e.target.value)}
+              className="min-h-[60px] text-sm text-black dark:text-white bg-white dark:bg-gray-800"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleEditMessage(message.id)}
+              >
+                <Check className="h-4 w-4 mr-1" />
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setEditingMessageId(null);
+                  setEditingContent("");
+                }}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="text-sm break-words whitespace-pre-wrap">
+              {message.content.startsWith('🔄 Forwarded:\n') ? (
+                <div>
+                  <p className="text-xs italic text-muted-foreground mb-1">Forwarded</p>
+                  {message.content.replace('🔄 Forwarded:\n', '').split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                    if (/^https?:\/\/[^\s]+$/.test(part)) {
+                      return (
+                        <a
+                          key={index}
+                          href={part}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "underline hover:opacity-80 break-all",
+                            isOwnMessage
+                              ? "text-primary-foreground"
+                              : "text-blue-600"
+                          )}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {part}
+                        </a>
+                      );
+                    }
+                    return part;
+                  })}
+                </div>
+              ) : quotedContent ? (
+                <div>
+                  {actualMessageContent.split(/(https?:\/\/[^\s]+)/g).map((urlPart, urlIdx) => {
+                    if (/^https?:\/\/[^\s]+$/.test(urlPart)) {
+                      return (
+                        <a
+                          key={urlIdx}
+                          href={urlPart}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "underline hover:opacity-80 break-all",
+                            isOwnMessage
+                              ? "text-primary-foreground"
+                              : "text-blue-600"
+                          )}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {urlPart}
+                        </a>
+                      );
+                    }
+                    return urlPart;
+                  })}
+                </div>
+              ) : (
+                message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                  if (/^https?:\/\/[^\s]+$/.test(part)) {
+                    return (
+                      <a
+                        key={index}
+                        href={part}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "underline hover:opacity-80 break-all",
+                          isOwnMessage
+                            ? "text-primary-foreground"
+                            : "text-blue-600"
+                        )}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {part}
+                      </a>
+                    );
+                  }
+                  return part;
+                })
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs opacity-70">
+                {new Date(message.createdAt).toLocaleTimeString()}
+                {message.updatedAt && new Date(message.updatedAt).getTime() > new Date(message.createdAt).getTime() + 1000 && (
+                  <span className="italic ml-1">• edited</span>
+                )}
+              </p>
+              {isOwnMessage && readCount > 0 && (
+                <CheckCheck className="h-3 w-3 text-blue-500" title={`Read by ${readCount} user(s)`} />
+              )}
+            </div>
+          </>
+        )}
+
+        {message.senderId === user?.id && editingMessageId !== message.id && (
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  navigator.clipboard.writeText(message.content);
+                  toast({
+                    title: "Copied",
+                    description: "Message copied to clipboard",
+                  });
+                }}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </DropdownMenuItem>
+                {!message.content.startsWith('🔄 Forwarded:\n') && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setEditingMessageId(message.id);
+                      if (message.content.startsWith('> Replying to')) {
+                        const parts = message.content.split('\n\n');
+                        setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : '');
+                      } else {
+                        setEditingContent(message.content);
+                      }
+                    }}
+                  >
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  onClick={() => handleDeleteMessage(message.id)}
+                  className="text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
+                  <CornerUpLeft className="h-4 w-4 mr-2" />
+                  Reply
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setForwardingMessage(message)}>
+                  <Forward className="h-4 w-4 mr-2" />
+                  Forward
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+        {message.senderId !== user?.id && (
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  navigator.clipboard.writeText(message.content);
+                  toast({
+                    title: "Copied",
+                    description: "Message copied to clipboard",
+                  });
+                }}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
+                  <CornerUpLeft className="h-4 w-4 mr-2" />
+                  Reply
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setForwardingMessage(message)}>
+                  <Forward className="h-4 w-4 mr-2" />
+                  Forward
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleCancelReply = () => {
@@ -630,6 +1003,10 @@ export function DirectMessages() {
     // Mark messages as read
     fetch(`/api/direct-messages/${selectedUser.id}/read`, {
       method: "PUT",
+    }).then(() => {
+      // Invalidate unread count caches so header badge updates immediately
+      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/direct-messages/conversations"] });
     });
 
     // Update unread count in conversations
@@ -654,8 +1031,8 @@ export function DirectMessages() {
 
   if (selectedUser) {
     return (
-      <Card className="h-[600px] flex flex-col">
-        <CardHeader className="border-b">
+      <Card className="h-[calc(100vh-8rem)] flex flex-col">
+        <CardHeader className="border-b space-y-2 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -669,358 +1046,84 @@ export function DirectMessages() {
                 {selectedUser.name.split(' ').map(n => n[0]).join('').toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="flex-1">
               <h3 className="font-semibold">{selectedUser.name}</h3>
-              <p className="text-sm text-muted-foreground capitalize">{selectedUser.role}</p>
+              <OnlineStatus
+                status={selectedUser.status}
+                lastActive={selectedUser.lastActive}
+                showText={true}
+                size="sm"
+              />
             </div>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search messages..."
+              className="pl-8"
+              value={messageSearchQuery}
+              onChange={(e) => setMessageSearchQuery(e.target.value)}
+            />
           </div>
         </CardHeader>
 
-        <CardContent className="flex-1 overflow-hidden p-0">
-          <ScrollArea className="h-full p-4">
+        <CardContent className="flex-1 overflow-hidden p-0 relative">
+          <ScrollArea className="h-full p-4" ref={scrollAreaRef} onScrollCapture={handleScroll}>
             <div className="space-y-4">
-              {messages.map((message) => {
-                const maxLength = 100; // Max length for quoted preview
-                let quotedContent = "";
-                let quotedSenderName = "";
-                let actualMessageContent = message.content;
-
-                if (message.replyToMessageId && message.content.startsWith('> Replying to')) {
-                  const parts = message.content.split('\n\n');
-                  const replyToLine = parts[0];
-                  const originalMessage = parts.slice(1).join('\n\n');
-
-                  const replyToMatch = replyToLine.match(/^> Replying to (.*?):/);
-                  if (replyToMatch && replyToMatch[1]) {
-                    quotedSenderName = replyToMatch[1];
-                  }
-
-                  if (originalMessage.length > maxLength) {
-                    quotedContent = originalMessage.substring(0, maxLength) + "...";
-                  } else {
-                    quotedContent = originalMessage;
-                  }
-                  actualMessageContent = parts.slice(1).join('\n\n'); // Content after the quote
-                }
+              {filteredMessages.map((message, index) => {
+                // Check if we need to show a date separator
+                const currentDate = new Date(message.createdAt).toDateString();
+                const previousDate = index > 0 ? new Date(filteredMessages[index - 1].createdAt).toDateString() : null;
+                const showDateSeparator = currentDate !== previousDate;
 
                 return (
-                  <div
-                    key={message.id}
-                    id={`dm-message-${message.id}`}
-                    className={cn(
-                      "flex items-start gap-2 group transition-all duration-300",
-                      message.senderId === user?.id ? "flex-row-reverse" : ""
+                  <div key={message.id} id={`dm-message-${message.id}`}>
+                    {showDateSeparator && (
+                      <div className="flex items-center justify-center my-4">
+                        <div className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
+                          {new Date(message.createdAt).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </div>
+                      </div>
                     )}
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>
-                        {message.senderName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 max-w-[70%]">
-                      <div
-                        className={cn(
-                          "rounded-lg p-3 relative",
-                          message.senderId === user?.id
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary"
-                        )}
-                      >
-                        {message.replyToMessageId && quotedContent && (
-                          <div
-                            className={cn(
-                              "mb-2 p-2 rounded-md text-sm break-words whitespace-pre-wrap cursor-pointer hover:bg-muted/30 transition-all",
-                              message.senderId === user?.id
-                                ? "bg-primary/20"
-                                : "bg-secondary/50"
-                            )}
-                            onClick={() => {
-                              if (message.replyToMessageId) {
-                                handleClickRepliedMessage(message.replyToMessageId);
-                              }
-                            }}
-                          >
-                            <p className="font-semibold text-xs">
-                              Replying to {quotedSenderName}
-                            </p>
-                            <p className="text-xs">
-                              {quotedContent}
-                            </p>
-                          </div>
-                        )}
-                        {editingMessageId === message.id ? (
-                          <div className="space-y-2">
-                            <Textarea
-                              value={editingContent}
-                              onChange={(e) => setEditingContent(e.target.value)}
-                              className="min-h-[60px] text-sm text-black dark:text-white bg-white dark:bg-gray-800"
-                              autoFocus
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleEditMessage(message.id)}
-                              >
-                                <Check className="h-4 w-4 mr-1" />
-                                Save
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setEditingMessageId(null);
-                                  setEditingContent("");
-                                }}
-                              >
-                                <X className="h-4 w-4 mr-1" />
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="text-sm break-words whitespace-pre-wrap">
-                              {message.content.startsWith('🔄 Forwarded:\n') ? (
-                                <div>
-                                  <p className="text-xs italic text-muted-foreground mb-1">Forwarded</p>
-                                  {message.content.replace('🔄 Forwarded:\n', '').split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
-                                    if (/^https?:\/\/[^\s]+$/.test(part)) {
-                                      return (
-                                        <a
-                                          key={index}
-                                          href={part}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className={cn(
-                                            "underline hover:opacity-80 break-all",
-                                            message.senderId === user?.id
-                                              ? "text-primary-foreground"
-                                              : "text-blue-600"
-                                          )}
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          {part}
-                                        </a>
-                                      );
-                                    }
-                                    return part;
-                                  })}
-                                </div>
-                              ) : message.content.startsWith('> Replying to') ? (
-                                <div>
-                                  {message.content.split('\n\n').map((part, idx) => {
-                                    if (idx === 0) {
-                                      // This is the quoted part
-                                      const replyLines = part.split('\n');
-                                      const quotedContent = replyLines.slice(1).map(l => l.replace(/^> /, '')).join('\n');
-
-                                      // Find the original message by matching content
-                                      const originalMsg = messages.find(m =>
-                                        m.content === quotedContent ||
-                                        m.content.includes(quotedContent) ||
-                                        (m.content.startsWith('> Replying to') && m.content.split('\n\n').slice(1).join('\n\n') === quotedContent)
-                                      );
-
-                                      return (
-                                        <div
-                                          key={idx}
-                                          className={cn(
-                                            "border-l-4 pl-3 mb-2 italic cursor-pointer hover:bg-muted/50 transition-colors rounded",
-                                            message.senderId === user?.id
-                                              ? "border-primary-foreground/50 text-primary-foreground/80"
-                                              : "border-primary text-muted-foreground"
-                                          )}
-                                          onClick={() => {
-                                            if (originalMsg) {
-                                              const originalMessageElement = document.getElementById(`dm-message-${originalMsg.id}`);
-                                              if (originalMessageElement) {
-                                                // Add highlight effect
-                                                originalMessageElement.classList.add('highlight-flash');
-
-                                                // Scroll to message
-                                                originalMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                                                // Remove highlight after animation
-                                                setTimeout(() => {
-                                                  originalMessageElement.classList.remove('highlight-flash');
-                                                }, 2000);
-                                              }
-                                            }
-                                          }}
-                                        >
-                                          {part.split('\n').map((line, lineIdx) => (
-                                            <div key={lineIdx}>{line.replace(/^> /, '')}</div>
-                                          ))}
-                                        </div>
-                                      );
-                                    }
-                                    // This is the actual reply content - render with URL handling
-                                    return (
-                                      <div key={idx}>
-                                        {part.split(/(https?:\/\/[^\s]+)/g).map((urlPart, urlIdx) => {
-                                          if (/^https?:\/\/[^\s]+$/.test(urlPart)) {
-                                            return (
-                                              <a
-                                                key={urlIdx}
-                                                href={urlPart}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className={cn(
-                                                  "underline hover:opacity-80 break-all",
-                                                  message.senderId === user?.id
-                                                    ? "text-primary-foreground"
-                                                    : "text-blue-600"
-                                                )}
-                                                onClick={(e) => e.stopPropagation()}
-                                              >
-                                                {urlPart}
-                                              </a>
-                                            );
-                                          }
-                                          return urlPart;
-                                        })}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                // Regular message without reply - just handle URLs
-                                message.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
-                                  if (/^https?:\/\/[^\s]+$/.test(part)) {
-                                    return (
-                                      <a
-                                        key={index}
-                                        href={part}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={cn(
-                                          "underline hover:opacity-80 break-all",
-                                          message.senderId === user?.id
-                                            ? "text-primary-foreground"
-                                            : "text-blue-600"
-                                        )}
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {part}
-                                      </a>
-                                    );
-                                  }
-                                  return part;
-                                })
-                              )}
-                            </div>
-                            <p className="text-xs opacity-70 mt-1">
-                              {new Date(message.createdAt).toLocaleTimeString()}
-                              {message.updatedAt && message.updatedAt !== message.createdAt && (
-                                <span className="italic ml-1">• edited</span>
-                              )}
-                            </p>
-                          </>
-                        )}
-
-                        {message.senderId === user?.id && editingMessageId !== message.id && (
-                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => {
-                                  navigator.clipboard.writeText(message.content);
-                                  toast({
-                                    title: "Copied",
-                                    description: "Message copied to clipboard",
-                                  });
-                                }}>
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  Copy
-                                </DropdownMenuItem>
-                                {!message.content.startsWith('🔄 Forwarded:\n') && (
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setEditingMessageId(message.id);
-                                      // Extract only the actual message content, not the quoted part
-                                      if (message.content.startsWith('> Replying to')) {
-                                        const parts = message.content.split('\n\n');
-                                        setEditingContent(parts.length > 1 ? parts.slice(1).join('\n\n') : '');
-                                      } else {
-                                        setEditingContent(message.content);
-                                      }
-                                    }}
-                                  >
-                                    <Edit2 className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteMessage(message.id)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
-                                  <CornerUpLeft className="h-4 w-4 mr-2" />
-                                  Reply
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setForwardingMessage(message)}>
-                                  <Forward className="h-4 w-4 mr-2" />
-                                  Forward
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        )}
-                         {message.senderId !== user?.id && (
-                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => {
-                                  navigator.clipboard.writeText(message.content);
-                                  toast({
-                                    title: "Copied",
-                                    description: "Message copied to clipboard",
-                                  });
-                                }}>
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  Copy
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleReplyToMessage(message)}>
-                                  <CornerUpLeft className="h-4 w-4 mr-2" />
-                                  Reply
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setForwardingMessage(message)}>
-                                  <Forward className="h-4 w-4 mr-2" />
-                                  Forward
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        )}
+                    <div
+                      className={cn(
+                        "flex items-start gap-2 group transition-all duration-300",
+                        message.senderId === user?.id ? "flex-row-reverse" : ""
+                      )}
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>
+                          {message.senderName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 max-w-[70%]">
+                        {renderMessageContent(message)}
                       </div>
                     </div>
                   </div>
-                )
+                );
               })}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
+
+          {/* Scroll to Bottom Button */}
+          {showScrollButton && (
+            <Button
+              onClick={scrollToBottom}
+              className="absolute bottom-4 right-4 rounded-full h-10 w-10 p-0 shadow-lg z-10"
+              size="icon"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </Button>
+          )}
         </CardContent>
 
         {/* Forward Message Dialog */}
@@ -1120,7 +1223,7 @@ export function DirectMessages() {
                 </div>
               </div>
             )}
-            <div className="flex gap-2 w-full items-end">
+            <form onSubmit={handleSendMessage} className="flex gap-2 w-full items-end">
               <Textarea
                 ref={inputRef}
                 placeholder="Type a message... (Shift+Enter for new line, Enter to send)"
@@ -1134,10 +1237,10 @@ export function DirectMessages() {
                 }}
                 className="min-h-[60px] max-h-[200px] resize-y"
               />
-              <Button size="icon" onClick={handleSendMessage} className="mb-1">
+              <Button type="submit" size="icon" disabled={!newMessage.trim()} className="mb-1">
                 <Send className="h-4 w-4" />
               </Button>
-            </div>
+            </form>
           </div>
         </CardFooter>
       </Card>
@@ -1145,37 +1248,59 @@ export function DirectMessages() {
   }
 
   return (
-    <Card className="h-[600px] flex flex-col">
-      <CardHeader className="border-b">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold">Direct Messages</h3>
-          <div className="flex gap-2">
+    <Card className="h-[calc(100vh-8rem)] flex flex-col">
+      <CardHeader className="border-b p-3 sm:p-4 flex-shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <Button
               variant={view === "conversations" ? "default" : "ghost"}
               size="sm"
               onClick={() => setView("conversations")}
             >
-              <MessageCircle className="h-4 w-4 mr-1" />
-              Chats
+              <MessageCircle className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Chats</span>
             </Button>
             <Button
               variant={view === "new" ? "default" : "ghost"}
               size="sm"
               onClick={() => setView("new")}
             >
-              <Users className="h-4 w-4 mr-1" />
-              Users
+              <Users className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Users</span>
             </Button>
           </div>
-        </div>
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          {showSearch ? (
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                className="pl-8 pr-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1 h-6 w-6 p-0"
+                onClick={() => {
+                  setShowSearch(false);
+                  setSearchQuery("");
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSearch(true)}
+              className="h-8 w-8 p-0"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardHeader>
 

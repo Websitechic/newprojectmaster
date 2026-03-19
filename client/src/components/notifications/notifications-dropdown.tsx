@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Clock, CheckSquare, MessageSquare, AlertTriangle, X } from "lucide-react"; // Imported necessary icons
+import { Bell, Clock, CheckSquare, MessageSquare, AlertTriangle, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,8 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { formatDistanceToNow, format, isValid, parseISO } from "date-fns";
-import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { formatDistanceToNow, format, isValid, parseISO, isToday, isYesterday, startOfWeek } from "date-fns";
 
 interface Notification {
   id: number;
@@ -29,18 +28,6 @@ export function NotificationsDropdown() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [_, setLocation] = useLocation();
-  const [isConnecting, setIsConnecting] = useState(false);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { playNotificationSound, isInitialized } = useNotificationSound();
-  
-  // Log audio initialization status
-  useEffect(() => {
-    console.log('🔊 Audio initialized:', isInitialized);
-  }, [isInitialized]);
-
-  // Local state to manage notifications, for SSE updates before query refetch
-  const [sseNotifications, setSseNotifications] = useState<Notification[]>([]);
 
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -58,8 +45,6 @@ export function NotificationsDropdown() {
         }
         const data = await res.json();
         console.log("Notifications fetched:", data);
-        // Initialize SSE notifications with fetched data
-        setSseNotifications(data);
         return data;
       } catch (error) {
         console.error("Error fetching notifications:", error);
@@ -74,148 +59,23 @@ export function NotificationsDropdown() {
     gcTime: 60000,
   });
 
-  // Set up SSE connection for real-time notifications
+  // SSE connection is centralized in GlobalNotificationListener (App.tsx)
+  // Listen for notification events dispatched from there instead
   useEffect(() => {
     if (!user?.id) return;
 
-    const connectSSE = () => {
-      if (isConnecting) return;
-
-      setIsConnecting(true);
-      console.log("Setting up SSE connection for notifications...");
-
-      try {
-        const eventSource = new EventSource(`/api/notifications/stream`, {
-          withCredentials: true,
-        });
-
-        eventSource.onopen = () => {
-          console.log("SSE connection opened for notifications");
-          setIsConnecting(false);
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-            reconnectTimeoutRef.current = null;
-          }
-        };
-
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-
-            // Only process actual notification data, ignore system messages like heartbeat or connected
-            if (data.type === 'notification' && data.notification) {
-              console.log('🔔 New notification received via SSE:', data.notification);
-              
-              // Update SSE local state to prepend new notification
-              setSseNotifications(prev => [data.notification, ...prev]);
-              // Update query cache with the new notification
-              queryClient.setQueryData(["/api/notifications"], (oldData: Notification[] = []) => {
-                // Ensure the new notification is not already in the cache before prepending
-                if (!oldData.some(n => n.id === data.notification.id)) {
-                  return [data.notification, ...oldData];
-                }
-                return oldData;
-              });
-              
-              // Play sound ONLY for incoming direct messages and task assignments
-              console.log('📋 Notification received via SSE:', {
-                id: data.notification.id,
-                type: data.notification.type,
-                referenceType: data.notification.referenceType,
-                content: data.notification.content?.substring(0, 50),
-                read: data.notification.read
-              });
-              
-              // STRICT check: Only direct messages with type 'message'
-              const isDirectMessage = 
-                data.notification.type === 'message' && 
-                data.notification.referenceType === 'direct_message';
-              
-              // STRICT check: Only task assignments
-              const isTaskAssignment = 
-                data.notification.type === 'task_assigned' ||
-                data.notification.type === 'task_assignment';
-              
-              // Sound should ONLY play for these two specific cases
-              const shouldPlaySound = isDirectMessage || isTaskAssignment;
-              
-              if (shouldPlaySound) {
-                console.log('🔊 NOTIFICATION SOUND TRIGGER ACTIVATED:', {
-                  type: data.notification.type,
-                  referenceType: data.notification.referenceType,
-                  notificationId: data.notification.id,
-                  isDirectMessage,
-                  isTaskAssignment,
-                  timestamp: new Date().toISOString(),
-                  content: data.notification.content?.substring(0, 50)
-                });
-                
-                // Play sound with comprehensive error handling
-                playNotificationSound()
-                  .then(() => {
-                    console.log('✅ Notification sound played successfully for:', data.notification.type);
-                  })
-                  .catch(err => {
-                    console.error('❌ Notification sound playback error:', {
-                      error: err,
-                      message: err instanceof Error ? err.message : 'Unknown error',
-                      notificationType: data.notification.type,
-                      stack: err instanceof Error ? err.stack : undefined
-                    });
-                  });
-              } else {
-                console.log('⏭️ Sound skipped - notification type:', data.notification.type, 'reference:', data.notification.referenceType);
-              }
-            }
-            // Direct message and team message events are now handled by GlobalNotificationListener in App.tsx
-            // Keeping this comment for clarity - sound playback is centralized to avoid duplicates
-          } catch (error) {
-            console.error("Error parsing SSE message:", error);
-          }
-        };
-
-        eventSource.onerror = (error) => {
-          console.error("SSE error:", error);
-          setIsConnecting(false);
-          // The original code had eventSource.close() here, which is correct.
-          // However, to prevent potential race conditions or double closing,
-          // it's safer to ensure it's not already null or closed.
-          if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-            eventSourceRef.current = null;
-          }
-
-          // Only reconnect if we still have a user and no existing connection
-          if (user?.id && !eventSourceRef.current && !reconnectTimeoutRef.current) {
-            reconnectTimeoutRef.current = setTimeout(() => {
-              reconnectTimeoutRef.current = null;
-              connectSSE();
-            }, 5000);
-          }
-        };
-
-        eventSourceRef.current = eventSource;
-      } catch (error) {
-        console.error("Failed to create SSE connection:", error);
-        setIsConnecting(false);
-      }
+    const handleNotificationEvent = () => {
+      // Refresh notifications when a new one arrives
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     };
 
-    // Only connect once per user session
-    connectSSE();
+    // Listen for custom events dispatched by GlobalNotificationListener
+    window.addEventListener('notification-received', handleNotificationEvent);
 
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-      setIsConnecting(false);
+      window.removeEventListener('notification-received', handleNotificationEvent);
     };
-  }, [user?.id, queryClient]); // Added queryClient to dependency array
+  }, [user?.id, queryClient]);
 
   // Auto-refresh notifications every 30 seconds
   useEffect(() => {
@@ -240,23 +100,46 @@ export function NotificationsDropdown() {
     };
   }, [queryClient]);
 
-  // Combine fetched notifications with SSE notifications and sort by createdAt descending
-  const combinedNotifications = [...sseNotifications, ...notifications].sort((a, b) => {
-    const dateA = a.createdAt ? parseISO(a.createdAt) : null;
-    const dateB = b.createdAt ? parseISO(b.createdAt) : null;
+  // Group notifications by date
+  const groupedNotifications = useMemo(() => {
+    const sorted = [...notifications].sort((a, b) => {
+      const dateA = a.createdAt ? parseISO(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? parseISO(b.createdAt) : new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
 
-    if (!dateA && !dateB) return 0;
-    if (!dateA) return 1; // a is considered newer if b has no date
-    if (!dateB) return -1; // b is considered newer if a has no date
+    const groups: { [key: string]: Notification[] } = {
+      Today: [],
+      Yesterday: [],
+      "This Week": [],
+      Older: [],
+    };
 
-    return dateB.getTime() - dateA.getTime();
-  });
+    const now = new Date();
+    const weekStart = startOfWeek(now);
 
-  // Remove duplicates, prioritizing SSE notifications if they have the same ID
-  const uniqueNotifications = Array.from(new Map(combinedNotifications.map(item => [item.id, item])).values());
+    sorted.forEach((notification) => {
+      if (!notification.createdAt) {
+        groups.Older.push(notification);
+        return;
+      }
 
+      const date = parseISO(notification.createdAt);
+      if (isToday(date)) {
+        groups.Today.push(notification);
+      } else if (isYesterday(date)) {
+        groups.Yesterday.push(notification);
+      } else if (date >= weekStart) {
+        groups["This Week"].push(notification);
+      } else {
+        groups.Older.push(notification);
+      }
+    });
 
-  const unreadCount = uniqueNotifications.filter(n => !n.read).length;
+    return groups;
+  }, [notifications]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleNotificationClick = async (notification: Notification) => {
     try {
@@ -301,6 +184,25 @@ export function NotificationsDropdown() {
     }
   };
 
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch("/api/notifications/read-all", {
+        method: "PUT",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to mark all notifications as read: ${response.status}`);
+      }
+
+      queryClient.setQueryData(["/api/notifications"], (old: Notification[] = []) =>
+        old.map(n => ({ ...n, read: true }))
+      );
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+    }
+  };
+
   const markAsRead = async (notificationId: number) => {
     try {
       const response = await fetch(`/api/notifications/${notificationId}/read`, {
@@ -315,8 +217,6 @@ export function NotificationsDropdown() {
       queryClient.setQueryData(["/api/notifications"], (old: Notification[] = []) =>
         old.map(n => n.id === notificationId ? { ...n, read: true } : n)
       );
-      // Also update SSE local state
-      setSseNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, read: true } : n));
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
@@ -338,15 +238,17 @@ export function NotificationsDropdown() {
       queryClient.setQueryData(["/api/notifications"], (old: Notification[] = []) =>
         old.filter(n => n.id !== notificationId)
       );
-      // Also update SSE local state
-      setSseNotifications(prev => prev.filter(n => n.id !== notificationId));
     } catch (error) {
       console.error("Failed to delete notification:", error);
     }
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => {
+      if (open && unreadCount > 0) {
+        markAllAsRead();
+      }
+    }}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell size={20} />
@@ -360,82 +262,90 @@ export function NotificationsDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-0">
-        {uniqueNotifications.length === 0 ? (
+      <DropdownMenuContent align="end" className="w-80 p-0 -mr-8 sm:mr-0 md:mr-4">
+        {notifications.length === 0 ? (
           <div className="p-3">
             <span className="text-sm text-muted-foreground">No notifications</span>
           </div>
         ) : (
           <ScrollArea className="h-96">
-            <div className="p-1">
-              {uniqueNotifications.map((notification, index) => (
-                <DropdownMenuItem
-                  key={`notification-${notification.id}-${index}`}
-                  className="group flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50 relative"
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="flex-shrink-0">
-                    {(notification.type === "break_reminder" || notification.type === "break_ended") && (
-                      <Clock className="h-4 w-4 text-orange-500" />
-                    )}
-                    {notification.type === "break_overtime" && (
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
-                    )}
-                    {notification.type === "task_assignment" && (
-                      <CheckSquare className="h-4 w-4 text-blue-500" />
-                    )}
-                    {notification.type === "message" && (
-                      <MessageSquare className="h-4 w-4 text-green-500" />
-                    )}
-                    {(notification.type === "deadline_reminder" || notification.type === "task_overdue") && (
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
-                    )}
-                    {notification.type === "task_completed" && (
-                      <CheckSquare className="h-4 w-4 text-green-500" />
-                    )}
-                    {/* Default icon if type is unknown or for general notifications */}
-                    {(!notification.type || ["mention", "system"].includes(notification.type)) && (
-                       <Bell className="h-4 w-4 text-gray-500" />
-                    )}
-                  </div>
-                  <div className="flex flex-col space-y-1 flex-1 min-w-0">
-                    <p className="text-sm pr-6">{notification.content}</p>
-                    <div className="text-xs text-muted-foreground">
-                      {(() => {
-                        if (!notification.createdAt) {
-                          console.log('Notification missing createdAt:', notification);
-                          return 'Just now';
-                        }
+            <div className="p-1 pb-2">
+              {Object.entries(groupedNotifications).map(([groupName, groupNotifications]) => {
+                if (groupNotifications.length === 0) return null;
 
-                        try {
-                          // Handle both ISO strings and Date objects
-                          const date = typeof notification.createdAt === 'string'
-                            ? parseISO(notification.createdAt)
-                            : new Date(notification.createdAt);
-
-                          if (!isValid(date)) {
-                            console.log('Invalid date for notification:', notification.id, notification.createdAt);
-                            return 'Just now';
-                          }
-
-                          return formatDistanceToNow(date, { addSuffix: true });
-                        } catch (error) {
-                          console.error('Date parsing error for notification:', notification.id, notification.createdAt, error);
-                          return 'Just now';
-                        }
-                      })()}
+                return (
+                  <div key={groupName} className="mb-2 last:mb-0">
+                    <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/30 sticky top-0 z-10 backdrop-blur-sm rounded-sm mb-1">
+                      {groupName}
+                    </div>
+                    <div className="space-y-1">
+                      {groupNotifications.map((notification, index) => (
+                        <DropdownMenuItem
+                          key={`notification-${notification.id}-${index}`}
+                          className="group flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50 relative rounded-md mx-1"
+                          onClick={() => handleNotificationClick(notification)}
+                        >
+                          <div className="flex-shrink-0 mt-0.5">
+                            {(notification.type === "break_reminder" || notification.type === "break_ended") && (
+                              <Clock className="h-4 w-4 text-orange-500" />
+                            )}
+                            {notification.type === "break_overtime" && (
+                              <AlertTriangle className="h-4 w-4 text-red-500" />
+                            )}
+                            {(notification.type === "task_assignment" || notification.type === "task_update") && (
+                              <CheckSquare className="h-4 w-4 text-blue-500" />
+                            )}
+                            {(notification.type === "message" || notification.type === "mention") && (
+                              <MessageSquare className="h-4 w-4 text-green-500" />
+                            )}
+                            {(notification.type === "deadline_reminder" || notification.type === "task_overdue") && (
+                              <AlertTriangle className="h-4 w-4 text-red-500" />
+                            )}
+                            {notification.type === "task_completed" && (
+                              <CheckSquare className="h-4 w-4 text-green-500" />
+                            )}
+                            {/* Default icon if type is unknown or for general notifications */}
+                            {(!notification.type || ["system"].includes(notification.type)) && (
+                               <Bell className="h-4 w-4 text-gray-500" />
+                            )}
+                          </div>
+                          <div className="flex flex-col space-y-1 flex-1 min-w-0">
+                            <p className="text-sm pr-6 leading-tight text-slate-900 dark:text-white font-medium">
+                              {notification.content || (notification as any).notifications?.content}
+                            </p>
+                            <div className="text-[11px] text-muted-foreground font-medium">
+                              {(() => {
+                                const createdAt = notification.createdAt || (notification as any).notifications?.createdAt;
+                                if (!createdAt) return 'Just now';
+                                try {
+                                  const date = typeof createdAt === 'string'
+                                    ? parseISO(createdAt)
+                                    : new Date(createdAt);
+                                  if (!isValid(date)) return 'Just now';
+                                  return formatDistanceToNow(date, { addSuffix: true });
+                                } catch (error) {
+                                  return 'Just now';
+                                }
+                              })()}
+                            </div>
+                          </div>
+                          {!(notification.read || (notification as any).notifications?.read) && (
+                            <div className="absolute top-4 right-10 h-2 w-2 rounded-full bg-blue-500" />
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
+                            onClick={(e) => deleteNotification(notification.id || (notification as any).notifications?.id, e)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuItem>
+                      ))}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 h-6 w-6 opacity-60 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity"
-                    onClick={(e) => deleteNotification(notification.id, e)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuItem>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
         )}

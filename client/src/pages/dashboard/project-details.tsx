@@ -31,8 +31,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox"; // Added import for Checkbox
-import { useState } from "react"; //Import useState
+import { useState, useEffect } from "react"; //Import useState and useEffect
 
 const deliverableSchema = z.object({
   name: z.string().min(1, "Deliverable name is required"),
@@ -75,6 +76,50 @@ export default function ProjectDetails() {
         throw new Error(`Failed to load project: ${response.status}`);
       }
       return response.json();
+    },
+  });
+
+  // Fetch project tasks to calculate progress
+  const { data: tasks } = useQuery<any[]>({
+    queryKey: [`/api/projects/${id}/tasks`],
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${id}/tasks`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  const completedTasksCount = tasks?.filter(t => t.status === "completed").length || 0;
+  const totalTasksCount = tasks?.length || 0;
+  const calculatedProgress = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
+  const allTasksCompleted = totalTasksCount > 0 && completedTasksCount === totalTasksCount;
+
+  // Mutation to complete project
+  const completeProject = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/projects/${id}/complete`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to complete project");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
+      toast({
+        title: "Success",
+        description: "Project marked as completed!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -234,6 +279,26 @@ export default function ProjectDetails() {
     }
   };
 
+  useEffect(() => {
+    const handleTaskUpdate = (event: any) => {
+      console.log("Real-time task update detected for project:", id, "Event:", event.type);
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}/tasks`] });
+      // Invalidate specific project tasks key used in TaskList
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", parseInt(id!), "tasks"] });
+    };
+
+    window.addEventListener('websocket:task_created', handleTaskUpdate);
+    window.addEventListener('websocket:task_updated', handleTaskUpdate);
+    window.addEventListener('websocket:task_deleted', handleTaskUpdate);
+
+    return () => {
+      window.removeEventListener('websocket:task_created', handleTaskUpdate);
+      window.removeEventListener('websocket:task_updated', handleTaskUpdate);
+      window.removeEventListener('websocket:task_deleted', handleTaskUpdate);
+    };
+  }, [id, queryClient]);
+
   if (isLoading) {
     return (
       <div className="flex h-screen">
@@ -379,7 +444,7 @@ export default function ProjectDetails() {
           </div>
 
           {/* Project Overview - Hidden for support and maintenance clients */}
-          {user?.clientType !== 'support_maintenance_client' && (
+          {(user as any)?.clientType !== 'support_maintenance_client' && (
             <div className="mb-8">
               <Card>
                 <CardHeader>
@@ -440,11 +505,23 @@ export default function ProjectDetails() {
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span>Completion</span>
-                            <span>{project.progress || 0}%</span>
+                            <span>{calculatedProgress}%</span>
                           </div>
-                          <Progress value={project.progress || 0} className="w-full" />
+                          <Progress value={calculatedProgress} className="w-full" />
                         </div>
                       </div>
+
+                      {isProjectManager && project.status !== "completed" && allTasksCompleted && (
+                        <div className="pt-2">
+                          <Button 
+                            className="w-full bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => completeProject.mutate()}
+                            disabled={completeProject.isPending}
+                          >
+                            {completeProject.isPending ? "Completing..." : "Click to complete project"}
+                          </Button>
+                        </div>
+                      )}
 
                       {project.teamMembers && project.teamMembers.length > 0 && (
                         <div className="flex items-center gap-3">
@@ -483,7 +560,7 @@ export default function ProjectDetails() {
           )}
 
           {/* Project Plan Section - Hidden for support and maintenance clients */}
-          {user?.clientType !== 'support_maintenance_client' && (
+          {(user as any)?.clientType !== 'support_maintenance_client' && (
             <div className="mb-8">
               <Card>
                 <CardHeader>
@@ -528,9 +605,40 @@ export default function ProjectDetails() {
                                 <div key={index} className="border rounded-lg p-3">
                                   <div className="flex items-center justify-between mb-2">
                                     <h5 className="font-medium">{deliverable.name}</h5>
-                                    <Badge variant="outline">
-                                      {deliverable.status || 'Pending'}
-                                    </Badge>
+                                    <Select
+                                      defaultValue={deliverable.status || 'pending'}
+                                      onValueChange={async (newStatus) => {
+                                        try {
+                                          const response = await fetch(`/api/deliverables/${deliverable.id}/status`, {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ status: newStatus }),
+                                          });
+                                          if (!response.ok) throw new Error('Failed to update status');
+                                          queryClient.invalidateQueries({ queryKey: [`/api/project-plans/${projectPlan.id}`] });
+                                          toast({
+                                            title: "Success",
+                                            description: "Deliverable status updated",
+                                          });
+                                        } catch (error) {
+                                          toast({
+                                            title: "Error",
+                                            description: "Failed to update status",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="w-[130px] h-8 text-xs">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="pending">Pending</SelectItem>
+                                        <SelectItem value="in_progress">In Progress</SelectItem>
+                                        <SelectItem value="completed">Completed</SelectItem>
+                                        <SelectItem value="overdue">Overdue</SelectItem>
+                                      </SelectContent>
+                                    </Select>
                                   </div>
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
                                     <div>

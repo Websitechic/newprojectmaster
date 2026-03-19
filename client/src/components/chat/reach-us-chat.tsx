@@ -28,6 +28,7 @@ interface DirectMessage {
   read: boolean;
   createdAt: string;
   senderName: string;
+  updatedAt?: string;
 }
 
 interface Conversation {
@@ -127,42 +128,21 @@ export function ReachUsChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Listen for real-time messages via SSE
+  // Listen for direct message events from GlobalNotificationListener (App.tsx)
   useEffect(() => {
-    const eventSource = new EventSource("/api/notifications/stream");
-
-    eventSource.onopen = () => {
-      if (isMounted) {
-        console.log("SSE connection opened");
-      }
+    const handleDirectMessage = () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/direct-messages"]
+      }).catch(console.error);
     };
 
-    eventSource.onmessage = (event) => {
-      if (!isMounted) return;
-
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "direct_message") {
-          queryClient.invalidateQueries({
-            queryKey: ["/api/direct-messages"]
-          }).catch(console.error);
-        }
-      } catch (error) {
-        console.error("Error parsing SSE message:", error);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      if (isMounted) {
-        console.error("SSE error:", error);
-      }
-    };
+    window.addEventListener('direct-message-received', handleDirectMessage);
 
     return () => {
       isMounted = false;
-      eventSource.close();
+      window.removeEventListener('direct-message-received', handleDirectMessage);
     };
-  }, [user?.id, queryClient]);
+  }, [queryClient]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedUser) return;
@@ -318,6 +298,9 @@ export function ReachUsChat() {
                     <p className="text-sm">{message.content}</p>
                     <p className="text-xs opacity-70 mt-1">
                       {new Date(message.createdAt).toLocaleTimeString()}
+                      {message.updatedAt && new Date(message.updatedAt).getTime() > new Date(message.createdAt).getTime() + 1000 && (
+                        <span className="italic ml-1">• edited</span>
+                      )}
                     </p>
                   </div>
                 </div>

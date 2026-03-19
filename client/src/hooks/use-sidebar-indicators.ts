@@ -96,7 +96,7 @@ export function useSidebarIndicators(): SidebarIndicators {
     refetchInterval: 10000,
   });
 
-  // Extension Requests: Visible when requests approved/declined, not visible after opening page
+  // Extension Requests: Visible when requests approved/declined for staff, or pending for managers
   const { data: extensionRequestUpdates = false } = useQuery({
     queryKey: ["/api/deadline-extension-requests/has-updates"],
     queryFn: async () => {
@@ -112,7 +112,7 @@ export function useSidebarIndicators(): SidebarIndicators {
         return false;
       }
     },
-    enabled: user?.role === "staff" || user?.role === "intern",
+    enabled: !!user,
     refetchInterval: 10000,
   });
 

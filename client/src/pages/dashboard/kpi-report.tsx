@@ -15,6 +15,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Download, FileText, FileSpreadsheet, FileDown, Calendar, User, Building2, TrendingUp, Users } from "lucide-react";
 import { format, subDays, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface StaffMember {
   id: number;
@@ -28,7 +30,7 @@ interface DailyProductivity {
   date: string;
   totalSpanHours: number;
   actualWorkHours: number;
-  performanceStatus: 'poor' | 'fair' | 'good';
+  performanceStatus: 'poor' | 'fair' | 'good' | 'excessive_hours'; // Added 'excessive_hours'
   performanceColor: string;
   taskCount: number;
   tasks: string[];
@@ -80,6 +82,7 @@ const getStatusColor = (status: string) => {
     case 'good': return 'bg-green-100 text-green-800';
     case 'fair': return 'bg-yellow-100 text-yellow-800';
     case 'poor': return 'bg-red-100 text-red-800';
+    case 'excessive_hours': return 'bg-red-700 text-white'; // Stronger red for excessive hours
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -89,6 +92,120 @@ const formatTime = (hours: number) => {
   const m = Math.floor((hours - h) * 60);
   return `${h}h ${m}m`;
 };
+
+function PenaltiesSection({ 
+  selectedStaff, 
+  dateRange, 
+  useCustomRange, 
+  customStartDate, 
+  customEndDate 
+}: { 
+  selectedStaff: string;
+  dateRange: number;
+  useCustomRange: boolean;
+  customStartDate: Date | undefined;
+  customEndDate: Date | undefined;
+}) {
+  const { data: penalties, isLoading } = useQuery({
+    queryKey: ["/api/staff-queries", selectedStaff, dateRange, customStartDate, customEndDate, useCustomRange],
+    queryFn: async () => {
+      if (!selectedStaff) return [];
+      
+      const response = await fetch('/api/staff-queries');
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch penalties");
+      }
+      
+      const allQueries = await response.json();
+      
+      // Filter by staff ID and date range
+      let endDate: Date;
+      let startDate: Date;
+
+      if (useCustomRange && customStartDate && customEndDate) {
+        startDate = customStartDate;
+        endDate = customEndDate;
+      } else {
+        endDate = new Date();
+        startDate = subDays(endDate, dateRange);
+      }
+      
+      return allQueries.filter((query: any) => {
+        const queryDate = new Date(query.createdAt);
+        return query.staffId === parseInt(selectedStaff) && 
+               queryDate >= startDate && 
+               queryDate <= endDate;
+      });
+    },
+    enabled: !!selectedStaff,
+  });
+
+  // Fetch all users to get sender names
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      const response = await fetch("/api/users");
+      if (!response.ok) throw new Error("Failed to fetch users");
+      return response.json();
+    },
+  });
+
+  const formatReason = (reason: string) => {
+    return reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="border-b pb-2">
+        <h3 className="text-lg font-semibold text-gray-900">Penalties</h3>
+      </div>
+
+      {isLoading ? (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <p className="text-sm text-gray-600">Loading penalties...</p>
+        </div>
+      ) : penalties && penalties.length > 0 ? (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reason</TableHead>
+                <TableHead>Likely Penalty</TableHead>
+                <TableHead>Sent By</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {penalties.map((penalty: any) => (
+                <TableRow key={penalty.id}>
+                  <TableCell>{formatReason(penalty.reason)}</TableCell>
+                  <TableCell>{penalty.likelyPenalty || 'N/A'}</TableCell>
+                  <TableCell>
+                    {penalty.senderId 
+                      ? (allUsers.find((u: any) => u.id === penalty.senderId)?.name || 'Unknown')
+                      : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={penalty.status === 'resolved' ? 'default' : penalty.status === 'acknowledged' ? 'secondary' : 'outline'}>
+                      {penalty.status.charAt(0).toUpperCase() + penalty.status.slice(1)}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <p className="text-sm text-gray-600">
+            No penalties recorded for this period.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function DailyProductivityRow({ day }: { day: DailyProductivity }) {
   const [showAllTasks, setShowAllTasks] = useState(false);
@@ -114,7 +231,7 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
       <TableCell className="font-medium">
         {format(new Date(day.date), "MMM dd, yyyy")}
       </TableCell>
-      <TableCell>{formatTime(day.totalSpanHours)}</TableCell>
+      <TableCell>{formatTime(day.actualWorkHours)}</TableCell>
       <TableCell className="w-[250px]">
         <div className="space-y-1">
           <span className="text-sm font-medium text-gray-900 block">
@@ -123,7 +240,7 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
           {tasksList.length > 0 ? (
             <div className="space-y-1">
               {displayTasks.map((task, taskIndex) => (
-                <div 
+                <div
                   key={taskIndex}
                   className="text-xs text-gray-600 break-words"
                   style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
@@ -136,8 +253,8 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
                   onClick={() => setShowAllTasks(!showAllTasks)}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
                 >
-                  {showAllTasks 
-                    ? '↑ Show Less' 
+                  {showAllTasks
+                    ? '↑ Show Less'
                     : `↓ Show ${tasksList.length - 3} More`
                   }
                 </button>
@@ -150,7 +267,7 @@ function DailyProductivityRow({ day }: { day: DailyProductivity }) {
       </TableCell>
       <TableCell>
         <Badge className={getStatusColor(day.performanceStatus)}>
-          {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1)}
+          {day.performanceStatus.charAt(0).toUpperCase() + day.performanceStatus.slice(1).replace('_', ' ')} {/* Replaced _ with space */}
         </Badge>
       </TableCell>
     </TableRow>
@@ -260,9 +377,9 @@ export default function KPIReportPage() {
     });
 
     // Calculate totals
-    const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
+    const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
       sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-    const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
+    const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
       sum + Math.floor((task.timeSpent || 0) / 60), 0);
     const productivity = totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
 
@@ -276,7 +393,7 @@ export default function KPIReportPage() {
     // Staff info section
     data.push(['Staff Name:', staffMember.name]);
     data.push(['Department:', selectedDepartment.replace(/_/g, ' ').toUpperCase()]);
-    data.push(['Report Period:', useCustomRange && customStartDate && customEndDate 
+    data.push(['Report Period:', useCustomRange && customStartDate && customEndDate
       ? `${format(customStartDate, 'MMM dd, yyyy')} - ${format(customEndDate, 'MMM dd, yyyy')}`
       : `Last ${dateRange} Days`]);
     data.push(['Generated:', format(new Date(), 'MMM dd, yyyy HH:mm')]);
@@ -287,8 +404,10 @@ export default function KPIReportPage() {
     data.push(['Metric', 'Value']);
     data.push(['Total Working Days', productivityData.summary.totalDays]);
     data.push(['Average Daily Hours', formatTimeForExport((() => {
-      const totalMinutes = productivityData.dailyData.reduce((sum, day) => sum + (day.totalSpanHours * 60), 0);
-      return totalMinutes / productivityData.summary.totalDays / 60;
+      const validDays = productivityData.dailyData.filter(day => day.totalSpanHours > 0 && day.totalSpanHours <= 9);
+      if (validDays.length === 0) return 0;
+      const totalMinutes = validDays.reduce((sum, day) => sum + (day.totalSpanHours * 60), 0);
+      return totalMinutes / validDays.length / 60;
     })())]);
     data.push(['Good Performance Days', productivityData.summary.goodDays]);
     data.push(['Fair Performance Days', productivityData.summary.fairDays]);
@@ -301,15 +420,15 @@ export default function KPIReportPage() {
     data.push(['Date', 'Total Hours Worked', 'Tasks Completed', 'Performance Status']);
 
     // Daily data sorted by date (newest first)
-    const sortedDailyData = [...productivityData.dailyData].sort((a, b) => 
+    const sortedDailyData = [...productivityData.dailyData].sort((a, b) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
     sortedDailyData.forEach(day => {
-      const tasksList = day.taskBreakdown?.map(t => t.title).filter(Boolean) || 
+      const tasksList = day.taskBreakdown?.map(t => t.title).filter(Boolean) ||
                        day.tasks?.filter(Boolean) || [];
-      const tasksDisplay = tasksList.length > 0 
-        ? `${tasksList.length} task(s): ${tasksList.join(', ')}` 
+      const tasksDisplay = tasksList.length > 0
+        ? `${tasksList.length} task(s): ${tasksList.join(', ')}`
         : 'No tasks recorded';
 
       data.push([
@@ -470,9 +589,9 @@ export default function KPIReportPage() {
         });
 
         // Calculate totals
-        const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
+        const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
           sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-        const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) => 
+        const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
           sum + Math.floor((task.timeSpent || 0) / 60), 0);
         const productivity = totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
 
@@ -486,7 +605,7 @@ export default function KPIReportPage() {
         // Staff info section
         data.push(['Staff Name:', staff.name]);
         data.push(['Department:', selectedDepartment.replace(/_/g, ' ').toUpperCase()]);
-        data.push(['Report Period:', useCustomRange && customStartDate && customEndDate 
+        data.push(['Report Period:', useCustomRange && customStartDate && customEndDate
           ? `${format(customStartDate, 'MMM dd, yyyy')} - ${format(customEndDate, 'MMM dd, yyyy')}`
           : `Last ${dateRange} Days`]);
         data.push(['Generated:', format(new Date(), 'MMM dd, yyyy HH:mm')]);
@@ -497,8 +616,10 @@ export default function KPIReportPage() {
         data.push(['Metric', 'Value']);
         data.push(['Total Working Days', staffProductivityData.summary.totalDays]);
         data.push(['Average Daily Hours', formatTimeForExport((() => {
-          const totalMinutes = staffProductivityData.dailyData.reduce((sum: any, day: any) => sum + (day.totalSpanHours * 60), 0);
-          return totalMinutes / staffProductivityData.summary.totalDays / 60;
+          const validDays = staffProductivityData.dailyData.filter((day: any) => day.totalSpanHours > 0 && day.totalSpanHours <= 9);
+          if (validDays.length === 0) return 0;
+          const totalMinutes = validDays.reduce((sum: any, day: any) => sum + (day.totalSpanHours * 60), 0);
+          return totalMinutes / validDays.length / 60;
         })())]);
         data.push(['Good Performance Days', staffProductivityData.summary.goodDays]);
         data.push(['Fair Performance Days', staffProductivityData.summary.fairDays]);
@@ -511,15 +632,15 @@ export default function KPIReportPage() {
         data.push(['Date', 'Total Hours Worked', 'Tasks Completed', 'Performance Status']);
 
         // Daily data sorted by date (newest first)
-        const sortedDailyData = [...staffProductivityData.dailyData].sort((a: any, b: any) => 
+        const sortedDailyData = [...staffProductivityData.dailyData].sort((a: any, b: any) =>
           new Date(b.date).getTime() - new Date(a.date).getTime()
         );
 
         sortedDailyData.forEach((day: any) => {
-          const tasksList = day.taskBreakdown?.map((t: any) => t.title).filter(Boolean) || 
+          const tasksList = day.taskBreakdown?.map((t: any) => t.title).filter(Boolean) ||
                            day.tasks?.filter(Boolean) || [];
-          const tasksDisplay = tasksList.length > 0 
-            ? `${tasksList.length} task(s): ${tasksList.join(', ')}` 
+          const tasksDisplay = tasksList.length > 0
+            ? `${tasksList.length} task(s): ${tasksList.join(', ')}`
             : 'No tasks recorded';
 
           data.push([
@@ -643,6 +764,257 @@ export default function KPIReportPage() {
 
   const selectedStaffMember = staffMembers.find(s => s.id.toString() === selectedStaff);
 
+  // Helper function to get all tasks for the current productivityData
+  const getAllTasks = () => {
+    const tasksMap = new Map();
+    if (productivityData?.dailyData) {
+      productivityData.dailyData.forEach((day: any) => {
+        if (day.taskBreakdown) {
+          day.taskBreakdown.forEach((task: any) => {
+            if (!tasksMap.has(task.id)) {
+              tasksMap.set(task.id, task);
+            }
+          });
+        }
+      });
+    }
+    return tasksMap;
+  };
+  const allTasks = getAllTasks();
+
+  const handleExportStaffSummaryPDF = async () => {
+    if (!selectedStaffMember || !productivityData) return;
+
+    const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let y = 15;
+
+    // Header
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Staff Summary Report', 105, y, { align: 'center' });
+    y += 10;
+
+    // Staff Info
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Staff Information', 15, y);
+    y += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+
+    // Calculate average hours (same as "Avg Hours" - excluding excessive hours)
+    const validDays = productivityData.dailyData.filter(day => {
+      const totalMinutes = day.actualWorkHours * 60;
+      return totalMinutes > 0 && totalMinutes <= 540; // Exclude 0 and > 9 hours
+    });
+
+    const totalMinutes = validDays.reduce((sum, day) => sum + (day.actualWorkHours * 60), 0);
+    const avgMinutesPerDay = validDays.length > 0 ? totalMinutes / validDays.length : 0;
+    
+    const avgHoursDisplay = (() => {
+      const h = Math.floor(avgMinutesPerDay / 60);
+      const m = Math.round(avgMinutesPerDay % 60);
+      return `${h} hr ${m}m`;
+    })();
+
+    const staffInfoData = [
+      ['Name:', selectedStaffMember.name || 'N/A'],
+      ['Average Hours Worked:', avgHoursDisplay],
+      ['Productivity Score:', (() => {
+        const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
+          sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
+        const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
+          sum + Math.floor((task.timeSpent || 0) / 60), 0);
+        return totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
+      })() + '%']
+    ];
+
+    staffInfoData.forEach(row => {
+      doc.text(row[0], 15, y);
+      doc.setFont('helvetica', 'bold');
+      doc.text(row[1], 75, y);
+      doc.setFont('helvetica', 'normal');
+      y += 7;
+    });
+    y += 5;
+
+    // Performance Breakdown
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Performance Breakdown', 15, y);
+    y += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+
+    const performanceData = [
+      ['Good Days:', productivityData.summary.goodDays],
+      ['Fair Days:', productivityData.summary.fairDays],
+      ['Poor Days:', productivityData.summary.poorDays]
+    ];
+
+    performanceData.forEach(row => {
+      doc.text(row[0], 15, y);
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(row[1]), 75, y);
+      doc.setFont('helvetica', 'normal');
+      y += 7;
+    });
+    y += 10;
+
+    // Tasks List - All tasks worked on within date range
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`List of Tasks Performed (${allTasks.size} tasks)`, 15, y);
+    y += 7;
+
+    const taskTableHeaders = ['Task Name', 'Assigned Time', 'Actual Time', 'Status'];
+    const taskTableData = Array.from(allTasks.values()).map((task: any) => {
+      const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
+      const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
+
+      // Format status display (match Staff Summary tab logic)
+      let displayStatus = task.status || 'N/A';
+      switch (displayStatus.toLowerCase()) {
+        case 'missed_deadline':
+        case 'missed-deadline':
+        case 'missed deadline':
+        case 'pending':
+          displayStatus = 'Missed Deadline';
+          break;
+        case 'in_progress':
+        case 'in-progress':
+          displayStatus = 'In Progress';
+          break;
+        case 'todo':
+          displayStatus = 'To Do';
+          break;
+        case 'technical_support':
+          displayStatus = 'Technical Support';
+          break;
+        case 'completed':
+          displayStatus = 'Completed';
+          break;
+        default:
+          // Capitalize first letter of other statuses
+          displayStatus = displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1).replace(/_/g, ' ');
+      }
+
+      return [
+        task.title || 'Untitled Task',
+        formatMinutesForExport(assignedMinutes),
+        formatMinutesForExport(actualMinutes),
+        displayStatus
+      ];
+    });
+
+    if (y + 20 > pageHeight - 15) {
+      doc.addPage();
+      y = 15;
+    }
+
+    autoTable(doc, {
+      startY: y,
+      head: [taskTableHeaders],
+      body: taskTableData,
+      theme: 'striped',
+      headStyles: { fillColor: [229, 231, 235], textColor: [17, 24, 39], fontStyle: 'bold' },
+      bodyStyles: { textColor: [75, 85, 99] },
+      columnStyles: {
+        0: { cellWidth: 70 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 40 }
+      },
+      margin: { left: 15, right: 15 },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    // Fetch and display penalties
+    try {
+      let endDate: Date;
+      let startDate: Date;
+
+      if (useCustomRange && customStartDate && customEndDate) {
+        startDate = customStartDate;
+        endDate = customEndDate;
+      } else {
+        endDate = new Date();
+        startDate = subDays(endDate, dateRange);
+      }
+
+      const penaltiesResponse = await fetch('/api/staff-queries');
+      const usersResponse = await fetch('/api/users');
+
+      if (penaltiesResponse.ok && usersResponse.ok) {
+        const allQueries = await penaltiesResponse.json();
+        const allUsers = await usersResponse.json();
+        
+        // Filter by staff ID and date range
+        const penalties = allQueries.filter((query: any) => {
+          const queryDate = new Date(query.createdAt);
+          return query.staffId === parseInt(selectedStaff) && 
+                 queryDate >= startDate && 
+                 queryDate <= endDate;
+        });
+
+        if (y + 20 > pageHeight - 15) {
+          doc.addPage();
+          y = 15;
+        }
+
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Penalties', 15, y);
+        y += 7;
+
+        if (penalties.length > 0) {
+          const formatReason = (reason: string) => {
+            return reason.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+          };
+
+          const penaltyTableHeaders = ['Reason', 'Likely Penalty', 'Sent By', 'Status'];
+          const penaltyTableData = penalties.map((penalty: any) => [
+            formatReason(penalty.reason),
+            penalty.likelyPenalty || 'N/A',
+            penalty.senderId 
+              ? (allUsers.find((u: any) => u.id === penalty.senderId)?.name || 'Unknown')
+              : 'N/A',
+            penalty.status.charAt(0).toUpperCase() + penalty.status.slice(1)
+          ]);
+
+          autoTable(doc, {
+            startY: y,
+            head: [penaltyTableHeaders],
+            body: penaltyTableData,
+            theme: 'striped',
+            headStyles: { fillColor: [229, 231, 235], textColor: [17, 24, 39], fontStyle: 'bold' },
+            bodyStyles: { textColor: [75, 85, 99] },
+            columnStyles: {
+              0: { cellWidth: 50 },
+              1: { cellWidth: 50 },
+              2: { cellWidth: 45 },
+              3: { cellWidth: 35 }
+            },
+            margin: { left: 15, right: 15 },
+          });
+        } else {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+          doc.text('No penalties recorded for this period.', 15, y);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching penalties:', error);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text('Error loading penalties.', 15, y);
+    }
+
+    doc.save(`Staff-Summary-Report-${selectedStaffMember.name.replace(/\s+/g, '-')}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentPath="/dashboard/kpi-report" />
@@ -714,8 +1086,8 @@ export default function KPIReportPage() {
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
                       Employee
                     </label>
-                    <Select 
-                      value={selectedStaff} 
+                    <Select
+                      value={selectedStaff}
                       onValueChange={setSelectedStaff}
                       disabled={!selectedDepartment}
                     >
@@ -737,8 +1109,8 @@ export default function KPIReportPage() {
                       Date Range
                     </label>
                     <div className="flex gap-2">
-                      <Select 
-                        value={useCustomRange ? "custom" : dateRange.toString()} 
+                      <Select
+                        value={useCustomRange ? "custom" : dateRange.toString()}
                         onValueChange={(value) => {
                           if (value === "custom") {
                             setUseCustomRange(true);
@@ -766,45 +1138,49 @@ export default function KPIReportPage() {
                             <Calendar className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-3 max-w-[300px]" align="end" side="bottom" sideOffset={10}>
-                          <div className="space-y-3">
-                            <div>
-                              <label className="text-xs font-medium mb-1.5 block text-gray-700">Start Date</label>
-                              <CalendarComponent
-                                mode="single"
-                                selected={customStartDate}
-                                onSelect={(date) => {
-                                  setCustomStartDate(date);
-                                  setUseCustomRange(true);
-                                }}
-                                className="rounded-md border-0"
-                              />
+                        <PopoverContent className="w-auto p-2" align="end" side="bottom" sideOffset={10}>
+                          <div className="flex flex-col md:flex-row gap-2">
+                            <div className="w-auto">
+                              <label className="text-[10px] font-bold mb-1 block text-gray-900 text-center uppercase tracking-wider">Start Date</label>
+                              <div className="border rounded-md p-1 bg-white">
+                                <CalendarComponent
+                                  mode="single"
+                                  selected={customStartDate}
+                                  onSelect={(date) => {
+                                    setCustomStartDate(date);
+                                    setUseCustomRange(true);
+                                  }}
+                                  className="rounded-md border-0"
+                                />
+                              </div>
                             </div>
-                            <div className="border-t pt-2">
-                              <label className="text-xs font-medium mb-1.5 block text-gray-700">End Date</label>
-                              <CalendarComponent
-                                mode="single"
-                                selected={customEndDate}
-                                onSelect={(date) => {
-                                  setCustomEndDate(date);
-                                  setUseCustomRange(true);
-                                }}
-                                disabled={(date) => customStartDate ? date < customStartDate : false}
-                                className="rounded-md border-0"
-                              />
+                            <div className="w-auto">
+                              <label className="text-[10px] font-bold mb-1 block text-gray-900 text-center uppercase tracking-wider">End Date</label>
+                              <div className="border rounded-md p-1 bg-white">
+                                <CalendarComponent
+                                  mode="single"
+                                  selected={customEndDate}
+                                  onSelect={(date) => {
+                                    setCustomEndDate(date);
+                                    setUseCustomRange(true);
+                                  }}
+                                  disabled={(date) => customStartDate ? date < customStartDate : false}
+                                  className="rounded-md border-0"
+                                />
+                              </div>
                             </div>
-                            {customStartDate && customEndDate && (
-                              <Button 
-                                size="sm"
-                                className="w-full mt-1" 
-                                onClick={() => {
-                                  setUseCustomRange(true);
-                                }}
-                              >
-                                Apply Range
-                              </Button>
-                            )}
                           </div>
+                          {customStartDate && customEndDate && (
+                            <Button
+                              size="sm"
+                              className="w-full mt-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2"
+                              onClick={() => {
+                                setUseCustomRange(true);
+                              }}
+                            >
+                              Apply Range
+                            </Button>
+                          )}
                         </PopoverContent>
                       </Popover>
                     </div>
@@ -849,13 +1225,24 @@ export default function KPIReportPage() {
                         <p className="text-sm font-medium text-gray-600">Avg Hours</p>
                         <p className="text-2xl font-bold">
                           {(() => {
-                            // Convert each day's total span to minutes, sum them up
-                            const totalMinutes = productivityData.dailyData.reduce((sum, day) => {
-                              return sum + (day.totalSpanHours * 60);
+                            // Filter out days with 0 hours and excessive hours (> 9 hours = 540 minutes)
+                            const validDays = productivityData.dailyData.filter(day => {
+                              const totalMinutes = day.actualWorkHours * 60;
+                              return totalMinutes > 0 && totalMinutes <= 540;
+                            });
+
+                            // If no valid days, show 0
+                            if (validDays.length === 0) {
+                              return '0 hr 0m';
+                            }
+
+                            // Convert each valid day's Total Time Worked to minutes and sum
+                            const totalMinutes = validDays.reduce((sum, day) => {
+                              return sum + (day.actualWorkHours * 60);
                             }, 0);
 
-                            // Divide by number of days to get average minutes per day
-                            const avgMinutesPerDay = totalMinutes / productivityData.summary.totalDays;
+                            // Divide by number of included days to get average minutes per day
+                            const avgMinutesPerDay = totalMinutes / validDays.length;
 
                             // Convert to hours and minutes for display
                             const hours = Math.floor(avgMinutesPerDay / 60);
@@ -906,8 +1293,8 @@ export default function KPIReportPage() {
                 <CardHeader>
                   <CardTitle>Weekly Activity Tracking</CardTitle>
                   <CardDescription>
-                    Daily productivity trend for {selectedStaffMember?.name} 
-                    {useCustomRange && customStartDate && customEndDate 
+                    Total time worked for {selectedStaffMember?.name}
+                    {useCustomRange && customStartDate && customEndDate
                       ? ` (${format(customStartDate, 'MMM dd, yyyy')} - ${format(customEndDate, 'MMM dd, yyyy')})`
                       : ` (Last ${dateRange === 30 ? 'Month' : dateRange === 60 ? '2 Months' : dateRange === 180 ? '6 Months' : `${dateRange} Days`})`
                     }
@@ -917,26 +1304,25 @@ export default function KPIReportPage() {
                   <ResponsiveContainer width="100%" height={350}>
                     <BarChart data={productivityData.weeklyData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="day" 
+                      <XAxis
+                        dataKey="day"
                         tickFormatter={(value) => {
                           const date = new Date(value);
                           return format(date, 'MMM dd');
                         }}
                       />
                       <YAxis label={{ value: 'Hours', angle: -90, position: 'insideLeft' }} />
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value: number, name: string) => [
                           `${value.toFixed(2)} hours`,
-                          name === "hours" ? "Actual Work" : "Total Span"
+                          "Total Time Worked"
                         ]}
                         labelFormatter={(label) => {
                           const date = new Date(label);
                           return format(date, 'EEEE, MMM dd, yyyy');
                         }}
                       />
-                      <Bar dataKey="totalSpanHours" fill="#94A3B8" name="Total Span" />
-                      <Bar dataKey="hours" fill="#3b82f6" name="Actual Work" />
+                      <Bar dataKey="hours" fill="#3b82f6" name="Total Time Worked" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -945,208 +1331,140 @@ export default function KPIReportPage() {
 
             {/* Tabbed Content - Productivity Score & Daily Details */}
             {productivityData && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Performance Analysis</CardTitle>
-                      <CardDescription>
-                        Detailed productivity metrics and daily breakdown
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Tabs defaultValue="daily" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="daily">Daily Productivity Details</TabsTrigger>
-                      <TabsTrigger value="productivity">Productivity Score</TabsTrigger>
-                    </TabsList>
+              <Tabs defaultValue="daily" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="daily">Daily Productivity Details</TabsTrigger>
+                  <TabsTrigger value="score">Productivity Score</TabsTrigger>
+                  <TabsTrigger value="summary">Staff Summary</TabsTrigger>
+                </TabsList>
 
-                    {/* Tab 1: Daily Productivity Details */}
-                    <TabsContent value="daily" className="space-y-4">
-                      {/* Status Legend - Moved to top */}
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-900 mb-3">Performance Status Legend</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                            <div className="text-sm">
-                              <div className="font-medium text-red-700">Poor</div>
-                              <div className="text-gray-600">Less than 2 hours worked</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                            <div className="text-sm">
-                              <div className="font-medium text-yellow-700">Fair</div>
-                              <div className="text-gray-600">2 to 4 hours worked</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                            <div className="text-sm">
-                              <div className="font-medium text-green-700">Good</div>
-                              <div className="text-gray-600">4 hours or more worked</div>
-                            </div>
-                          </div>
+                {/* Tab 1: Daily Productivity Details */}
+                <TabsContent value="daily" className="space-y-4">
+                  {/* Status Legend - Modified to include Excessive Hours */}
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">Daily Performance Status Legend</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                        <div className="text-sm">
+                          <div className="font-medium text-red-700">Poor</div>
+                          <div className="text-gray-600">Less than 2 hours worked</div>
                         </div>
                       </div>
-
-                      {isLoadingProductivity ? (
-                        <div className="flex items-center justify-center p-8">
-                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                        <div className="text-sm">
+                          <div className="font-medium text-yellow-700">Fair</div>
+                          <div className="text-gray-600">2-4 hours worked</div>
                         </div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Total Span</TableHead>
-                              <TableHead className="w-[250px]">Tasks</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {[...productivityData.dailyData]
-                              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                              .map((day, index) => (
-                                <DailyProductivityRow key={index} day={day} />
-                              ))}
-                          </TableBody>
-                        </Table>
-                      )}
-                    </TabsContent>
-
-                    {/* Tab 2: Productivity Score */}
-                    <TabsContent value="productivity" className="space-y-4">
-                      <div className="mt-4">
-                        {/* Productivity Calculation - Moved to top */}
-                        <div className="mb-6 p-6 bg-blue-50 rounded-lg">
-                          <div className="text-center space-y-4">
-                            <div className="text-lg font-semibold text-gray-900">
-                              Productivity Calculation
-                            </div>
-                            <div className="flex items-center justify-center gap-2 text-xl">
-                              <span>Productivity % = </span>
-                              <span className="inline-flex items-center">
-                                (<span className="mx-1">
-                                  {(() => {
-                                    // Get all unique tasks from all days in the date range
-                                    const allTasks = new Map();
-                                    productivityData.dailyData.forEach((day: any) => {
-                                      if (day.taskBreakdown) {
-                                        day.taskBreakdown.forEach((task: any) => {
-                                          // Only add if not already in map (ensures uniqueness)
-                                          if (!allTasks.has(task.id)) {
-                                            allTasks.set(task.id, task);
-                                          }
-                                        });
-                                      }
-                                    });
-                                    const uniqueTasks = Array.from(allTasks.values());
-                                    const totalAssigned = uniqueTasks.reduce((sum: number, task: any) => 
-                                      sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-                                    return totalAssigned;
-                                  })()}
-                                </span>)
-                              </span>
-                              <span>/</span>
-                              <span className="inline-flex items-center">
-                                (<span className="mx-1">
-                                  {(() => {
-                                    // Get all unique tasks from all days in the date range
-                                    const allTasks = new Map();
-                                    productivityData.dailyData.forEach((day: any) => {
-                                      if (day.taskBreakdown) {
-                                        day.taskBreakdown.forEach((task: any) => {
-                                          if (!allTasks.has(task.id)) {
-                                            allTasks.set(task.id, task);
-                                          }
-                                        });
-                                      }
-                                    });
-                                    const uniqueTasks = Array.from(allTasks.values());
-                                    const totalActual = uniqueTasks.reduce((sum: number, task: any) => 
-                                      sum + Math.floor((task.timeSpent || 0) / 60), 0);
-                                    return totalActual;
-                                  })()}
-                                </span>)
-                              </span>
-                              <span>× 100 = </span>
-                              <span className="text-blue-600 font-bold">
-                                {(() => {
-                                  const allTasks = new Map();
-                                  productivityData.dailyData.forEach((day: any) => {
-                                    if (day.taskBreakdown) {
-                                      day.taskBreakdown.forEach((task: any) => {
-                                        if (!allTasks.has(task.id)) {
-                                          allTasks.set(task.id, task);
-                                        }
-                                      });
-                                    }
-                                  });
-                                  const uniqueTasks = Array.from(allTasks.values());
-                                  const totalAssigned = uniqueTasks.reduce((sum: number, task: any) => 
-                                    sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-                                  const totalActual = uniqueTasks.reduce((sum: number, task: any) => 
-                                    sum + Math.floor((task.timeSpent || 0) / 60), 0);
-                                  const productivity = totalActual > 0 ? Math.round((totalAssigned / totalActual) * 100) : 0;
-                                  return productivity;
-                                })()}%
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-center gap-2 text-sm text-gray-700">
-                              <span className="inline-flex items-center gap-1">
-                                ℹ️ This means the worker was
-                                <span className="font-semibold text-blue-600">
-                                  {(() => {
-                                    const allTasks = new Map();
-                                    productivityData.dailyData.forEach((day: any) => {
-                                      if (day.taskBreakdown) {
-                                        day.taskBreakdown.forEach((task: any) => {
-                                          if (!allTasks.has(task.id)) {
-                                            allTasks.set(task.id, task);
-                                          }
-                                        });
-                                      }
-                                    });
-                                    const uniqueTasks = Array.from(allTasks.values());
-                                    const totalAssigned = uniqueTasks.reduce((sum: number, task: any) => 
-                                      sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-                                    const totalActual = uniqueTasks.reduce((sum: number, task: any) => 
-                                      sum + Math.floor((task.timeSpent || 0) / 60), 0);
-                                    const productivity = totalActual > 0 ? Math.round((totalAssigned / totalActual) * 100) : 0;
-                                    return productivity >= 100 ? "more efficient" : "less efficient";
-                                  })()}
-                                </span>
-                                than expected.
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-600 mt-2">
-                              Showing unique tasks worked on within the selected date range
-                            </div>
-                          </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                        <div className="text-sm">
+                          <div className="font-medium text-green-700">Good</div>
+                          <div className="text-gray-600">4-9 hours worked</div>
                         </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#DC2626' }}></div>
+                        <div className="text-sm">
+                          <div className="font-medium" style={{ color: '#DC2626' }}>Excessive Hours</div>
+                          <div className="text-gray-600">Over 9 hours worked</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-xs text-gray-500">
+                      <strong>Note:</strong> Blue bars show total time worked. Performance is based on total time worked.
+                    </div>
+                  </div>
 
-                        {/* Task Breakdown Table */}
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Task Name</TableHead>
-                              <TableHead>Assigned Time (min)</TableHead>
-                              <TableHead>Actual Time Spent (min)</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
+                  {isLoadingProductivity ? (
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Total Time Worked</TableHead>
+                          <TableHead className="w-[250px]">Tasks</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {[...productivityData.dailyData]
+                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                          .map((day, index) => (
+                            <DailyProductivityRow key={index} day={day} />
+                          ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </TabsContent>
+
+                {/* Tab 2: Productivity Score */}
+                <TabsContent value="score" className="space-y-4">
+                  <div className="mt-4">
+                    {/* Productivity Calculation - Moved to top */}
+                    <div className="mb-6 p-6 bg-blue-50 rounded-lg">
+                      <div className="text-center space-y-4">
+                        <div className="text-lg font-semibold text-gray-900">
+                          Productivity Calculation
+                        </div>
+                        <div className="flex items-center justify-center gap-2 text-xl">
+                          <span>Productivity % = </span>
+                          <span className="inline-flex items-center">
+                            (<span className="mx-1">
+                              {(() => {
+                                // Get all unique tasks from all days in the date range
+                                const allTasks = new Map();
+                                productivityData.dailyData.forEach((day: any) => {
+                                  if (day.taskBreakdown) {
+                                    day.taskBreakdown.forEach((task: any) => {
+                                      // Only add if not already in map (ensures uniqueness)
+                                      if (!allTasks.has(task.id)) {
+                                        allTasks.set(task.id, task);
+                                      }
+                                    });
+                                  }
+                                });
+                                const uniqueTasks = Array.from(allTasks.values());
+                                const totalAssigned = uniqueTasks.reduce((sum: number, task: any) =>
+                                  sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
+                                return totalAssigned;
+                              })()}
+                            </span>)
+                          </span>
+                          <span>/</span>
+                          <span className="inline-flex items-center">
+                            (<span className="mx-1">
+                              {(() => {
+                                // Get all unique tasks from all days in the date range
+                                const allTasks = new Map();
+                                productivityData.dailyData.forEach((day: any) => {
+                                  if (day.taskBreakdown) {
+                                    day.taskBreakdown.forEach((task: any) => {
+                                      if (!allTasks.has(task.id)) {
+                                        allTasks.set(task.id, task);
+                                      }
+                                    });
+                                  }
+                                });
+                                const uniqueTasks = Array.from(allTasks.values());
+                                const totalActual = uniqueTasks.reduce((sum: number, task: any) =>
+                                  sum + Math.floor((task.timeSpent || 0) / 60), 0);
+                                return totalActual;
+                              })()}
+                            </span>)
+                          </span>
+                          <span>× 100 = </span>
+                          <span className="text-blue-600 font-bold">
                             {(() => {
-                              // Get all unique tasks from all days in the date range
                               const allTasks = new Map();
                               productivityData.dailyData.forEach((day: any) => {
                                 if (day.taskBreakdown) {
                                   day.taskBreakdown.forEach((task: any) => {
-                                    // Use task.id as key to ensure uniqueness
                                     if (!allTasks.has(task.id)) {
                                       allTasks.set(task.id, task);
                                     }
@@ -1154,102 +1472,391 @@ export default function KPIReportPage() {
                                 }
                               });
                               const uniqueTasks = Array.from(allTasks.values());
+                              const totalAssigned = uniqueTasks.reduce((sum: number, task: any) =>
+                                sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
+                              const totalActual = uniqueTasks.reduce((sum: number, task: any) =>
+                                sum + Math.floor((task.timeSpent || 0) / 60), 0);
+                              const productivity = totalActual > 0 ? Math.round((totalAssigned / totalActual) * 100) : 0;
+                              return productivity;
+                            })()}%
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 text-sm text-gray-700">
+                          <span className="inline-flex items-center gap-1">
+                            ℹ️ This means the worker was
+                            <span className="font-semibold text-blue-600">
+                              {(() => {
+                                const allTasks = new Map();
+                                productivityData.dailyData.forEach((day: any) => {
+                                  if (day.taskBreakdown) {
+                                    day.taskBreakdown.forEach((task: any) => {
+                                      if (!allTasks.has(task.id)) {
+                                        allTasks.set(task.id, task);
+                                      }
+                                    });
+                                  }
+                                });
+                                const uniqueTasks = Array.from(allTasks.values());
+                                const totalAssigned = uniqueTasks.reduce((sum: number, task: any) =>
+                                  sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
+                                const totalActual = uniqueTasks.reduce((sum: number, task: any) =>
+                                  sum + Math.floor((task.timeSpent || 0) / 60), 0);
+                                const productivity = totalActual > 0 ? Math.round((totalAssigned / totalActual) * 100) : 0;
+                                return productivity >= 100 ? "more efficient" : "less efficient";
+                              })()}
+                            </span>
+                            than expected.
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-600 mt-2">
+                          Showing unique tasks worked on within the selected date range
+                        </div>
+                      </div>
+                    </div>
 
-                              // Sort tasks by title for consistent display
-                              uniqueTasks.sort((a: any, b: any) => a.title.localeCompare(b.title));
+                    {/* Task Breakdown Table */}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Task Name</TableHead>
+                          <TableHead>Assigned Time (min)</TableHead>
+                          <TableHead>Actual Time Spent (min)</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(() => {
+                          // Get all unique tasks from all days in the date range
+                          const allTasks = new Map();
+                          productivityData.dailyData.forEach((day: any) => {
+                            if (day.taskBreakdown) {
+                              day.taskBreakdown.forEach((task: any) => {
+                                // Use task.id as key to ensure uniqueness
+                                if (!allTasks.has(task.id)) {
+                                  allTasks.set(task.id, task);
+                                }
+                              });
+                            }
+                          });
+                          const uniqueTasks = Array.from(allTasks.values());
 
-                              return uniqueTasks.map((task: any) => {
-                                // Get assigned time in minutes
-                                const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
-                                // Get actual time spent in minutes (timeSpent is in seconds)
+                          // Sort tasks by title for consistent display
+                          uniqueTasks.sort((a: any, b: any) => a.title.localeCompare(b.title));
+
+                          return uniqueTasks.map((task: any) => {
+                            // Get assigned time in minutes
+                            const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
+                            // Get actual time spent in minutes (timeSpent is in seconds)
+                            const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
+
+                            // Format time display (e.g., "80 minutes (1hr 20m)")
+                            const formatTimeDisplay = (totalMinutes: number) => {
+                              if (totalMinutes === 0) return '0 minutes';
+                              const hours = Math.floor(totalMinutes / 60);
+                              const minutes = totalMinutes % 60;
+                              if (hours === 0) return `${minutes} minutes`;
+                              return `${totalMinutes} minutes (${hours}hr ${minutes}m)`;
+                            };
+
+                            // Determine status
+                            let status = task.status || 'N/A';
+                            let statusColor = 'bg-gray-100 text-gray-800';
+
+                            // Map status to colors
+                            switch (status.toLowerCase()) {
+                              case 'completed':
+                                statusColor = 'bg-green-100 text-green-800';
+                                break;
+                              case 'in_progress':
+                              case 'in-progress':
+                                statusColor = 'bg-blue-100 text-blue-800';
+                                status = 'In Progress';
+                                break;
+                              case 'review':
+                                statusColor = 'bg-yellow-100 text-yellow-800';
+                                break;
+                              case 'technical_support':
+                                statusColor = 'bg-purple-100 text-purple-800';
+                                status = 'Technical Support';
+                                break;
+                              case 'todo':
+                                statusColor = 'bg-gray-100 text-gray-800';
+                                status = 'To Do';
+                                break;
+                              case 'missed_deadline':
+                              case 'missed-deadline':
+                              case 'missed deadline':
+                              case 'pending':
+                                statusColor = 'bg-red-100 text-red-800';
+                                status = 'Missed Deadline';
+                                break;
+                              default:
+                                statusColor = 'bg-gray-100 text-gray-800';
+                            }
+
+                            return (
+                              <TableRow key={task.id}>
+                                <TableCell className="font-medium">{task.title}</TableCell>
+                                <TableCell>{formatTimeDisplay(assignedMinutes)}</TableCell>
+                                <TableCell>{formatTimeDisplay(actualMinutes)}</TableCell>
+                                <TableCell>
+                                  <Badge className={statusColor}>
+                                    {status}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          });
+                        })()}
+                        <TableRow className="font-bold bg-gray-50">
+                          <TableCell>Total</TableCell>
+                          <TableCell>
+                            {(() => {
+                              const allTasks = new Map();
+                              productivityData.dailyData.forEach((day: any) => {
+                                if (day.taskBreakdown) {
+                                  day.taskBreakdown.forEach((task: any) => {
+                                    if (!allTasks.has(task.id)) {
+                                      allTasks.set(task.id, task);
+                                    }
+                                  });
+                                }
+                              });
+                              const uniqueTasks = Array.from(allTasks.values());
+                              const totalAssigned = uniqueTasks.reduce((sum: number, task: any) =>
+                                sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
+                              return totalAssigned;
+                            })()}
+                          </TableCell>
+                          <TableCell>
+                            {(() => {
+                              const allTasks = new Map();
+                              productivityData.dailyData.forEach((day: any) => {
+                                if (day.taskBreakdown) {
+                                  day.taskBreakdown.forEach((task: any) => {
+                                    if (!allTasks.has(task.id)) {
+                                      allTasks.set(task.id, task);
+                                    }
+                                  });
+                                }
+                              });
+                              const uniqueTasks = Array.from(allTasks.values());
+                              const totalActual = uniqueTasks.reduce((sum: number, task: any) =>
+                                sum + Math.floor((task.timeSpent || 0) / 60), 0);
+                              return totalActual;
+                            })()}
+                          </TableCell>
+                          <TableCell>-</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+
+                {/* Staff Summary Tab */}
+                <TabsContent value="summary">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle>Staff Summary</CardTitle>
+                          <CardDescription>
+                            Comprehensive performance overview for the selected period
+                          </CardDescription>
+                        </div>
+                        <Button
+                          onClick={handleExportStaffSummaryPDF}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <Download className="h-4 w-4" />
+                          Export as PDF
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Staff Information */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div className="border-b pb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">Staff Information</h3>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-600">Name:</span>
+                              <span className="text-sm font-semibold text-gray-900">
+                                {selectedStaffMember?.name || 'N/A'}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-600">Average Hours Worked:</span>
+                              <span className="text-sm font-semibold text-gray-900">
+                                {(() => {
+                                  // Filter out days with 0 hours and excessive hours (> 9 hours = 540 minutes)
+                                  const validDays = productivityData.dailyData.filter(day => {
+                                    const totalMinutes = day.actualWorkHours * 60;
+                                    return totalMinutes > 0 && totalMinutes <= 540;
+                                  });
+
+                                  // If no valid days, show 0
+                                  if (validDays.length === 0) {
+                                    return '0 hr 0m';
+                                  }
+
+                                  // Convert each valid day's Total Time Worked to minutes and sum
+                                  const totalMinutes = validDays.reduce((sum, day) => {
+                                    return sum + (day.actualWorkHours * 60);
+                                  }, 0);
+
+                                  // Divide by number of included days to get average minutes per day
+                                  const avgMinutesPerDay = totalMinutes / validDays.length;
+
+                                  // Convert to hours and minutes for display
+                                  const hours = Math.floor(avgMinutesPerDay / 60);
+                                  const minutes = Math.round(avgMinutesPerDay % 60);
+
+                                  return `${hours} hr ${minutes}m`;
+                                })()}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-600">Productivity Score:</span>
+                              <span className={`text-sm font-semibold ${
+                                (() => {
+                                  const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
+                                    sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
+                                  const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
+                                    sum + Math.floor((task.timeSpent || 0) / 60), 0);
+                                  const score = totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
+                                  return score >= 80 ? 'text-green-600' : score >= 60 ? 'text-yellow-600' : 'text-red-600';
+                                })()
+                              }`}>
+                                {(() => {
+                                  const totalAssignedMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
+                                    sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
+                                  const totalActualMinutes = Array.from(allTasks.values()).reduce((sum: number, task: any) =>
+                                    sum + Math.floor((task.timeSpent || 0) / 60), 0);
+                                  return totalActualMinutes > 0 ? Math.round((totalAssignedMinutes / totalActualMinutes) * 100) : 0;
+                                })()}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="border-b pb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">Performance Breakdown</h3>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-600">Good Days:</span>
+                              <span className="text-sm font-semibold text-green-600">
+                                {productivityData.summary.goodDays}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-600">Fair Days:</span>
+                              <span className="text-sm font-semibold text-yellow-600">
+                                {productivityData.summary.fairDays}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-600">Poor Days:</span>
+                              <span className="text-sm font-semibold text-red-600">
+                                {productivityData.summary.poorDays}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tasks List */}
+                      <div className="space-y-4">
+                        <div className="border-b pb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            List of Tasks Performed ({allTasks.size} tasks)
+                          </h3>
+                        </div>
+
+                        <div className="border rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Task Name</TableHead>
+                                <TableHead>Assigned Time</TableHead>
+                                <TableHead>Actual Time</TableHead>
+                                <TableHead>Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {Array.from(allTasks.values()).map((task: any) => {
+                                  const assignedMinutes = (task.workingHours || 0) * 60 + (task.workingMinutes || 0);
                                 const actualMinutes = Math.floor((task.timeSpent || 0) / 60);
 
-                                // Format time display (e.g., "80 minutes (1hr 20m)")
-                                const formatTimeDisplay = (totalMinutes: number) => {
-                                  if (totalMinutes === 0) return '0 minutes';
-                                  const hours = Math.floor(totalMinutes / 60);
-                                  const minutes = totalMinutes % 60;
-                                  if (hours === 0) return `${minutes} minutes`;
-                                  return `${totalMinutes} minutes (${hours}hr ${minutes}m)`;
-                                };
+                                // Format status display
+                                let displayStatus = task.status || 'N/A';
+                                let statusVariant: "default" | "secondary" | "outline" | "destructive" = "secondary";
 
-                                // Determine status
-                                let status = 'On Time';
-                                let statusColor = 'bg-green-100 text-green-800';
-
-                                if (assignedMinutes > 0) {
-                                  if (actualMinutes < assignedMinutes) {
-                                    status = 'Early';
-                                    statusColor = 'bg-blue-100 text-blue-800';
-                                  } else if (actualMinutes > assignedMinutes) {
-                                    status = 'Late';
-                                    statusColor = 'bg-red-100 text-red-800';
-                                  }
+                                switch (displayStatus.toLowerCase()) {
+                                  case 'completed':
+                                    statusVariant = "default";
+                                    break;
+                                  case 'missed_deadline':
+                                  case 'missed-deadline':
+                                  case 'missed deadline':
+                                  case 'pending':
+                                    displayStatus = 'Missed Deadline';
+                                    statusVariant = "destructive";
+                                    break;
+                                  case 'in_progress':
+                                  case 'in-progress':
+                                    displayStatus = 'In Progress';
+                                    break;
+                                  case 'todo':
+                                    displayStatus = 'To Do';
+                                    break;
+                                  case 'technical_support':
+                                    displayStatus = 'Technical Support';
+                                    break;
                                 }
 
                                 return (
                                   <TableRow key={task.id}>
-                                    <TableCell className="font-medium">{task.title}</TableCell>
-                                    <TableCell>{formatTimeDisplay(assignedMinutes)}</TableCell>
-                                    <TableCell>{formatTimeDisplay(actualMinutes)}</TableCell>
+                                    <TableCell className="font-medium">{task.title || 'Untitled Task'}</TableCell>
+                                    <TableCell>{formatMinutesForExport(assignedMinutes)}</TableCell>
+                                    <TableCell>{formatMinutesForExport(actualMinutes)}</TableCell>
                                     <TableCell>
-                                      <Badge className={statusColor}>
-                                        {status}
+                                      <Badge variant={statusVariant}>
+                                        {displayStatus}
                                       </Badge>
                                     </TableCell>
                                   </TableRow>
                                 );
-                              });
-                            })()}
-                            <TableRow className="font-bold bg-gray-50">
-                              <TableCell>Total</TableCell>
-                              <TableCell>
-                                {(() => {
-                                  const allTasks = new Map();
-                                  productivityData.dailyData.forEach((day: any) => {
-                                    if (day.taskBreakdown) {
-                                      day.taskBreakdown.forEach((task: any) => {
-                                        if (!allTasks.has(task.id)) {
-                                          allTasks.set(task.id, task);
-                                        }
-                                      });
-                                    }
-                                  });
-                                  const uniqueTasks = Array.from(allTasks.values());
-                                  const totalAssigned = uniqueTasks.reduce((sum: number, task: any) => 
-                                    sum + (task.workingHours || 0) * 60 + (task.workingMinutes || 0), 0);
-                                  return totalAssigned;
-                                })()}
-                              </TableCell>
-                              <TableCell>
-                                {(() => {
-                                  const allTasks = new Map();
-                                  productivityData.dailyData.forEach((day: any) => {
-                                    if (day.taskBreakdown) {
-                                      day.taskBreakdown.forEach((task: any) => {
-                                        if (!allTasks.has(task.id)) {
-                                          allTasks.set(task.id, task);
-                                        }
-                                      });
-                                    }
-                                  });
-                                  const uniqueTasks = Array.from(allTasks.values());
-                                  const totalActual = uniqueTasks.reduce((sum: number, task: any) => 
-                                    sum + Math.floor((task.timeSpent || 0) / 60), 0);
-                                  return totalActual;
-                                })()}
-                              </TableCell>
-                              <TableCell>-</TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
-                    </TabsContent>
 
-
-                  </Tabs>
-                </CardContent>
-              </Card>
+                      {/* Penalties Section */}
+                      <PenaltiesSection 
+                        selectedStaff={selectedStaff}
+                        dateRange={dateRange}
+                        useCustomRange={useCustomRange}
+                        customStartDate={customStartDate}
+                        customEndDate={customEndDate}
+                      />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             )}
 
             {/* No Data State */}

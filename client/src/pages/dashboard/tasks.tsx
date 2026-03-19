@@ -14,13 +14,19 @@ import {
 import { Input } from "@/components/ui/input";
 import type { Task, Project } from "@db/schema";
 import { useState, useEffect } from "react";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Calendar as CalendarIcon } from "lucide-react";
+import { format, isSameDay, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 export default function Tasks() {
   const [location] = useLocation();
   const [filter, setFilter] = useState("all");
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [date, setDate] = useState<Date | { from: Date; to: Date } | undefined>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -43,10 +49,43 @@ export default function Tasks() {
     enabled: !!user, // Only fetch if user is authenticated
   });
 
+  // Listen for real-time updates via WebSocket
+  useEffect(() => {
+    const handleTaskUpdate = () => {
+      console.log('Task update event received, invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    };
+
+    window.addEventListener('websocket:task_updated', handleTaskUpdate);
+    window.addEventListener('websocket:task_created', handleTaskUpdate);
+    window.addEventListener('websocket:task_deleted', handleTaskUpdate);
+
+    return () => {
+      window.removeEventListener('websocket:task_updated', handleTaskUpdate);
+      window.removeEventListener('websocket:task_created', handleTaskUpdate);
+      window.removeEventListener('websocket:task_deleted', handleTaskUpdate);
+    };
+  }, [queryClient]);
+
   const filteredTasks = tasks?.filter((task: Task) => {
     // Apply search filter
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
+    }
+
+    // Apply date filter
+    if (date) {
+      const taskDate = task.startDate ? new Date(task.startDate) : (task.deadline ? new Date(task.deadline) : null);
+      if (!taskDate) return false;
+
+      if (date instanceof Date) {
+        if (!isSameDay(taskDate, date)) return false;
+      } else if (date.from && date.to) {
+        if (!isWithinInterval(taskDate, { start: startOfDay(date.from), end: endOfDay(date.to) })) return false;
+      } else if (date.from) {
+        if (!isSameDay(taskDate, date.from)) return false;
+      }
     }
 
     if (filter === "all" && !selectedProject) return true;
@@ -92,13 +131,62 @@ export default function Tasks() {
       <Sidebar currentPath={location} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 md:p-6">
           <div className="space-y-4 mb-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <h1 className="text-2xl font-bold">Tasks</h1>
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-2 sm:gap-4">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal shrink-0",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date instanceof Date ? (
+                        format(date, "PPP")
+                      ) : date?.from ? (
+                        date.to ? (
+                          <>
+                            {format(date.from, "LLL dd, y")} -{" "}
+                            {format(date.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(date.from, "PPP")
+                        )
+                      ) : (
+                        <span>Pick a date or range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-auto" align="end">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={date instanceof Date ? date : date?.from}
+                      selected={date as any}
+                      onSelect={setDate as any}
+                      numberOfMonths={user?.role === 'admin' || user?.role === 'project_manager' ? 2 : 1}
+                    />
+                    {date && (
+                      <div className="p-3 border-t">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full justify-center"
+                          onClick={() => setDate(undefined)}
+                        >
+                          Clear Selection
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
                 <Select value={selectedProject} onValueChange={setSelectedProject}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-full sm:w-[200px]">
                     <SelectValue placeholder="Select project" />
                   </SelectTrigger>
                   <SelectContent>
@@ -111,7 +199,7 @@ export default function Tasks() {
                   </SelectContent>
                 </Select>
                 <Select value={filter} onValueChange={setFilter}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -125,26 +213,12 @@ export default function Tasks() {
                 </Select>
               </div>
             </div>
-            
-            {/* Search Bar */}
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search tasks by title..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
           </div>
 
           {selectedProject ? (
             <TaskList tasks={filteredTasks || []} projectId={parseInt(selectedProject)} />
           ) : (
-            <div className="text-center text-muted-foreground mt-8">
-              Please select a project to manage tasks
-            </div>
+            <TaskList tasks={filteredTasks || []} projectId={undefined} showNewTaskButton={false} showProjectInfo={true} />
           )}
         </div>
       </div>

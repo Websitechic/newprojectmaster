@@ -120,7 +120,7 @@ export default function StaffComplaints() {
       reviewed: { variant: "default" as const, label: "Reviewed" },
       resolved: { variant: "secondary" as const, label: "Resolved" },
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
@@ -147,7 +147,7 @@ export default function StaffComplaints() {
         <Sidebar currentPath={location} />
         <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none">
           <Header />
-          <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none">
+          <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-none">
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-10">
                 <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
@@ -168,33 +168,33 @@ export default function StaffComplaints() {
   const resolvedComplaints = complaints.filter(c => c.status === 'resolved');
 
   return (
-    <div className="flex h-screen w-full max-w-none">
+    <div className="flex h-screen w-full max-w-none overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none">
+      <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-none">
-          <div className="mb-6 lg:mb-8 w-full max-w-none">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Staff Complaints Management</h1>
-            <p className="text-gray-600">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full min-w-0">
+          <div className="mb-4 sm:mb-6 lg:mb-8 w-full max-w-full min-w-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 break-words">Staff Complaints Management</h1>
+            <p className="text-sm sm:text-base text-gray-600 break-words">
               Review and manage complaints submitted by staff members.
             </p>
           </div>
 
-      <Tabs defaultValue="pending" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="pending" className="relative">
-            Pending
+      <Tabs defaultValue="pending" className="space-y-4 sm:space-y-6 w-full max-w-full">
+        <TabsList className="grid w-full grid-cols-3 gap-1">
+          <TabsTrigger value="pending" className="relative text-xs sm:text-sm px-2 sm:px-4">
+            <span className="truncate">Pending</span>
             {pendingComplaints.length > 0 && (
-              <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs">
+              <Badge variant="destructive" className="ml-1 sm:ml-2 h-4 w-4 sm:h-5 sm:w-5 p-0 text-[10px] sm:text-xs">
                 {pendingComplaints.length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="reviewed">
-            Reviewed ({reviewedComplaints.length})
+          <TabsTrigger value="reviewed" className="text-xs sm:text-sm px-2 sm:px-4">
+            <span className="truncate">Reviewed ({reviewedComplaints.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="resolved">
-            Resolved ({resolvedComplaints.length})
+          <TabsTrigger value="resolved" className="text-xs sm:text-sm px-2 sm:px-4">
+            <span className="truncate">Resolved ({resolvedComplaints.length})</span>
           </TabsTrigger>
         </TabsList>
 
@@ -216,7 +216,7 @@ export default function StaffComplaints() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6">
+            <div className="grid gap-6 overflow-x-auto pb-4">
               {pendingComplaints.map((complaint) => (
                 <ComplaintCard
                   key={complaint.id}
@@ -242,7 +242,7 @@ export default function StaffComplaints() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6">
+            <div className="grid gap-6 overflow-x-auto pb-4">
               {reviewedComplaints.map((complaint) => (
                 <ComplaintCard
                   key={complaint.id}
@@ -268,7 +268,7 @@ export default function StaffComplaints() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6">
+            <div className="grid gap-6 overflow-x-auto pb-4">
               {resolvedComplaints.map((complaint) => (
                 <ComplaintCard
                   key={complaint.id}
@@ -367,45 +367,45 @@ function ComplaintCard({
   getStatusBadge: (status: string) => JSX.Element;
 }) {
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">Complaint #{complaint.id}</CardTitle>
+    <Card className="hover:shadow-md transition-shadow w-full max-w-full min-w-0">
+      <CardHeader className="pb-3 p-3 sm:p-4 lg:p-6">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 w-full max-w-full min-w-0">
+          <div className="space-y-2 flex-1 w-full max-w-full min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-base sm:text-lg break-words">Complaint #{complaint.id}</CardTitle>
               {getStatusBadge(complaint.status)}
             </div>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <div className="flex items-center gap-1">
-                <User className="w-4 h-4" />
-                {complaint.name}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 w-full max-w-full">
+              <div className="flex items-center gap-1 min-w-0">
+                <User className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="truncate">{complaint.name}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Mail className="w-4 h-4" />
-                {complaint.email}
+              <div className="flex items-center gap-1 min-w-0">
+                <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="truncate">{complaint.email}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Building2 className="w-4 h-4" />
-                {getDepartmentLabel(complaint.department)}
+              <div className="flex items-center gap-1 min-w-0">
+                <Building2 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="truncate">{getDepartmentLabel(complaint.department)}</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => onReview(complaint)}>
-              <Eye className="w-4 h-4 mr-1" />
-              Review
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button size="sm" variant="outline" onClick={() => onReview(complaint)} className="flex-1 sm:flex-none whitespace-nowrap">
+              <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              <span className="text-xs sm:text-sm">Review</span>
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 p-3 sm:p-4 lg:p-6">
         <div className="space-y-3">
           <div>
             <p className="text-sm text-gray-600 line-clamp-3">
               {complaint.detailedExplanation}
             </p>
           </div>
-          
+
           {complaint.screenshotUrl && (
             <div className="flex items-center gap-2 text-sm text-blue-600">
               <Image className="w-4 h-4" />

@@ -400,25 +400,25 @@ export default function StaffReport() {
   }) || [];
 
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full max-w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 xl:ml-72 min-w-0 max-w-full overflow-hidden">
         <Header />
-        <div className="flex-1 overflow-auto p-6">
-          <div className="flex flex-col space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Staff Report</h1>
-            <p className="text-muted-foreground mt-1">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 w-full max-w-full">
+          <div className="flex flex-col space-y-4 sm:space-y-6 w-full max-w-full">
+        <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">Staff Report</h1>
+            <p className="text-muted-foreground mt-1 text-xs sm:text-sm truncate">
               Real-time monitoring of staff activity and task status
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
             <Select
               value={filterSpecialization || "all"}
               onValueChange={(value) => setFilterSpecialization(value === "all" ? null : value)}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px] min-w-0">
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
@@ -433,18 +433,20 @@ export default function StaffReport() {
             <Button
               onClick={() => handleExport('csv')}
               variant="outline"
-              className="flex items-center"
+              className="flex items-center justify-center w-full sm:w-auto flex-shrink-0"
             >
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Export CSV</span>
+              <FileSpreadsheet className="mr-2 h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline truncate">Export CSV</span>
+              <span className="sm:hidden truncate">CSV</span>
             </Button>
             <Button
               onClick={() => handleExport('json')}
               variant="outline"
-              className="flex items-center"
+              className="flex items-center justify-center w-full sm:w-auto flex-shrink-0"
             >
-              <FileText className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Export JSON</span>
+              <FileText className="mr-2 h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline truncate">Export JSON</span>
+              <span className="sm:hidden truncate">JSON</span>
             </Button>
           </div>
         </div>
@@ -466,8 +468,8 @@ export default function StaffReport() {
                 </p>
               </div>
             </CardContent>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <CardContent className="p-3 sm:p-4 md:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 <div className="rounded-md border border-green-300 bg-green-50 p-3">
                   <div className="flex items-center gap-2">
                     <Play className="h-4 w-4 text-green-700" />
@@ -542,6 +544,7 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {engagedStaff.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -620,6 +623,7 @@ export default function StaffReport() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-green-50 p-3 rounded-full mb-3">
@@ -651,6 +655,7 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {onBreakStaff.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -706,6 +711,7 @@ export default function StaffReport() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-amber-50 p-3 rounded-full mb-3">
@@ -737,6 +743,7 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {absentStaff.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -780,6 +787,7 @@ export default function StaffReport() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-red-50 p-3 rounded-full mb-3">
@@ -811,6 +819,7 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {inMeetingStaff.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -848,6 +857,7 @@ export default function StaffReport() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-purple-50 p-3 rounded-full mb-3">
@@ -879,6 +889,7 @@ export default function StaffReport() {
             </CardHeader>
             <CardContent className="pt-4">
               {availableStaff.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -928,6 +939,7 @@ export default function StaffReport() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="bg-blue-50 p-3 rounded-full mb-3">

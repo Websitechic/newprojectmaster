@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, Pin, Search, FileText } from "lucide-react";
+import { Send, ArrowLeft, Users, MoreVertical, Edit2, Trash2, X, Check, Copy, Reply, Forward, Pin, Search, FileText, CheckCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,7 +60,12 @@ export default function TeamChat() {
   const [forwardingMessage, setForwardingMessage] = useState<MessageWithSender | null>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   const [selectedForwardUsers, setSelectedForwardUsers] = useState<number[]>([]);
+  const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [showMessageSearch, setShowMessageSearch] = useState(false);
+  const [readCounts, setReadCounts] = useState<Record<number, number>>({});
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const projectId = parseInt(id!);
   const [pinnedMessage, setPinnedMessage] = useState<MessageWithSender | null>(() => {
@@ -98,7 +103,7 @@ export default function TeamChat() {
       return data;
     },
     enabled: !!projectId,
-    refetchInterval: 2000, // Poll every 2 seconds for new messages
+    refetchInterval: 5000, // Poll every 5 seconds instead of 2
   });
 
   const { data: allUsers = [] } = useQuery({
@@ -139,10 +144,10 @@ export default function TeamChat() {
       try {
         const allUsersResponse = await fetch('/api/users');
         if (allUsersResponse.ok) {
-          const allUsers = await allUsersResponse.json();
+          const teamLeadsAndManagers = await allUsersResponse.json();
 
           // Add team leads and operations managers
-          allUsers.forEach((u: any) => {
+          teamLeadsAndManagers.forEach((u: any) => {
             const isTeamLead = u.role === 'team_lead';
             const isOperationsManager = u.role === 'operations_manager' || u.specialization === 'operations_manager';
 
@@ -279,8 +284,22 @@ export default function TeamChat() {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
+    if (!showScrollButton) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, showScrollButton]);
+
+  // Detect scroll position
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
+  };
+
+  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    setShowScrollButton(false);
+  };
 
   // Mark team messages as read when user views them
   useEffect(() => {
@@ -530,6 +549,18 @@ export default function TeamChat() {
     if (!message.trim()) return;
 
     let messageToSend = message.trim();
+    
+    // Replace @all or @everyone with mentions of all team members
+    const everyoneRegex = /@(everyone|all)\b/gi;
+    if (everyoneRegex.test(messageToSend)) {
+      const allMemberNames = projectMembers
+        .filter((m: any) => m.id !== user?.id)
+        .map((m: any) => `@${m.name || m.userName}`)
+        .join(' ');
+      
+      messageToSend = messageToSend.replace(/@(everyone|all)\b/gi, allMemberNames);
+    }
+    
     if (replyingTo) {
       // Use the clean content (without nested quotes) for the new reply
       const quotedMessage = `> Replying to ${replyingTo.sender?.name || "Unknown"}:\n> ${replyingTo.content}\n\n${messageToSend}`;
@@ -556,6 +587,63 @@ export default function TeamChat() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  const shouldShowDateSeparator = (currentMsg: MessageWithSender, previousMsg?: MessageWithSender) => {
+    if (!previousMsg) return true;
+    
+    const currentDate = new Date(currentMsg.createdAt).toDateString();
+    const previousDate = new Date(previousMsg.createdAt).toDateString();
+    
+    return currentDate !== previousDate;
+  };
+
+  const formatDateSeparator = (date: string | Date) => {
+    const messageDate = new Date(date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const messageDateString = messageDate.toDateString();
+    const todayString = today.toDateString();
+    const yesterdayString = yesterday.toDateString();
+    
+    if (messageDateString === todayString) return "Today";
+    if (messageDateString === yesterdayString) return "Yesterday";
+    
+    return messageDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
+  // Fetch read counts for messages - optimized to only fetch for recent user messages
+  useEffect(() => {
+    const fetchReadCounts = async () => {
+      if (!messages.length || !user?.id) return;
+      
+      // Only fetch read counts for the last 20 messages from current user
+      const recentUserMessages = messages
+        .filter(msg => msg.senderId === user.id)
+        .slice(-20);
+      
+      if (recentUserMessages.length === 0) return;
+      
+      const counts: Record<number, number> = {};
+      for (const msg of recentUserMessages) {
+        try {
+          const response = await fetch(`/api/projects/${projectId}/team-messages/${msg.id}/read-count`);
+          if (response.ok) {
+            const data = await response.json();
+            counts[msg.id] = data.count || 0;
+          }
+        } catch (error) {
+          console.error(`Error fetching read count for message ${msg.id}:`, error);
+        }
+      }
+      setReadCounts(counts);
+    };
+
+    // Debounce the fetch
+    const timer = setTimeout(fetchReadCounts, 500);
+    return () => clearTimeout(timer);
+  }, [messages.length, projectId, user?.id]); // Only re-run when message count changes
+
   // Handle mention detection in input
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -568,8 +656,16 @@ export default function TeamChat() {
       setCursorPosition(position);
     }, 0);
 
-    // Check for @ mentions - allow spaces and handle partial names
+    // Check for @all or @everyone
     const beforeCursor = value.substring(0, position);
+    if (beforeCursor.endsWith('@all') || beforeCursor.endsWith('@everyone')) {
+      // Don't show suggestions for @all or @everyone
+      setShowMentionSuggestions(false);
+      setMentionQuery("");
+      return;
+    }
+
+    // Check for @ mentions - allow spaces and handle partial names
     const mentionMatch = beforeCursor.match(/@([a-zA-Z0-9_\s]*)$/);
 
     if (mentionMatch) {
@@ -748,72 +844,95 @@ export default function TeamChat() {
       <Sidebar currentPath={`/dashboard/projects/${projectId}/team-chat`} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <div className="flex-1 flex flex-col overflow-hidden p-6">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-4 flex-shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation(`/dashboard/projects/${projectId}`)}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Project
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Team Chat</h1>
-              <p className="text-muted-foreground">
-                {project?.name} - Internal team communication
-              </p>
-            </div>
-          </div>
-
+        <div className="flex-1 flex flex-col overflow-hidden p-3 sm:p-4 lg:p-6">
           {/* Chat Area */}
           <Card className="flex-1 flex flex-col min-h-0">
-            <CardHeader className="flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Team Discussion
-                  </h3>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {membersLoading ? (
-                      <span>Loading team members...</span>
-                    ) : projectMembers.length === 0 ? (
-                      <span>No team members</span>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="flex flex-wrap gap-1 items-center hover:bg-muted/50 p-1 rounded-md transition-colors">
-                            <span className="font-medium">{projectMembers.length} member{projectMembers.length !== 1 ? 's' : ''}</span>
-                            <span className="text-xs opacity-70">(click to view all)</span>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
-                          {projectMembers.map((member: any) => (
-                            <DropdownMenuItem key={member.id || member.userId} className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarFallback className="text-xs">
-                                  {getUserInitials(member.name || member.userName || 'Unknown')}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm truncate">
-                                  {member.name || member.userName || 'Unknown'}
-                                </div>
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {member.specialization || member.role || 'Team Member'}
-                                </div>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+            <CardHeader className="flex-shrink-0 p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLocation(`/dashboard/projects/${projectId}`)}
+                    className="flex items-center gap-1 px-2 h-8 flex-shrink-0"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm sm:text-base font-semibold truncate">
+                        {project?.name || 'Team Discussion'}
+                      </h3>
+                      <div className="text-xs text-muted-foreground">
+                        {membersLoading ? (
+                          <span>Loading...</span>
+                        ) : projectMembers.length === 0 ? (
+                          <span>No members</span>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="flex items-center gap-1 hover:bg-muted/50 px-1 rounded transition-colors">
+                                <span className="font-medium">{projectMembers.length} member{projectMembers.length !== 1 ? 's' : ''}</span>
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
+                              {projectMembers.map((member: any) => (
+                                <DropdownMenuItem key={member.id || member.userId} className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarFallback className="text-xs">
+                                      {getUserInitials(member.name || member.userName || 'Unknown')}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm truncate">
+                                      {member.name || member.userName || 'Unknown'}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground truncate">
+                                      {member.specialization || member.role || 'Team Member'}
+                                    </div>
+                                  </div>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {showMessageSearch ? (
+                    <div className="relative flex-1 sm:flex-initial">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search messages..."
+                        className="pl-8 w-full sm:w-48"
+                        value={messageSearchQuery}
+                        onChange={(e) => setMessageSearchQuery(e.target.value)}
+                        autoFocus
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1 h-6 w-6 p-0"
+                        onClick={() => {
+                          setShowMessageSearch(false);
+                          setMessageSearchQuery("");
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowMessageSearch(true)}
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -821,10 +940,10 @@ export default function TeamChat() {
                     className="flex items-center gap-2"
                   >
                     <FileText className="h-4 w-4" />
-                    Resources
+                    <span className="hidden sm:inline">Resources</span>
                   </Button>
-                  <Badge variant="outline" className="text-xs">
-                    {messages.length} message{messages.length !== 1 ? 's' : ''}
+                  <Badge variant="outline" className="text-xs whitespace-nowrap">
+                    {messages.length} msg{messages.length !== 1 ? 's' : ''}
                   </Badge>
                 </div>
               </div>
@@ -875,7 +994,7 @@ export default function TeamChat() {
               )}
 
               {/* Messages Container */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 relative" onScroll={handleScroll}>
                 {messages.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-muted-foreground">
@@ -884,7 +1003,25 @@ export default function TeamChat() {
                     </div>
                   </div>
                 ) : (
-                  messages.map((msg) => (
+                  messages
+                    .filter(msg => 
+                      !messageSearchQuery || 
+                      msg.content.toLowerCase().includes(messageSearchQuery.toLowerCase()) ||
+                      msg.sender?.name.toLowerCase().includes(messageSearchQuery.toLowerCase())
+                    )
+                    .map((msg, index, filteredMessages) => (
+                    <div key={`msg-wrapper-${msg.id}`}>
+                      {/* Date Separator */}
+                      {shouldShowDateSeparator(msg, filteredMessages[index - 1]) && (
+                        <div className="flex items-center gap-4 my-4">
+                          <div className="flex-1 border-t"></div>
+                          <span className="text-xs text-muted-foreground font-medium px-2">
+                            {formatDateSeparator(msg.createdAt)}
+                          </span>
+                          <div className="flex-1 border-t"></div>
+                        </div>
+                      )}
+                      {/* Message */}
                     <div key={msg.id} id={`message-${msg.id}`} className="flex gap-3 group transition-all duration-300">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className="text-xs">
@@ -996,7 +1133,14 @@ export default function TeamChat() {
                               )}
                             </div>
                             {msg.isEdited && (
-                              <p className="text-xs text-muted-foreground italic mt-0.5">edited</p>
+                              <p className="text-xs text-muted-foreground italic mt-0.5">• edited</p>
+                            )}
+                            {/* Read Receipt */}
+                            {msg.senderId === user?.id && readCounts[msg.id] > 0 && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <CheckCheck className="h-3 w-3 text-blue-500" />
+                                <span className="text-xs text-muted-foreground">{readCounts[msg.id]}</span>
+                              </div>
                             )}
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <DropdownMenu>
@@ -1069,9 +1213,23 @@ export default function TeamChat() {
                         )}
                       </div>
                     </div>
+                    </div>
                   ))
                 )}
                 <div ref={messagesEndRef} />
+                
+                {/* Scroll to Bottom Button */}
+                {showScrollButton && (
+                  <Button
+                    onClick={scrollToBottom}
+                    className="absolute bottom-4 right-4 rounded-full h-10 w-10 p-0 shadow-lg z-10"
+                    size="icon"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </Button>
+                )}
               </div>
 
               {/* Forward Message Dialog */}

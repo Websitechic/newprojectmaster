@@ -2,7 +2,6 @@ import { Express, Response, Request, NextFunction } from "express";
 import express from "express";
 import { createServer, Server } from "http";
 import { setupWebSocket } from "./websocket";
-import { setupAuth } from "./auth";
 import { db } from "../db";
 import { breakScheduler } from "./break-scheduler";
 import multer from "multer";
@@ -36,6 +35,7 @@ import {
   insertTechnicalSupportRequestSchema,
   memos,
   memoReads,
+  memoResponses,
   clientSentiment,
   staffComplaints,
   staffQueries,
@@ -47,15 +47,35 @@ import {
   generalChannelReadReceipts,
   reviewLinks,
   projectBriefings, // Import the new schema
+  stopGapAllocations,
+  stopGapTaskAssignments,
+  taskIterations,
 } from "@db/schema";
 import { eq, and, desc, inArray, asc, isNotNull, or, sql, ne, gte, isNull, relations } from "drizzle-orm";
 import WebSocket from "ws";
 import { format } from "date-fns";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { sendOneSignalNotification } from "./onesignal";
+import { sendNotificationEmail } from "./services/email";
+import { type IVerifyOptions } from "passport";
 
 // Helper function to create notifications
 async function createNotification(userId: number, type: string, content: string, referenceId?: number, referenceType?: string) {
   try {
+    // For message types, only send email notification (no in-app notification)
+    if (type === 'message' || type === 'reply' || type === 'general_channel_message') {
+      console.log(`ℹ️ In-app notification of type "${type}" skipped for user ${userId}, but email will be sent.`);
+      try {
+        const [user] = await db.select().from(users).where(and(eq(users.id, userId), eq(users.isActive, true))).limit(1);
+        if (user) {
+          await sendNotificationEmail(user, type, content);
+        }
+      } catch (emailError) {
+        console.error(`❌ Error sending email for ${type} to user ${userId}:`, emailError);
+      }
+      return;
+    }
+
     const [newNotification] = await db
       .insert(notifications)
       .values({
@@ -75,6 +95,39 @@ async function createNotification(userId: number, type: string, content: string,
       referenceType: newNotification.referenceType,
       content: newNotification.content
     });
+
+    // Send to OneSignal using the proper service
+    const title = type.replace(/_/g, ' ').toUpperCase();
+    try {
+      console.log(`\n🚀 [createNotification] OneSignal call START:`);
+      console.log(`   - User ID: ${userId}`);
+      console.log(`   - Notification Type: ${type}`);
+      console.log(`   - Title: ${title}`);
+      console.log(`   - Content Preview: ${content.substring(0, 100)}`);
+      console.log(`   - Calling sendOneSignalNotification...`);
+
+      const result = await sendOneSignalNotification(userId, title, content);
+
+      console.log(`✅ [createNotification] OneSignal call SUCCESS`);
+      console.log(`   - Result:`, result);
+    } catch (error) {
+      console.error(`\n❌ [createNotification] OneSignal call FAILED:`);
+      console.error(`   - User ID: ${userId}`);
+      console.error(`   - Type: ${type}`);
+      console.error(`   - Title: ${title}`);
+      console.error(`   - Error:`, error instanceof Error ? error.message : error);
+      console.error(`   - Stack:`, error instanceof Error ? error.stack : 'No stack trace');
+    }
+
+    // Send email notification
+    try {
+      const [user] = await db.select().from(users).where(and(eq(users.id, userId), eq(users.isActive, true))).limit(1);
+      if (user) {
+        await sendNotificationEmail(user, type, content);
+      }
+    } catch (error) {
+      console.error(`❌ Error sending notification email to user ${userId}:`, error);
+    }
 
     // Send SSE notification if user is connected
     if (global.sseClients && global.sseClients.has(userId)) {
@@ -158,6 +211,7 @@ const upload = multer({
 
 // Middleware for authentication (assuming it's defined elsewhere and imported)
 // For demonstration purposes, we'll define a placeholder here.
+
 // In a real application, this would likely be imported from './auth' or a similar file.
 const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   if (req.isAuthenticated() && req.user) {
@@ -188,12 +242,63 @@ function broadcastToUser(userId: number | string, message: string) {
 }
 
 export function registerRoutes(app: Express): Server {
-  setupAuth(app);
-
   const server = createServer(app);
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+  // Note: express.json(), express.urlencoded(), and setupAuth(app) 
+  // are already configured in server/index.ts before this function is called
+
+  // Session health check endpoint (for debugging)
+  app.get("/api/health/session", (req, res) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const hasSessionSecret = !!(process.env.SESSION_SECRET || process.env.REPL_ID);
+    
+    res.json({
+      environment: process.env.NODE_ENV || 'development',
+      isProduction,
+      hasSessionSecret,
+      sessionCookieSettings: {
+        secure: req.session?.cookie?.secure,
+        httpOnly: req.session?.cookie?.httpOnly,
+        sameSite: req.session?.cookie?.sameSite,
+        maxAge: req.session?.cookie?.maxAge
+      },
+      trustProxy: app.get('trust proxy'),
+      sessionExists: !!req.session,
+      sessionID: req.session?.id
+    });
+  });
+
+  // Database health check endpoint (for diagnosing production issues)
+  app.get("/api/health/database", async (req, res) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    try {
+      // Test database connection
+      const result = await db.execute(sql`SELECT 1 as test, NOW() as server_time`);
+      
+      // Count users to verify table access
+      const userCount = await db.select({ count: sql`count(*)` }).from(users).where(eq(users.isActive, true));
+      
+      res.json({
+        status: 'connected',
+        environment: process.env.NODE_ENV || 'development',
+        databaseType: isProduction ? 'production' : 'development',
+        hasProductionDbUrl: !!process.env.PRODUCTION_DATABASE_URL,
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        serverTime: result[0]?.server_time || 'unknown',
+        userCount: userCount[0]?.count || 0
+      });
+    } catch (error: any) {
+      console.error('Database health check failed:', error);
+      res.status(500).json({
+        status: 'error',
+        environment: process.env.NODE_ENV || 'development',
+        databaseType: isProduction ? 'production' : 'development',
+        hasProductionDbUrl: !!process.env.PRODUCTION_DATABASE_URL,
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        error: error.message
+      });
+    }
+  });
 
   // Add middleware to ensure API routes return JSON - BEFORE static files
   app.use('/api', (req, res, next) => {
@@ -230,31 +335,66 @@ export function registerRoutes(app: Express): Server {
   // Static file serving AFTER API middleware
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+  // Public endpoint to get all users (no authentication required)
+  app.get("/api/public/users", async (req, res) => {
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          username: users.username,
+          role: users.role,
+          specialization: users.specialization,
+          status: users.status,
+        })
+        .from(users)
+        .where(eq(users.isActive, true))
+        .orderBy(asc(users.name));
+
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
   // User endpoint for authentication
   app.get("/api/user", (req, res) => {
     try {
+      const sessionExists = !!req.session;
+      const hasPassport = !!(req.session && req.session.passport);
+      const isAuth = req.isAuthenticated();
+      
       console.log('Auth check:', {
-        isAuthenticated: req.isAuthenticated(),
+        isAuthenticated: isAuth,
         hasUser: !!req.user,
+        sessionExists,
+        hasPassport,
         sessionID: req.session?.id,
-        cookie: req.session?.cookie
+        cookieSecure: req.session?.cookie?.secure,
+        cookieSameSite: req.session?.cookie?.sameSite,
+        host: req.headers.host,
+        protocol: req.protocol
       });
 
-      if (req.isAuthenticated() && req.user) {
-        res.json(req.user);
+      if (isAuth && req.user) {
+        return res.json(req.user);
       } else {
-        res.status(401).json({ error: "Not authenticated" });
+        console.log('User not authenticated - returning 401');
+        return res.status(401).json({ error: "Not authenticated" });
       }
     } catch (error) {
       console.error("Error in /api/user:", error);
-      res.status(500).json({ error: "Internal server error" });
+      console.error('Error stack:', error instanceof Error ? error.stack : undefined);
+      return res.status(500).json({ error: "Internal server error" });
     }
   });
 
   // Tasks endpoint - returns tasks based on user role
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = req.user!;
@@ -262,13 +402,53 @@ export function registerRoutes(app: Express): Server {
     try {
       let userTasks = [];
 
-      if (user.role === "staff" || user.role === "intern") {
-        // Staff and interns see tasks assigned to them
-        userTasks = await db
-          .select()
+      // Operations managers, team leads, project managers, customer support officers, product owners and admins see all tasks
+      if (
+        user.role === "operations_manager" ||
+        user.specialization === "operations_manager" ||
+        user.role === "team_lead" ||
+        user.role === "customer_support_officer" ||
+        user.role === "project_manager" ||
+        user.role === "admin" ||
+        user.role === "product_owner"
+      ) {
+        const allTasks = await db
+          .select({
+            task: tasks,
+            assignee: {
+              id: users.id,
+              name: users.name,
+              role: users.role,
+            }
+          })
           .from(tasks)
-          .where(eq(tasks.assigneeId, user.id))
+          .leftJoin(users, eq(tasks.assigneeId, users.id))
+          .where(or(isNull(tasks.assigneeId), eq(users.isActive, true)))
           .orderBy(desc(tasks.updatedAt));
+
+        userTasks = allTasks.map(row => ({
+          ...row.task,
+          assignee: row.assignee
+        }));
+      } else if (user.role === "staff" || user.role === "intern") {
+        const staffTasksList = await db
+          .select({
+            task: tasks,
+            assignee: {
+              id: users.id,
+              name: users.name,
+              role: users.role,
+            }
+          })
+          .from(tasks)
+          .innerJoin(users, eq(tasks.assigneeId, users.id))
+          .where(and(eq(tasks.assigneeId, user.id), eq(users.isActive, true)))
+          .orderBy(desc(tasks.updatedAt));
+
+        userTasks = staffTasksList.map(row => ({
+          ...row.task,
+          assignee: row.assignee
+        }));
       } else if (user.role === "client") {
         // Clients see tasks in their projects
         const clientProjects = await db
@@ -278,38 +458,25 @@ export function registerRoutes(app: Express): Server {
 
         const projectIds = clientProjects.map(p => p.id);
         if (projectIds.length > 0) {
-          userTasks = await db
-            .select()
+          const clientTasks = await db
+            .select({
+              task: tasks,
+              assignee: {
+                id: users.id,
+                name: users.name,
+                role: users.role,
+              }
+            })
             .from(tasks)
-            .where(inArray(tasks.projectId, projectIds))
+            .leftJoin(users, eq(tasks.assigneeId, users.id))
+            .where(and(inArray(tasks.projectId, projectIds), or(isNull(tasks.assigneeId), eq(users.isActive, true))))
             .orderBy(desc(tasks.updatedAt));
-        }
-      } else if (user.role === "project_manager") {
-        // Project managers see all tasks in their projects
-        const managedProjects = await db
-          .select()
-          .from(projects)
-          .where(eq(projects.managerId, user.id));
 
-        const projectIds = managedProjects.map(p => p.id);
-        if (projectIds.length > 0) {
-          userTasks = await db
-            .select()
-            .from(tasks)
-            .where(inArray(tasks.projectId, projectIds))
-            .orderBy(desc(tasks.updatedAt));
+          userTasks = clientTasks.map(row => ({
+            ...row.task,
+            assignee: row.assignee
+          }));
         }
-      } else if (
-        user.role === "operations_manager" ||
-        user.specialization === "operations_manager" ||
-        user.role === "team_lead" ||
-        user.role === "customer_support_officer"
-      ) {
-        // Operations managers, team leads, and customer support officers see all tasks
-        userTasks = await db
-          .select()
-          .from(tasks)
-          .orderBy(desc(tasks.updatedAt));
       }
 
       res.json(userTasks);
@@ -330,15 +497,30 @@ export function registerRoutes(app: Express): Server {
     try {
       console.log("Fetching notifications for user:", user.id);
 
+      // Get all unread notifications for this user (filtering out notifications for inactive users)
       const userNotifications = await db
         .select()
         .from(notifications)
-        .where(eq(notifications.userId, user.id))
+        .innerJoin(users, eq(notifications.userId, users.id))
+        .where(and(eq(notifications.userId, user.id), eq(users.isActive, true)))
         .orderBy(desc(notifications.createdAt));
 
       console.log(`Found ${userNotifications.length} notifications for user ${user.id}`);
 
-      res.json(userNotifications);
+      // Map the joined data back to a flat notification object structure
+      const flatNotifications = userNotifications.map(row => ({
+        ...row.notifications,
+        // Ensure id and content are top-level as expected by frontend
+        id: row.notifications.id,
+        content: row.notifications.content,
+        type: row.notifications.type,
+        read: row.notifications.read,
+        createdAt: row.notifications.createdAt,
+        referenceId: row.notifications.referenceId,
+        referenceType: row.notifications.referenceType
+      }));
+
+      res.json(flatNotifications);
     } catch (error) {
       console.error("Error fetching notifications:", error);
       res.status(500).json({ error: "Failed to fetch notifications" });
@@ -432,8 +614,8 @@ export function registerRoutes(app: Express): Server {
         .where(
           and(
             eq(bookings.status, "scheduled"),
-            sql`${bookings.endTime} < ${now.toISOString()}::timestamp`,
-            sql`${bookings.endTime} >= ${oneMinuteAgo.toISOString()}::timestamp` // Just ended in last minute
+            sql`${bookings.endTime} < ${now.toISOString()}`,
+            sql`${bookings.endTime} >= ${oneMinuteAgo.toISOString()}` // Just ended in last minute
           )
         );
 
@@ -536,33 +718,83 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      // Get overdue tasks
+      // Update tasks that have missed their deadline
       const overdueTasks = await db
-        .select({
-          id: tasks.id,
-          title: tasks.title,
-          assigneeId: tasks.assigneeId,
-          deadline: tasks.deadline,
-        })
+        .select()
         .from(tasks)
         .where(
           and(
-            sql`${tasks.deadline} < ${today}`,
-            ne(tasks.status, "completed")
+            sql`${tasks.deadline} < ${now.toISOString()}`,
+            ne(tasks.status, "completed"),
+            ne(tasks.status, "review"),
+            ne(tasks.status, "Deadline Missed")
           )
         );
 
-      // Send overdue notifications
       for (const task of overdueTasks) {
-        if (task.assigneeId && task.deadline) {
-          const daysOverdue = Math.ceil((today.getTime() - new Date(task.deadline).getTime()) / (1000 * 60 * 60 * 24));
+        console.log(`Task ${task.id} ("${task.title}") has missed its deadline. Updating status and stopping timer...`);
+        
+        // Update task status and stop timer if running
+        await db
+          .update(tasks)
+          .set({ 
+            status: "Deadline Missed",
+            isTimerRunning: false,
+            timerStartTime: null,
+            updatedAt: now
+          })
+          .where(eq(tasks.id, task.id));
+
+        // Create notification for the assignee
+        if (task.assigneeId) {
           await createNotification(
             task.assigneeId,
-            "task_overdue",
-            `🔴 Task "${task.title}" is ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue`,
+            "deadline_missed",
+            `The deadline for task "${task.title}" has passed. Status changed to Deadline Missed and timer stopped.`,
             task.id,
             "task"
           );
+        }
+
+        // Notify managers/admins
+        const managers = await db.select().from(users).where(
+          or(
+            eq(users.role, "project_manager"),
+            eq(users.role, "admin"),
+            eq(users.role, "operations_manager")
+          )
+        );
+
+        for (const manager of managers) {
+          await createNotification(
+            manager.id,
+            "deadline_missed",
+            `Task "${task.title}" assigned to ${task.assigneeId ? 'staff' : 'unassigned'} has missed its deadline.`,
+            task.id,
+            "task"
+          );
+        }
+
+        // Broadcast task update via WebSocket
+        if (global.connectedClients) {
+          global.connectedClients.forEach((client) => {
+            if (client.readyState === 1) { // WebSocket.OPEN
+              try {
+                client.send(JSON.stringify({
+                  type: 'task_updated',
+                  data: {
+                    id: task.id,
+                    status: "Deadline Missed",
+                    isTimerRunning: false,
+                    timerStartTime: null,
+                    updatedAt: now.toISOString()
+                  }
+                }));
+              } catch (error) {
+                console.error('Error broadcasting task update from deadline check:', error);
+              }
+            }
+          });
         }
       }
 
@@ -580,11 +812,12 @@ export function registerRoutes(app: Express): Server {
     try {
       const user = req.user!;
 
-      // Update last active timestamp
+      // Update last active and last seen timestamps
       await db
         .update(users)
         .set({
           lastActive: new Date(),
+          lastSeen: new Date(),
         })
         .where(eq(users.id, user.id));
 
@@ -761,6 +994,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const user = req.user!;
+    const userId = user.id;
 
     try {
       // Get all projects the user has access to
@@ -801,37 +1035,63 @@ export function registerRoutes(app: Express): Server {
         return res.json({});
       }
 
-      // Get unread message counts for each project
-      const unreadCounts = await db
-        .select({
-          projectId: projectMessages.projectId,
-          unreadCount: sql<number>`count(*)`,
-        })
-        .from(projectMessages)
-        .leftJoin(
-          messageReadReceipts,
-          and(
-            eq(messageReadReceipts.messageId, projectMessages.id),
-            eq(messageReadReceipts.userId, user.id)
-          )
-        )
-        .where(
-          and(
-            inArray(projectMessages.projectId, userProjectIds),
-            ne(projectMessages.senderId, user.id), // Don't count own messages
-            isNull(messageReadReceipts.id) // Not read by user
-          )
-        )
-        .groupBy(projectMessages.projectId);
+      // Remove duplicates and filter out null/undefined values
+      const uniqueProjectIds = Array.from(new Set(userProjectIds.filter(id => id !== null && id !== undefined)));
 
-      const counts = unreadCounts.reduce((acc, count) => {
-        acc[count.projectId] = count.unreadCount;
-        return acc;
-      }, {} as Record<number, number>);
+      if (uniqueProjectIds.length === 0) {
+        return res.json({});
+      }
 
-      res.json(counts);
+      // Validate project IDs are valid numbers
+      const validProjectIds = uniqueProjectIds.filter(id =>
+        id !== null && id !== undefined && typeof id === 'number' && !isNaN(id) && Number.isInteger(id) && id > 0
+      );
+
+      if (validProjectIds.length === 0) {
+        return res.json({});
+      }
+
+      // Get ALL read receipts for this user first (more efficient than per-project queries)
+      const allReadReceipts = await db
+        .select({ messageId: messageReadReceipts.messageId })
+        .from(messageReadReceipts)
+        .where(eq(messageReadReceipts.userId, userId));
+
+      const readMessageIds = new Set(allReadReceipts.map(r => r.messageId));
+
+      // Get unread counts for each project
+      const unreadCounts: Record<number, number> = {};
+
+      for (const projectId of validProjectIds) {
+        try {
+          // Get all team messages for this project that are not from current user
+          const teamMessagesList = await db
+            .select({ id: projectMessages.id })
+            .from(projectMessages)
+            .where(
+              and(
+                eq(projectMessages.projectId, projectId),
+                ne(projectMessages.senderId, userId)
+              )
+            );
+
+          if (teamMessagesList.length === 0) {
+            unreadCounts[projectId] = 0;
+            continue;
+          }
+
+          // Count only messages that don't have read receipts
+          const unreadCount = teamMessagesList.filter(msg => !readMessageIds.has(msg.id)).length;
+          unreadCounts[projectId] = unreadCount;
+        } catch (error) {
+          console.error(`Error counting messages for project ${projectId}:`, error);
+          unreadCounts[projectId] = 0;
+        }
+      }
+
+      res.json(unreadCounts);
     } catch (error) {
-      console.error("Error fetching project unread counts:", error);
+      console.error("Error fetching unread counts:", error);
       res.status(500).json({ error: "Failed to fetch unread counts" });
     }
   });
@@ -881,12 +1141,12 @@ export function registerRoutes(app: Express): Server {
       );
     }
 
-    const query = db
+    const staffAndCustomerSupportOfficers = await db
       .select()
       .from(users)
-      .where(whereCondition);
+      .where(and(whereCondition, eq(users.isActive, true)))
+      .orderBy(desc(users.lastActive));
 
-    const staffAndCustomerSupportOfficers = await query.orderBy(desc(users.lastActive));
     res.json(staffAndCustomerSupportOfficers);
   });
 
@@ -906,7 +1166,7 @@ export function registerRoutes(app: Express): Server {
           specialization: users.specialization,
         })
         .from(users)
-        .where(eq(users.role, "staff"))
+        .where(and(eq(users.role, "staff"), eq(users.isActive, true)))
         .orderBy(asc(users.name));
 
       res.json(allUsers);
@@ -937,7 +1197,7 @@ export function registerRoutes(app: Express): Server {
       const clients = await db
         .select()
         .from(users)
-        .where(eq(users.role, "client"))
+        .where(and(eq(users.role, "client"), eq(users.isActive, true)))
         .orderBy(desc(users.createdAt));
 
       res.json(clients);
@@ -997,6 +1257,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
+      // Filter for active users who are not clients
       const allUsers = await db
         .select({
           id: users.id,
@@ -1006,7 +1267,7 @@ export function registerRoutes(app: Express): Server {
           specialization: users.specialization,
         })
         .from(users)
-        .where(ne(users.role, "client"))
+        .where(and(ne(users.role, "client"), eq(users.isActive, true)))
         .orderBy(asc(users.name));
 
       res.json(allUsers);
@@ -1082,34 +1343,34 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get single user details
-  app.get("/api/users/:id", async (req, res) => {
+  // Get all users (for staff report)
+  app.get("/api/users/staff", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     try {
-      const userId = parseInt(req.params.id);
-      const [user] = await db
+      const allStaff = await db
         .select({
           id: users.id,
           name: users.name,
           email: users.email,
           role: users.role,
           specialization: users.specialization,
+          status: users.status,
+          lastActive: users.lastActive,
         })
         .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
+        .where(and(
+          or(eq(users.role, "staff"), eq(users.role, "intern")),
+          eq(users.isActive, true)
+        ))
+        .orderBy(asc(users.name));
 
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      res.json(user);
+      res.json(allStaff);
     } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ error: "Failed to fetch user" });
+      console.error("Error fetching staff:", error);
+      res.status(500).json({ error: "Failed to fetch staff" });
     }
   });
 
@@ -1172,16 +1433,36 @@ export function registerRoutes(app: Express): Server {
         .where(and(
           eq(taskSessions.userId, staffIdNum),
           gte(taskSessions.startTime, start),
-          sql`${taskSessions.startTime} <= ${end}`
+          sql`${taskSessions.startTime} <= ${end.toISOString()}` // Ensure end date is correctly handled
         ));
 
-      // Get ALL tasks that have sessions (not filtered by date range)
-      // This ensures we show all tasks worked on each day, regardless of when they were created
-      const taskIdsFromSessions = [...new Set(allSessions.map(s => s.taskId).filter(Boolean))];
-      const allTasksWorkedOn = taskIdsFromSessions.length > 0 ? await db
+      // For Productivity Score tab: Get ALL tasks assigned to the staff member
+      const allAssignedTasks = await db
         .select()
         .from(tasks)
-        .where(inArray(tasks.id, taskIdsFromSessions)) : [];
+        .where(
+          and(
+            eq(tasks.assigneeId, staffIdNum),
+            or(
+              and(
+                gte(tasks.startDate, start),
+                sql`${tasks.startDate} <= ${end.toISOString()}`
+              ),
+              and(
+                gte(tasks.createdAt, start),
+                sql`${tasks.createdAt} <= ${end.toISOString()}`
+              ),
+              // Also include tasks that were completed in this range even if started before
+              and(
+                isNotNull(tasks.completedAt),
+                gte(tasks.completedAt, start),
+                sql`${tasks.completedAt} <= ${end.toISOString()}`
+              ),
+              // Also include tasks currently in progress
+              eq(tasks.status, "in_progress")
+            )
+          )
+        );
 
       // Process daily productivity data
       const dailyMap = new Map();
@@ -1205,25 +1486,28 @@ export function registerRoutes(app: Express): Server {
           tasks: [],
           taskDetails: [],
           workdayStart: null,
-          workdayEnd: null
+          workdayEnd: null,
+          taskIds: new Set() // Track task IDs worked on this day
         });
       });
 
-      // Build taskDetails from all tasks worked on using task.timeSpent
+      // Build taskDetails for Productivity Score from ALL assigned tasks in range
       const taskDetailsMap = new Map();
 
-      allTasksWorkedOn.forEach(task => {
+      allAssignedTasks.forEach(task => {
         taskDetailsMap.set(task.id, {
           id: task.id,
           title: task.title,
           workingHours: task.workingHours || 0,
           workingMinutes: task.workingMinutes || 0,
-          timeSpent: task.timeSpent || 0 // Use task's timeSpent field directly
+          timeSpent: task.timeSpent || 0, // Use task's timeSpent field directly
+          isCompleted: task.status === 'completed'
         });
       });
 
       // Group sessions by date for daily breakdown - get tasks worked on each specific day
       // This matches exactly how the Productivity Tracking page shows tasks
+      // This is for Daily Productivity Details tab only
       allSessions.forEach(session => {
         if (!session.startTime || !session.taskId) return;
 
@@ -1233,12 +1517,17 @@ export function registerRoutes(app: Express): Server {
         if (!dailyMap.has(dateKey)) return;
 
         const dailyData = dailyMap.get(dateKey);
-        const task = allTasksWorkedOn.find(t => t.id === session.taskId);
+        dailyData.taskIds = dailyData.taskIds || new Set<number>();
+        
+        // Find task from either allTasksWorkedOn or allAssignedTasks
+        let task = allTasksWorkedOn.find(t => t.id === session.taskId) || 
+                   allAssignedTasks.find(t => t.id === session.taskId);
 
         if (task && task.title) {
           // Only add task title if not already in the list for this day
           if (!dailyData.tasks.includes(task.title)) {
             dailyData.tasks.push(task.title);
+            dailyData.taskIds.add(task.id);
           }
         }
       });
@@ -1248,41 +1537,44 @@ export function registerRoutes(app: Express): Server {
         dailyData.taskCount = dailyData.tasks.length;
       });
 
-      console.log('Daily task data after session processing:',
-        Array.from(dailyMap.entries()).map(([date, data]) => ({
-          date,
-          taskCount: data.taskCount,
-          tasks: data.tasks
-        }))
-      );
+      // Calculate total actual work hours per day from task timeSpent
+      // The user wants: "The total time worked for a particular day should be the sum of the time (gotten from the task timer) each task worked on that day"
+      dailyMap.forEach((dailyData: any) => {
+        let dailySeconds = 0;
+        const taskIds = dailyData.taskIds as Set<number> | undefined;
+        if (taskIds) {
+          taskIds.forEach((taskId) => {
+            const task = (allTasksWorkedOn as any[]).find(t => t.id === taskId);
+            if (task && task.timeSpent) {
+              dailySeconds += task.timeSpent;
+            }
+          });
+        }
+        dailyData.actualWorkHours = dailySeconds / 3600;
 
-      // Calculate total actual work hours per day from sessions
-      allSessions.forEach(session => {
-        if (!session.startTime) return;
-
-        const sessionDate = new Date(session.startTime);
-        const dateKey = sessionDate.toISOString().split('T')[0];
-
-        if (!dailyMap.has(dateKey)) return;
-
-        const dailyData = dailyMap.get(dateKey);
-
-        let sessionDuration = 0;
-        if (session.duration) {
-          sessionDuration = session.duration;
-        } else if (session.endTime === null) {
-          const now = new Date();
-          sessionDuration = Math.floor((now.getTime() - new Date(session.startTime).getTime()) / 1000);
+        // Update performance status based on the new actualWorkHours
+        if (dailyData.totalSpanHours === 0 && dailyData.actualWorkHours > 0) {
+          dailyData.totalSpanHours = dailyData.actualWorkHours;
         }
 
-        if (sessionDuration > 0) {
-          dailyData.actualWorkHours += sessionDuration / 3600;
+        if (dailyData.actualWorkHours > 9) {
+          dailyData.performanceStatus = 'excessive_hours';
+          dailyData.performanceColor = '#B91C1C';
+        } else if (dailyData.actualWorkHours >= 4) {
+          dailyData.performanceStatus = 'good';
+          dailyData.performanceColor = '#10B981';
+        } else if (dailyData.actualWorkHours >= 2) {
+          dailyData.performanceStatus = 'fair';
+          dailyData.performanceColor = '#F59E0B';
+        } else {
+          dailyData.performanceStatus = 'poor';
+          dailyData.performanceColor = '#EF4444';
         }
       });
 
       // Calculate allocated time from tasks worked on (based on sessions, not task creation date)
       // Group sessions by date to calculate allocated time per day
-      const allocatedTimeByDate = new Map();
+      const allocatedTimeByDate = new Map<string, Set<number>>();
       allSessions.forEach(session => {
         if (!session.startTime || !session.taskId) return;
 
@@ -1291,12 +1583,12 @@ export function registerRoutes(app: Express): Server {
 
         if (!dailyMap.has(dateKey)) return;
 
-        const task = allTasksWorkedOn.find(t => t.id === session.taskId);
+        const task = (allTasksWorkedOn as any[]).find(t => t.id === session.taskId);
         if (task) {
           if (!allocatedTimeByDate.has(dateKey)) {
-            allocatedTimeByDate.set(dateKey, new Set());
+            allocatedTimeByDate.set(dateKey, new Set<number>());
           }
-          allocatedTimeByDate.get(dateKey).add(task.id);
+          allocatedTimeByDate.get(dateKey)!.add(task.id);
         }
       });
 
@@ -1305,7 +1597,7 @@ export function registerRoutes(app: Express): Server {
         const dailyData = dailyMap.get(dateKey);
         if (dailyData) {
           taskIds.forEach(taskId => {
-            const task = allTasksWorkedOn.find(t => t.id === taskId);
+            const task = (allTasksWorkedOn as any[]).find(t => t.id === taskId);
             if (task) {
               const allocatedHours = (task.workingHours || 0) + ((task.workingMinutes || 0) / 60);
               if (allocatedHours > 0) {
@@ -1316,34 +1608,37 @@ export function registerRoutes(app: Express): Server {
         }
       });
 
-      // Calculate performance status
-      dailyMap.forEach((dailyData) => {
-        if (dailyData.totalSpanHours === 0 && dailyData.actualWorkHours > 0) {
-          dailyData.totalSpanHours = dailyData.actualWorkHours;
-        }
-
-        if (dailyData.actualWorkHours >= 4) {
-          dailyData.performanceStatus = 'good';
-          dailyData.performanceColor = '#10B981';
-        } else if (dailyData.actualWorkHours >= 2) {
-          dailyData.performanceStatus = 'fair';
-          dailyData.performanceColor = '#F59E0B';
-        }
-      });
-
       // Convert to array with taskBreakdown - ensure tasks array is properly populated
       // This matches the structure used by the Productivity Tracking page
-      const dailyData = Array.from(dailyMap.values()).map(day => {
-        const validTasks = day.tasks.filter(task => task && task.trim().length > 0);
+      const dailyData = Array.from(dailyMap.values()).map((day: any) => {
+        const tasksFromDay = (day.tasks || []) as any[];
+        const validTasks = tasksFromDay.filter((task: any) => task && typeof task === 'string' && task.trim().length > 0) as string[];
+        
+        // Add task breakdown details for this day
+        const dayTaskBreakdown = Array.from(day.taskIds as Set<number> || []).map(taskId => {
+          const task = allAssignedTasks.find(t => t.id === taskId) || (allTasksWorkedOn as any[]).find(t => t.id === taskId);
+          if (!task) return null;
+          return {
+            id: task.id,
+            title: task.title,
+            timeSpent: task.timeSpent || 0,
+            workingHours: task.workingHours || 0,
+            workingMinutes: task.workingMinutes || 0,
+            isCompleted: task.status === 'completed',
+            status: task.status
+          };
+        }).filter(Boolean);
+
         return {
           date: day.date,
           totalSpanHours: day.totalSpanHours,
           actualWorkHours: day.actualWorkHours,
           performanceStatus: day.performanceStatus,
           performanceColor: day.performanceColor,
-          taskCount: validTasks.length, // Count of unique tasks worked on that day
-          tasks: validTasks, // Only include valid task titles
-          taskBreakdown: Array.from(taskDetailsMap.values()),
+          taskCount: validTasks.length,
+          tasks: validTasks,
+          taskDetails: Array.from(taskDetailsMap.values()),
+          taskBreakdown: dayTaskBreakdown,
           workdayStart: day.workdayStart,
           workdayEnd: day.workdayEnd
         };
@@ -1384,7 +1679,8 @@ export function registerRoutes(app: Express): Server {
           goodDays,
           fairDays,
           poorDays
-        }
+        },
+        taskDetails: Array.from(taskDetailsMap.values())
       };
 
       res.json(productivityData);
@@ -1482,7 +1778,7 @@ export function registerRoutes(app: Express): Server {
         .where(and(
           eq(taskSessions.userId, user.id),
           gte(taskSessions.startTime, startOfDay),
-          sql`${taskSessions.startTime} <= ${endOfDay}`
+          sql`${taskSessions.startTime} <= ${endOfDay.toISOString()}` // Ensure end date is correctly handled
         ));
 
       // Process today's data with session-based calculation
@@ -1542,9 +1838,19 @@ export function registerRoutes(app: Express): Server {
         weeklyBreakdown: []
       };
 
-      // Generate weekly breakdown (Mon-Fri)
+      // Generate weekly breakdown (Mon-Fri) - Calculate using sessions like Total Time Worked
       const weeklyBreakdown = [];
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+      // Get all sessions for the week
+      const weekSessions = await db
+        .select()
+        .from(taskSessions)
+        .where(and(
+          eq(taskSessions.userId, user.id),
+          gte(taskSessions.startTime, weekStart),
+          sql`${taskSessions.startTime} <= ${weekEnd.toISOString()}` // Ensure end date is correctly handled
+        ));
 
       for (let i = 0; i < 7; i++) {
         const currentDay = new Date(weekStart);
@@ -1555,20 +1861,46 @@ export function registerRoutes(app: Express): Server {
         const dayEnd = new Date(currentDay);
         dayEnd.setHours(23, 59, 59, 999);
 
-        // Get tasks for this specific day
-        const dayTasks = weekTasks.filter(task => {
-          const taskDate = new Date(task.updatedAt);
-          return taskDate >= dayStart && taskDate <= dayEnd;
+        // Get sessions for this specific day
+        const daySessions = weekSessions.filter(session => {
+          if (!session.startTime) return false;
+          const sessionDate = new Date(session.startTime);
+          return sessionDate >= dayStart && sessionDate <= dayEnd;
         });
 
-        const totalTime = dayTasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
-        const hours = totalTime / 3600; // Convert seconds to hours
+        // Calculate total time from sessions (same as Total Time Worked card)
+        let totalTimeInSeconds = 0;
+        const uniqueTaskIds = new Set();
+
+        daySessions.forEach(session => {
+          if (session.taskId) {
+            uniqueTaskIds.add(session.taskId);
+          }
+
+          let sessionDuration = 0;
+          if (session.duration) {
+            sessionDuration = session.duration;
+          } else if (session.endTime === null) {
+            // Active session
+            const now = new Date();
+            sessionDuration = Math.floor((now.getTime() - new Date(session.startTime).getTime()) / 1000);
+          }
+
+          if (sessionDuration > 0) {
+            totalTimeInSeconds += sessionDuration;
+          }
+        });
+
+        const hours = totalTimeInSeconds / 3600; // Convert seconds to hours
 
         // Calculate performance status (consistent with daily data)
         let performanceStatus = 'poor';
         let performanceColor = '#EF4444';
 
-        if (hours >= 4) {
+        if (hours > 9) {
+          performanceStatus = 'excessive';
+          performanceColor = '#DC2626';
+        } else if (hours >= 4) {
           performanceStatus = 'good';
           performanceColor = '#10B981';
         } else if (hours >= 2) {
@@ -1576,34 +1908,44 @@ export function registerRoutes(app: Express): Server {
           performanceColor = '#F59E0B';
         }
 
-        // Get first and last timer activities for workday span calculation
-        const timerTasks = dayTasks.filter(task => task.timerStartTime);
+        // Get first and last session times for workday span
         let workdayStart = null;
         let workdayEnd = null;
-        let totalSpanHours = hours; // Default to actual work hours
 
-        if (timerTasks.length > 0) {
-          const timerStarts = timerTasks.map(task => new Date(task.timerStartTime)).sort((a, b) => a.getTime() - b.getTime());
-          const timerEnds = timerTasks.map(task => {
-            const start = new Date(task.timerStartTime);
-            return new Date(start.getTime() + ((task.timerDuration || 0) * 1000));
+        if (daySessions.length > 0) {
+          const sessionStarts = daySessions.map(s => new Date(s.startTime)).sort((a, b) => a.getTime() - b.getTime());
+          workdayStart = sessionStarts[0].toISOString();
+
+          // Find the latest end time
+          const sessionEnds = daySessions.map(s => {
+            if (s.endTime) {
+              return new Date(s.endTime);
+            } else {
+              // Active session - use current time
+              return new Date();
+            }
           }).sort((a, b) => b.getTime() - a.getTime());
 
-          workdayStart = timerStarts[0].toISOString();
-          workdayEnd = timerEnds[0].toISOString();
-          totalSpanHours = Math.max(hours, (timerEnds[0].getTime() - timerStarts[0].getTime()) / (1000 * 60 * 60));
+          workdayEnd = sessionEnds[0].toISOString();
+        }
+
+        // Get task titles for this day
+        const dayTaskTitles = [];
+        if (uniqueTaskIds.size > 0) {
+          const dayTasks = allUserTasks.filter(task => uniqueTaskIds.has(task.id));
+          dayTaskTitles.push(...dayTasks.map(task => task.title));
         }
 
         weeklyBreakdown.push({
           day: currentDay.toISOString().split('T')[0],
           dayName: dayNames[currentDay.getDay()],
-          timeSpent: totalTime,
+          timeSpent: totalTimeInSeconds,
           hours,
-          taskCount: dayTasks.length,
-          tasks: dayTasks.map(task => task.title),
+          taskCount: uniqueTaskIds.size,
+          tasks: dayTaskTitles,
           workdayStart,
           workdayEnd,
-          totalSpanHours,
+          totalSpanHours: hours, // Use actual work hours, not span
           performanceStatus,
           performanceColor
         });
@@ -1629,6 +1971,239 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching productivity data:", error);
       res.status(500).json({ error: "Failed to fetch productivity data" });
+    }
+  });
+
+  // Stop Gap API Routes
+
+  // Get current month's stop gap allocation for authenticated user
+  app.get("/api/stop-gap/current", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    // Only staff and interns can access stop gap
+    if (user.role !== "staff" && user.role !== "intern") {
+      return res.status(403).json({ error: "Only staff and interns have stop gap allocations" });
+    }
+
+    try {
+      const now = new Date();
+      const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      // Get or create allocation for current month
+      let [allocation] = await db
+        .select()
+        .from(stopGapAllocations)
+        .where(
+          and(
+            eq(stopGapAllocations.userId, user.id),
+            eq(stopGapAllocations.monthYear, monthYear)
+          )
+        )
+        .limit(1);
+
+      if (!allocation) {
+        // Create new allocation for this month
+        [allocation] = await db
+          .insert(stopGapAllocations)
+          .values({
+            userId: user.id,
+            monthYear,
+            totalHours: 5,
+            usedHours: 0,
+            remainingHours: 300, // 5 hours in minutes
+          })
+          .returning();
+      }
+
+      res.json(allocation);
+    } catch (error) {
+      console.error("Error fetching stop gap allocation:", error);
+      res.status(500).json({ error: "Failed to fetch stop gap allocation" });
+    }
+  });
+
+  // Apply stop gap time to a task
+  app.post("/api/stop-gap/apply", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+
+    if (user.role !== "staff" && user.role !== "intern") {
+      return res.status(403).json({ error: "Only staff and interns can use stop gap" });
+    }
+
+    try {
+      const { taskId, hours, minutes } = req.body;
+
+      if (!taskId || (hours === undefined && minutes === undefined)) {
+        return res.status(400).json({ error: "Task ID and time are required" });
+      }
+
+      const stopGapMinutes = (hours || 0) * 60 + (minutes || 0);
+
+      if (stopGapMinutes <= 0) {
+        return res.status(400).json({ error: "Stop gap time must be greater than 0" });
+      }
+
+      const now = new Date();
+      const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      // Check if task exists
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Check permissions:
+      // 1. If assigned to user, they can always apply stop gap
+      // 2. If NOT assigned to user, only allow if they are staff/intern AND deadline is missed
+      const isAssignedToUser = task.assigneeId === user.id;
+      const isDeadlineMissed = task.deadline && new Date(task.deadline).getTime() < Date.now();
+
+      if (!isAssignedToUser) {
+        if (!isDeadlineMissed) {
+          return res.status(403).json({ error: "You can only apply stop gap to other tasks if the deadline has been missed" });
+        }
+        // If deadline is missed, staff/intern can apply stop gap even if not assigned (per requirement)
+      }
+
+      // Check if stop gap already applied to this task
+      const [existingAssignment] = await db
+        .select()
+        .from(stopGapTaskAssignments)
+        .where(eq(stopGapTaskAssignments.taskId, taskId))
+        .limit(1);
+
+      if (existingAssignment) {
+        return res.status(400).json({ error: "Stop gap time already applied to this task" });
+      }
+
+      // Get current month's allocation
+      let [allocation] = await db
+        .select()
+        .from(stopGapAllocations)
+        .where(
+          and(
+            eq(stopGapAllocations.userId, user.id),
+            eq(stopGapAllocations.monthYear, monthYear)
+          )
+        )
+        .limit(1);
+
+      if (!allocation) {
+        [allocation] = await db
+          .insert(stopGapAllocations)
+          .values({
+            userId: user.id,
+            monthYear,
+            totalHours: 5,
+            usedHours: 0,
+            remainingHours: 300,
+          })
+          .returning();
+      }
+
+      // Check if enough stop gap time remaining
+      if (allocation.remainingHours < stopGapMinutes) {
+        return res.status(400).json({
+          error: `Insufficient stop gap time. Available: ${Math.floor(allocation.remainingHours / 60)}h ${allocation.remainingHours % 60}m`
+        });
+      }
+
+      // Apply stop gap to task
+      await db.transaction(async (tx) => {
+        // Create task assignment
+        await tx.insert(stopGapTaskAssignments).values({
+          taskId,
+          userId: user.id,
+          stopGapHours: stopGapMinutes,
+          monthYear,
+        });
+
+        // Update allocation
+        await tx
+          .update(stopGapAllocations)
+          .set({
+            usedHours: allocation.usedHours + stopGapMinutes,
+            remainingHours: allocation.remainingHours - stopGapMinutes,
+            updatedAt: new Date(),
+          })
+          .where(eq(stopGapAllocations.id, allocation.id));
+
+        // Update task working time and deadline
+        const newWorkingMinutesTotal = (task.workingHours || 0) * 60 + (task.workingMinutes || 0) + stopGapMinutes;
+        const newHours = Math.floor(newWorkingMinutesTotal / 60);
+        const newMinutes = newWorkingMinutesTotal % 60;
+
+        let newDeadline = task.deadline;
+        if (newDeadline) {
+          newDeadline = new Date(new Date(newDeadline).getTime() + stopGapMinutes * 60000);
+        }
+
+        await tx
+          .update(tasks)
+          .set({
+            workingHours: newHours,
+            workingMinutes: newMinutes,
+            deadline: newDeadline,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, taskId));
+      });
+
+      // Get updated allocation
+      const [updatedAllocation] = await db
+        .select()
+        .from(stopGapAllocations)
+        .where(eq(stopGapAllocations.id, allocation.id))
+        .limit(1);
+
+      res.json({
+        success: true,
+        allocation: updatedAllocation,
+        message: `Stop gap time applied: ${hours || 0}h ${minutes || 0}m`
+      });
+    } catch (error) {
+      console.error("Error applying stop gap:", error);
+      res.status(500).json({ error: "Failed to apply stop gap time" });
+    }
+  });
+
+  // Get stop gap assignment for a specific task
+  app.get("/api/stop-gap/task/:taskId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const taskId = parseInt(req.params.taskId);
+
+      const [assignment] = await db
+        .select()
+        .from(stopGapTaskAssignments)
+        .where(eq(stopGapTaskAssignments.taskId, taskId))
+        .limit(1);
+
+      // Return null if no assignment exists
+      if (!assignment) {
+        return res.json(null);
+      }
+
+      res.json(assignment);
+    } catch (error) {
+      console.error("Error fetching stop gap assignment:", error);
+      res.status(500).json({ error: "Failed to fetch stop gap assignment" });
     }
   });
 
@@ -1682,7 +2257,7 @@ export function registerRoutes(app: Express): Server {
           ['Staff Name', staffName],
           ['Department', department],
           ['Date Range', `${dateRange} days`],
-          ['Generated At', new Date().toISOString()],
+          ['Generated At', new Date().toLocaleString()],
           [''],
           ['Summary'],
           ['Total Days', productivityData.summary.totalDays],
@@ -1968,7 +2543,7 @@ End of Report
       const clients = await db
         .select()
         .from(users)
-        .where(eq(users.role, "client"))
+        .where(and(eq(users.role, "client"), eq(users.isActive, true)))
         .orderBy(desc(users.createdAt));
 
       res.json(clients);
@@ -2396,10 +2971,10 @@ End of Report
     }
   });
 
-  // Start task timer (Staff and Interns only)
+  // Start task timer (Staff, Interns, and Team Leads)
   app.post("/api/tasks/:id/start-timer", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern")) {
-      return res.status(403).send("Only staff members and interns can start timers");
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern" && req.user!.role !== "team_lead")) {
+      return res.status(403).send("Only staff members, interns and team leads can start timers");
     }
 
     try {
@@ -2448,15 +3023,23 @@ End of Report
           startTime: now,
         });
 
+      // Set actualStartTime only on first timer start
+      const updateData: any = {
+        isTimerRunning: true,
+        timerStartTime: now,
+        hasBeenStarted: true,
+        status: "in_progress",
+        updatedAt: now
+      };
+      
+      // Only set actualStartTime if it hasn't been set before
+      if (!task.actualStartTime) {
+        updateData.actualStartTime = now;
+      }
+
       const [updatedTask] = await db
         .update(tasks)
-        .set({
-          isTimerRunning: true,
-          timerStartTime: now,
-          hasBeenStarted: true,
-          status: "in_progress",
-          updatedAt: now
-        })
+        .set(updateData)
         .where(eq(tasks.id, taskId))
         .returning();
 
@@ -2511,7 +3094,7 @@ End of Report
             global.connectedClients.forEach((client) => {
               if (client.readyState === 1) {
                 try {
-                  client.send(JSON.JSON.stringify({
+                  client.send(JSON.stringify({
                     type: 'task_timer_update',
                     data: {
                       taskId: currentTask.id,
@@ -2545,10 +3128,10 @@ End of Report
     }
   });
 
-  // Pause task timer (Staff and Interns only)
+  // Pause task timer (Staff, Interns, and Team Leads)
   app.post("/api/tasks/:id/pause-timer", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern")) {
-      return res.status(403).send("Only staff members and interns can pause timers");
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern" && req.user!.role !== "team_lead")) {
+      return res.status(403).send("Only staff members, interns and team leads can pause timers");
     }
 
     try {
@@ -2664,10 +3247,10 @@ End of Report
     }
   });
 
-  // Submit task for review (Staff and Interns only)
+  // Submit task for review (Staff, Interns, and Team Leads)
   app.post("/api/tasks/:id/submit", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern")) {
-      return res.status(403).send("Only staff members and interns can submit tasks");
+    if (!req.isAuthenticated() || (req.user!.role !== "staff" && req.user!.role !== "intern" && req.user!.role !== "team_lead")) {
+      return res.status(403).send("Only staff members, interns and team leads can submit tasks");
     }
 
     try {
@@ -2703,17 +3286,56 @@ End of Report
 
       // Update task to review status and stop timer
       const now = new Date();
+      const reviewUpdateData: any = {
+        status: "review",
+        isTimerRunning: false,
+        timeSpent: newTimeSpent,
+        timerStartTime: null,
+        updatedAt: now
+      };
+      
+      // Set reviewStartedAt if not already set
+      if (!task.reviewStartedAt) {
+        reviewUpdateData.reviewStartedAt = now;
+      }
+      
       const [updatedTask] = await db
         .update(tasks)
-        .set({
-          status: "review",
-          isTimerRunning: false,
-          timeSpent: newTimeSpent,
-          timerStartTime: null,
-          updatedAt: now
-        })
+        .set(reviewUpdateData)
         .where(eq(tasks.id, taskId))
         .returning();
+
+      // Notify project manager when task is submitted for review
+      try {
+        const [taskWithProjectInfo] = await db
+          .select({
+            task: tasks,
+            project: projects,
+          })
+          .from(tasks)
+          .leftJoin(projects, eq(tasks.projectId, projects.id))
+          .where(eq(tasks.id, taskId))
+          .limit(1);
+
+        if (taskWithProjectInfo && taskWithProjectInfo.project) {
+          const pmId = taskWithProjectInfo.project.managerId || taskWithProjectInfo.task.assignedBy;
+          console.log(`[DEBUG] Task submission detected via POST. Task ID: ${taskId}, PM ID candidate: ${pmId}`);
+          if (pmId) {
+            const pmNotification = await createNotification(
+              pmId,
+              "task_updated",
+              `${user.name} has submitted task "${updatedTask.title}" for review`,
+              updatedTask.id,
+              "task"
+            );
+            console.log(`✅ Review notification sent to project manager ${pmId}. Notification ID: ${pmNotification?.id}`);
+          } else {
+            console.log(`⚠️ No PM ID found for task submission ${taskId}. Project Manager: ${taskWithProjectInfo.project.managerId}, Assigned By: ${taskWithProjectInfo.task.assignedBy}`);
+          }
+        }
+      } catch (notifyErr) {
+        console.error('Error sending task submission notification:', notifyErr);
+      }
 
       // Broadcast task update via WebSocket
       if (global.connectedClients) {
@@ -2741,6 +3363,63 @@ End of Report
     } catch (error) {
       console.error("Error submitting task:", error);
       res.status(500).json({ error: "Failed to submit task" });
+    }
+  });
+
+  // Complete Project (Project Managers only)
+  app.post("/api/projects/:id/complete", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+
+    try {
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Access control: PM (creator), Operations Manager, or CSOs (who have high visibility)
+      const isProjectManager = project.managerId === user.id || user.role === "operations_manager" || user.specialization === "operations_manager";
+      const isCSO = user.role === "customer_support_officer";
+
+      if (!isProjectManager && !isCSO) {
+        return res.status(403).json({ error: "Only project managers or CSOs can complete projects" });
+      }
+
+      // Verify all tasks are completed
+      const projectTasks = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.projectId, projectId));
+
+      const allTasksDone = projectTasks.length > 0 && projectTasks.every(t => t.status === "completed");
+
+      if (!allTasksDone) {
+        return res.status(400).json({ error: "Cannot complete project: some tasks are still pending" });
+      }
+
+      const [updatedProject] = await db
+        .update(projects)
+        .set({
+          status: "completed",
+          progress: 100,
+          updatedAt: new Date()
+        })
+        .where(eq(projects.id, projectId))
+        .returning();
+
+      res.json(updatedProject);
+    } catch (error) {
+      console.error("Error completing project:", error);
+      res.status(500).json({ error: "Failed to complete project" });
     }
   });
 
@@ -2780,7 +3459,7 @@ End of Report
 
       // Check permissions - ensure project.id exists
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+      const isProjectManager = user.role === "project_manager";
       const isTaskAssignee = existingTask.assigneeId === user.id;
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
       const isTeamLead = user.role === "team_lead";
@@ -2805,8 +3484,8 @@ End of Report
         updateData.assigneeId = assigneeId && assigneeId !== 'unassigned' ? parseInt(assigneeId) : null;
       }
 
-      // If status is changing to 'pending' and timer is running, pause the timer
-      if (status === 'pending' && existingTask.isTimerRunning && existingTask.timerStartTime) {
+      // If status is changing to 'pending' or 'on_hold' and timer is running, pause the timer
+      if ((status === 'pending' || status === 'on_hold') && existingTask.isTimerRunning && existingTask.timerStartTime) {
         const elapsedSeconds = Math.floor((new Date().getTime() - new Date(existingTask.timerStartTime).getTime()) / 1000);
         const newTimeSpent = (existingTask.timeSpent || 0) + elapsedSeconds;
 
@@ -2821,6 +3500,18 @@ End of Report
         }
       }
 
+      // Track when task enters review status
+      if (status === 'review' && existingTask.status !== 'review') {
+        if (!existingTask.reviewStartedAt) {
+          updateData.reviewStartedAt = new Date();
+        }
+      }
+
+      // Track when task is completed
+      if (status === 'completed' && existingTask.status !== 'completed') {
+        updateData.completedAt = new Date();
+      }
+
       updateData.updatedAt = new Date();
 
       // Update the task
@@ -2832,6 +3523,52 @@ End of Report
 
       if (!updatedTask) {
         return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Notify project manager when task is submitted for review
+      if (status === 'review' && existingTask.status !== 'review') {
+        try {
+          const pmId = project.managerId || existingTask.assignedBy;
+          console.log(`[DEBUG] Task review update detected. Task ID: ${taskId}, PM ID candidate: ${pmId}`);
+          if (pmId) {
+            const pmNotification = await createNotification(
+              pmId,
+              "task_updated",
+              `${user.name} has submitted task "${updatedTask.title}" for review`,
+              updatedTask.id,
+              "task"
+            );
+            console.log(`✅ Review notification sent to project manager ${pmId} from PUT endpoint. Notification ID: ${pmNotification?.id}`);
+          } else {
+            console.log(`⚠️ No PM ID found for task ${taskId}. Project Manager: ${project.managerId}, Assigned By: ${existingTask.assignedBy}`);
+          }
+        } catch (notifyErr) {
+          console.error('Error sending task review notification:', notifyErr);
+        }
+      }
+
+      // If project was completed and task status changed from completed, revert project to pending
+      if (project.status === "completed" && existingTask.status === "completed" && status !== "completed") {
+        await db
+          .update(projects)
+          .set({ status: "pending", updatedAt: new Date() })
+          .where(eq(projects.id, project.id));
+        
+        // Broadcast project update
+        if (global.connectedClients) {
+          global.connectedClients.forEach((client, clientId) => {
+            if (client.readyState === 1) { // WebSocket.OPEN
+              try {
+                client.send(JSON.stringify({
+                  type: 'project_updated',
+                  data: { projectId: project.id, status: 'pending' }
+                }));
+              } catch (e) {
+                console.error(`Error broadcasting project update to ${clientId}:`, e);
+              }
+            }
+          });
+        }
       }
 
       console.log("Task updated successfully:", updatedTask);
@@ -2911,7 +3648,7 @@ End of Report
 
       // Check permissions - ensure project.id exists
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+      const isProjectManager = user.role === "project_manager";
       const isProductOwner = user.role === "product_owner";
       const isTechnicalSupport = user.role === "staff" && user.specialization === "technical_support";
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
@@ -3126,6 +3863,8 @@ End of Report
             assignedTo: reviewLinks.assignedTo,
             status: reviewLinks.status,
             reviewedAt: reviewLinks.reviewedAt,
+            reviewComment: reviewLinks.reviewComment,
+            commentedAt: reviewLinks.commentedAt,
             createdAt: reviewLinks.createdAt,
             updatedAt: reviewLinks.updatedAt,
             assigneeName: users.name,
@@ -3147,6 +3886,8 @@ End of Report
             assignedTo: reviewLinks.assignedTo,
             status: reviewLinks.status,
             reviewedAt: reviewLinks.reviewedAt,
+            reviewComment: reviewLinks.reviewComment,
+            commentedAt: reviewLinks.commentedAt,
             createdAt: reviewLinks.createdAt,
             updatedAt: reviewLinks.updatedAt,
             senderName: users.name,
@@ -3162,6 +3903,164 @@ End of Report
     } catch (error) {
       console.error("Error fetching review links:", error);
       res.status(500).json({ error: "Failed to fetch review links" });
+    }
+  });
+
+
+  // Get read receipt counts for direct messages
+  app.get("/api/direct-messages/:messageId/read-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const messageId = parseInt(req.params.messageId);
+
+      const readReceipts = await db
+        .select()
+        .from(messageReadReceipts)
+        .where(eq(messageReadReceipts.messageId, messageId));
+
+      res.json({ count: readReceipts.length });
+    } catch (error) {
+      console.error("Error fetching read count:", error);
+      res.status(500).json({ error: "Failed to fetch read count" });
+    }
+  });
+
+  // Get read receipt counts for team messages
+  app.get("/api/projects/:projectId/team-messages/:messageId/read-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const messageId = parseInt(req.params.messageId);
+
+      const readReceipts = await db
+        .select()
+        .from(messageReadReceipts)
+        .where(eq(messageReadReceipts.messageId, messageId));
+
+      res.json({ count: readReceipts.length });
+    } catch (error) {
+      console.error("Error fetching read count:", error);
+      res.status(500).json({ error: "Failed to fetch read count" });
+    }
+  });
+
+  // Get read receipt counts for general channel messages
+  app.get("/api/general-channel/messages/:messageId/read-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const messageId = parseInt(req.params.messageId);
+
+      const readReceipts = await db
+        .select()
+        .from(generalChannelReadReceipts)
+        .where(eq(generalChannelReadReceipts.messageId, messageId));
+
+      res.json({ count: readReceipts.length });
+    } catch (error) {
+      console.error("Error fetching read count:", error);
+      res.status(500).json({ error: "Failed to fetch read count" });
+    }
+  });
+
+  // Pin general channel message
+  app.post("/api/general-channel/messages/:messageId/pin", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers and team leads can pin messages" });
+    }
+
+    try {
+      const messageId = parseInt(req.params.messageId);
+
+      const [updatedMessage] = await db
+        .update(generalChannelMessages)
+        .set({ isPinned: true, updatedAt: new Date() })
+        .where(eq(generalChannelMessages.id, messageId))
+        .returning();
+
+      if (!updatedMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      // Broadcast update via SSE
+      if (global.sseClients) {
+        global.sseClients.forEach((client, id) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'general_channel_message_updated',
+                data: updatedMessage
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error broadcasting to user ${id}:`, error);
+            }
+          }
+        });
+      }
+
+      res.json(updatedMessage);
+    } catch (error) {
+      console.error("Error pinning message:", error);
+      res.status(500).json({ error: "Failed to pin message" });
+    }
+  });
+
+  // Unpin general channel message
+  app.delete("/api/general-channel/messages/:messageId/pin", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "operations_manager" && user.role !== "team_lead" && user.specialization !== "operations_manager") {
+      return res.status(403).json({ error: "Only operations managers and team leads can unpin messages" });
+    }
+
+    try {
+      const messageId = parseInt(req.params.messageId);
+
+      const [updatedMessage] = await db
+        .update(generalChannelMessages)
+        .set({ isPinned: false, updatedAt: new Date() })
+        .where(eq(generalChannelMessages.id, messageId))
+        .returning();
+
+      if (!updatedMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      // Broadcast update via SSE
+      if (global.sseClients) {
+        global.sseClients.forEach((client, id) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'general_channel_message_updated',
+                data: updatedMessage
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error broadcasting to user ${id}:`, error);
+            }
+          }
+        });
+      }
+
+      res.json(updatedMessage);
+    } catch (error) {
+      console.error("Error unpinning message:", error);
+      res.status(500).json({ error: "Failed to unpin message" });
     }
   });
 
@@ -3214,6 +4113,34 @@ End of Report
         newLink.id,
         "review_link"
       );
+
+      // Send SSE notification to team lead for browser notification
+      const teamLeadId = parseInt(assignedTo);
+      if (global.sseClients && global.sseClients.has(teamLeadId)) {
+        const client = global.sseClients.get(teamLeadId);
+        if (client) {
+          client.write(`data: ${JSON.stringify({
+            type: 'review_link_assigned',
+            data: {
+              linkId: newLink.id,
+              title,
+              senderName: user.name,
+              message: `${user.name} sent you a link to review: "${title}"`
+            }
+          })}\n\n`);
+        }
+      }
+
+      // Send OneSignal push notification to team lead
+      try {
+        await sendOneSignalNotification(
+          teamLeadId,
+          "New Review Request",
+          `${user.name} sent you a link to review: "${title}"`
+        );
+      } catch (err) {
+        console.error("Failed to send OneSignal notification for review assignment:", err);
+      }
 
       res.json(newLink);
     } catch (error) {
@@ -3506,7 +4433,7 @@ End of Report
     }
 
     try {
-      const linkId = parseInt(req.params.id);
+      const linkId= parseInt(req.params.id);
 
       // Check if link exists and is assigned to this team lead
       const [link] = await db
@@ -3534,18 +4461,318 @@ End of Report
         .returning();
 
       // Create notification for project manager
-      await createNotification(
-        link.sentBy,
-        "task_completed",
-        `${user.name} has reviewed your link: "${link.title}"`,
-        linkId,
-        "review_link"
-      );
+      try {
+        await createNotification(
+          link.sentBy,
+          "task_completed",
+          `${user.name} has reviewed your link: "${link.title}"`,
+          linkId,
+          "review_link"
+        );
+      } catch (notifErr) {
+        console.error("Failed to create notification for review completion:", notifErr);
+      }
+
+      // Send SSE notification to project manager
+      try {
+        if (global.sseClients && global.sseClients.has(link.sentBy)) {
+          const client = global.sseClients.get(link.sentBy);
+          if (client) {
+            client.write(`data: ${JSON.stringify({
+              type: 'review_link_reviewed',
+              data: {
+                linkId,
+                title: link.title,
+                reviewerName: user.name,
+                message: `${user.name} has reviewed your link: "${link.title}"`
+              }
+            })}\n\n`);
+          }
+        }
+      } catch (sseErr) {
+        console.error("Failed to send SSE notification for review completion:", sseErr);
+      }
+
+      // Send OneSignal push notification to project manager
+      try {
+        await sendOneSignalNotification(
+          link.sentBy,
+          "Review Completed",
+          `${user.name} has reviewed your link: "${link.title}"`
+        );
+      } catch (err) {
+        console.error("Failed to send OneSignal notification for review completion:", err);
+      }
 
       res.json(updatedLink);
     } catch (error) {
       console.error("Error marking link as reviewed:", error);
       res.status(500).json({ error: "Failed to mark link as reviewed" });
+    }
+  });
+
+  // Mark review link as not approved
+  app.put("/api/review-links/:id/not-approved", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    if (user.role !== "team_lead") {
+      return res.status(403).json({ error: "Only team leads can mark links as not approved" });
+    }
+
+    try {
+      const linkId = parseInt(req.params.id);
+
+      // Check if link exists and is assigned to this team lead
+      const [link] = await db
+        .select()
+        .from(reviewLinks)
+        .where(and(
+          eq(reviewLinks.id, linkId),
+          eq(reviewLinks.assignedTo, user.id)
+        ))
+        .limit(1);
+
+      if (!link) {
+        return res.status(404).json({ error: "Review link not found or not assigned to you" });
+      }
+
+      // Update link status
+      const [updatedLink] = await db
+        .update(reviewLinks)
+        .set({
+          status: "not_approved",
+          updatedAt: new Date(),
+        })
+        .where(eq(reviewLinks.id, linkId))
+        .returning();
+
+      // Create notification for project manager
+      try {
+        await createNotification(
+          link.sentBy,
+          "task_updated",
+          `${user.name} has marked your link: "${link.title}" as NOT APPROVED`,
+          linkId,
+          "review_link"
+        );
+      } catch (notifErr) {
+        console.error("Failed to create notification for review rejection:", notifErr);
+      }
+
+      // Send SSE notification to project manager
+      try {
+        if (global.sseClients && global.sseClients.has(link.sentBy)) {
+          const client = global.sseClients.get(link.sentBy);
+          if (client) {
+            client.write(`data: ${JSON.stringify({
+              type: 'review_link_not_approved',
+              data: {
+                linkId,
+                title: link.title,
+                reviewerName: user.name,
+                message: `${user.name} has marked your link: "${link.title}" as NOT APPROVED`
+              }
+            })}\n\n`);
+          }
+        }
+      } catch (sseErr) {
+        console.error("Failed to send SSE notification for review rejection:", sseErr);
+      }
+
+      // Send OneSignal push notification to project manager
+      try {
+        await sendOneSignalNotification(
+          link.sentBy,
+          "Review Not Approved",
+          `${user.name} has marked your link: "${link.title}" as NOT APPROVED`
+        );
+      } catch (err) {
+        console.error("Failed to send OneSignal notification for review rejection:", err);
+      }
+
+      res.json(updatedLink);
+    } catch (error) {
+      console.error("Error marking link as not approved:", error);
+      res.status(500).json({ error: "Failed to mark link as not approved" });
+    }
+  });
+
+  // Add comment to review link (Team Leads and Project Managers)
+  app.put("/api/review-links/:id/comment", async (req, res) => {
+    console.log("📝 PUT /api/review-links/:id/comment - Request received", {
+      params: req.params,
+      body: req.body,
+      isAuthenticated: req.isAuthenticated(),
+      userId: req.user?.id,
+      userRole: req.user?.role
+    });
+
+    if (!req.isAuthenticated()) {
+      console.log("❌ Comment rejected: Not authenticated");
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const isTeamLead = user.role === "team_lead";
+    const isPM = user.role === "project_manager";
+
+    if (!isTeamLead && !isPM) {
+      console.log("❌ Comment rejected: Invalid role", user.role);
+      return res.status(403).json({ error: "Only team leads and project managers can add comments to review links" });
+    }
+
+    try {
+      const linkId = parseInt(req.params.id);
+      const { comment } = req.body;
+
+      console.log("📝 Processing comment:", { linkId, comment: comment?.substring(0, 50), userId: user.id });
+
+      if (!comment || comment.trim() === "") {
+        console.log("❌ Comment rejected: Empty comment");
+        return res.status(400).json({ error: "Comment is required" });
+      }
+
+      // Check if link exists and user has access
+      console.log("🔍 Looking up review link:", linkId);
+      const [link] = await db
+        .select()
+        .from(reviewLinks)
+        .where(eq(reviewLinks.id, linkId))
+        .limit(1);
+
+      if (!link) {
+        console.log("❌ Comment rejected: Link not found", linkId);
+        return res.status(404).json({ error: "Review link not found" });
+      }
+
+      console.log("✅ Link found:", { id: link.id, assignedTo: link.assignedTo, sentBy: link.sentBy });
+
+      // Check access - ensure numeric comparison
+      const currentUserId = Number(user.id);
+      const linkAssignedTo = Number(link.assignedTo);
+      const linkSentBy = Number(link.sentBy);
+
+      if (isTeamLead && linkAssignedTo !== currentUserId) {
+        console.log("❌ Comment rejected: Team lead not assigned to this link");
+        return res.status(403).json({ error: "This review is not assigned to you" });
+      }
+      if (isPM && linkSentBy !== currentUserId) {
+        console.log("❌ Comment rejected: PM did not send this link");
+        return res.status(403).json({ error: "You did not send this review" });
+      }
+
+      // Update link with comment
+      const updateData: any = {
+        reviewComment: comment.trim(),
+        commentedAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      if (isTeamLead) {
+        updateData.status = "needs_revision";
+      }
+
+      console.log("📝 Updating review link with:", updateData);
+
+      let updatedLink;
+      try {
+        console.log("🔄 Attempting database update for link:", linkId);
+        const result = await db
+          .update(reviewLinks)
+          .set(updateData)
+          .where(eq(reviewLinks.id, linkId))
+          .returning();
+        
+        console.log("✅ Database update result:", result.length, "rows");
+        
+        if (result.length === 0) {
+           console.log("❌ Comment rejected: No rows updated for linkId", linkId);
+           return res.status(404).json({ error: "Review link not found during update" });
+        }
+        updatedLink = result[0];
+      } catch (dbError: any) {
+        console.error("❌ DATABASE UPDATE FAILED ❌");
+        console.error("Error message:", dbError.message);
+        console.error("Error code:", dbError.code);
+        console.error("Error detail:", dbError.detail);
+        console.error("Error constraint:", dbError.constraint);
+        console.error("Error table:", dbError.table);
+        console.error("Full error object:", JSON.stringify(dbError, Object.getOwnPropertyNames(dbError), 2));
+        return res.status(500).json({ 
+          error: "Database error while updating review link", 
+          details: dbError.message,
+          code: dbError.code
+        });
+      }
+
+      if (!updatedLink) {
+        console.log("❌ Comment rejected: Update failed");
+        return res.status(404).json({ error: "Review link not found or update failed" });
+      }
+
+      console.log("✅ Link updated successfully:", updatedLink.id);
+
+      // Determine recipient for notifications
+      const recipientId = isTeamLead ? link.sentBy : link.assignedTo;
+
+      // Create notification for the other party
+      try {
+        await createNotification(
+          recipientId,
+          "task_assigned",
+          `${user.name} added a comment to review link: "${link.title}"`,
+          linkId,
+          "review_link"
+        );
+        console.log("✅ Notification created for recipient:", recipientId);
+      } catch (notifErr) {
+        console.error("⚠️ Failed to create notification:", notifErr);
+        // Continue - don't fail the entire request
+      }
+
+      // Send SSE notification
+      try {
+        if (global.sseClients && global.sseClients.has(recipientId)) {
+          const client = global.sseClients.get(recipientId);
+          if (client) {
+            client.write(`data: ${JSON.stringify({
+              type: 'review_link_comment',
+              data: {
+                linkId,
+                title: link.title,
+                commenterName: user.name,
+                comment: comment.trim(),
+                message: `${user.name} commented on review: "${link.title}"`
+              }
+            })}\n\n`);
+          }
+        }
+      } catch (sseErr) {
+        console.error("⚠️ Failed to send SSE notification:", sseErr);
+        // Continue - don't fail the entire request
+      }
+
+      // Send OneSignal push notification
+      try {
+        await sendOneSignalNotification(
+          recipientId,
+          isTeamLead ? "Revision Requested" : "Comment on Review",
+          `${user.name} commented on review: "${link.title}"`
+        );
+        console.log("✅ OneSignal notification sent");
+      } catch (err) {
+        console.error("⚠️ Failed to send OneSignal notification for comment:", err);
+        // Continue - don't fail the entire request
+      }
+
+      console.log("✅ Comment added successfully, returning response");
+      res.json(updatedLink);
+    } catch (error) {
+      console.error("❌ Error adding comment to review link:", error);
+      res.status(500).json({ error: "Failed to add comment to review link" });
     }
   });
 
@@ -3566,6 +4793,8 @@ End of Report
           createdAt: generalChannelMessages.createdAt,
           updatedAt: generalChannelMessages.updatedAt,
           isEdited: generalChannelMessages.isEdited,
+          isPinned: generalChannelMessages.isPinned,
+          reactions: generalChannelMessages.reactions,
           senderName: users.name,
           senderEmail: users.email,
         })
@@ -3634,6 +4863,50 @@ End of Report
           }
         });
       }
+
+      // Send OneSignal push notifications and email to all users (except sender)
+      console.log(`\n========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW ==========`);
+      console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
+      console.log(`📧 Message: ${content.substring(0, 50)}...`);
+
+      try {
+        // Get all users except the sender
+        const allUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(ne(users.id, user.id));
+
+        const recipientIds = allUsers.map(u => u.id);
+        console.log(`📧 Target recipients: ${recipientIds.length} users`);
+
+        if (recipientIds.length > 0) {
+          // Send OneSignal push to all recipients
+          await sendOneSignalNotification(
+            recipientIds,
+            `General Channel: ${sender.name}`,
+            content.substring(0, 100) + (content.length > 100 ? '...' : '')
+          );
+          console.log(`✅ OneSignal push sent to ${recipientIds.length} users`);
+
+          // Send email notifications for general channel messages
+          for (const recipientId of recipientIds) {
+            try {
+              await createNotification(
+                recipientId,
+                "general_channel_message",
+                `${sender.name} posted in General Channel: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
+                newMessage.id,
+                "message"
+              );
+            } catch (emailErr) {
+              console.error(`❌ Email for general channel to user ${recipientId} failed:`, emailErr);
+            }
+          }
+        }
+      } catch (oneSignalError) {
+        console.error(`❌ OneSignal general channel notification failed:`, oneSignalError);
+      }
+      console.log(`========== GENERAL CHANNEL ONESIGNAL NOTIFICATION FLOW END ==========\n`);
 
       res.json(messageWithSender);
     } catch (error) {
@@ -3756,6 +5029,82 @@ End of Report
     } catch (error) {
       console.error("Error deleting general channel message:", error);
       res.status(500).json({ error: "Failed to delete message" });
+    }
+  });
+
+  // Reaction to general channel message
+  app.post("/api/general-channel/messages/:messageId/react", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const messageId = parseInt(req.params.messageId);
+    const { emoji } = req.body;
+    const userId = req.user!.id;
+
+    if (!emoji) {
+      return res.status(400).json({ error: "Emoji is required" });
+    }
+
+    try {
+      const [message] = await db
+        .select()
+        .from(generalChannelMessages)
+        .where(eq(generalChannelMessages.id, messageId))
+        .limit(1);
+
+      if (!message) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      let reactions = (message.reactions as any[]) || [];
+      const existingReactionIndex = reactions.findIndex(r => r.emoji === emoji);
+
+      if (existingReactionIndex > -1) {
+        const userIds = reactions[existingReactionIndex].userIds || [];
+        const userIndex = userIds.indexOf(userId);
+
+        if (userIndex > -1) {
+          // Remove reaction
+          userIds.splice(userIndex, 1);
+          if (userIds.length === 0) {
+            reactions.splice(existingReactionIndex, 1);
+          }
+        } else {
+          // Add reaction
+          userIds.push(userId);
+        }
+      } else {
+        // New emoji reaction
+        reactions.push({ emoji, userIds: [userId] });
+      }
+
+      const [updatedMessage] = await db
+        .update(generalChannelMessages)
+        .set({ reactions })
+        .where(eq(generalChannelMessages.id, messageId))
+        .returning();
+
+      // Broadcast reaction via SSE first to ensure everyone (including initiator if they miss the direct response) gets it
+      if (global.sseClients) {
+        global.sseClients.forEach((client, id) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify({
+                type: 'general_channel_message_updated',
+                data: updatedMessage
+              })}\n\n`);
+            } catch (error) {
+              console.error(`Error broadcasting to user ${id}:`, error);
+            }
+          }
+        });
+      }
+
+      res.json(updatedMessage);
+    } catch (error) {
+      console.error("Error reacting to message:", error);
+      res.status(500).json({ error: "Failed to react to message" });
     }
   });
 
@@ -3965,7 +5314,7 @@ End of Report
     try {
       let hasUpdates = false;
 
-      if (user.role === "staff") {
+      if (user.role === "staff" || user.role === "intern") {
         // For staff, check if their requests have been decided
         const decidedRequests = await db
           .select({ count: sql<number>`count(*)` })
@@ -3973,15 +5322,14 @@ End of Report
           .where(
             and(
               eq(deadlineExtensionRequests.requesterId, user.id),
-              ne(deadlineExtensionRequests.status, "pending"),
-              isNotNull(deadlineExtensionRequests.decidedAt)
+              ne(deadlineExtensionRequests.status, "pending")
             )
           );
 
         hasUpdates = (decidedRequests[0]?.count || 0) > 0;
-      } else if (user.role === "project_manager" || user.role === "operations_manager" || user.specialization === "operations_manager") {
+      } else if (user.role === "project_manager" || user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "customer_support_officer" || user.role === "team_lead") {
         // For managers, check if there are new pending requests
-        const whereCondition = user.role === "operations_manager" || user.specialization === "operations_manager"
+        const whereCondition = user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "team_lead"
           ? eq(deadlineExtensionRequests.status, "pending")
           : and(
               eq(deadlineExtensionRequests.status, "pending"),
@@ -4395,9 +5743,11 @@ End of Report
     const user = req.user!;
     const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
     const isProjectManager = user.role === "project_manager";
+    const isTeamLead = user.role === "team_lead";
+    const isCustomerSupportOfficer = user.role === "customer_support_officer";
 
     try {
-      // All users (operations managers, project managers, and staff) see all queries
+      // All users (operations managers, project managers, team leads, customer support officers, and staff) see all queries
       const queries = await db
         .select()
         .from(staffQueries)
@@ -4457,7 +5807,8 @@ End of Report
         "substandard_delivery",
         "repeatedly_missed_deadlines",
         "disrespectful_communication",
-        "disregard_company_policy"
+        "disregard_company_policy",
+        "others"
       ];
 
       if (!validReasons.includes(reason)) {
@@ -4466,12 +5817,12 @@ End of Report
       }
 
       // Additional validation
-      if (!name.trim()) {
+      if (!staffName.trim()) {
         return res.status(400).json({ error: "Staff name cannot be empty" });
       }
 
       if (!whyQuery.trim()) {
-        return res.status(400).json({ error: "Query explanation cannot be empty" });
+        return res.status(400).json({ error: "Penalty explanation cannot be empty" });
       }
 
       if (!likelyPenalty.trim()) {
@@ -4498,6 +5849,37 @@ End of Report
         .returning();
 
       console.log("Staff query created successfully:", newQuery);
+
+      // Notify the staff member about the query/penalty
+      try {
+        await createNotification(
+          parsedStaffId,
+          "staff_query",
+          `You have received a staff query from ${user.name}: ${reason.replace(/_/g, ' ')}`,
+          newQuery.id,
+          "project"
+        );
+
+      // Filter for active users
+      const opsManagers = await db.select().from(users).where(and(eq(users.isActive, true), or(
+        eq(users.role, "operations_manager"),
+        eq(users.specialization, "operations_manager")
+      )));
+        for (const manager of opsManagers) {
+          if (manager.id !== user.id) {
+            await createNotification(
+              manager.id,
+              "staff_query",
+              `New staff query issued to ${staffName} by ${user.name}: ${reason.replace(/_/g, ' ')}`,
+              newQuery.id,
+              "project"
+            );
+          }
+        }
+      } catch (notificationError) {
+        console.error("Error creating staff query notifications:", notificationError);
+      }
+
       res.json({ success: true, queryId: newQuery.id });
     } catch (error) {
       console.error("Error creating staff query:", error);
@@ -4522,24 +5904,34 @@ End of Report
         return res.status(400).json({ error: "Valid status is required (acknowledged or resolved)" });
       }
 
-      // Check if the query exists and belongs to the user
+      // Check if the user has access to update this query
+      // Operations managers, team leads can resolve any query
+      const isPrivilegedUser = user.role === "operations_manager" || 
+                               user.role === "team_lead" || 
+                               user.specialization === "operations_manager";
+
+      const queryFilter = isPrivilegedUser
+        ? eq(staffQueries.id, queryId)
+        : and(eq(staffQueries.id, queryId), eq(staffQueries.staffId, user.id));
+
       const [existingQuery] = await db
         .select()
         .from(staffQueries)
-        .where(
-          and(
-            eq(staffQueries.id, queryId),
-            eq(staffQueries.staffId, user.id)
-          )
-        )
+        .where(queryFilter)
         .limit(1);
 
       if (!existingQuery) {
         return res.status(404).json({ error: "Staff query not found or access denied" });
       }
 
-      if (existingQuery.status !== "pending") {
+      // If a regular staff member is acknowledging, status must be pending
+      if (!isPrivilegedUser && existingQuery.status !== "pending") {
         return res.status(400).json({ error: "Query has already been processed" });
+      }
+
+      // If a privileged user is resolving, status can be pending or acknowledged
+      if (isPrivilegedUser && status === "resolved" && existingQuery.status === "resolved") {
+        return res.status(400).json({ error: "Query is already resolved" });
       }
 
       // Update the query status
@@ -4657,8 +6049,7 @@ End of Report
       );
 
       res.json(updatedApplication);
-    } catch (error) {
-      console.error("Error reviewing leave application:", error);
+    } catch (error) {console.error("Error reviewing leave application:", error);
       res.status(500).json({ error: "Failed to review leave application" });
     }
   });
@@ -4737,7 +6128,7 @@ End of Report
         return res.status(400).json({ error: "Name, email, and detailed explanation are required" });
       }
 
-      if (!name.trim() || !email.trim() || !detailedExplanation.trim()) {
+      if (!name.trim() || !email.trim() ||!detailedExplanation.trim()) {
         return res.status(400).json({ error: "Fields cannot be empty" });
       }
 
@@ -4779,14 +6170,11 @@ End of Report
             "task_assigned",
             `New staff complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
             newComplaint.id,
-            "project"
+            "complaint"
           );
         }
-
-        console.log(`Notifications sent to ${operationsManagers.length} operations managers`);
       } catch (notificationError) {
         console.error("Error creating staff complaint notifications:", notificationError);
-        // Continue execution even if notification fails
       }
 
       res.json({ success: true, complaintId: newComplaint.id });
@@ -4836,10 +6224,6 @@ End of Report
         return res.status(404).json({ error: "Staff complaint not found" });
       }
 
-      if (existingComplaint.status !== "pending") {
-        return res.status(400).json({ error: "Complaint has already been reviewed" });
-      }
-
       // Update the complaint
       const [updatedComplaint] = await db
         .update(staffComplaints)
@@ -4865,7 +6249,6 @@ End of Report
           );
         } catch (notificationError) {
           console.error("Error creating notification for staff complaint update:", notificationError);
-          // Continue execution even if notification fails
         }
       }
 
@@ -4887,7 +6270,7 @@ End of Report
 
     try {
       if (isOperationsManager) {
-        // Operations managers see all memos they sent
+        // Operations managers can see all memos they sent
         const sentMemos = await db
           .select({
             id: memos.id,
@@ -4905,22 +6288,44 @@ End of Report
           .where(eq(memos.sentBy, user.id))
           .orderBy(desc(memos.createdAt));
 
-        // Get read count for each memo
-        const memosWithReadCount = await Promise.all(
+        // Get read count, reader details, and response count for each memo
+        const memosWithReadInfo = await Promise.all(
           sentMemos.map(async (memo) => {
-            const readCount = await db
-              .select({ count: sql<number>`count(*)` })
+            const readInfo = await db
+              .select({
+                count: sql<number>`count(*)`,
+              })
               .from(memoReads)
               .where(eq(memoReads.memoId, memo.id));
 
+            // Get reader names and read times
+            const readers = await db
+              .select({
+                userId: memoReads.userId,
+                name: users.name,
+                readAt: memoReads.readAt,
+              })
+              .from(memoReads)
+              .leftJoin(users, eq(memoReads.userId, users.id))
+              .where(eq(memoReads.memoId, memo.id))
+              .orderBy(desc(memoReads.readAt));
+
+            // Get response count
+            const responseCount = await db
+              .select({ count: sql<number>`count(*)` })
+              .from(memoResponses)
+              .where(eq(memoResponses.memoId, memo.id));
+
             return {
               ...memo,
-              readCount: readCount[0]?.count || 0,
+              readCount: readInfo[0]?.count || 0,
+              responseCount: responseCount[0]?.count || 0,
+              reads: readers,
             };
           })
         );
 
-        res.json(memosWithReadCount);
+        res.json(memosWithReadInfo);
       } else {
         return res.status(403).json({ error: "Only operations managers can access this endpoint" });
       }
@@ -5030,6 +6435,13 @@ End of Report
         index === self.findIndex(m => m.id === memo.id)
       );
 
+      // Sort by newest first
+      uniqueMemos.sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA; // Newest first
+      });
+
       // Check read status for each memo
       const memosWithReadStatus = await Promise.all(
         uniqueMemos.map(async (memo) => {
@@ -5092,6 +6504,53 @@ End of Report
           sentBy: user.id,
         })
         .returning();
+
+      // Send notifications to memo recipients
+      try {
+        if (type === "general") {
+          const allStaff = await db.select().from(users).where(and(eq(users.isActive, true), ne(users.id, user.id)));
+          for (const staffMember of allStaff) {
+            await createNotification(
+              staffMember.id,
+              "memo_received",
+              `New memo from ${user.name}: "${title}"`,
+              newMemo.id,
+              "memo"
+            );
+          }
+        } else if (type === "individual" && Array.isArray(recipients)) {
+          for (const recipientId of recipients) {
+            if (typeof recipientId === 'number' && recipientId !== user.id) {
+              await createNotification(
+                recipientId,
+                "memo_received",
+                `New memo from ${user.name}: "${title}"`,
+                newMemo.id,
+                "memo"
+              );
+            }
+          }
+        } else if (type === "department" && Array.isArray(recipients)) {
+          const deptUsers = await db.select().from(users).where(and(eq(users.isActive, true), ne(users.id, user.id)));
+          for (const deptUser of deptUsers) {
+            const matchesDept = recipients.includes("all_staff") ||
+              (deptUser.specialization && recipients.includes(deptUser.specialization)) ||
+              (deptUser.role === "project_manager" && recipients.includes("project_managers")) ||
+              (deptUser.role === "product_owner" && recipients.includes("product_owners"));
+            if (matchesDept) {
+              await createNotification(
+                deptUser.id,
+                "memo_received",
+                `New department memo from ${user.name}: "${title}"`,
+                newMemo.id,
+                "memo"
+              );
+            }
+          }
+        }
+      } catch (notificationError) {
+        console.error("Error creating memo notifications:", notificationError);
+      }
 
       res.json({ success: true, memoId: newMemo.id });
     } catch (error) {
@@ -5156,6 +6615,128 @@ End of Report
     } catch (error) {
       console.error("Error deleting memo:", error);
       res.status(500).json({ error: "Failed to delete memo" });
+    }
+  });
+
+  // Memo Responses API Routes
+
+  app.post("/api/memos/:id/responses", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const user = req.user!;
+
+    try {
+      const memoId = parseInt(req.params.id);
+      const { content } = req.body;
+
+      if (!content || content.trim() === "") {
+        return res.status(400).json({ error: "Response content is required" });
+      }
+
+      // Verify the memo exists
+      const [existingMemo] = await db
+        .select()
+        .from(memos)
+        .where(eq(memos.id, memoId))
+        .limit(1);
+
+      if (!existingMemo) {
+        return res.status(404).json({ error: "Memo not found" });
+      }
+
+      // Check if user has already responded to this memo
+      const [existingResponse] = await db
+        .select()
+        .from(memoResponses)
+        .where(
+          and(
+            eq(memoResponses.memoId, memoId),
+            eq(memoResponses.userId, user.id)
+          )
+        )
+        .limit(1);
+
+      if (existingResponse) {
+        return res.status(400).json({ error: "You have already responded to this memo" });
+      }
+
+      // Create the response
+      const [newResponse] = await db
+        .insert(memoResponses)
+        .values({
+          memoId,
+          userId: user.id,
+          content: content.trim(),
+        })
+        .returning();
+
+      // Send notification to memo sender about the response
+      try {
+        await createNotification(
+          existingMemo.sentBy,
+          "memo_received",
+          `${user.name} responded to your memo: "${existingMemo.title}"`,
+          memoId,
+          "memo"
+        );
+      } catch (notificationError) {
+        console.error("Error creating response notification:", notificationError);
+      }
+
+      res.json({
+        id: newResponse.id,
+        memoId: newResponse.memoId,
+        userId: newResponse.userId,
+        content: newResponse.content,
+        createdAt: newResponse.createdAt,
+        userName: user.name,
+      });
+    } catch (error) {
+      console.error("Error creating memo response:", error);
+      res.status(500).json({ error: "Failed to create response" });
+    }
+  });
+
+  app.get("/api/memos/:id/responses", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const memoId = parseInt(req.params.id);
+
+      // Verify the memo exists
+      const [existingMemo] = await db
+        .select()
+        .from(memos)
+        .where(eq(memos.id, memoId))
+        .limit(1);
+
+      if (!existingMemo) {
+        return res.status(404).json({ error: "Memo not found" });
+      }
+
+      // Get all responses for this memo with user info
+      const responses = await db
+        .select({
+          id: memoResponses.id,
+          memoId: memoResponses.memoId,
+          userId: memoResponses.userId,
+          content: memoResponses.content,
+          createdAt: memoResponses.createdAt,
+          userName: users.name,
+        })
+        .from(memoResponses)
+        .leftJoin(users, eq(memoResponses.userId, users.id))
+        .where(eq(memoResponses.memoId, memoId))
+        .orderBy(asc(memoResponses.createdAt));
+
+      res.json(responses);
+    } catch (error) {
+      console.error("Error fetching memo responses:", error);
+      res.status(500).json({ error: "Failed to fetch responses" });
     }
   });
 
@@ -5430,7 +7011,11 @@ End of Report
 
   // Send direct message
   app.post("/api/direct-messages", async (req, res) => {
+    console.log('\n🔴🔴🔴 POST /api/direct-messages CALLED 🔴🔴🔴');
+    console.log('Request body:', req.body);
+
     if (!req.isAuthenticated()) {
+      console.log('❌ User not authenticated');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
@@ -5440,6 +7025,7 @@ End of Report
 
     try {
       if (!receiverId || !content || !content.trim()) {
+        console.log('❌ Missing receiverId or content');
         return res.status(400).json({ error: "Receiver ID and content are required" });
       }
 
@@ -5484,16 +7070,44 @@ End of Report
         }
       }
 
-      // Create notification for receiver - use 'message' type to trigger sound
-      await createNotification(
-        parseInt(receiverId),
-        "message",
-        `New message from ${user.name}`,
-        newMessage.id,
-        "direct_message"
-      );
+      // Only send notifications if receiver is different from sender
+      if (parseInt(receiverId) !== senderId) {
+        // Send direct OneSignal push for direct messages
+        console.log(`\n========== DIRECT MESSAGE ONESIGNAL NOTIFICATION FLOW ==========`);
+        console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
+        console.log(`📧 Receiver ID: ${receiverId}`);
+        console.log(`📧 Message Content: ${messageContent.substring(0, 50)}...`);
 
-      console.log('📧 Direct message notification created for receiver:', receiverId);
+        try {
+          // Send to single user (not array)
+          const recipientId = parseInt(receiverId);
+          await sendOneSignalNotification(
+            recipientId,
+            `${user.name} sent you a message`,
+            messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : '')
+          );
+          console.log(`✅ OneSignal push sent to recipient ${recipientId}`);
+        } catch (error) {
+          console.error(`❌ OneSignal push failed:`, error);
+        }
+
+        // Send email notification for direct message
+        try {
+          await createNotification(
+            parseInt(receiverId),
+            "message",
+            `${user.name} sent you a message: ${messageContent.substring(0, 100)}${messageContent.length > 100 ? '...' : ''}`,
+            newMessage.id,
+            "message"
+          );
+        } catch (emailError) {
+          console.error(`❌ Email notification for DM failed:`, emailError);
+        }
+
+        console.log(`========== DIRECT MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);
+      } else {
+        console.log(`⏸️ Skipping notification - sender and receiver are the same user`);
+      }
 
       // Broadcast message to both sender and receiver via SSE
       const broadcastMessage = {
@@ -5642,7 +7256,7 @@ End of Report
         })
         .returning();
 
-      // Create notifications for operations managers and product owners
+      // Create notifications for operations managers
       try {
         const managers = await db
           .select()
@@ -5654,15 +7268,13 @@ End of Report
           ));
 
         for (const manager of managers) {
-          await db
-            .insert(notifications)
-            .values({
-              userId: manager.id,
-              type: "task_assigned", // Using existing type
-              content: `New issue report from ${user.name}: ${title}`,
-              referenceId: newReport.id,
-              referenceType: "project",
-            });
+          await createNotification(
+            manager.id,
+            "issue_report",
+            `New issue report from ${user.name}: ${title}`,
+            newReport.id,
+            "project"
+          );
         }
       } catch (notificationError) {
         console.error("Error creating issue report notifications:", notificationError);
@@ -5729,15 +7341,13 @@ End of Report
       // Create notification for the reporter
       if (existingReport.submitterId) {
         try {
-          await db
-            .insert(notifications)
-            .values({
-              userId: existingReport.submitterId,
-              type: "task_updated",
-              content: `Your issue report "${existingReport.title}" has been updated to ${status}`,
-              referenceId: reportId,
-              referenceType: "project",
-            });
+          await createNotification(
+            existingReport.submitterId,
+            "task_updated",
+            `Your issue report "${existingReport.title}" has been updated to ${status}`,
+            reportId,
+            "project"
+          );
         } catch (notificationError) {
           console.error("Error creating notification for issue report update:", notificationError);
         }
@@ -5957,7 +7567,7 @@ End of Report
 
       res.json(upcomingBookings);
     } catch (error) {
-      console.error("Errorfetching upcoming bookings:", error);
+      console.error("Error fetching upcoming bookings:", error);
       res.status(500).json({ error: "Failed to fetch upcoming bookings" });
     }
   });
@@ -5991,26 +7601,42 @@ End of Report
         })
         .returning();
 
-      // Broadcast to all participants via SSE
-      if (global.sseClients && participants && Array.isArray(participants)) {
-        participants.forEach((participantId: number) => {
-          const client = global.sseClients.get(participantId);
-          if (client && !client.writableEnded) {
+      // Broadcast to all participants via SSE and send notifications
+      if (participants && Array.isArray(participants)) {
+        for (const participantId of participants) {
+          if (participantId !== user.id) {
             try {
-              client.write(`data: ${JSON.stringify({
-                type: 'booking_created',
-                booking: {
-                  ...newBooking,
-                  schedulerName: user.name
-                }
-              })}\n\n`);
-              console.log(`📅 Booking notification sent to participant ${participantId}`);
-            } catch (error) {
-              console.error(`Error broadcasting booking to participant ${participantId}:`, error);
-              global.sseClients.delete(participantId);
+              await createNotification(
+                participantId,
+                "task_assigned",
+                `${user.name} has scheduled a ${type.replace(/_/g, ' ')}: "${title}"`,
+                newBooking.id,
+                "project"
+              );
+            } catch (notifError) {
+              console.error(`Error creating booking notification for participant ${participantId}:`, notifError);
             }
           }
-        });
+
+          if (global.sseClients) {
+            const client = global.sseClients.get(participantId);
+            if (client && !client.writableEnded) {
+              try {
+                client.write(`data: ${JSON.stringify({
+                  type: 'booking_created',
+                  booking: {
+                    ...newBooking,
+                    schedulerName: user.name
+                  }
+                })}\n\n`);
+                console.log(`📅 Booking notification sent to participant ${participantId}`);
+              } catch (error) {
+                console.error(`Error broadcasting booking to participant ${participantId}:`, error);
+                global.sseClients.delete(participantId);
+              }
+            }
+          }
+        }
       }
 
       res.json({ success: true, bookingId: newBooking.id });
@@ -6026,7 +7652,8 @@ End of Report
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const user = req.user!;    const bookingId = parseInt(req.params.id);
+    const user = req.user!;
+    const bookingId = parseInt(req.params.id);
 
     try {
       // Check if booking exists
@@ -6053,7 +7680,8 @@ End of Report
         .where(eq(bookings.id, bookingId));
 
       // Broadcast to all participants via SSE
-      if (global.sseClients && booking.participants && Array.isArray(booking.participants)) {        booking.participants.forEach((participantId: number) => {
+      if (global.sseClients && booking.participants && Array.isArray(booking.participants)) {
+        booking.participants.forEach((participantId: number) => {
           const client = global.sseClients.get(participantId);
           if (client && !client.writableEnded) {
             try {
@@ -6085,7 +7713,7 @@ End of Report
 
     const user = req.user!;
     const bookingId = parseInt(req.params.id);
-    const { status } = req.body;
+    const { status, title, description, type, participants, startTime, endTime, meetingLink, notes } = req.body;
 
     try {
       // Check if booking exists
@@ -6106,13 +7734,24 @@ End of Report
         return res.status(403).json({ error: "You don't have permission to update this booking" });
       }
 
-      // Update the booking status
+      // Update the booking
+      const updateData: any = {
+        updatedAt: new Date()
+      };
+
+      if (status !== undefined) updateData.status = status;
+      if (title !== undefined) updateData.title = title;
+      if (description !== undefined) updateData.description = description;
+      if (type !== undefined) updateData.type = type;
+      if (participants !== undefined) updateData.participants = participants;
+      if (startTime !== undefined) updateData.startTime = new Date(startTime + ':00.000Z');
+      if (endTime !== undefined) updateData.endTime = new Date(endTime + ':00.000Z');
+      if (meetingLink !== undefined) updateData.meetingLink = meetingLink;
+      if (notes !== undefined) updateData.notes = notes;
+
       const [updatedBooking] = await db
         .update(bookings)
-        .set({
-          status,
-          updatedAt: new Date()
-        })
+        .set(updateData)
         .where(eq(bookings.id, bookingId))
         .returning();
 
@@ -6484,11 +8123,12 @@ End of Report
     try {
       let requests;
 
-      if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager") {
-        // Project managers see requests for their projects, operations managers and team leads see all requests
-        const whereCondition = user.role === "operations_manager" || user.role === "team_lead" || user.specialization === "operations_manager"
+      if (user.role === "project_manager" || user.role === "operations_manager" || user.role === "team_lead" || user.role === "customer_support_officer") {
+        // Project managers and CSOs see requests for tasks they assigned, operations managers and team leads see all requests
+        const isOpsOrLead = user.role === "operations_manager" || user.role === "team_lead";
+        const whereCondition = isOpsOrLead
           ? undefined // Operations managers and team leads see all requests
-          : eq(deadlineExtensionRequests.projectManagerId, user.id); // Project managers see only their projects
+          : eq(deadlineExtensionRequests.projectManagerId, user.id); 
 
         requests = await db
           .select({
@@ -6581,12 +8221,13 @@ End of Report
         return res.status(400).json({ error: "Task ID and reason are required" });
       }
 
-      // Get task details to find the project manager
+      // Get task details to find the person who assigned the task
       const [task] = await db
         .select({
           id: tasks.id,
           projectId: tasks.projectId,
           assigneeId: tasks.assigneeId,
+          assignedBy: tasks.assignedBy,
           deadline: tasks.deadline,
         })
         .from(tasks)
@@ -6602,7 +8243,7 @@ End of Report
         return res.status(403).json({ error: "You can only request extensions for tasks assigned to you" });
       }
 
-      // Get project manager
+      // Get project details to find the fallback project manager
       const [project] = await db
         .select({
           managerId: projects.managerId,
@@ -6610,10 +8251,6 @@ End of Report
         .from(projects)
         .where(eq(projects.id, task.projectId))
         .limit(1);
-
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
 
       // Check if there's already a pending request for this task
       const [existingRequest] = await db
@@ -6635,14 +8272,14 @@ End of Report
         .values({
           taskId,
           requesterId: user.id,
-          projectManagerId: project.managerId,
+          projectManagerId: task.assignedBy || (project ? project.managerId : user.id), // Set the manager to the person who assigned the task, fallback to project manager
           reason,
           requestedDeadline: requestedDeadline ? new Date(requestedDeadline) : null,
           status: "pending",
         })
         .returning();
 
-      // Create notification for project manager
+      // Create notification for the person who assigned the task
       const [taskDetails] = await db
         .select({
           title: tasks.title,
@@ -6654,18 +8291,15 @@ End of Report
         .limit(1);
 
       try {
-        await db
-          .insert(notifications)
-          .values({
-            userId: project.managerId,
-            type: "task_updated", // Using existing type
-            content: `${user.name} has requested a deadline extension for task: ${taskDetails?.title || 'Unknown Task'}`,
-            referenceId: newRequest.id,
-            referenceType: "project",
-          });
+        await createNotification(
+          newRequest.projectManagerId,
+          "task_updated",
+          `${user.name} has requested a deadline extension for task: ${taskDetails?.title || 'Unknown Task'}`,
+          newRequest.id,
+          "project"
+        );
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
-        // Continue execution even if notification fails
       }
 
       res.json({ success: true, requestId: newRequest.id });
@@ -6696,12 +8330,8 @@ End of Report
         return res.status(403).json({ error: "Only project managers, operations managers, team leads, customer support officers, and Replit developers can update extension requests" });
       }
 
-      if (!status || !["approved", "declined"].includes(status)) {
+      if (!status || (status !== "approved" && status !== "declined")) {
         return res.status(400).json({ error: "Valid status (approved or declined) is required" });
-      }
-
-      if (!decisionReason) {
-        return res.status(400).json({ error: "Decision reason is required" });
       }
 
       // Check if request exists
@@ -6736,7 +8366,7 @@ End of Report
           decidedBy: user.id,
           decidedAt: new Date(),
         })
-        .where(eq(existingRequest.id, requestId))
+        .where(eq(deadlineExtensionRequests.id, requestId))
         .returning();
 
       // If approved, update the task
@@ -6760,18 +8390,15 @@ End of Report
 
       // Create notification for the requester
       try {
-        await db
-          .insert(notifications)
-          .values({
-            userId: existingRequest.requesterId,
-            type: "task_updated",
-            content: `Your deadline extension request has been ${status}. Reason: ${decisionReason}`,
-            referenceId: requestId,
-            referenceType: "project",
-          });
+        await createNotification(
+          existingRequest.requesterId,
+          "task_updated",
+          `Your deadline extension request has been ${status}. Reason: ${decisionReason}`,
+          requestId,
+          "project"
+        );
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
-        // Continue execution even if notification fails
       }
 
       res.json({ success: true, request: updatedRequest });
@@ -7018,15 +8645,13 @@ End of Report
           ));
 
         for (const manager of operationsManagers) {
-          await db
-            .insert(notifications)
-            .values({
-              userId: manager.id,
-              type: "task_assigned", // Using existing type
-              content: `New client complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
-              referenceId: newComplaint.id,
-              referenceType: "project", // Using a general type
-            });
+          await createNotification(
+            manager.id,
+            "task_assigned",
+            `New client complaint from ${name}: ${detailedExplanation.substring(0, 100)}${detailedExplanation.length > 100 ? '...' : ''}`,
+            newComplaint.id,
+            "complaint"
+          );
         }
 
         console.log(`Notifications sent to ${operationsManagers.length} operations managers`);
@@ -7137,8 +8762,18 @@ End of Report
         return res.status(400).json({ error: "Start date cannot be after end date" });
       }
 
-      // Calculate total days
-      const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      // Calculate total working days (excluding weekends)
+      let totalDays = 0;
+      const current = new Date(start);
+      
+      while (current <= end) {
+        const dayOfWeek = current.getDay();
+        // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          totalDays++;
+        }
+        current.setDate(current.getDate() + 1);
+      }
 
       // Check leave of absence limit (14 days per year)
       if (leaveType === "leave_of_absence") {
@@ -7195,18 +8830,38 @@ End of Report
 
       for (const pm of projectManagers) {
         try {
-          await db
-            .insert(notifications)
-            .values({
-              userId: pm.id,
-              type: "task_assigned", // Using existing type
-              content: `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
-              referenceId: newApplication.id,
-              referenceType: "leave_application", // Using a more specific type
-            });
+          await createNotification(
+            pm.id,
+            "leave_application",
+            `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
+            newApplication.id,
+            "project"
+          );
         } catch (notificationError) {
           console.error("Error creating notification:", notificationError);
-          // Continue execution even if notification fails
+        }
+      }
+
+      // Also notify operations managers
+      const opsManagers = await db
+        .select()
+        .from(users)
+        .where(or(
+          eq(users.role, "operations_manager"),
+          eq(users.specialization, "operations_manager")
+        ));
+
+      for (const manager of opsManagers) {
+        try {
+          await createNotification(
+            manager.id,
+            "leave_application",
+            `${user.name} has submitted a ${leaveType.replace('_', ' ')} application for ${totalDays} day${totalDays !== 1 ? 's' : ''}`,
+            newApplication.id,
+            "project"
+          );
+        } catch (notificationError) {
+          console.error("Error creating notification:", notificationError);
         }
       }
 
@@ -7299,10 +8954,6 @@ End of Report
         return res.status(400).json({ error: "Valid status (approved or rejected) is required" });
       }
 
-      if (status === "rejected" && !reviewComments?.trim()) {
-        return res.status(400).json({ error: "Review comments are required when rejecting an application" });
-      }
-
       // Check if application exists
       const [existingApplication] = await db
         .select()
@@ -7333,18 +8984,15 @@ End of Report
 
       // Create notification for the applicant
       try {
-        await db
-          .insert(notifications)
-          .values({
-            userId: updatedApplication.userId,
-            type: "task_updated", // Using existing type
-            content: `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
-            referenceId: updatedApplication.id,
-            referenceType: "leave_application", // Using a more specific type
-          });
+        await createNotification(
+          updatedApplication.userId,
+          "task_updated",
+          `Your leave application has been ${status}${reviewComments ? `: ${reviewComments}` : ''}`,
+          updatedApplication.id,
+          "project"
+        );
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError);
-        // Continue execution even if notification fails
       }
 
       res.json({ success: true, application: updatedApplication });
@@ -7397,6 +9045,17 @@ End of Report
       }
 
       // Check if user has access to this project
+      const membership = await db
+        .select()
+        .from(projectMembers)
+        .where(
+          and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.userId, user.id)
+          )
+        )
+        .limit(1);
+
       const hasAccess =
         user.role === "operations_manager" ||
         user.role === "team_lead" ||
@@ -7405,19 +9064,7 @@ End of Report
         user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        (user.role === "staff" && await db
-          .select()
-          .from(projectMembers)
-          .where(
-            and(
-              eq(projectMembers.projectId, projectId),
-              eq(projectMembers.userId, user.id),
-              eq(projectMembers.invitationStatus, "accepted")
-            )
-          )
-          .limit(1)
-          .then(members => members.length > 0)
-        );
+        membership.length > 0;
 
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -7482,13 +9129,51 @@ End of Report
         })
         .from(projectMembers)
         .innerJoin(users, eq(projectMembers.userId, users.id))
-        .where(eq(projectMembers.projectId, projectId))
+        .where(and(eq(projectMembers.projectId, projectId), eq(users.isActive, true)))
         .orderBy(asc(users.name));
 
       res.json(members);
     } catch (error) {
       console.error("Error fetching project members:", error);
       res.status(500).json({ error: "Failed to fetch project members" });
+    }
+  });
+
+  // Update deliverable status
+  app.patch("/api/deliverables/:id/status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const deliverableId = parseInt(req.params.id);
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: "Status is required" });
+    }
+
+    try {
+      const [deliverable] = await db
+        .select()
+        .from(deliverables)
+        .where(eq(deliverables.id, deliverableId))
+        .limit(1);
+
+      if (!deliverable) {
+        return res.status(404).json({ error: "Deliverable not found" });
+      }
+
+      // Check access (simplified for brevity, should ideally match project access)
+      const [updatedDeliverable] = await db
+        .update(deliverables)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(deliverables.id, deliverableId))
+        .returning();
+
+      res.json(updatedDeliverable);
+    } catch (error) {
+      console.error("Error updating deliverable status:", error);
+      res.status(500).json({ error: "Failed to update deliverable status" });
     }
   });
 
@@ -7506,6 +9191,7 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
+      // Check if user has access to this project
       const hasAccess =
         user.role === "operations_manager" ||
         user.role === "team_lead" ||
@@ -7514,14 +9200,13 @@ End of Report
         user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        (user.role === "staff" && await db
+        (await db
           .select()
           .from(projectMembers)
           .where(
             and(
               eq(projectMembers.projectId, projectId),
-              eq(projectMembers.userId, user.id),
-              eq(projectMembers.invitationStatus, "accepted")
+              eq(projectMembers.userId, user.id)
             )
           )
           .limit(1)
@@ -7531,12 +9216,25 @@ End of Report
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
       const projectTasks = await db
-        .select()
+        .select({
+          task: tasks,
+          assignee: {
+            id: users.id,
+            name: users.name,
+            role: users.role,
+          }
+        })
         .from(tasks)
-        .where(eq(tasks.projectId, projectId))
+        .leftJoin(users, eq(tasks.assigneeId, users.id))
+        .where(and(eq(tasks.projectId, projectId), or(isNull(tasks.assigneeId), eq(users.isActive, true))))
         .orderBy(desc(tasks.updatedAt));
 
-      res.json(projectTasks);
+      const formattedTasks = projectTasks.map(row => ({
+        ...row.task,
+        assignee: row.assignee
+      }));
+
+      res.json(formattedTasks);
     } catch (error) {
       console.error("Error fetching project tasks:", error);
       res.status(500).json({ error: "Failed to fetch project tasks" });
@@ -7557,6 +9255,7 @@ End of Report
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       if (!project) return res.status(404).json({ error: "Project not found" });
 
+      // Check if user has access to this project
       const hasAccess =
         user.role === "operations_manager" ||
         user.role === "team_lead" ||
@@ -7565,14 +9264,13 @@ End of Report
         user.role === "customer_support_officer" ||
         project.managerId === user.id ||
         project.clientId === user.id ||
-        (user.role === "staff" && await db
+        (await db
           .select()
           .from(projectMembers)
           .where(
             and(
               eq(projectMembers.projectId, projectId),
-              eq(projectMembers.userId, user.id),
-              eq(projectMembers.invitationStatus, "accepted")
+              eq(projectMembers.userId, user.id)
             )
           )
           .limit(1)
@@ -7675,6 +9373,74 @@ End of Report
       console.error("Error uploading file:", error);
       res.status(500).json({
         error: "Failed to upload file",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Add link resource to project
+  app.post("/api/projects/:id/resources/link", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const projectId = parseInt(req.params.id);
+    const { name, link, category } = req.body;
+
+    try {
+      if (!name || !link || !category) {
+        return res.status(400).json({ error: "Name, link, and category are required" });
+      }
+
+      // Validate URL format
+      try {
+        new URL(link);
+      } catch (urlError) {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Check if project exists
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check user access permissions
+      const isOperationsManager = user.role === 'operations_manager' || user.specialization === 'operations_manager';
+      const isTeamLead = user.role === 'team_lead';
+      const isProjectManager = user.role === 'project_manager' && project.managerId === user.id;
+      const isCustomerSupportOfficer = user.role === 'customer_support_officer';
+      const isClient = user.role === 'client' && project.clientId === user.id;
+
+      const hasAccess = isOperationsManager || isTeamLead || isProjectManager || isCustomerSupportOfficer || isClient;
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied - insufficient permissions" });
+      }
+
+      // Insert the new link resource
+      const [newResource] = await db
+        .insert(resources)
+        .values({
+          name: name.trim(),
+          type: category,
+          link: link.trim(),
+          projectId,
+          uploadedBy: user.id,
+        })
+        .returning();
+
+      res.json({ success: true, resourceId: newResource.id });
+    } catch (error) {
+      console.error("Error adding link resource:", error);
+      res.status(500).json({
+        error: "Failed to add link",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -7852,7 +9618,7 @@ End of Report
         })
         .from(projectMembers)
         .innerJoin(users, eq(projectMembers.userId, users.id))
-        .where(eq(projectMembers.projectId, projectId))
+        .where(and(eq(projectMembers.projectId, projectId), eq(users.isActive, true)))
         .orderBy(asc(users.name));
 
       res.json(members);
@@ -7949,7 +9715,12 @@ End of Report
 
   // Send team message
   app.post("/api/projects/:projectId/team-messages", async (req, res) => {
+    console.log('\n🔵🔵🔵 POST /api/projects/:projectId/team-messages CALLED 🔵🔵🔵');
+    console.log('Project ID:', req.params.projectId);
+    console.log('Request body:', req.body);
+
     if (!req.isAuthenticated()) {
+      console.log('❌ User not authenticated');
       return res.status(401).send("Not authenticated");
     }
 
@@ -7959,6 +9730,7 @@ End of Report
 
     try {
       if (!content || !content.trim()) {
+        console.log('❌ Missing content');
         return res.status(400).json({ error: "Message content is required" });
       }
 
@@ -8007,8 +9779,49 @@ End of Report
         })
         .returning();
 
+      // Send OneSignal push notifications to all project members (except sender)
+      console.log(`\n========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW ==========`);
+      console.log(`📧 Sender: ${user.name} (ID: ${user.id})`);
+      console.log(`📧 Project: ${project.name} (ID: ${projectId})`);
+
+      try {
+        // Get all project members except the sender
+        const projectMembersList = await db
+          .select({ userId: projectMembers.userId })
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              ne(projectMembers.userId, user.id)
+            )
+          );
+
+        // Also include project manager if not the sender
+        const recipientIds: number[] = projectMembersList.map(m => m.userId);
+        if (project.managerId && project.managerId !== user.id && !recipientIds.includes(project.managerId)) {
+          recipientIds.push(project.managerId);
+        }
+
+        console.log(`📧 Target recipients: ${recipientIds.length} members - [${recipientIds.join(', ')}]`);
+
+        if (recipientIds.length > 0) {
+          // Send OneSignal push to all recipients
+          await sendOneSignalNotification(
+            recipientIds,
+            `New message in ${project.name}`,
+            `${user.name}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`
+          );
+          console.log(`✅ OneSignal push sent to ${recipientIds.length} team members`);
+        } else {
+          console.log(`⚠️ No recipients to notify (sender is the only member)`);
+        }
+      } catch (oneSignalError) {
+        console.error(`❌ OneSignal team message notification failed:`, oneSignalError);
+      }
+      console.log(`========== TEAM MESSAGE ONESIGNAL NOTIFICATION FLOW END ==========\n`);
+
       // Check for @mentions in the message - improved regex to handle spaces
-      const mentionRegex = /@([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
+      const mentionRegex =/([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)*)/g;
       const mentions = [...content.matchAll(mentionRegex)];
 
       if (mentions.length > 0) {
@@ -8084,6 +9897,42 @@ End of Report
         });
       }
 
+      // Broadcast via SSE to all connected clients (important: send to ALL users, not just project members)
+      console.log(`📢 Broadcasting team message to all ${global.sseClients ? global.sseClients.size : 0} connected SSE clients`);
+
+      if (global.sseClients && global.sseClients.size > 0) {
+        const sseMessage = {
+          type: "project_message",
+          data: {
+            id: newMessage.id,
+            projectId,
+            senderId: user.id,
+            senderName: user.name,
+            projectName: project.name,
+            content: content.trim(),
+            createdAt: newMessage.createdAt,
+          }
+        };
+
+        let sentCount = 0;
+        // Send to ALL connected SSE clients for real-time notification
+        global.sseClients.forEach((client, userId) => {
+          if (client && !client.writableEnded) {
+            try {
+              client.write(`data: ${JSON.stringify(sseMessage)}\n\n`);
+              sentCount++;
+              console.log(`✅ SSE team message sent to user ${userId}`);
+            } catch (error) {
+              console.error(`❌ Error sending SSE to user ${userId}:`, error);
+              global.sseClients.delete(userId);
+            }
+          }
+        });
+        console.log(`📊 Team message broadcast complete - sent to ${sentCount} users`);
+      } else {
+        console.log('⚠️ No connected SSE clients to broadcast to');
+      }
+
       // Construct message with sender info for response
       const messageWithSender = {
         ...newMessage,
@@ -8142,7 +9991,8 @@ End of Report
       const [updatedMessage] = await db
         .update(projectMessages)
         .set({
-          content: content.trim(),          updatedAt: new Date(),
+          content: content.trim(),
+          updatedAt: new Date(),
           isEdited: true,
         })
         .where(and(
@@ -8152,7 +10002,7 @@ End of Report
         .returning();
 
       // Note: Message updates are handled via query invalidation on the client
-      // No need for WebSocket broadcast here as the      client will refetch
+      // No need for WebSocket broadcast here as the client will refetch
       res.json({ success: true, message: updatedMessage });
     } catch (error) {
       console.error("Error editing team message:", error);
@@ -8233,6 +10083,21 @@ End of Report
   });
 
   // Mark notification as read
+  // Mark all notifications as read for the current user
+  app.put("/api/notifications/read-all", requireAuth, async (req, res) => {
+    const user = req.user!;
+    try {
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(eq(notifications.userId, user.id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ error: "Failed to mark all notifications as read" });
+    }
+  });
+
   app.put("/api/notifications/:id/read", requireAuth, async (req, res) => {
     try {
       const notificationId = parseInt(req.params.id);
@@ -8338,7 +10203,7 @@ End of Report
         .orderBy(desc(projectPlans.createdAt));
 
       res.json(plans);
-    } catch (error) {
+    } catch (error){
       console.error("Error fetching project plans:", error);
       res.status(500).json({ error: "Failed to fetch project plans" });
     }
@@ -8365,8 +10230,15 @@ End of Report
       }
 
        // Check project access
-      const [project] = await db.select().from(projects).where(eq(projects.id, plan.projectId)).limit(1);
-      if (!project) return res.status(404).json({ error: "Project not found" });
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, plan.projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
 
       const hasAccess =
         user.role === "operations_manager" ||
@@ -8460,7 +10332,7 @@ End of Report
         return;
       }
       try {
-        res.write(`data: ${JSON.JSON.stringify({type: "heartbeat"})}\n\n`);
+        res.write(`data: ${JSON.stringify({type: "heartbeat"})}\n\n`);
       } catch (error) {
         console.error(`Error sending heartbeat to user ${userId}:`, error);
         clearInterval(heartbeat);
@@ -8603,11 +10475,27 @@ End of Report
         .limit(1);
 
       if (!project) {
-        return res.status(404).json({ error:"Project not found" });
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check project membership for project managers
+      let isProjectMember = false;
+      if (user.role === "project_manager") {
+        const membership = await db
+          .select()
+          .from(projectMembers)
+          .where(
+            and(
+              eq(projectMembers.projectId, projectId),
+              eq(projectMembers.userId, user.id)
+            )
+          )
+          .limit(1);
+        isProjectMember = membership.length > 0;
       }
 
       const isOperationsManager = user.role === "operations_manager" || user.specialization === "operations_manager";
-      const isProjectManager = user.role === "project_manager" && project.managerId === user.id;
+      const isProjectManager = user.role === "project_manager" && (project.managerId === user.id || isProjectMember);
       const isProductOwner = user.role === "product_owner";
       const isCustomerSupportOfficer = user.role === "customer_support_officer";
       const isTeamLead = user.role === "team_lead";
@@ -8669,7 +10557,11 @@ End of Report
         const teamLeads = await db
           .select()
           .from(users)
-          .where(eq(users.role, "team_lead"));
+          .where(
+            and(
+              eq(users.role, "team_lead")
+            )
+          );
 
         // Remove existing members except the project manager and team leads
         await db
@@ -8679,7 +10571,9 @@ End of Report
               eq(projectMembers.projectId, projectId),
               ne(projectMembers.userId, project.managerId),
               // Don't remove team leads
-              sql`${projectMembers.userId} NOT IN (${teamLeads.map(tl => tl.id).join(', ') || 'NULL'})`
+              teamLeads.length > 0 
+                ? sql`${projectMembers.userId} NOT IN (${sql.join(teamLeads.map(tl => sql`${tl.id}`), sql`, `)})`
+                : sql`true`
             )
           );
 
@@ -8708,10 +10602,10 @@ End of Report
         }
       }
 
-      res.json({ success: true, project: updatedProject });
+      res.json({ success: true,      project: updatedProject });
     } catch (error) {
       console.error("Error updating project:", error);
-      res.status(500).json({ error: "Failed to update project" });
+      res.status(500).json({ error: "Failed to update project"});
     }
   });
 
@@ -8950,7 +10844,7 @@ End of Report
       const [existingPlan] = await db
         .select()
         .from(projectPlans)
-        .where(eq(existingPlan.id, planId))
+        .where(eq(projectPlans.id, planId))
         .limit(1);
 
       if (!existingPlan) {
@@ -9008,7 +10902,7 @@ End of Report
           status: status || existingPlan.status,
           updatedAt: new Date(),
         })
-        .where(eq(existingPlan.id, planId))
+        .where(eq(projectPlans.id, planId))
         .returning();
 
       // Delete existing deliverables
@@ -9167,7 +11061,7 @@ End of Report
         } else {
           tasksList = [];
         }
-      } else if (user.role === "operations_manager" || user.specialization === "operations_manager" || user.role === "team_lead") {
+      } else if (user.role === "operations_manager" || user.specialization ==="operations_manager" || user.role === "team_lead") {
         // Operations managers and team leads see all tasks
         tasksList = await db
           .select()
@@ -9204,6 +11098,38 @@ End of Report
         return res.status(400).json({ error: "Title and project ID are required" });
       }
 
+      // Check if user has permission to create tasks for this project
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check if user is a member of the project
+      const membership = await db
+        .select()
+        .from(projectMembers)
+        .where(
+          and(
+            eq(projectMembers.projectId, projectId),
+            eq(projectMembers.userId, user.id)
+          )
+        )
+        .limit(1);
+
+      const canCreateTask =
+        user.role === "operations_manager" ||
+        user.role === "team_lead" ||
+        user.specialization === "operations_manager" ||
+        user.role === "product_owner" ||
+        user.role === "customer_support_officer" ||
+        project.managerId === user.id ||
+        (user.role === "project_manager" && membership.length > 0) ||
+        (user.role === "staff" && user.specialization === "technical_support" && membership.length > 0);
+
+      if (!canCreateTask) {
+        return res.status(403).json({ error: "You don't have permission to create tasks for this project" });
+      }
+
       // Validate working hours if provided (can be decimal for hours + minutes)
       let taskWorkingHours = null;
       if (workingHours !== null && workingHours !== undefined) {
@@ -9232,6 +11158,30 @@ End of Report
           progress: 0,
         })
         .returning();
+
+      // If project was completed, revert it to pending when a new task is added
+      if (project && project.status === "completed") {
+        await db
+          .update(projects)
+          .set({ status: "pending", updatedAt: new Date() })
+          .where(eq(projects.id, projectId));
+        
+        // Broadcast project update
+        if (global.connectedClients) {
+          global.connectedClients.forEach((client, clientId) => {
+            if (client.readyState === 1) {
+              try {
+                client.send(JSON.stringify({
+                  type: 'project_updated',
+                  data: { projectId, status: 'pending' }
+                }));
+              } catch (e) {
+                console.error(`Error broadcasting project update to ${clientId}:`, e);
+              }
+            }
+          });
+        }
+      }
 
       console.log("Task created successfully:", newTask);
 
@@ -9276,10 +11226,143 @@ End of Report
         console.log('No connected WebSocket clients found');
       }
 
+      // Explicitly trigger a project update broadcast to ensure everything refreshes
+      if (global.connectedClients) {
+        global.connectedClients.forEach((client) => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({
+              type: 'project_updated',
+              data: { projectId: newTask.projectId }
+            }));
+          }
+        });
+      }
+
       return res.status(201).json(newTask);
     } catch (error) {
       console.error("Error creating task:", error);
       return res.status(500).json({ error: "Failed to create task" });
+    }
+  });
+
+  // Task reassignment endpoint
+  app.post("/api/tasks/:id/reassign", requireAuth, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const user = req.user!;
+      const { assigneeId, startDate, deadline, workingHours, workingMinutes, notes, description } = req.body;
+
+      if (!assigneeId) {
+        return res.status(400).json({ error: "New assignee is required" });
+      }
+
+      const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Save current assignment as an iteration
+      await db.insert(taskIterations).values({
+        taskId: task.id,
+        iterationNumber: task.iterationNumber || 1,
+        assigneeId: task.assigneeId,
+        assignedBy: task.assignedBy,
+        description: task.description,
+        status: task.status === "review" ? "not_approved" : (task.status || "todo"),
+        startDate: task.startDate,
+        deadline: task.deadline,
+        workingHours: task.workingHours || 0,
+        workingMinutes: task.workingMinutes || 0,
+        timeSpent: task.timeSpent || 0,
+        notes: notes || null,
+        reassignedBy: user.id,
+        createdAt: task.createdAt,
+        completedAt: new Date(),
+      });
+
+      const newIterationNumber = (task.iterationNumber || 1) + 1;
+
+      // Update the task with new assignment details
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          assigneeId: task.assigneeId,
+          assignedBy: user.id,
+          description: description !== undefined ? description : task.description,
+          startDate: startDate ? new Date(startDate) : null,
+          deadline: deadline ? new Date(deadline) : null,
+          workingHours: workingHours ? parseInt(workingHours) : 0,
+          workingMinutes: workingMinutes ? parseInt(workingMinutes) : 0,
+          status: "todo",
+          timeSpent: 0,
+          isTimerRunning: false,
+          timerStartTime: null,
+          hasBeenStarted: false,
+          actualStartTime: null,
+          reviewStartedAt: null,
+          completedAt: null,
+          iterationNumber: newIterationNumber,
+          updatedAt: new Date(),
+        })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      // Notify assignee
+      if (task.assigneeId) {
+        await createNotification(
+          task.assigneeId,
+          "task_assigned",
+          `Your task has been reassigned for a new iteration: "${task.title}" (Iteration #${newIterationNumber})`,
+          taskId,
+          "task"
+        );
+      }
+
+      // Broadcast update via WebSocket
+      if (global.connectedClients) {
+        global.connectedClients.forEach((client) => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({
+              type: 'task_updated',
+              data: { taskId, projectId: task.projectId }
+            }));
+          }
+        });
+      }
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error reassigning task:", error);
+      res.status(500).json({ error: "Failed to reassign task" });
+    }
+  });
+
+  // Get task iteration history
+  app.get("/api/tasks/:id/iterations", requireAuth, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+
+      const iterations = await db
+        .select({
+          iteration: taskIterations,
+          assigneeName: users.name,
+          assigneeRole: users.role,
+        })
+        .from(taskIterations)
+        .leftJoin(users, eq(taskIterations.assigneeId, users.id))
+        .where(eq(taskIterations.taskId, taskId))
+        .orderBy(asc(taskIterations.iterationNumber));
+
+      const result = iterations.map(row => ({
+        ...row.iteration,
+        assigneeName: row.assigneeName,
+        assigneeRole: row.assigneeRole,
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching task iterations:", error);
+      res.status(500).json({ error: "Failed to fetch task iterations" });
     }
   });
 
@@ -9613,17 +11696,56 @@ End of Report
 
       // Update task to review status and stop timer
       const now = new Date();
+      const reviewUpdateData: any = {
+        status: "review",
+        isTimerRunning: false,
+        timeSpent: newTimeSpent,
+        timerStartTime: null,
+        updatedAt: now
+      };
+      
+      // Set reviewStartedAt if not already set
+      if (!task.reviewStartedAt) {
+        reviewUpdateData.reviewStartedAt = now;
+      }
+      
       const [updatedTask] = await db
         .update(tasks)
-        .set({
-          status: "review",
-          isTimerRunning: false,
-          timeSpent: newTimeSpent,
-          timerStartTime: null,
-          updatedAt: now
-        })
+        .set(reviewUpdateData)
         .where(eq(tasks.id, taskId))
         .returning();
+
+      // Notify project manager when task is submitted for review
+      try {
+        const [taskWithProjectInfo] = await db
+          .select({
+            task: tasks,
+            project: projects,
+          })
+          .from(tasks)
+          .leftJoin(projects, eq(tasks.projectId, projects.id))
+          .where(eq(tasks.id, taskId))
+          .limit(1);
+
+        if (taskWithProjectInfo && taskWithProjectInfo.project) {
+          const pmId = taskWithProjectInfo.project.managerId || taskWithProjectInfo.task.assignedBy;
+          console.log(`[DEBUG] Task submission detected via POST. Task ID: ${taskId}, PM ID candidate: ${pmId}`);
+          if (pmId) {
+            const pmNotification = await createNotification(
+              pmId,
+              "task_updated",
+              `${user.name} has submitted task "${updatedTask.title}" for review`,
+              updatedTask.id,
+              "task"
+            );
+            console.log(`✅ Review notification sent to project manager ${pmId}. Notification ID: ${pmNotification?.id}`);
+          } else {
+            console.log(`⚠️ No PM ID found for task submission ${taskId}. Project Manager: ${taskWithProjectInfo.project.managerId}, Assigned By: ${taskWithProjectInfo.task.assignedBy}`);
+          }
+        }
+      } catch (notifyErr) {
+        console.error('Error sending task submission notification:', notifyErr);
+      }
 
       // Broadcast task update via WebSocket
       if (global.connectedClients) {
@@ -9678,19 +11800,148 @@ End of Report
         return res.status(403).json({ error: "You can only update status for tasks assigned to you" });
       }
 
-      // Update task status
+      // Update task status with tracking timestamps
+      const statusUpdateData: any = {
+        status,
+        updatedAt: new Date(),
+      };
+      
+      // Track when task enters review status
+      if (status === 'review' && task.status !== 'review' && !task.reviewStartedAt) {
+        statusUpdateData.reviewStartedAt = new Date();
+      }
+
+      // Track when task is completed
+      if (status === 'completed' && task.status !== 'completed') {
+        statusUpdateData.completedAt = new Date();
+      }
+      
       await db
         .update(tasks)
-        .set({
-          status,
-          updatedAt: new Date(),
-        })
+        .set(statusUpdateData)
         .where(eq(tasks.id, taskId));
 
       res.json({ success: true });
     } catch (error) {
       console.error("Error updating task status:", error);
       res.status(500).json({ error: "Failed to update task status" });
+    }
+  });
+
+  // User control endpoints - only for team_lead and operations_manager
+  app.get("/api/user-control/users", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = req.user!;
+    const isAuthorized = user.role === "team_lead" || user.role === "operations_manager" || user.specialization === "operations_manager";
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    try {
+      const allUsers = await db.select({
+        id: users.id,
+        name: users.name,
+        username: users.username,
+        email: users.email,
+        role: users.role,
+        specialization: users.specialization,
+        breakOneTime: users.breakOneTime,
+        isActive: users.isActive,
+      }).from(users);
+
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/user-control/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const currentUser = req.user!;
+    const isAuthorized = currentUser.role === "team_lead" || currentUser.role === "operations_manager" || currentUser.specialization === "operations_manager";
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const userId = parseInt(req.params.userId);
+    const { role, specialization, breakOneTime } = req.body;
+
+    try {
+      const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const updateData: any = {};
+      if (role) updateData.role = role;
+      if (specialization !== undefined) updateData.specialization = specialization || null;
+      if (breakOneTime !== undefined) updateData.breakOneTime = breakOneTime || null;
+
+      await db.update(users).set(updateData).where(eq(users.id, userId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
+  app.post("/api/user-control/:userId/status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const currentUser = req.user!;
+    const isAuthorized = currentUser.role === "team_lead" || currentUser.role === "operations_manager" || currentUser.specialization === "operations_manager";
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const userId = parseInt(req.params.userId);
+    const { isActive } = req.body;
+
+    try {
+      const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (targetUser.role === "team_lead" && isActive === false) {
+        return res.status(403).json({ error: "Cannot deactivate team lead accounts" });
+      }
+
+      await db.update(users).set({ isActive }).where(eq(users.id, userId));
+
+      // If deactivating, clear any active sessions for this user
+      if (isActive === false && req.sessionStore && typeof req.sessionStore.all === 'function') {
+        req.sessionStore.all((err, sessions) => {
+          if (!err && sessions) {
+            Object.keys(sessions).forEach(sessionId => {
+              const session = sessions[sessionId];
+              if (session && session.passport && session.passport.user === userId) {
+                req.sessionStore?.destroy(sessionId, (err) => {
+                  if (err) console.error(`Failed to destroy session ${sessionId} for user ${userId}:`, err);
+                });
+              }
+            });
+          }
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      res.status(500).json({ error: "Failed to update user status" });
     }
   });
 

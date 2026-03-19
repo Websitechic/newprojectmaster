@@ -10,10 +10,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/hooks/use-user";
+import { useAuth } from "@/hooks/use-auth";
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useUnreadMessages } from "@/hooks/use-unread-messages";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,9 +29,9 @@ interface UnreadMessage {
 }
 
 export function Header() {
-  const { user, logout } = useUser();
+  const { user } = useUser();
+  const { logoutMutation } = useAuth();
   const [_, setLocation] = useLocation();
-  const [unreadMessages, setUnreadMessages] = useState<UnreadMessage[]>([]);
   const { playNotificationSound, isUnlocked, isInitialized } = useNotificationSound();
   const [showUnlockButton, setShowUnlockButton] = useState(false);
 
@@ -55,11 +56,10 @@ export function Header() {
       return await response.json();
     },
     enabled: !!user,
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 
-  // Fetch direct messages unread count
-  const { data: directMessagesData } = useQuery({
+  const { data: directMessagesData = [] } = useQuery({
     queryKey: ["/api/direct-messages/conversations"],
     queryFn: async () => {
       const response = await fetch("/api/direct-messages/conversations");
@@ -67,7 +67,7 @@ export function Header() {
       return await response.json();
     },
     enabled: !!user,
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 
   // Fetch general channel unread count
@@ -80,7 +80,7 @@ export function Header() {
       return data.count || 0;
     },
     enabled: !!user,
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 
   // Fetch project details for team chats
@@ -110,12 +110,14 @@ export function Header() {
   const { mentionCounts } = useUnreadMessages();
 
   // Combine unread messages
-  useEffect(() => {
-    const combined: UnreadMessage[] = [];
+  const combined = useMemo(() => {
+    if (!user) return [];
+
+    const result: UnreadMessage[] = [];
 
     // Add general channel if there are unread messages
     if (generalChannelUnread > 0) {
-      combined.push({
+      result.push({
         type: "general_channel" as any,
         id: 0,
         name: "General Channel",
@@ -147,11 +149,9 @@ export function Header() {
         if (project) {
           const existing = projectMap.get(parseInt(projectId));
           if (existing) {
-            // Update existing entry with mention flag
             existing.hasMention = true;
             existing.count += count;
           } else {
-            // Add new entry for mention only
             projectMap.set(parseInt(projectId), {
               name: project.name,
               count: count,
@@ -164,7 +164,7 @@ export function Header() {
 
     // Convert map to combined array
     projectMap.forEach((data, projectId) => {
-      combined.push({
+      result.push({
         type: "team_chat",
         id: projectId,
         name: data.hasMention ? `${data.name} (mentioned)` : data.name,
@@ -177,7 +177,7 @@ export function Header() {
     if (directMessagesData) {
       directMessagesData.forEach((conv: any) => {
         if (conv.unreadCount > 0) {
-          combined.push({
+          result.push({
             type: "direct_message",
             id: conv.user.id,
             name: conv.user.name,
@@ -188,24 +188,13 @@ export function Header() {
       });
     }
 
-    setUnreadMessages(combined);
-  }, [teamChatUnreads, mentionCounts, directMessagesData, projects, generalChannelUnread]);
+    return result;
+  }, [user, teamChatUnreads, mentionCounts, directMessagesData, projects, generalChannelUnread]);
 
-  const handleLogout = async () => {
-    try {
-      // Clear audio unlock state completely
-      sessionStorage.removeItem('audioUnlocked');
-      setShowUnlockButton(false);
-
-      await logout();
-      window.location.href = "/auth";
-    } catch (error) {
-      console.error("Logout failed:", error);
-      // Still clear audio unlock state on error
-      sessionStorage.removeItem('audioUnlocked');
-      setShowUnlockButton(false);
-      window.location.href = "/auth";
-    }
+  const handleLogout = () => {
+    sessionStorage.removeItem('audioUnlocked');
+    setShowUnlockButton(false);
+    logoutMutation.mutate();
   };
 
   const handleMessageClick = (message: UnreadMessage) => {
@@ -218,12 +207,12 @@ export function Header() {
     }
   };
 
-  const totalUnread = unreadMessages.reduce((sum, msg) => sum + msg.unreadCount, 0);
+  const totalUnread = useMemo(() => combined.reduce((sum, msg) => sum + msg.unreadCount, 0), [combined]);
 
   return (
-    <header className="h-16 bg-background border-b border-border px-4 sm:px-6 flex items-center justify-between w-full max-w-none">
-      {/* Left Section - Audio Unlock Status */}
-      <div className="flex-1 max-w-none lg:max-w-md ml-12 lg:ml-0">
+    <header className="h-16 sm:h-18 bg-background border-b border-border px-3 sm:px-4 lg:px-6 flex items-center justify-between w-full max-w-full overflow-hidden">
+      {/* Left Section - Audio Unlock Status (hidden on mobile) */}
+      <div className="hidden md:flex flex-1 max-w-md items-center min-w-0">
         {showUnlockButton && (
           <Button
             variant="ghost"
@@ -233,58 +222,63 @@ export function Header() {
                 window.dispatchEvent(new Event('init-audio'));
               }
             }}
-            className={`text-xs ${isUnlocked ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground animate-pulse'}`}
+            className={`text-xs truncate ${isUnlocked ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground animate-pulse'}`}
           >
-            {isUnlocked ? '✓ Sound Enabled' : '🔊 Click to Enable Notification Sound'}
+            {isUnlocked ? '✓ Sound Enabled' : '🔊 Click to Enable Sound'}
           </Button>
         )}
       </div>
 
+      {/* Mobile spacer to push items to right */}
+      <div className="flex-1 md:hidden ml-12 sm:ml-14 min-w-0"></div>
+
       {/* Right Section - Theme Toggle, Unread Messages, Notifications and Profile */}
-      <div className="flex items-center gap-2 sm:gap-4">
-        {/* Theme Toggle */}
-        <ThemeToggle />
+      <div className="flex items-center justify-end gap-2 sm:gap-3 flex-shrink-0">
+        {/* Theme Toggle - Now visible on all screen sizes */}
+        <div>
+          <ThemeToggle />
+        </div>
 
         {/* Unread Messages Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="relative">
-              <MessageSquare className="w-5 h-5" />
+            <Button variant="ghost" size="sm" className="relative p-2">
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
               {totalUnread > 0 && (
                 <Badge 
                   variant="destructive" 
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  className="absolute -top-0.5 -right-0.5 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-xs"
                 >
                   {totalUnread > 9 ? "9+" : totalUnread}
                 </Badge>
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-72 p-0">
-            <div className="px-2 py-1.5 text-sm font-semibold border-b">
+          <DropdownMenuContent align="end" className="w-64 sm:w-72 p-0 -mr-8 sm:mr-0 md:mr-4">
+            <div className="px-3 py-2 text-xs sm:text-sm font-semibold border-b">
               Unread Messages
             </div>
-            {unreadMessages.length === 0 ? (
-              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+            {combined.length === 0 ? (
+              <div className="px-3 py-4 text-center text-xs sm:text-sm text-muted-foreground">
                 No unread messages
               </div>
             ) : (
-              <ScrollArea className="h-96">
+              <ScrollArea className="h-72 sm:h-96">
                 <div className="p-1">
-                  {unreadMessages.map((message) => (
+                  {combined.map((message) => (
                     <DropdownMenuItem
                       key={`${message.type}-${message.id}`}
                       onClick={() => handleMessageClick(message)}
                       className="cursor-pointer"
                     >
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-medium">{message.name}</span>
-                          <span className="text-xs text-muted-foreground">
+                      <div className="flex items-center justify-between w-full gap-2">
+                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                          <span className="font-medium text-xs sm:text-sm truncate">{message.name}</span>
+                          <span className="text-xs text-muted-foreground truncate">
                             {message.type === "team_chat" ? "Team Chat" : message.type === "direct_message" ? "Direct Message" : "General Channel"}
                           </span>
                         </div>
-                        <Badge variant="destructive" className="ml-2">
+                        <Badge variant="destructive" className="ml-2 flex-shrink-0 text-xs">
                           {message.unreadCount}
                         </Badge>
                       </div>
@@ -304,18 +298,18 @@ export function Header() {
         {/* Profile Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">
+            <Button variant="ghost" className="relative h-7 w-7 sm:h-8 sm:w-8 rounded-full p-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs sm:text-sm font-medium">
                   {user?.name?.charAt(0) || 'U'}
                 </span>
               </div>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuContent className="w-48 sm:w-56 -mr-8 sm:mr-0 md:mr-4" align="end" forceMount>
             <div className="flex flex-col space-y-1 p-2">
-              <p className="text-sm font-medium leading-none">{user?.name}</p>
-              <p className="text-xs leading-none text-muted-foreground capitalize">
+              <p className="text-xs sm:text-sm font-medium leading-none truncate">{user?.name}</p>
+              <p className="text-xs leading-none text-muted-foreground capitalize truncate">
                 {user?.role === 'client' ?
                   `${user?.clientType?.replace('_', ' ') || 'Client'}` :
                   user?.role?.replace('_', ' ')
@@ -323,13 +317,13 @@ export function Header() {
               </p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
+            <DropdownMenuItem className="text-xs sm:text-sm" onClick={() => setLocation("/dashboard/profile")}>
+              <User className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              className="text-destructive focus:text-destructive"
+              className="text-destructive focus:text-destructive text-xs sm:text-sm"
               onClick={handleLogout}
             >
               Logout

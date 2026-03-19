@@ -50,16 +50,35 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100vw;
   }
 
   body {
     @apply text-sm sm:text-base;
     overflow-x: hidden;
     min-width: 320px;
+    max-width: 100vw;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   * {
     box-sizing: border-box;
+  }
+
+  /* Prevent all elements from causing horizontal overflow */
+  #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+    min-width: 0;
+  }
+
+  /* Ensure proper mobile viewport */
+  @supports (-webkit-touch-callout: none) {
+    body {
+      min-height: -webkit-fill-available;
+    }
   }
 }
 
@@ -101,11 +120,75 @@
 
   /* Enhanced responsive cards */
   .card-responsive {
-    @apply p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg shadow-sm border;
+    @apply p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg shadow-sm border w-full max-w-full;
   }
 
   .card-compact {
-    @apply p-2 sm:p-3 md:p-4 rounded-md shadow-sm border;
+    @apply p-2 sm:p-3 md:p-4 rounded-md shadow-sm border w-full max-w-full;
+  }
+
+  /* Ensure all cards fit within viewport */
+  .ui-card,
+  [class*="Card"] {
+    @apply w-full max-w-full;
+  }
+
+  /* Fix table overflow on all screen sizes */
+  .table-container {
+    @apply w-full overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    @apply w-full;
+  }
+  
+  /* Enable smooth scrolling on mobile for tables */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: auto;
+    scrollbar-color: rgba(59, 130, 246, 0.8) rgba(0, 0, 0, 0.1);
+    overflow-x: auto !important;
+    overflow-y: visible;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 10px;
+    display: block !important;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 5px;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.7);
+    border-radius: 5px;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: rgba(37, 99, 235, 0.9);
+  }
+
+  /* Force scrollbar visibility and improve touch scrolling on mobile */
+  @media (max-width: 768px) {
+    .overflow-x-auto {
+      scrollbar-width: thin;
+    }
+    
+    .overflow-x-auto::-webkit-scrollbar {
+      height: 8px;
+    }
+    
+    .overflow-x-auto::-webkit-scrollbar-thumb {
+      background: rgba(59, 130, 246, 0.9);
+    }
+  }
+
+  /* Responsive table headers and cells */
+  th, td {
+    @apply text-xs sm:text-sm px-2 sm:px-3 py-2;
   }
 
   /* Enhanced responsive buttons */
@@ -133,6 +216,39 @@
 
   .dashboard-content {
     @apply flex-1 flex flex-col min-h-screen w-full min-w-0 max-w-none;
+  }
+
+  /* Consistent mobile padding for all pages */
+  @media (max-width: 768px) {
+    .flex-1.overflow-auto {
+      padding: 1rem !important;
+    }
+    
+    /* Ensure all dashboard main content areas have consistent padding on mobile */
+    .dashboard-main,
+    .flex-1 > .overflow-auto,
+    main.flex-1 {
+      padding: 1rem !important;
+    }
+  }
+
+  /* Header spacing fix for all screen sizes */
+  header.h-14,
+  header.sm\:h-16 {
+    margin-top: 0;
+    padding-top: 0.5rem;
+  }
+  
+  @media (min-width: 640px) {
+    header.h-14,
+    header.sm\:h-16 {
+      padding-top: 0.75rem;
+    }
+  }
+
+  header .flex.items-center.gap-1\.5 {
+    align-items: center;
+    justify-content: center;
   }
 
   /* Fix sidebar overlap - ensure main content has proper left margin on desktop */
@@ -166,7 +282,26 @@
   }
 
   .dashboard-main {
-    @apply flex-1 overflow-auto p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-none;
+    @apply flex-1 overflow-auto w-full max-w-none;
+    padding: 1rem;
+  }
+  
+  @media (min-width: 640px) {
+    .dashboard-main {
+      padding: 1rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .dashboard-main {
+      padding: 1rem;
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .dashboard-main {
+      padding: 1.5rem;
+    }
   }
 
   /* Global fix for all pages with sidebar */
@@ -276,11 +411,41 @@
   }
 
   .padding-responsive {
-    @apply p-3 sm:p-4 md:p-5 lg:p-6;
+    padding: 1rem;
+  }
+  
+  @media (min-width: 640px) {
+    .padding-responsive {
+      padding: 1rem;
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .padding-responsive {
+      padding: 1.25rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .padding-responsive {
+      padding: 1.5rem;
+    }
   }
 
   .padding-responsive-sm {
-    @apply p-2 sm:p-3 md:p-4;
+    padding: 1rem;
+  }
+  
+  @media (min-width: 640px) {
+    .padding-responsive-sm {
+      padding: 0.75rem;
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .padding-responsive-sm {
+      padding: 1rem;
+    }
   }
 
   /* Responsive flexbox utilities */
@@ -323,6 +488,25 @@
     @apply w-full max-w-full overflow-hidden;
   }
 
+  /* Global mobile padding - applies to all page content areas */
+  @media (max-width: 768px) {
+    /* Main content wrappers */
+    .flex-1.flex.flex-col.overflow-hidden > .flex-1.overflow-auto,
+    .flex-1.flex.flex-col.overflow-hidden > main,
+    .flex-1.flex.flex-col > .flex-1.overflow-auto,
+    div[class*="flex-1"][class*="overflow-auto"] {
+      padding: 1rem !important;
+    }
+    
+    /* Card containers on mobile */
+    .space-y-6,
+    .space-y-4,
+    .space-y-3 {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
   /* Responsive chart containers */
   .chart-container {
     @apply w-full overflow-hidden;
@@ -334,6 +518,13 @@
 }
 
 @layer utilities {
+  /* Extra small breakpoint utilities */
+  @media (min-width: 480px) {
+    .xs\:grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
   /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -347,12 +538,20 @@
   /* Mobile touch improvements */
   .touch-manipulation {
     touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Safe area handling for mobile devices */
   .safe-area-inset {
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+
+  /* Prevent text size adjustment on mobile */
+  * {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
   }
 
   /* Responsive font sizes */
@@ -386,6 +585,33 @@
 
   .min-w-0 {
     min-width: 0;
+  }
+
+  /* Prevent flex items from overflowing */
+  .flex > * {
+    min-width: 0;
+  }
+
+  /* Ensure all page containers are constrained */
+  .flex-1.overflow-auto,
+  .flex-1.flex.flex-col {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* Constrain all headings to prevent overflow */
+  h1, h2, h3, h4, h5, h6 {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+
+  /* Ensure badges don't cause overflow */
+  .badge,
+  [class*="Badge"] {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -495,32 +721,11 @@
   .grid-cols-6 {
     grid-template-columns: 1fr !important;
   }
-
-  .text-3xl { font-size: 1.25rem; }
-  .text-2xl { font-size: 1.125rem; }
-  .text-xl { font-size: 1rem; }
-  .text-lg { font-size: 0.875rem; }
-
-  .p-8, .p-6 { padding: 0.75rem; }
-  .px-8, .px-6 { padding-left: 0.75rem; padding-right: 0.75rem; }
-  .py-8, .py-6 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-
-  .gap-8, .gap-6 { gap: 0.75rem; }
-  .space-y-8 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem; }
-  .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem; }
-
-  .flex-row { flex-direction: column; }
-  .justify-between { justify-content: flex-start; }
-
-  .w-1\/2, .w-1\/3, .w-1\/4 { width: 100%; }
 }
 
 @media (max-width: 639px) {
   /* Small devices */
-  .grid-cols-2 {
-    grid-template-columns: 1fr !important;
-  }
-
+  .grid-cols-2,
   .grid-cols-3,
   .grid-cols-4,
   .grid-cols-5,
@@ -528,25 +733,9 @@
     grid-template-columns: 1fr !important;
   }
 
-  .flex-row { flex-direction: column; }
-
-  .text-4xl { font-size: 1.5rem; }
-  .text-3xl { font-size: 1.25rem; }
-  .text-2xl { font-size: 1.125rem; }
-
-  .p-8 { padding: 1rem; }
-  .p-6 { padding: 1rem; }
-  .px-8 { padding-left: 1rem; padding-right: 1rem; }
-  .px-6 { padding-left: 1rem; padding-right: 1rem; }
-  .py-8 { padding-top: 1rem; padding-bottom: 1rem; }
-  .py-6 { padding-top: 1rem; padding-bottom: 1rem; }
-
-  .gap-8 { gap: 1rem; }
-  .gap-6 { gap: 1rem; }
-  .space-y-8 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
-  .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
-
-  .hidden-mobile { display: none !important; }
+  .hidden-mobile { 
+    display: none !important; 
+  }
 }
 
 @media (max-width: 767px) {
@@ -557,12 +746,6 @@
   .grid-cols-6 {
     grid-template-columns: repeat(2, 1fr) !important;
   }
-
-  .flex-row { flex-direction: column; }
-  .items-center { align-items: stretch; }
-
-  .w-auto { width: 100%; }
-  .max-w-xs, .max-w-sm { max-width: 100%; }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
@@ -576,110 +759,13 @@
 
 @media (min-width: 1024px) and (max-width: 1279px) {
   /* Laptop devices - Full width optimization */
-  .container-responsive {
-    @apply w-full max-w-none px-4;
-  }
-
-  .dashboard-main {
-    @apply p-4 max-w-none;
-  }
-
   .grid-cols-4 {
     grid-template-columns: repeat(3, 1fr) !important;
-  }
-
-  /* Force full width for project pages */
-  .dashboard-content {
-    @apply w-full max-w-none;
-  }
-
-  /* Remove any max-width constraints globally */
-  .max-w-7xl,
-  .max-w-6xl,
-  .max-w-5xl,
-  .max-w-4xl,
-  .max-w-3xl,
-  .max-w-2xl,
-  .max-w-xl,
-  .max-w-lg,
-  .max-w-md,
-  .max-w-sm {
-    @apply max-w-none !important;
-    width: 100% !important;
-  }
-
-  /* Ensure all content areas use full width */
-  .flex-1 {
-    max-width: none !important;
-    width: 100% !important;
-  }
-}
-
-/* Add desktop specific rules for screens larger than laptops */
-@media (min-width: 1280px) {
-  /* Desktop devices - Full width utilization */
-  .container-responsive {
-    @apply w-full max-w-none px-4;
-  }
-
-  .dashboard-main {
-    @apply p-6 max-w-none;
-  }
-
-  /* Force full width for all containers on desktop */
-  .max-w-7xl,
-  .max-w-6xl,
-  .max-w-5xl,
-  .max-w-4xl,
-  .max-w-3xl,
-  .max-w-2xl,
-  .max-w-xl,
-  .max-w-lg,
-  .max-w-md,
-  .max-w-sm {
-    @apply max-w-none !important;
-    width: 100% !important;
-  }
-
-  .flex-1 {
-    max-width: none !important;
-    width: 100% !important;
-  }
-
-  /* Specific overrides for dashboard pages */
-  .dashboard-content,
-  .dashboard-layout,
-  .dashboard-main,
-  .dashboard-content-area {
-    @apply w-full max-w-none !important;
   }
 }
 
 /* Force full width layout for all PC screens */
 @media (min-width: 1024px) {
-  /* Override any container constraints */
-  .container,
-  .mx-auto {
-    max-width: none !important;
-    width: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-
-  /* Ensure dashboard pages use full width */
-  .space-y-6,
-  .space-y-4,
-  .space-y-8 {
-    width: 100% !important;
-    max-width: none !important;
-  }
-
-  /* Force full width for client management specific elements */
-  .flex-1 {
-    min-width: 0 !important;
-    width: 100% !important;
-  }
-
   /* Specific overrides for table containers */
   .overflow-x-auto {
     overflow-x: auto;
@@ -713,12 +799,6 @@
     min-width: 160px;
     max-width: 200px;
   }
-
-  /* Ensure cards grid doesn't exceed viewport */
-  .grid {
-    width: 100%;
-    max-width: 100%;
-  }
 }
 
 @media (max-width: 1023px) {
@@ -728,5 +808,7 @@
     grid-template-columns: repeat(3, 1fr) !important;
   }
 
-  .hidden-tablet { display: none !important; }
+  .hidden-tablet { 
+    display: none !important; 
+  }
 }

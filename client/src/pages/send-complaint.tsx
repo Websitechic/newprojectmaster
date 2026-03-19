@@ -169,22 +169,22 @@ export default function SendComplaint() {
   };
 
   return (
-    <div className="flex h-screen w-full">
+    <div className="flex h-screen w-full overflow-hidden">
       <Sidebar currentPath={location} />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden w-full max-w-none min-w-0">
         <Header />
-        <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
-          <div className="w-full max-w-6xl mx-auto space-y-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full min-w-0">
+          <div className="w-full max-w-6xl mx-auto space-y-4 sm:space-y-6 min-w-0">
+      <div className="mb-4 sm:mb-6 lg:mb-8 w-full max-w-full">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 break-words">
           Send Your Complaint
         </h1>
-        <p className="text-gray-600">
+        <p className="text-sm sm:text-base text-gray-600 break-words">
           Submit your complaint or concern to operations management for review and resolution.
         </p>
       </div>
 
-      <Card>
+      <Card className="w-full max-w-full min-w-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -203,10 +203,10 @@ export default function SendComplaint() {
             </AlertDescription>
           </Alert>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 w-full max-w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full">
+              <div className="space-y-2 w-full max-w-full">
+                <Label htmlFor="name" className="text-sm sm:text-base">Full Name *</Label>
                 <Input
                   id="name"
                   type="text"
@@ -214,11 +214,12 @@ export default function SendComplaint() {
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   placeholder="Your full name"
                   required
+                  className="w-full"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
+              <div className="space-y-2 w-full max-w-full">
+                <Label htmlFor="email" className="text-sm sm:text-base">Email Address *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -226,6 +227,7 @@ export default function SendComplaint() {
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="your.email@company.com"
                   required
+                  className="w-full"
                 />
               </div>
             </div>
@@ -264,30 +266,30 @@ export default function SendComplaint() {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="screenshot">Screenshot or Evidence (Optional)</Label>
-              <div className="flex items-center gap-4">
+            <div className="space-y-2 w-full max-w-full">
+              <Label htmlFor="screenshot" className="text-sm sm:text-base">Screenshot or Evidence (Optional)</Label>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full">
                 <Input
                   id="screenshot"
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
-                  className="flex-1"
+                  className="flex-1 w-full"
                 />
-                <Upload className="h-5 w-5 text-gray-400" />
+                <Upload className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
               </div>
               {screenshot && (
-                <p className="text-sm text-green-600">
+                <p className="text-xs sm:text-sm text-green-600 break-words">
                   File selected: {screenshot.name}
                 </p>
               )}
-              <p className="text-sm text-gray-500">
+              <p className="text-xs sm:text-sm text-gray-500 break-words">
                 Upload any screenshots or evidence related to your complaint (images only, max 5MB)
               </p>
             </div>
 
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isSubmitting} className="min-w-[150px]">
+            <div className="flex justify-end w-full">
+              <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto sm:min-w-[150px]">
                 {isSubmitting ? "Submitting..." : "Submit Complaint"}
               </Button>
             </div>
@@ -389,20 +391,20 @@ function ComplaintHistoryTable() {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse border border-gray-200">
+    <div className="overflow-x-auto w-full max-w-full">
+      <table className="w-full border-collapse border border-gray-200 min-w-[800px] table-auto">
         <thead>
           <tr className="bg-gray-50">
-            <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-900">
+            <th className="border border-gray-200 px-2 sm:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-900 whitespace-nowrap">
               Submitted Date
             </th>
-            <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-900">
+            <th className="border border-gray-200 px-2 sm:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-900 whitespace-nowrap">
               Status
             </th>
-            <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-900">
+            <th className="border border-gray-200 px-2 sm:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-900 whitespace-nowrap">
               Complaint Summary
             </th>
-            <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-900">
+            <th className="border border-gray-200 px-2 sm:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-900 whitespace-nowrap">
               Review Comments
             </th>
           </tr>
@@ -410,22 +412,22 @@ function ComplaintHistoryTable() {
         <tbody>
           {complaints.map((complaint, index) => (
             <tr key={complaint.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-              <td className="border border-gray-200 px-4 py-2 text-sm text-gray-900">
+              <td className="border border-gray-200 px-2 sm:px-4 py-2 text-xs sm:text-sm text-gray-900 whitespace-nowrap">
                 {formatDate(complaint.createdAt)}
               </td>
-              <td className="border border-gray-200 px-4 py-2">
+              <td className="border border-gray-200 px-2 sm:px-4 py-2 whitespace-nowrap">
                 {getStatusBadge(complaint.status)}
               </td>
-              <td className="border border-gray-200 px-4 py-2 text-sm text-gray-900 max-w-xs">
+              <td className="border border-gray-200 px-2 sm:px-4 py-2 text-xs sm:text-sm text-gray-900 max-w-[200px] sm:max-w-xs">
                 <p className="truncate" title={complaint.detailedExplanation}>
                   {complaint.detailedExplanation.length > 100
                     ? `${complaint.detailedExplanation.substring(0, 100)}...`
                     : complaint.detailedExplanation}
                 </p>
               </td>
-              <td className="border border-gray-200 px-4 py-2 text-sm text-gray-600 max-w-xs">
+              <td className="border border-gray-200 px-2 sm:px-4 py-2 text-xs sm:text-sm text-gray-600 max-w-[200px] sm:max-w-xs">
                 <div className="flex items-center gap-2">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     {complaint.reviewComments ? (
                       <p className="truncate" title={complaint.reviewComments}>
                         {complaint.reviewComments.length > 100
@@ -433,16 +435,16 @@ function ComplaintHistoryTable() {
                           : complaint.reviewComments}
                       </p>
                     ) : (
-                      <span className="text-gray-400 italic">No review yet</span>
+                      <span className="text-gray-400 italic text-xs sm:text-sm">No review yet</span>
                     )}
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4" />
+                      <Button variant="outline" size="sm" className="flex-shrink-0">
+                        <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-[95vw] sm:max-w-2xl w-full">
                       <DialogHeader>
                         <DialogTitle>Complaint Details</DialogTitle>
                       </DialogHeader>
@@ -480,7 +482,7 @@ function ComplaintHistoryTable() {
                   </Dialog>
                 </div>
               </td>
-              
+
             </tr>
           ))}
         </tbody>
