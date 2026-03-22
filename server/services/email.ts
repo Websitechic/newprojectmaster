@@ -18,11 +18,13 @@ const createTestAccount = async () => {
 };
 
 let transporter: nodemailer.Transporter;
+let fromAddress: string;
 
 // Use Gmail SMTP if credentials are provided, otherwise fallback to Ethereal
 export const initializeEmailService = async () => {
   if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
     console.log("📧 Initializing Gmail SMTP service...");
+    fromAddress = `"wcdigital worktool app" <${process.env.GMAIL_USER}>`;
     transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -32,6 +34,7 @@ export const initializeEmailService = async () => {
     });
   } else {
     console.log("📧 Initializing Ethereal test email service...");
+    fromAddress = '"wcdigital worktool app" <noreply@wcdigital.com>';
     transporter = await createTestAccount();
   }
 };
@@ -45,7 +48,7 @@ export const sendVerificationEmail = async (user: User, token: string) => {
   const verificationUrl = `${baseUrl}/verify-email?token=${token}`;
 
   const info = await transporter.sendMail({
-    from: '"wcdigital worktool app" <noreply@wcdigital.com>',
+    from: fromAddress,
     to: user.email,
     subject: "Verify your email address",
     html: `
@@ -69,7 +72,7 @@ export const sendPasswordResetEmail = async (user: User, token: string) => {
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
   const info = await transporter.sendMail({
-    from: '"wcdigital worktool app" <noreply@wcdigital.com>',
+    from: fromAddress,
     to: user.email,
     subject: "Reset your password",
     html: `
@@ -94,7 +97,7 @@ export const sendAccountSetupEmail = async (user: User, token: string) => {
   const setupUrl = `${baseUrl}/setup-password?token=${token}&username=${encodeURIComponent(user.username)}`;
 
   const info = await transporter.sendMail({
-    from: '"wcdigital worktool app" <noreply@wcdigital.com>',
+    from: fromAddress,
     to: user.email,
     subject: "Account Setup - wcdigital worktool app",
     html: `
@@ -156,7 +159,7 @@ export const sendNotificationEmail = async (user: User, type: string, content: s
 
   try {
     const info = await transporter.sendMail({
-      from: '"wcdigital worktool app" <noreply@wcdigital.com>',
+      from: fromAddress,
       to: user.email,
       subject: `Notification: ${title}`,
       html: `
