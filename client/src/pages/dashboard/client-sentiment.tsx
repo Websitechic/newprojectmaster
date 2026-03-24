@@ -155,7 +155,7 @@ export default function ClientSentiment() {
         <div className="flex-1 overflow-auto p-6 w-full">
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center justify-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2">
                 <ThumbsUp className="h-6 w-6" />
                 Client Sentiment
               </h1>

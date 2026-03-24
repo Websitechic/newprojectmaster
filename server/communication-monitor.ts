@@ -49,9 +49,9 @@ class CommunicationMonitor {
 
       for (const project of projects) {
         await this.checkProjectDelayedResponses(
-          project.project_id,
-          project.project_name,
-          project.project_manager_id
+          project.project_id as number,
+          project.project_name as string,
+          project.project_manager_id as number
         );
       }
 
@@ -81,8 +81,8 @@ class CommunicationMonitor {
         await this.checkMemberResponseDelay(
           projectId,
           projectName,
-          member.id,
-          member.name,
+          member.id as number,
+          member.name as string,
           projectManagerId
         );
       }

@@ -245,7 +245,7 @@ export default function ProjectBriefing() {
           <div className="flex-1 flex items-center justify-center w-full max-w-full p-4">
             <div className="text-center">
               <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h2>
               <p className="text-gray-600">Only project managers, operations managers, customer support officers, and team leads can access this page.</p>
             </div>
           </div>
@@ -415,7 +415,7 @@ export default function ProjectBriefing() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="text-center sm:text-left">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2 justify-center sm:justify-start">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 justify-center sm:justify-start">
                   <FileText className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
                   New Project Briefing
                 </h1>
@@ -535,7 +535,7 @@ export default function ProjectBriefing() {
               {filteredBriefings.length === 0 ? (
                 <Card className="p-6 sm:p-12 text-center w-full">
                   <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                     {searchQuery ? "No matching briefings found" : "No Project Briefings"}
                   </h3>
                   <p className="text-gray-600 mb-4">

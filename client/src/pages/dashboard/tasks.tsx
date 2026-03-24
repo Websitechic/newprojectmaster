@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { useLocation } from "wouter";
 import { TaskList } from "@/components/task/task-list";
 import { useAuth } from "@/hooks/use-auth";
+import { useWebSocket } from "@/hooks/use-websocket";
 import {
   Select,
   SelectContent,
@@ -29,15 +30,13 @@ export default function Tasks() {
   const [date, setDate] = useState<Date | { from: Date; to: Date } | undefined>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  useWebSocket(user?.id);
 
   const { data: tasks, isLoading: tasksLoading, error: tasksError } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchInterval: false,
-    staleTime: Infinity, // Never mark as stale - rely on optimistic updates
-    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
-    enabled: !!user, // Only fetch if user is authenticated
+    staleTime: 30000, // 30 seconds
+    gcTime: 5 * 60 * 1000,
+    enabled: !!user,
   });
 
   const { data: projects, isLoading: projectsLoading, error: projectsError } = useQuery<Project[]>({

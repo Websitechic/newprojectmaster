@@ -319,7 +319,7 @@ export default function Bookings() {
         <div className="flex-1 overflow-auto p-6 w-full space-y-6">
           <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Bookings Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Bookings Management</h1>
           <p className="text-gray-600 mt-1">Schedule and manage team meetings</p>
         </div>
 
@@ -632,7 +632,7 @@ export default function Bookings() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-10">
               <Calendar className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No bookings yet</h3>
               <p className="text-gray-500 text-center mb-4">
                 Schedule your first meeting to get started
               </p>

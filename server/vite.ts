@@ -2,14 +2,10 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { createServer as createViteServer, createLogger } from "vite";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 import { type Server } from "http";
-import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
-
-const viteLogger = createLogger();
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -23,8 +19,21 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  const { createServer: createViteServer, createLogger } = await import("vite");
+  const { default: react } = await import("@vitejs/plugin-react");
+  const { default: themePlugin } = await import("@replit/vite-plugin-shadcn-theme-json");
+  const { default: runtimeErrorOverlay } = await import("@replit/vite-plugin-runtime-error-modal");
+
+  const viteLogger = createLogger();
   const vite = await createViteServer({
-    ...viteConfig,
+    plugins: [react(), runtimeErrorOverlay(), themePlugin()],
+    resolve: {
+      alias: {
+        "@db": path.resolve(__dirname, "..", "db"),
+        "@": path.resolve(__dirname, "..", "client", "src"),
+      },
+    },
+    root: path.resolve(__dirname, "..", "client"),
     configFile: false,
     customLogger: {
       ...viteLogger,

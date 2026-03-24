@@ -187,7 +187,7 @@ export default function Projects() {
           <div className="w-full max-w-none space-y-3 lg:space-y-4">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Projects</h1>
                 <p className="text-gray-600 mt-1">Manage and track your digital agency projects</p>
               </div>
             </div>

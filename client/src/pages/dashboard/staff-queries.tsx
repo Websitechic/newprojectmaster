@@ -224,7 +224,7 @@ export default function StaffQueries() {
         <div className="flex-1 overflow-auto p-2 sm:p-4 lg:p-6 w-full">
           <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) ? "Penalty Management" : "Received Penalties"}
           </h1>
           <p className="text-gray-600">
@@ -373,7 +373,7 @@ export default function StaffQueries() {
           <Card>
             <CardContent className="text-center py-8">
               <FileText className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
                 {(isOperationsManager || isProjectManager || isTeamLead || isCustomerSupportOfficer) ? "No penalties sent" : "No penalties received"}
               </h3>
               <p className="mt-1 text-sm text-gray-500">

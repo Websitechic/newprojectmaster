@@ -151,7 +151,7 @@ export default function StaffComplaints() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-10">
                 <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Access Denied</h3>
                 <p className="text-gray-500 text-center">
                   Only operations managers and team leads can access staff complaints.
                 </p>
@@ -174,7 +174,7 @@ export default function StaffComplaints() {
         <Header />
         <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full min-w-0">
           <div className="mb-4 sm:mb-6 lg:mb-8 w-full max-w-full min-w-0">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 break-words">Staff Complaints Management</h1>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 break-words">Staff Complaints Management</h1>
             <p className="text-sm sm:text-base text-gray-600 break-words">
               Review and manage complaints submitted by staff members.
             </p>
@@ -209,7 +209,7 @@ export default function StaffComplaints() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-10">
                 <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No pending complaints</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No pending complaints</h3>
                 <p className="text-gray-500 text-center">
                   All staff complaints have been reviewed.
                 </p>
@@ -235,7 +235,7 @@ export default function StaffComplaints() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-10">
                 <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No reviewed complaints</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No reviewed complaints</h3>
                 <p className="text-gray-500 text-center">
                   Complaints that have been reviewed will appear here.
                 </p>
@@ -261,7 +261,7 @@ export default function StaffComplaints() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-10">
                 <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No resolved complaints</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No resolved complaints</h3>
                 <p className="text-gray-500 text-center">
                   Complaints that have been resolved will appear here.
                 </p>

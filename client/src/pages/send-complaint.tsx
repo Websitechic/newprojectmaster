@@ -176,7 +176,7 @@ export default function SendComplaint() {
         <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 w-full max-w-full min-w-0">
           <div className="w-full max-w-6xl mx-auto space-y-4 sm:space-y-6 min-w-0">
       <div className="mb-4 sm:mb-6 lg:mb-8 w-full max-w-full">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 break-words">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 break-words">
           Send Your Complaint
         </h1>
         <p className="text-sm sm:text-base text-gray-600 break-words">

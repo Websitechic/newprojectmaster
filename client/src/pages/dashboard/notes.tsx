@@ -205,7 +205,7 @@ export default function Notes() {
           <Header />
           <div className="flex-1 overflow-auto p-6 w-full">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Access Denied</h1>
               <p className="text-gray-600 mt-2">This page is only available to operations managers.</p>
               <p className="text-sm text-gray-500 mt-1">Your role: {user?.role}, Specialization: {user?.specialization || 'none'}</p>
             </div>
@@ -423,7 +423,7 @@ export default function Notes() {
           <div className="w-full space-y-4 lg:space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <FileText className="h-8 w-8 text-blue-600" />
                   Notes
                 </h1>
@@ -567,7 +567,7 @@ export default function Notes() {
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-10">
                     <FileText className="h-12 w-12 text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                       {notes.length === 0 ? "No notes created yet" : "No notes match your search"}
                     </h3>
                     <p className="text-gray-500 text-center mb-4">
