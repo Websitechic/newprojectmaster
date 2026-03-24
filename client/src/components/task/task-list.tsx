@@ -1090,8 +1090,10 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
             </div>
 
             <div className="pt-4 border-t">
-              <Button type="submit" className="w-full md:w-auto md:min-w-[200px]">
-                {editTask ? "Update Task" : "Create Task"}
+              <Button type="submit" className="w-full md:w-auto md:min-w-[200px]" disabled={createTask.isPending || updateTask.isPending}>
+                {createTask.isPending || updateTask.isPending
+                  ? (editTask ? "Updating..." : "Creating...")
+                  : (editTask ? "Update Task" : "Create Task")}
               </Button>
             </div>
           </form>

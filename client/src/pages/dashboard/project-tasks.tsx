@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Header } from "@/components/dashboard/header";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -7,18 +7,38 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import type { Task } from "@db/schema";
 import { useAuth } from "@/hooks/use-auth";
+import { useWebSocket } from "@/hooks/use-websocket";
+import { useEffect } from "react";
 
 export default function ProjectTasks() {
   const { id } = useParams();
   const [_, setLocation] = useLocation();
   const projectId = parseInt(id!);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  useWebSocket(user?.id);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: [`/api/projects/${projectId}/tasks`],
     queryFn: () => fetch(`/api/projects/${projectId}/tasks`).then(res => res.json()),
+    staleTime: 30000,
     enabled: !!id,
   });
+
+  useEffect(() => {
+    const invalidate = () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    };
+    window.addEventListener('websocket:task_created', invalidate);
+    window.addEventListener('websocket:task_updated', invalidate);
+    window.addEventListener('websocket:task_deleted', invalidate);
+    return () => {
+      window.removeEventListener('websocket:task_created', invalidate);
+      window.removeEventListener('websocket:task_updated', invalidate);
+      window.removeEventListener('websocket:task_deleted', invalidate);
+    };
+  }, [queryClient, projectId]);
 
   const canManageTasks = user?.role === "project_manager" || (user?.role === "staff" && user?.specialization === "technical_support");
 
