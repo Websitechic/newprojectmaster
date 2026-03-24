@@ -181,8 +181,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       console.log("WebSocket: task_updated received, invalidating queries", event);
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       if (projectId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
-        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
       }
     };
 
@@ -318,10 +317,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
     onSuccess: (newTask) => {
       // Invalidate queries to ensure real-time update
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       if (projectId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
-        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
       }
 
       // Prepend for immediate visibility
@@ -342,9 +339,6 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       // Force UI update by resetting pagination
       setCurrentPage(1);
 
-      setIsDialogOpen(false);
-      setFormData(defaultTask);
-      
       // Notify other clients about the new task via WebSocket
       // We'll use the centralized websocket handling if available
       const ws = (window as any).socket;
@@ -416,7 +410,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       });
 
       if (projectId) {
-        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+        queryClient.setQueryData([`/api/projects/${projectId}/tasks`], (oldTasks: Task[] | undefined) => {
           if (!oldTasks) return [updatedTask];
           return oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
         });
@@ -424,7 +418,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       if (projectId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "tasks"] });
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/tasks`] });
       }
 
       // Notify other clients about the task update via WebSocket
@@ -438,15 +432,14 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
         }));
       }
 
-      setIsDialogOpen(false);
       setEditTask(null);
-      setFormData(defaultTask);
       toast({
         title: "Success",
         description: "Task updated successfully",
       });
     },
     onError: (error: Error) => {
+      setEditTask(null);
       toast({
         title: "Error",
         description: error.message,
@@ -473,7 +466,7 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
       });
 
       if (projectId) {
-        queryClient.setQueryData(["/api/projects", projectId, "tasks"], (oldTasks: Task[] | undefined) => {
+        queryClient.setQueryData([`/api/projects/${projectId}/tasks`], (oldTasks: Task[] | undefined) => {
           return oldTasks ? oldTasks.filter(task => task.id !== deletedTaskId) : [];
         });
       }
@@ -554,6 +547,11 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Close the dialog immediately so the user isn't blocked waiting for the server.
+    // NOTE: do NOT call setEditTask(null) here — mutationFn reads editTask asynchronously
+    // and would see null before it runs. editTask is reset when the dialog next opens.
+    setIsDialogOpen(false);
+    setFormData(defaultTask);
     if (editTask) {
       updateTask.mutate(formData);
     } else {
@@ -1090,10 +1088,8 @@ export function TaskList({ tasks, projectId, isStaffView = false, showNewTaskBut
             </div>
 
             <div className="pt-4 border-t">
-              <Button type="submit" className="w-full md:w-auto md:min-w-[200px]" disabled={createTask.isPending || updateTask.isPending}>
-                {createTask.isPending || updateTask.isPending
-                  ? (editTask ? "Updating..." : "Creating...")
-                  : (editTask ? "Update Task" : "Create Task")}
+              <Button type="submit" className="w-full md:w-auto md:min-w-[200px]">
+                {editTask ? "Update Task" : "Create Task"}
               </Button>
             </div>
           </form>
